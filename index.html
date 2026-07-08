@@ -378,6 +378,8 @@ let mode = 'ALL';
 let dropItems = [];
 let activeCard = null;
 let isMobile = false;
+let dataLoaded = false;   // true once parseRaw succeeds
+let pendingQ   = null;    // suggestion clicked before data was ready
 
 /* ================================================================
    DATA LOADING
@@ -388,36 +390,83 @@ async function loadData() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const raw = await res.json();
     parseRaw(raw);
+    dataLoaded = true;
+    // Show brief load-success note
+    const n = Object.keys(unitsById).length + Object.keys(techsById).length;
+    const note = document.getElementById('error-msg');
+    if (n > 0) {
+      note.style.color = 'var(--green)';
+      note.style.background = 'var(--greenBg)';
+      note.style.borderColor = 'var(--greenBd)';
+      note.textContent = `✓ Loaded ${Object.keys(unitsById).length} units and ${Object.keys(techsById).length} techs — use search or tap a quick filter`;
+      note.style.display = 'block';
+      setTimeout(() => { note.style.display = 'none'; }, 3500);
+    } else {
+      note.textContent = 'Data loaded but could not parse unit list. Try refreshing.';
+      note.style.display = 'block';
+      console.warn('parseRaw produced 0 units. Raw top-level keys:', Object.keys(raw));
+    }
   } catch(e) {
     const el = document.getElementById('error-msg');
-    el.textContent = 'Could not load live unit data — civ bonuses and win rates still work. Unit filtering requires internet.';
+    el.textContent = 'Could not load unit data — civ bonuses and win rates still work. Check your internet connection.';
     el.style.display = 'block';
   }
   document.getElementById('loading-overlay').classList.add('hidden');
   render();
+  // Execute any suggestion the user clicked while loading
+  if (pendingQ) { const q = pendingQ; pendingQ = null; selectFromName(q); }
+}
+
+/* Parse an object-or-array of unit/tech records into a {id: record} map.
+   The SiegeEngineers JSON can ship units/techs as either:
+     • an object  { "83": { id:83, name:"Arbalester", … }, … }
+     • an array   [ { id:83, name:"Arbalester", … }, … ]
+   Both forms are normalised into unitsById / techsById. */
+function indexById(source, dest) {
+  if (!source) return;
+  if (Array.isArray(source)) {
+    source.forEach(item => {
+      if (item?.name && item?.id != null) dest[item.id] = item;
+    });
+  } else {
+    Object.entries(source).forEach(([k, item]) => {
+      if (!item?.name) return;
+      const id = item.id != null ? item.id : +k;
+      dest[id] = { ...item, id };
+    });
+  }
+}
+
+/* Build a Set of available unit/tech IDs from a civ's availability data.
+   Can be an array of IDs, or an object { "83": true/1, "440": false/0 }. */
+function availSet(val) {
+  if (!val) return new Set();
+  if (Array.isArray(val)) return new Set(val.map(Number));
+  if (typeof val === 'object') {
+    return new Set(
+      Object.entries(val)
+        .filter(([, v]) => v)
+        .map(([k]) => Number(k))
+    );
+  }
+  return new Set();
 }
 
 function parseRaw(raw) {
-  // Units
-  Object.entries(raw.units || {}).forEach(([id, u]) => {
-    if (u?.name) unitsById[+id] = { ...u, id: +id };
-  });
-  // Techs
-  Object.entries(raw.techs || {}).forEach(([id, t]) => {
-    if (t?.name) techsById[+id] = { ...t, id: +id };
-  });
-  // Civs — flexible structure
+  indexById(raw.units, unitsById);
+  indexById(raw.techs, techsById);
+
   const civArr = Array.isArray(raw.civs) ? raw.civs : Object.values(raw.civs || {});
   civArr.forEach(c => {
     if (!c?.name) return;
     civData[c.name] = {
-      units:       new Set(c.units || []),
-      techs:       new Set(c.techs || []),
+      units:       availSet(c.units),
+      techs:       availSet(c.techs),
       uniqueUnits: c.unique_unit  || c.unique_units || [],
       uniqueTechs: c.unique_tech  || c.unique_techs || [],
     };
   });
-  // Search index: alphabetical, all units + techs
+
   searchIdx = [
     ...Object.values(unitsById).map(u => ({ id: u.id, name: u.name, itemType: 'unit' })),
     ...Object.values(techsById).map(t => ({ id: t.id, name: t.name, itemType: 'tech' })),
@@ -782,11 +831,26 @@ function renderSuggestions() {
     QUICK_UNITS.map(q => `<button class="sug-btn" data-q="${q}">${q}</button>`).join('');
 }
 
-function handleSuggestion(q) {
-  if (!searchIdx.length) { alert('Data is still loading — try again in a moment.'); return; }
-  const item = searchIdx.find(i => i.name.toLowerCase() === q.toLowerCase())
-            || searchIdx.find(i => i.name.toLowerCase().includes(q.toLowerCase()));
+function selectFromName(q) {
+  const lq = q.toLowerCase();
+  const item = searchIdx.find(i => i.name.toLowerCase() === lq)
+            || searchIdx.find(i => i.name.toLowerCase().includes(lq));
   if (item) selectItem(item);
+}
+
+function handleSuggestion(q) {
+  if (!dataLoaded) {
+    // Queue it — will be run immediately once loadData() finishes
+    pendingQ = q;
+    const note = document.getElementById('error-msg');
+    note.style.color = 'var(--amberL)';
+    note.style.background = 'var(--amberBg)';
+    note.style.borderColor = 'var(--amber)';
+    note.textContent = `Loading data… "${q}" will be applied automatically.`;
+    note.style.display = 'block';
+    return;
+  }
+  selectFromName(q);
 }
 
 /* ================================================================
@@ -806,7 +870,7 @@ function initEvents() {
     if (e.key === 'Escape') closeDropdown();
     if (e.key === 'Enter') {
       if (dropItems.length) { selectItem(dropItems[0]); }
-      else if (e.target.value.trim()) { handleSuggestion(e.target.value.trim()); }
+      else if (e.target.value.trim()) { selectFromName(e.target.value.trim()); }
     }
   });
   input.addEventListener('blur', () => setTimeout(closeDropdown, 160));
