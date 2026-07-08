@@ -196,6 +196,20 @@ h1{font-size:22px;font-weight:700;color:var(--amberL);letter-spacing:-.02em;}
 .disclaimer{font-size:11px;color:var(--text3);font-style:italic;margin-top:8px;}
 
 /* ── Footer note ── */
+.sug-btn.sug-all{border-color:rgba(74,222,128,.3);}
+.sug-cnt{font-size:9px;margin-left:4px;padding:1px 5px;border-radius:8px;font-weight:700;vertical-align:middle;display:inline-block;}
+.sug-cnt.all{background:rgba(74,222,128,.18);color:var(--green);}
+.sug-cnt.few{background:rgba(200,146,42,.18);color:var(--amberL);}
+/* Archetype buttons */
+#arch-btns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+.arch-btn{font-size:12px;padding:5px 12px;background:var(--surf);border:1px solid var(--border);border-radius:20px;color:var(--text2);cursor:pointer;transition:.12s;}
+.arch-btn:hover{border-color:var(--amber);color:var(--amberL);}
+.arch-btn.on{background:var(--amber);color:#1a0a00;border-color:var(--amber);font-weight:600;}
+.civ-card.partial{border-color:rgba(200,146,42,.35);background:rgba(200,146,42,.07);}
+.civ-card.partial:hover{border-color:var(--amber);}
+.score-bar-wrap{margin-top:5px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+.score-bar-fill{height:100%;border-radius:2px;transition:width .2s;}
+.score-txt{font-size:10px;color:var(--text3);margin-top:2px;}
 /* Organized quick-filter categories */
 .cat-section{margin-bottom:10px;}
 .cat-label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:4px;}
@@ -234,7 +248,11 @@ h1{font-size:22px;font-weight:700;color:var(--amberL);letter-spacing:-.02em;}
     </div>
   </div>
 
-  <!-- Quick suggestions -->
+  <!-- Civ archetype finders -->
+  <div class="sug-label">Civ types — click to rank all 53 civs by archetype completeness</div>
+  <div id="arch-btns"></div>
+
+  <!-- Unit / tech quick filters -->
   <div class="sug-label">Quick filters</div>
   <div id="suggestions"></div>
 
@@ -365,11 +383,11 @@ const CIV_BONUSES = {
 /* Organized categories for the quick-filter UI */
 const QUICK_CATEGORIES = [
   { label:'Archers', items:[
-    'Arbalester','Elite Skirmisher','Hand Cannoneer','Heavy Cavalry Archer',
+    'Arbalester','Elite Skirmisher','Imperial Skirmisher','Hand Cannoneer','Heavy Cavalry Archer',
     'Thumb Ring','Bracer','Bodkin Arrow','Fletching','Ballistics','Parthian Tactics',
   ]},
   { label:'Cavalry', items:[
-    'Paladin','Hussar','Cavalier','Heavy Camel Rider',
+    'Paladin / Savar','Hussar','Cavalier','Heavy Camel Rider','Imperial Camel Rider',
     'Battle Elephant','Elite Battle Elephant','Steppe Lancer',
     'Bloodlines','Plate Barding Armor','Chain Barding Armor','Husbandry',
   ]},
@@ -397,7 +415,7 @@ const QUICK_CATEGORIES = [
     'Gold Shaft Mining','Stone Shaft Mining','Coinage','Caravan','Banking',
   ]},
   { label:'Fortifications', items:[
-    'Hoardings','Masonry','Architecture','Tracking',
+    'Hoardings','Masonry','Architecture',
   ]},
 ];
 
@@ -405,14 +423,15 @@ const QUICK_CATEGORIES = [
 const UNIT_IDS = {
   // Archers
   'Archer':4,'Crossbowman':24,'Arbalester':492,
-  'Skirmisher':7,'Elite Skirmisher':6,
+  'Skirmisher':7,'Elite Skirmisher':6,'Imperial Skirmisher':1155, // Imperial = Vietnamese only
   'Longbowman':8,'Elite Longbowman':530,
   'Hand Cannoneer':5,
   'Cavalry Archer':39,'Heavy Cavalry Archer':474,
   // Cavalry
   'Scout Cavalry':448,'Light Cavalry':546,'Hussar':441,
-  'Knight':38,'Cavalier':283,'Paladin':569,
-  'Camel Rider':329,'Heavy Camel Rider':330,
+  'Knight':38,'Cavalier':283,
+  'Paladin / Savar':[569,1813], // Paladin for most civs; Persians get Savar instead
+  'Camel Rider':329,'Heavy Camel Rider':330,'Imperial Camel Rider':207, // Imperial = Hindustanis only
   'Steppe Lancer':1370,'Elite Steppe Lancer':1372,
   'Battle Elephant':1132,'Elite Battle Elephant':1134,
   // Infantry
@@ -457,7 +476,7 @@ const TECH_IDS = {
   'Loom':22,'Faith':45,'Sanctity':231,'Fervor':252,
   'Redemption':316,'Atonement':319,'Theocracy':438,'Illumination':233,
   // Military / General
-  'Conscription':315,'Tracking':90,
+  'Conscription':315,
   // Economy techs
   'Wheelbarrow':213,'Hand Cart':249,
   'Horse Collar':14,'Heavy Plow':13,'Crop Rotation':12,
@@ -467,7 +486,137 @@ const TECH_IDS = {
   'Coinage':23,'Banking':17,'Caravan':48,'Guilds':15,
 };
 
-/* Attack/armor class ID → readable label (from SiegeEngineers techtree.js) */
+/* Human-readable unit role descriptions */
+const UNIT_DESCRIPTIONS = {
+  // ── Archers ──────────────────────────────────────────────────────
+  4:    'Ranged infantry. Strong vs light infantry; weak vs cavalry and skirmishers',
+  24:   'Upgraded Archer. Strong vs infantry; weak vs cavalry and skirmishers',
+  492:  'Elite archer. Strong vs infantry; weak vs cavalry and skirmishers',
+  7:    'Anti-archer infantry. Strong vs archers; weak vs melee infantry and cavalry',
+  6:    'Upgraded Skirmisher. Strong vs archers; weak vs melee infantry and cavalry',
+  1155: 'Top-tier skirmisher (Vietnamese only). Strong vs archers and ranged units; weak vs melee infantry',
+  8:    'Briton unique archer with extra range. Strong vs infantry; weak vs cavalry',
+  530:  'Elite Longbowman. Strong vs infantry at long range; weak vs cavalry',
+  5:    'Gunpowder ranged infantry. Strong vs heavy infantry; weak vs cavalry and skirmishers',
+  39:   'Mounted archer. Strong vs infantry; weak vs camels and skirmishers',
+  474:  'Upgraded mounted archer. Strong vs infantry; weak vs camels and skirmishers',
+  // ── Cavalry ──────────────────────────────────────────────────────
+  448:  'Fast scout. Low attack power; best used for map control and early harassment',
+  546:  'Fast raider. Strong vs monks, siege, and trade units; weak vs spearmen and camels',
+  441:  'Elite raider. Strong vs monks, siege, and trade units; weak vs spearmen and camels',
+  38:   'Heavy cavalry. Strong vs archers and infantry; weak vs spearmen and camels',
+  283:  'Upgraded Knight. Strong vs archers and infantry; weak vs spearmen and camels',
+  569:  'Elite heavy cavalry. Strong vs archers and infantry; weak vs spearmen and camels',
+  1813: 'Persian elite cavalry (replaces Paladin). Strong vs archers and infantry; weak vs spearmen and camels',
+  329:  'Anti-cavalry unit. Strong vs cavalry; weak vs archers and infantry',
+  330:  'Upgraded Camel Rider. Strong vs cavalry; weak vs archers and infantry',
+  207:  'Elite Camel (Hindustanis only). Strong vs cavalry; weak vs archers and infantry',
+  1370: 'Unique cavalry with ranged melee. Strong vs cavalry; weak vs camels and spearmen',
+  1372: 'Upgraded Steppe Lancer. Strong vs cavalry; weak vs camels and spearmen',
+  1132: 'Massive slow cavalry. Strong vs buildings and melee infantry; weak vs halbs and monks',
+  1134: 'Elite Battle Elephant. Strong vs buildings and melee; weak vs halbs and monks',
+  // ── Infantry ─────────────────────────────────────────────────────
+  75:   'Upgraded Militia-line. Strong vs buildings; weak vs archers',
+  77:   'Heavy swordsman. Strong vs cavalry and buildings; weak vs archers',
+  473:  'Elite swordsman. Strong vs cavalry, buildings, and spearmen; weak vs archers',
+  74:   'Anti-cavalry infantry. Strong vs cavalry; weak vs archers and other infantry',
+  93:   'Upgraded Spearman. Strong vs cavalry; weak vs archers',
+  359:  'Elite spearman. Strong vs cavalry and elephants; weak vs archers',
+  751:  'Fast Mesoamerican infantry (replaces Scout). Strong vs monks; weak vs archers',
+  752:  'Mesoamerican warrior. Strong vs monks and siege; weak vs archers',
+  753:  'Elite Eagle Warrior. Strong vs monks, siege, and buildings; weak vs archers',
+  // ── Siege ─────────────────────────────────────────────────────────
+  280:  'Area-damage catapult. Strong vs groups of infantry and archers; weak vs cavalry',
+  550:  'Upgraded Mangonel with larger blast. Strong vs packed units; weak vs cavalry',
+  588:  'Elite catapult. Destroys groups of units; can cut trees; weak vs cavalry',
+  279:  'Anti-infantry bolt thrower. Strong vs infantry and archers; weak vs cavalry and buildings',
+  542:  'Upgraded Scorpion. Strong vs infantry; weak vs cavalry and buildings',
+  36:   'Gunpowder siege. Strong vs buildings and armored units; weak vs cavalry and skirmishers',
+  331:  'Long-range catapult. Strong vs buildings; must pack/unpack to move; vulnerable while packed',
+  548:  'Heavy battering ram. Strong vs buildings; extremely weak vs combat units',
+  1258: 'Basic ram. Strong vs buildings; very weak vs all combat units',
+  // ── Navy ─────────────────────────────────────────────────────────
+  21:   'Basic warship. Strong vs other ships; weak vs fire ships',
+  420:  'Siege ship. Strong vs buildings and ships at range; weak vs fire ships',
+  691:  'Elite siege ship. Strong vs buildings and galleys; weak vs fire ships',
+  529:  'Fire vessel. Strong vs war galleys and galleons; weak vs demo ships',
+  539:  'Fast fire vessel. Strong vs warships; weak vs demo ships and cannon galleons',
+  527:  'Explosive ship. Sacrifices itself for massive AoE damage; strong vs ship groups',
+  528:  'Elite demo ship. Sacrifices itself for heavy AoE damage; strong vs ship groups',
+  // ── Monks ────────────────────────────────────────────────────────
+  125:  'Healer and converter. Strong vs cavalry (conversion bonus); weak vs everything in direct combat. Conversion range and speed improved by Monastery techs',
+};
+const TECH_DESCRIPTIONS = {
+  // ── Archer upgrades ──────────────────────────────────────────────
+  199: 'Archer-line units +1 attack, +1 range',
+  200: 'Archer-line units +1 attack, +1 range (cumulative with Fletching)',
+  201: 'Archer-line units +1 attack, +1 range (cumulative; total +3/+3 with all three)',
+  437: 'Archers fire 100% accurately and reload faster',
+  436: 'Cavalry Archers +2 pierce armor, +1 attack vs Infantry',
+  93:  'Projectile-firing units aim at predicted position — greatly reduces misses vs moving targets',
+  // ── Cavalry upgrades ─────────────────────────────────────────────
+  435: 'All cavalry units +20 HP',
+  39:  'Cavalry units +15% movement speed',
+  81:  'Mounted units +1 melee armor, +1 pierce armor',
+  82:  'Mounted units +1 melee armor, +1 pierce armor (cumulative)',
+  80:  'Mounted units +1 melee armor, +2 pierce armor (cumulative; total +3/+4 with all three)',
+  // ── Infantry upgrades ─────────────────────────────────────────────
+  74:  'Infantry +1 melee armor, +1 pierce armor',
+  76:  'Infantry +1 melee armor, +1 pierce armor (cumulative)',
+  77:  'Infantry +1 melee armor, +2 pierce armor (cumulative; total +3/+4 with all three)',
+  215: 'Infantry move 10% faster',
+  602: 'Infantry +2 attack vs buildings',
+  // ── Blacksmith melee ─────────────────────────────────────────────
+  67:  'Melee units +1 attack',
+  68:  'Melee units +1 attack (cumulative)',
+  75:  'Melee units +2 attack (cumulative; total +4 attack with all three)',
+  // ── Siege techs ───────────────────────────────────────────────────
+  47:  'Gunpowder units +1 attack; unlocks Hand Cannoneer and Cannon Galleon',
+  377: 'Siege weapons +1 range; walls and towers +20% HP',
+  380: 'Towers and Castles attack ships 125% faster',
+  322: 'Towers and Castles have no minimum attack range (can target adjacent tiles)',
+  321: 'Infantry +15 attack vs stone buildings (towers, walls, castles)',
+  // ── Fortifications ────────────────────────────────────────────────
+  379: 'Castles +500 HP',
+  50:  'Buildings +10% HP, −5% construction time',
+  51:  'Buildings +10% HP, −33% construction time (cumulative with Masonry)',
+  // ── Naval upgrades ────────────────────────────────────────────────
+  34:  'Upgrades Galley → War Galley: +1 attack, +1 range, +15 HP',
+  35:  'Upgrades War Galley → Galleon: +2 attack, +2 range, +40 HP',
+  374: 'Ships +1 melee armor, +1 pierce armor, +10 HP',
+  375: 'Ships move 15% faster',
+  373: 'Ships constructed 80% faster and cost −20% wood',
+  65:  'Fishing Ships work 20% faster',
+  // ── Monks ─────────────────────────────────────────────────────────
+  22:  'Villagers +1/+1 armor, +15 HP; required before training any military unit',
+  45:  'Your Monks take 500% longer to be converted by enemies',
+  231: 'Monks +15 HP',
+  252: 'Monks move 15% faster',
+  316: 'Monks can convert siege weapons, ships, and buildings',
+  319: 'Monks can convert enemy Monks',
+  438: 'Only one Monk needs to relic faith after a group conversion',
+  233: 'Monks regain faith 50% faster after converting a unit',
+  // ── Military ──────────────────────────────────────────────────────
+  315: 'All military units created 33% faster',
+  90:  'Infantry +2 line of sight',
+  // ── Economy ───────────────────────────────────────────────────────
+  213: 'Villagers +25 carry capacity and move 10% faster',
+  249: 'Villagers +50 carry capacity and move 15% faster (cumulative with Wheelbarrow)',
+  14:  'Farms produce 75 more food (175 → 250 total)',
+  13:  'Farms produce 125 more food (250 → 375 total)',
+  12:  'Farms produce 125 more food (375 → 500 total; full chain = 325 bonus food)',
+  202: 'Lumberjacks work 20% faster',
+  203: 'Lumberjacks work 20% faster (cumulative)',
+  221: 'Lumberjacks work 10% faster (cumulative; total +50% with all three)',
+  55:  'Gold miners work 15% faster',
+  182: 'Gold miners work 15% faster (cumulative; total +30%)',
+  278: 'Stone miners work 15% faster',
+  279: 'Stone miners work 15% faster (cumulative; total +30%)',
+  23:  'Tribute fee between allies reduced by 25%',
+  17:  'Tribute between allies is free (0% fee)',
+  48:  'Trade carts and trade cogs move 50% faster',
+  15:  'Market buy/sell rates 30% better',
+};
 const ARMOR_CLASSES = {
   1:'Infantry',3:'Pierce',4:'Melee',5:'Elephants',
   8:'Mounted',11:'Buildings',13:'Stone Defense',15:'Archers',
@@ -509,6 +658,61 @@ const CIV_FOCUS = {
 };
 
 const NEW_CIVS = new Set(["Jurchens","Khitans","Shu","Wei","Wu","Mapuche","Muisca","Tupi"]);
+
+/* Civ archetype definitions — each lists verified unit/tech IDs from the live JSON */
+const CIV_ARCHETYPES = [
+  { emoji:'🏹', label:'Archer', items:[
+    {t:'unit',id:492},{t:'unit',id:6},{t:'unit',id:1155}, // inc. Imperial Skirmisher
+    {t:'unit',id:474},{t:'unit',id:5},
+    {t:'tech',id:437},{t:'tech',id:201},{t:'tech',id:200},{t:'tech',id:199},
+    {t:'tech',id:93},{t:'tech',id:436},
+  ]},
+  {emoji:'⚔️', label:'Cavalry', items:[
+    {t:'unit',id:[569,1813]}, // Paladin or Savar
+    {t:'unit',id:441},{t:'unit',id:283},{t:'unit',id:474},
+    {t:'tech',id:435},{t:'tech',id:80},{t:'tech',id:82},{t:'tech',id:81},{t:'tech',id:39},
+  ]},
+  {emoji:'🛡', label:'Infantry', items:[
+    {t:'unit',id:473},{t:'unit',id:359},{t:'unit',id:77},
+    {t:'tech',id:77},{t:'tech',id:76},{t:'tech',id:74},{t:'tech',id:215},{t:'tech',id:602},
+  ]},
+  {emoji:'💣', label:'Siege', items:[
+    {t:'unit',id:588},{t:'unit',id:542},{t:'unit',id:36},{t:'unit',id:331},
+    {t:'tech',id:47},{t:'tech',id:377},{t:'tech',id:380},{t:'tech',id:321},{t:'tech',id:50},
+  ]},
+  {emoji:'⛵', label:'Naval', items:[
+    {t:'unit',id:691},{t:'unit',id:420},{t:'unit',id:528},{t:'unit',id:539},
+    {t:'tech',id:35},{t:'tech',id:34},{t:'tech',id:375},{t:'tech',id:374},
+    {t:'tech',id:373},{t:'tech',id:65},
+  ]},
+  {emoji:'✝', label:'Monk', items:[
+    {t:'unit',id:125},
+    {t:'tech',id:231},{t:'tech',id:252},{t:'tech',id:316},{t:'tech',id:319},
+    {t:'tech',id:438},{t:'tech',id:45},{t:'tech',id:233},
+  ]},
+  {emoji:'💰', label:'Eco', items:[
+    {t:'tech',id:213},{t:'tech',id:249},{t:'tech',id:12},{t:'tech',id:13},
+    {t:'tech',id:221},{t:'tech',id:202},{t:'tech',id:203},
+    {t:'tech',id:182},{t:'tech',id:279},
+  ]},
+  {emoji:'🏰', label:'Defensive', items:[
+    {t:'tech',id:379},{t:'tech',id:50},{t:'tech',id:51},
+    {t:'tech',id:322},{t:'tech',id:380},{t:'tech',id:321},{t:'tech',id:315},
+  ]},
+  {emoji:'🐪', label:'Camel', items:[
+    {t:'unit',id:207}, // Imperial Camel Rider (Hindustanis only)
+    {t:'unit',id:330},{t:'unit',id:282},{t:'unit',id:329},
+    {t:'tech',id:435},{t:'tech',id:39},
+  ]},
+  {emoji:'🐘', label:'Elephant', items:[
+    {t:'unit',id:1132},{t:'unit',id:1134},{t:'unit',id:1120},{t:'unit',id:1122},
+    {t:'tech',id:435},{t:'tech',id:80},
+  ]},
+  {emoji:'🔫', label:'Gunpowder', items:[
+    {t:'unit',id:5},{t:'unit',id:36},{t:'unit',id:691},{t:'unit',id:420},
+    {t:'tech',id:47},{t:'tech',id:380},
+  ]},
+];
 const AGES = ['','Dark','Feudal','Castle','Imperial'];
 
 /* ================================================================
@@ -520,6 +724,7 @@ let selected = []; // [{id, name, itemType, civsWith: Set, data: {...}}]
 let mode = 'ALL';
 let dropItems = [];
 let activeCard = null;
+let activeArchetype = null; // index into CIV_ARCHETYPES, or null
 let isMobile = false;
 let dataLoaded = false;   // true once parseRaw succeeds
 let pendingQ   = null;    // suggestion clicked before data was ready
@@ -534,6 +739,7 @@ async function loadData() {
     const raw = await res.json();
     parseRaw(raw);
     dataLoaded = true;
+    renderSuggestions(); // Re-render now that civ counts are available
     // Show brief load-success note
     const n = Object.keys(unitsById).length + Object.keys(techsById).length;
     const note = document.getElementById('error-msg');
@@ -585,10 +791,13 @@ function parseRaw(raw) {
     };
   });
 
-  // Build search index from hardcoded name→ID maps (data.json has no readable names)
+  // Build search index — include `ids` array so multi-ID entries (Paladin/Savar) work correctly
   searchIdx = [
-    ...Object.entries(UNIT_IDS).map(([name, id]) => ({ id, name, itemType: 'unit' })),
-    ...Object.entries(TECH_IDS).map(([name, id]) => ({ id, name, itemType: 'tech' })),
+    ...Object.entries(UNIT_IDS).map(([name, id]) => {
+      const ids = Array.isArray(id) ? id : [id];
+      return { id: ids[0], ids, name, itemType: 'unit' };
+    }),
+    ...Object.entries(TECH_IDS).map(([name, id]) => ({ id, ids: [id], name, itemType: 'tech' })),
   ].sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -609,10 +818,15 @@ function isSelected(item) {
 
 function selectItem(item) {
   if (isSelected(item)) return;
+  // Exit archetype mode when adding a specific filter
+  activeArchetype = null;
+  document.querySelectorAll('.arch-btn').forEach(b => b.classList.remove('on'));
+  const ids = item.ids || [item.id];
   const csWith = new Set(ALL_CIVS.filter(civ => {
     const cd = civData[civ];
     if (!cd) return false;
-    return item.itemType === 'unit' ? cd.units.has(item.id) : cd.techs.has(item.id);
+    if (item.itemType === 'unit') return ids.some(id => cd.units.has(id));
+    return ids.some(id => cd.techs.has(id));
   }));
   const fullData = item.itemType === 'unit' ? unitsById[item.id] : techsById[item.id];
   selected.push({ ...item, civsWith: csWith, data: fullData || {} });
@@ -634,6 +848,8 @@ function removeItem(i) {
 function clearAll() {
   selected = [];
   activeCard = null;
+  activeArchetype = null;
+  document.querySelectorAll('.arch-btn').forEach(b => b.classList.remove('on'));
   document.getElementById('info-panel').classList.remove('visible');
   render();
 }
@@ -652,11 +868,75 @@ function civStatus(civ) {
   if (!selected.length) return 'neutral';
   const cd = civData[civ];
   if (!cd) return 'unknown';
-  const results = selected.map(item =>
-    item.itemType === 'unit' ? cd.units.has(item.id) : cd.techs.has(item.id)
-  );
+  const results = selected.map(item => {
+    const ids = item.ids || [item.id];
+    if (item.itemType === 'unit') return ids.some(id => cd.units.has(id));
+    return ids.some(id => cd.techs.has(id));
+  });
   if (mode === 'ALL') return results.every(Boolean) ? 'has' : 'missing';
   return results.some(Boolean) ? 'has' : 'missing';
+}
+
+/* ================================================================
+   ARCHETYPE SCORING
+   ================================================================ */
+function scoreCiv(civName, arch) {
+  const cd = civData[civName];
+  if (!cd) return 0;
+  return arch.items.filter(it => {
+    const ids = Array.isArray(it.id) ? it.id : [it.id];
+    return it.t === 'unit' ? ids.some(id => cd.units.has(id)) : ids.some(id => cd.techs.has(id));
+  }).length;
+}
+
+function selectArchetype(idx) {
+  if (activeArchetype === idx) {
+    activeArchetype = null;
+  } else {
+    activeArchetype = idx;
+  }
+  document.querySelectorAll('.arch-btn').forEach((b, i) => b.classList.toggle('on', i === activeArchetype));
+  render();
+}
+
+function renderArchetypeGrid() {
+  const arch = CIV_ARCHETYPES[activeArchetype];
+  const max = arch.items.length;
+  const scored = ALL_CIVS
+    .map(c => ({ name: c, score: scoreCiv(c, arch) }))
+    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+
+  let html = `<div class="section-hdr all">${arch.emoji} ${arch.label} civs ranked by tech tree completeness (${max} items checked)</div>`;
+  html += `<div class="civ-grid">`;
+  scored.forEach(({ name, score }) => {
+    const pct = max > 0 ? score / max : 0;
+    const cls = pct >= 0.8 ? 'has' : pct >= 0.5 ? 'partial' : 'missing';
+    const fill = pct >= 0.8 ? 'var(--green)' : pct >= 0.5 ? 'var(--amberL)' : 'var(--red)';
+    const isActive = activeCard === name ? ' active' : '';
+    html += `<div class="civ-card ${cls}${isActive}" data-civ="${name}">
+      <div class="cname">${name}</div>
+      <div class="score-bar-wrap"><div class="score-bar-fill" style="width:${Math.round(pct*100)}%;background:${fill}"></div></div>
+      <div class="score-txt">${score} / ${max}</div>
+    </div>`;
+  });
+  html += `</div>`;
+  document.getElementById('civ-section').innerHTML = html;
+  attachCardEvents();
+}
+
+function attachCardEvents() {
+  document.querySelectorAll('.civ-card').forEach(card => {
+    const civ = card.dataset.civ;
+    card.addEventListener('click', () => {
+      activeCard = civ;
+      document.querySelectorAll('.civ-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      showCivInfo(civ);
+    });
+    card.addEventListener('mouseenter', e => { if (!isMobile) showCivTooltip(civ, e); });
+    card.addEventListener('mousemove', moveTooltip);
+    card.addEventListener('mouseleave', hideTooltip);
+  });
 }
 
 /* ================================================================
@@ -670,6 +950,10 @@ function render() {
 
 function renderStatus() {
   const el = document.getElementById('status-bar');
+  if (activeArchetype !== null) {
+    el.textContent = '';
+    return;
+  }
   if (!selected.length) { el.textContent = ''; return; }
   const n = ALL_CIVS.filter(c => civStatus(c) === 'has').length;
   const lbl = selected.map(s => s.name).join(' + ');
@@ -702,6 +986,9 @@ function renderChips() {
 }
 
 function renderGrid() {
+  // Archetype mode: scored ranking
+  if (activeArchetype !== null) { renderArchetypeGrid(); return; }
+
   const has = [], missing = [], unknown = [];
   ALL_CIVS.forEach(c => {
     const s = civStatus(c);
@@ -715,10 +1002,8 @@ function renderGrid() {
   let html = '';
 
   if (!selected.length) {
-    // No filter active — show everything
-    const neutral = ALL_CIVS;
-    html += `<div class="section-hdr all">All ${neutral.length} civilizations</div>`;
-    html += `<div class="civ-grid">${neutral.map(c => cardHtml(c, 'neutral')).join('')}</div>`;
+    html += `<div class="section-hdr all">All ${ALL_CIVS.length} civilizations</div>`;
+    html += `<div class="civ-grid">${ALL_CIVS.map(c => cardHtml(c, 'neutral')).join('')}</div>`;
   } else {
     if (has.length) {
       html += `<div class="section-hdr has">✓ Has ${lbl} &mdash; ${has.length} civs</div>`;
@@ -735,20 +1020,7 @@ function renderGrid() {
   }
 
   document.getElementById('civ-section').innerHTML = html;
-
-  // Attach events to cards
-  document.querySelectorAll('.civ-card').forEach(card => {
-    const civ = card.dataset.civ;
-    card.addEventListener('click', () => {
-      activeCard = civ;
-      document.querySelectorAll('.civ-card').forEach(c => c.classList.remove('active'));
-      card.classList.add('active');
-      showCivInfo(civ);
-    });
-    card.addEventListener('mouseenter', e => { if (!isMobile) showCivTooltip(civ, e); });
-    card.addEventListener('mousemove', moveTooltip);
-    card.addEventListener('mouseleave', hideTooltip);
-  });
+  attachCardEvents();
 }
 
 function cardHtml(civ, status) {
@@ -756,7 +1028,8 @@ function cardHtml(civ, status) {
   const cd = civData[civ];
   const tags = selected.map(item => {
     if (!cd) return `<span class="ctag unknown">${item.name}</span>`;
-    const h = item.itemType === 'unit' ? cd.units.has(item.id) : cd.techs.has(item.id);
+    const ids = item.ids || [item.id];
+    const h = item.itemType === 'unit' ? ids.some(id => cd.units.has(id)) : ids.some(id => cd.techs.has(id));
     return `<span class="ctag ${h ? 'has' : 'missing'}">${item.name}</span>`;
   }).join('');
   return `<div class="civ-card ${status}${isActive}" data-civ="${civ}">
@@ -822,6 +1095,10 @@ function itemInfoHtml(item) {
 
   // Stats (units) — SiegeEngineers uses PascalCase: HP, Attack, MeleeArmor, etc.
   if (item.itemType === 'unit') {
+    // Role description
+    const desc = UNIT_DESCRIPTIONS[item.id];
+    if (desc) h += `<p style="font-size:13px;color:var(--text);margin-bottom:10px;line-height:1.5;font-weight:500">${desc}</p>`;
+
     const pairs = [
       ['HP', d.HP], ['Attack', d.Attack],
       ['Melee', d.MeleeArmor], ['Pierce', d.PierceArmor],
@@ -847,11 +1124,17 @@ function itemInfoHtml(item) {
     }
   }
 
-  // Tech info
+  // Tech info — show human-readable description from TECH_DESCRIPTIONS
   if (item.itemType === 'tech') {
-    const nm = d.internal_name || '';
-    if (nm) h += `<p style="font-size:12px;color:var(--text2);margin-top:8px">${nm}</p>`;
-    if (d.ResearchTime) h += `<p style="font-size:12px;color:var(--text3);margin-top:4px">Research time: ${d.ResearchTime}s</p>`;
+    const desc = TECH_DESCRIPTIONS[item.id];
+    if (desc) {
+      h += `<p style="font-size:13px;color:var(--text);margin-top:10px;line-height:1.6;font-weight:500">${desc}</p>`;
+    } else {
+      // Fallback to internal_name if no description mapped
+      const nm = d.internal_name;
+      if (nm) h += `<p style="font-size:12px;color:var(--text2);margin-top:8px">${nm}</p>`;
+    }
+    if (d.ResearchTime) h += `<div style="font-size:11px;color:var(--text3);margin-top:6px">Research time: ${d.ResearchTime}s</div>`;
   }
 
   // Cost — SiegeEngineers uses "Cost" (capital C)
@@ -908,15 +1191,18 @@ function showCivTooltip(civ, e) {
 function buildTempItem(name) {
   const uid = UNIT_IDS[name], tid = TECH_IDS[name];
   if (uid === undefined && tid === undefined) return null;
-  const id = uid ?? tid;
+  const raw = uid ?? tid;
   const itemType = uid !== undefined ? 'unit' : 'tech';
+  const ids = Array.isArray(raw) ? raw : [raw];
+  const id = ids[0];
   const d = itemType === 'unit' ? unitsById[id] : techsById[id];
   const civsWith = new Set(ALL_CIVS.filter(civ => {
     const cd = civData[civ];
     if (!cd) return false;
-    return itemType === 'unit' ? cd.units.has(id) : cd.techs.has(id);
+    if (itemType === 'unit') return ids.some(i => cd.units.has(i));
+    return ids.some(i => cd.techs.has(i));
   }));
-  return { id, name, itemType, civsWith, data: d || {} };
+  return { id, ids, name, itemType, civsWith, data: d || {} };
 }
 
 function showItemTooltip(idxOrItem, e) {
@@ -969,18 +1255,40 @@ function closeDropdown() {
 /* ================================================================
    SUGGESTIONS
    ================================================================ */
+/* How many civs have a named unit or tech (null if data not yet loaded) */
+function getItemCivCount(name) {
+  if (!dataLoaded) return null;
+  const uid = UNIT_IDS[name], tid = TECH_IDS[name];
+  const raw = uid ?? tid;
+  if (raw === undefined) return null;
+  const itemType = uid !== undefined ? 'unit' : 'tech';
+  const ids = Array.isArray(raw) ? raw : [raw];
+  return ALL_CIVS.filter(civ => {
+    const cd = civData[civ];
+    if (!cd) return false;
+    return itemType === 'unit' ? ids.some(id => cd.units.has(id)) : ids.some(id => cd.techs.has(id));
+  }).length;
+}
+
 function renderSuggestions() {
+  const total = ALL_CIVS.length;
   const el = document.getElementById('suggestions');
   el.innerHTML = QUICK_CATEGORIES.map(cat => `
     <div class="cat-section">
       <span class="cat-label">${cat.label}</span>
       <div class="cat-btns">
-        ${cat.items.map(q => `<button class="sug-btn" data-q="${q}">${q}</button>`).join('')}
+        ${cat.items.map(q => {
+          const n = getItemCivCount(q);
+          const isAll = n === total;
+          const badge = n !== null
+            ? `<span class="sug-cnt ${isAll ? 'all' : 'few'}">${isAll ? 'all' : n}</span>`
+            : '';
+          return `<button class="sug-btn${isAll ? ' sug-all' : ''}" data-q="${q}">${q}${badge}</button>`;
+        }).join('')}
       </div>
     </div>
   `).join('');
 
-  // Attach click + desktop hover to every suggestion button
   el.querySelectorAll('.sug-btn').forEach(btn => {
     const name = btn.dataset.q;
     btn.addEventListener('click', () => handleSuggestion(name));
@@ -1051,7 +1359,18 @@ function initEvents() {
 /* ================================================================
    INIT
    ================================================================ */
+function renderArchetypes() {
+  const el = document.getElementById('arch-btns');
+  el.innerHTML = CIV_ARCHETYPES.map((a, i) =>
+    `<button class="arch-btn" data-i="${i}">${a.emoji} ${a.label}</button>`
+  ).join('');
+  el.querySelectorAll('.arch-btn').forEach(btn => {
+    btn.addEventListener('click', () => selectArchetype(+btn.dataset.i));
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  renderArchetypes();
   renderSuggestions();
   initEvents();
   loadData();
