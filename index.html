@@ -359,11 +359,71 @@ const CIV_BONUSES = {
 };
 
 const QUICK_UNITS = [
-  "Arbalester","Paladin","Hussar","Champion","Halberdier",
-  "Hand Cannoneer","Bombard Cannon","Siege Onager","Battle Elephant",
-  "Heavy Camel Rider","Galleon","Elite Cannon Galleon",
-  "Chemistry","Bloodlines","Bracer","Thumb Ring","Plate Barding Armor"
+  // Units (IDs verified against SiegeEngineers data.json)
+  'Arbalester','Paladin','Hussar','Champion','Halberdier',
+  'Hand Cannoneer','Bombard Cannon','Siege Onager','Battle Elephant',
+  'Heavy Camel Rider','Heavy Cavalry Archer','Trebuchet',
+  // Techs
+  'Chemistry','Bloodlines','Bracer','Thumb Ring','Plate Barding Armor',
 ];
+
+/* Unit name → SiegeEngineers data.json ID (verified from live data) */
+const UNIT_IDS = {
+  // Archers
+  'Archer':4,'Crossbowman':24,'Arbalester':492,
+  'Skirmisher':7,'Elite Skirmisher':6,
+  'Longbowman':8,'Elite Longbowman':530,
+  'Hand Cannoneer':5,
+  // Cavalry
+  'Scout Cavalry':448,'Light Cavalry':546,'Hussar':441,
+  'Knight':38,'Cavalier':283,'Paladin':569,
+  'Cavalry Archer':39,'Heavy Cavalry Archer':474,
+  'Camel Rider':329,'Heavy Camel Rider':330,
+  'Steppe Lancer':1370,'Elite Steppe Lancer':1372,
+  'Battle Elephant':1132,'Elite Battle Elephant':1134,
+  // Infantry
+  'Long Swordsman':75,'Two-Handed Swordsman':77,'Champion':473,
+  'Spearman':74,'Pikeman':93,'Halberdier':359,
+  'Eagle Scout':751,'Eagle Warrior':752,'Elite Eagle Warrior':753,
+  // Siege
+  'Mangonel':280,'Onager':550,'Siege Onager':588,
+  'Scorpion':279,'Heavy Scorpion':542,
+  'Bombard Cannon':36,'Trebuchet':42,
+  'Battering Ram':35,'Siege Ram':548,
+  // Navy
+  'War Galley':21,'Cannon Galleon':420,'Elite Cannon Galleon':691,
+  'Fast Fire Ship':539,
+  // Support
+  'Monk':125,
+};
+
+/* Tech name → ID */
+const TECH_IDS = {
+  'Loom':22,'Chemistry':47,
+  'Fletching':199,'Bodkin Arrow':200,'Bracer':201,
+  'Plate Mail Armor':77,'Plate Barding Armor':80,
+  'Ballistics':93,'Thumb Ring':437,'Parthian Tactics':436,
+  'Bloodlines':435,'Husbandry':39,
+  'Wheelbarrow':213,'Hand Cart':249,
+  'Double Bit Axe':202,'Bow Saw':203,'Two-Man Saw':221,
+  'Horse Collar':14,'Heavy Plow':13,'Crop Rotation':12,
+  'Forging':67,'Iron Casting':68,'Blast Furnace':75,
+  'Scale Mail Armor':74,'Chain Mail Armor':76,
+  'Scale Barding Armor':81,'Chain Barding Armor':82,
+  'Tracking':90,'Squires':215,'Arson':602,
+  'Gold Mining':55,'Stone Mining':278,
+};
+
+/* Attack/armor class ID → readable label (from SiegeEngineers techtree.js) */
+const ARMOR_CLASSES = {
+  1:'Infantry',3:'Pierce',4:'Melee',5:'Elephants',
+  8:'Mounted',11:'Buildings',13:'Stone Defense',15:'Archers',
+  16:'Ships',17:'High-Pierce Siege',19:'Unique Units',20:'Siege',
+  21:'Standard Bldgs',22:'Walls & Gates',23:'Gunpowder',
+  25:'Monks',26:'Castles',27:'Spearmen',28:'Mounted Archers',
+  29:'Shock Infantry',30:'Camels',32:'Condottieri',
+  34:'Fishing Ships',35:'Mamelukes',37:'Heavy Siege',38:'Skirmishers',
+};
 
 const NEW_CIVS = new Set(["Jurchens","Khitans","Shu","Wei","Wu","Mapuche","Muisca","Tupi"]);
 const AGES = ['','Dark','Feudal','Castle','Imperial'];
@@ -417,59 +477,35 @@ async function loadData() {
   if (pendingQ) { const q = pendingQ; pendingQ = null; selectFromName(q); }
 }
 
-/* Parse an object-or-array of unit/tech records into a {id: record} map.
-   The SiegeEngineers JSON can ship units/techs as either:
-     • an object  { "83": { id:83, name:"Arbalester", … }, … }
-     • an array   [ { id:83, name:"Arbalester", … }, … ]
-   Both forms are normalised into unitsById / techsById. */
-function indexById(source, dest) {
-  if (!source) return;
-  if (Array.isArray(source)) {
-    source.forEach(item => {
-      if (item?.name && item?.id != null) dest[item.id] = item;
-    });
-  } else {
-    Object.entries(source).forEach(([k, item]) => {
-      if (!item?.name) return;
-      const id = item.id != null ? item.id : +k;
-      dest[id] = { ...item, id };
-    });
-  }
-}
-
-/* Build a Set of available unit/tech IDs from a civ's availability data.
-   Can be an array of IDs, or an object { "83": true/1, "440": false/0 }. */
-function availSet(val) {
-  if (!val) return new Set();
-  if (Array.isArray(val)) return new Set(val.map(Number));
-  if (typeof val === 'object') {
-    return new Set(
-      Object.entries(val)
-        .filter(([, v]) => v)
-        .map(([k]) => Number(k))
-    );
-  }
-  return new Set();
-}
-
+/* The SiegeEngineers data.json structure (verified):
+     raw.data.Unit  – object keyed by numeric string ID, fields: HP, Attack,
+                      MeleeArmor, PierceArmor, Range, Speed, LineOfSight,
+                      Cost, Attacks (attack bonuses), internal_name
+     raw.data.Tech  – object keyed by numeric string ID, fields: Cost,
+                      ResearchTime, internal_name
+     raw.civs       – object keyed by civ NAME (e.g. "Britons"), each with:
+                        Unit: array of numeric unit IDs available to that civ
+                        Tech: array of numeric tech IDs available to that civ
+   Unit names are NOT stored; we use the hardcoded UNIT_IDS map above. */
 function parseRaw(raw) {
-  indexById(raw.units, unitsById);
-  indexById(raw.techs, techsById);
+  const du = raw?.data?.Unit || {};
+  const dt = raw?.data?.Tech || {};
+  const civObj = raw?.civs || {};
 
-  const civArr = Array.isArray(raw.civs) ? raw.civs : Object.values(raw.civs || {});
-  civArr.forEach(c => {
-    if (!c?.name) return;
-    civData[c.name] = {
-      units:       availSet(c.units),
-      techs:       availSet(c.techs),
-      uniqueUnits: c.unique_unit  || c.unique_units || [],
-      uniqueTechs: c.unique_tech  || c.unique_techs || [],
+  Object.entries(du).forEach(([id, u]) => { unitsById[+id] = u; });
+  Object.entries(dt).forEach(([id, t]) => { techsById[+id] = t; });
+
+  Object.entries(civObj).forEach(([name, c]) => {
+    civData[name] = {
+      units: new Set((c.Unit || []).map(Number)),
+      techs: new Set((c.Tech || []).map(Number)),
     };
   });
 
+  // Build search index from hardcoded name→ID maps (data.json has no readable names)
   searchIdx = [
-    ...Object.values(unitsById).map(u => ({ id: u.id, name: u.name, itemType: 'unit' })),
-    ...Object.values(techsById).map(t => ({ id: t.id, name: t.name, itemType: 'tech' })),
+    ...Object.entries(UNIT_IDS).map(([name, id]) => ({ id, name, itemType: 'unit' })),
+    ...Object.entries(TECH_IDS).map(([name, id]) => ({ id, name, itemType: 'tech' })),
   ].sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -653,8 +689,8 @@ function civInfoHtml(civName) {
   const wr = WIN_RATES[civName] || [];
   const bonuses = CIV_BONUSES[civName] || [];
   const cd = civData[civName] || {};
-  const uNames = (cd.uniqueUnits || []).map(id => unitsById[id]?.name).filter(Boolean);
-  const tNames = (cd.uniqueTechs || []).map(id => techsById[id]?.name).filter(Boolean);
+  const uNames = [];   // Unique unit names not available from this data structure
+  const tNames = [];
   const isNew = NEW_CIVS.has(civName);
 
   let h = `<div class="info-name">${civName}</div>`;
@@ -698,40 +734,46 @@ function itemInfoHtml(idx) {
   let h = `<div class="info-hdr-row">
     <span class="ibadge ${item.itemType}">${item.itemType}</span>
     <span class="info-name">${item.name}</span>
-    ${d.age ? `<span class="age-lbl">${AGES[d.age] || d.age} Age</span>` : ''}
   </div>`;
 
-  // Stats (units)
+  // Stats (units) — SiegeEngineers uses PascalCase: HP, Attack, MeleeArmor, etc.
   if (item.itemType === 'unit') {
     const pairs = [
-      ['HP', d.hp], ['Attack', d.attack],
-      ['Melee', d.melee_armor], ['Pierce', d.pierce_armor],
-      ...(d.range > 0 ? [['Range', d.range]] : []),
-      ['Speed', d.speed], ['LOS', d.line_of_sight],
+      ['HP', d.HP], ['Attack', d.Attack],
+      ['Melee', d.MeleeArmor], ['Pierce', d.PierceArmor],
+      ...(d.Range > 0 ? [['Range', d.Range]] : []),
+      ['Speed', d.Speed], ['LOS', d.LineOfSight],
     ].filter(([, v]) => v != null);
 
     if (pairs.length) {
       h += `<div class="stat-grid">`;
-      pairs.forEach(([k, v]) => h += `<div class="stat-cell"><div class="stat-lbl">${k}</div><div class="stat-val">${v}</div></div>`);
+      pairs.forEach(([k, v]) => h += `<div class="stat-cell"><div class="stat-lbl">${k}</div><div class="stat-val">${typeof v === 'number' ? Math.round(v * 100) / 100 : v}</div></div>`);
       h += `</div>`;
     }
 
-    const atks = d.attack_bonus || d.attackBonus || [];
+    // Attacks: [{Amount, Class}] — skip base pierce/melee (class 3 & 4)
+    const atks = (d.Attacks || []).filter(b => b.Amount > 0 && b.Class > 4);
     if (atks.length) {
-      h += `<div>`;
-      atks.forEach(b => h += `<span class="atk-bonus">+${b.amount} vs class ${b.class}</span>`);
+      h += `<div style="margin-top:6px">`;
+      atks.forEach(b => {
+        const cls = ARMOR_CLASSES[b.Class] || `class ${b.Class}`;
+        h += `<span class="atk-bonus">+${b.Amount} vs ${cls}</span>`;
+      });
       h += `</div>`;
     }
   }
 
-  // Description (techs)
-  if (item.itemType === 'tech' && d.description) {
-    h += `<p style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.5">${d.description}</p>`;
+  // Tech info
+  if (item.itemType === 'tech') {
+    const nm = d.internal_name || '';
+    if (nm) h += `<p style="font-size:12px;color:var(--text2);margin-top:8px">${nm}</p>`;
+    if (d.ResearchTime) h += `<p style="font-size:12px;color:var(--text3);margin-top:4px">Research time: ${d.ResearchTime}s</p>`;
   }
 
-  // Cost
-  if (d.cost) {
-    const costs = Object.entries(d.cost).filter(([,v]) => v > 0).map(([k,v]) => `${v} ${k}`).join(' · ');
+  // Cost — SiegeEngineers uses "Cost" (capital C)
+  const cost = d.Cost || d.cost;
+  if (cost) {
+    const costs = Object.entries(cost).filter(([,v]) => v > 0).map(([k,v]) => `${v} ${k}`).join(' · ');
     if (costs) h += `<div class="cost-row">Cost: ${costs}</div>`;
   }
 
