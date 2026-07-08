@@ -86,7 +86,7 @@ h1{font-size:22px;font-weight:700;color:var(--amberL);letter-spacing:-.02em;}
 
 /* ── Suggestions ── */
 .sug-label{font-size:11px;color:var(--text3);margin-bottom:5px;}
-.suggestions{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+#suggestions{margin-bottom:12px;}
 .sug-btn{
   font-size:12px;padding:5px 12px;background:var(--surf);border:1px solid var(--border);
   border-radius:20px;color:var(--text2);cursor:pointer;transition:.12s;
@@ -196,6 +196,10 @@ h1{font-size:22px;font-weight:700;color:var(--amberL);letter-spacing:-.02em;}
 .disclaimer{font-size:11px;color:var(--text3);font-style:italic;margin-top:8px;}
 
 /* ── Footer note ── */
+/* Organized quick-filter categories */
+.cat-section{margin-bottom:10px;}
+.cat-label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:4px;}
+.cat-btns{display:flex;flex-wrap:wrap;gap:5px;}
 .footer{font-size:11px;color:var(--text3);text-align:center;margin-top:30px;padding-top:16px;border-top:1px solid var(--border);}
 .footer a{color:var(--text2);text-decoration:none;}
 .footer a:hover{color:var(--amberL);}
@@ -232,7 +236,7 @@ h1{font-size:22px;font-weight:700;color:var(--amberL);letter-spacing:-.02em;}
 
   <!-- Quick suggestions -->
   <div class="sug-label">Quick filters</div>
-  <div class="suggestions" id="suggestions"></div>
+  <div id="suggestions"></div>
 
   <!-- Active filter chips -->
   <div id="filter-chips"></div>
@@ -358,26 +362,56 @@ const CIV_BONUSES = {
   Wu:         ["Infantry regenerate 10/15/30 HP/min per Age","Careening/Dry Dock 1 Age earlier at −75% cost","Naval focus with Lou Chuans","Hei Guang Cavalry replaces Knight line"],
 };
 
-const QUICK_UNITS = [
-  // Units (IDs verified against SiegeEngineers data.json)
-  'Arbalester','Paladin','Hussar','Champion','Halberdier',
-  'Hand Cannoneer','Bombard Cannon','Siege Onager','Battle Elephant',
-  'Heavy Camel Rider','Heavy Cavalry Archer','Trebuchet',
-  // Techs
-  'Chemistry','Bloodlines','Bracer','Thumb Ring','Plate Barding Armor',
+/* Organized categories for the quick-filter UI */
+const QUICK_CATEGORIES = [
+  { label:'Archers', items:[
+    'Arbalester','Elite Skirmisher','Hand Cannoneer','Heavy Cavalry Archer',
+    'Thumb Ring','Bracer','Bodkin Arrow','Fletching','Ballistics','Parthian Tactics',
+  ]},
+  { label:'Cavalry', items:[
+    'Paladin','Hussar','Cavalier','Heavy Camel Rider',
+    'Battle Elephant','Elite Battle Elephant','Steppe Lancer',
+    'Bloodlines','Plate Barding Armor','Chain Barding Armor','Husbandry',
+  ]},
+  { label:'Infantry', items:[
+    'Champion','Two-Handed Swordsman','Halberdier','Pikeman',
+    'Eagle Warrior','Elite Eagle Warrior',
+    'Plate Mail Armor','Chain Mail Armor','Squires','Arson',
+  ]},
+  { label:'Siege', items:[
+    'Trebuchet','Siege Onager','Heavy Scorpion','Bombard Cannon','Siege Ram',
+    'Chemistry','Siege Engineers','Heated Shot','Sappers','Murder Holes',
+  ]},
+  { label:'Navy', items:[
+    'Cannon Galleon','Elite Cannon Galleon','Heavy Demolition Ship',
+    'Fast Fire Ship','Galleon','War Galley',
+    'Dry Dock','Careening','Gillnets','Shipwright',
+  ]},
+  { label:'Monks & Support', items:[
+    'Monk','Faith','Sanctity','Fervor','Redemption',
+    'Atonement','Theocracy','Illumination','Conscription',
+  ]},
+  { label:'Economy', items:[
+    'Loom','Wheelbarrow','Hand Cart','Crop Rotation',
+    'Double Bit Axe','Bow Saw','Two-Man Saw',
+    'Gold Shaft Mining','Stone Shaft Mining','Coinage','Caravan','Banking',
+  ]},
+  { label:'Fortifications', items:[
+    'Hoardings','Masonry','Architecture','Tracking',
+  ]},
 ];
 
-/* Unit name → SiegeEngineers data.json ID (verified from live data) */
+/* Unit name → SiegeEngineers data.json unit ID (verified against live JSON) */
 const UNIT_IDS = {
   // Archers
   'Archer':4,'Crossbowman':24,'Arbalester':492,
   'Skirmisher':7,'Elite Skirmisher':6,
   'Longbowman':8,'Elite Longbowman':530,
   'Hand Cannoneer':5,
+  'Cavalry Archer':39,'Heavy Cavalry Archer':474,
   // Cavalry
   'Scout Cavalry':448,'Light Cavalry':546,'Hussar':441,
   'Knight':38,'Cavalier':283,'Paladin':569,
-  'Cavalry Archer':39,'Heavy Cavalry Archer':474,
   'Camel Rider':329,'Heavy Camel Rider':330,
   'Steppe Lancer':1370,'Elite Steppe Lancer':1372,
   'Battle Elephant':1132,'Elite Battle Elephant':1134,
@@ -385,33 +419,52 @@ const UNIT_IDS = {
   'Long Swordsman':75,'Two-Handed Swordsman':77,'Champion':473,
   'Spearman':74,'Pikeman':93,'Halberdier':359,
   'Eagle Scout':751,'Eagle Warrior':752,'Elite Eagle Warrior':753,
-  // Siege
+  // Siege (Trebuchet=331 is the packed/deployable form, present in 50/53 civs)
   'Mangonel':280,'Onager':550,'Siege Onager':588,
   'Scorpion':279,'Heavy Scorpion':542,
-  'Bombard Cannon':36,'Trebuchet':42,
-  'Battering Ram':35,'Siege Ram':548,
+  'Bombard Cannon':36,'Trebuchet':331,
+  'Siege Ram':548,'Battering Ram':1258,
   // Navy
-  'War Galley':21,'Cannon Galleon':420,'Elite Cannon Galleon':691,
-  'Fast Fire Ship':539,
+  'Cannon Galleon':420,'Elite Cannon Galleon':691,
+  'Fire Ship':529,'Fast Fire Ship':539,
+  'Demolition Ship':527,'Heavy Demolition Ship':528,
   // Support
   'Monk':125,
 };
 
-/* Tech name → ID */
+/* Tech name → SiegeEngineers data.json tech ID (verified against live JSON) */
 const TECH_IDS = {
-  'Loom':22,'Chemistry':47,
+  // Archer techs
   'Fletching':199,'Bodkin Arrow':200,'Bracer':201,
-  'Plate Mail Armor':77,'Plate Barding Armor':80,
-  'Ballistics':93,'Thumb Ring':437,'Parthian Tactics':436,
+  'Thumb Ring':437,'Parthian Tactics':436,'Ballistics':93,
+  // Cavalry techs
   'Bloodlines':435,'Husbandry':39,
-  'Wheelbarrow':213,'Hand Cart':249,
-  'Double Bit Axe':202,'Bow Saw':203,'Two-Man Saw':221,
-  'Horse Collar':14,'Heavy Plow':13,'Crop Rotation':12,
+  'Scale Barding Armor':81,'Chain Barding Armor':82,'Plate Barding Armor':80,
+  // Infantry techs
+  'Scale Mail Armor':74,'Chain Mail Armor':76,'Plate Mail Armor':77,
+  'Squires':215,'Arson':602,
+  // Blacksmith
   'Forging':67,'Iron Casting':68,'Blast Furnace':75,
-  'Scale Mail Armor':74,'Chain Mail Armor':76,
-  'Scale Barding Armor':81,'Chain Barding Armor':82,
-  'Tracking':90,'Squires':215,'Arson':602,
-  'Gold Mining':55,'Stone Mining':278,
+  // Siege techs
+  'Chemistry':47,'Siege Engineers':377,'Heated Shot':380,
+  'Murder Holes':322,'Sappers':321,
+  // Fortifications
+  'Hoardings':379,'Masonry':50,'Architecture':51,
+  // Navy techs
+  'War Galley':34,'Galleon':35,
+  'Careening':374,'Dry Dock':375,'Shipwright':373,'Gillnets':65,
+  // Monk techs
+  'Loom':22,'Faith':45,'Sanctity':231,'Fervor':252,
+  'Redemption':316,'Atonement':319,'Theocracy':438,'Illumination':233,
+  // Military / General
+  'Conscription':315,'Tracking':90,
+  // Economy techs
+  'Wheelbarrow':213,'Hand Cart':249,
+  'Horse Collar':14,'Heavy Plow':13,'Crop Rotation':12,
+  'Double Bit Axe':202,'Bow Saw':203,'Two-Man Saw':221,
+  'Gold Mining':55,'Gold Shaft Mining':182,
+  'Stone Mining':278,'Stone Shaft Mining':279,
+  'Coinage':23,'Banking':17,'Caravan':48,'Guilds':15,
 };
 
 /* Attack/armor class ID → readable label (from SiegeEngineers techtree.js) */
@@ -423,6 +476,36 @@ const ARMOR_CLASSES = {
   25:'Monks',26:'Castles',27:'Spearmen',28:'Mounted Archers',
   29:'Shock Infantry',30:'Camels',32:'Condottieri',
   34:'Fishing Ships',35:'Mamelukes',37:'Heavy Siege',38:'Skirmishers',
+};
+
+/* Civ primary focus label (shown in hover tooltip) */
+const CIV_FOCUS = {
+  Armenians:'Infantry & Monk', Aztecs:'Infantry & Monk',
+  Bengalis:'Elephant & Naval', Berbers:'Camel & Cavalry Archer',
+  Bohemians:'Infantry & Gunpowder', Britons:'Archer',
+  Bulgarians:'Infantry & Cavalry', Burgundians:'Cavalry',
+  Burmese:'Infantry & Elephant', Byzantines:'Defensive & Varied',
+  Celts:'Infantry & Siege', Chinese:'Archer & Varied',
+  Cumans:'Cavalry & Cavalry Archer', Dravidians:'Infantry & Naval',
+  Ethiopians:'Archer & Siege', Franks:'Cavalry',
+  Georgians:'Cavalry & Monk', Goths:'Infantry',
+  Gurjaras:'Camel & Cavalry Archer', Hindustanis:'Camel & Gunpowder',
+  Huns:'Cavalry Archer & Cavalry', Incas:'Infantry & Eco',
+  Italians:'Archer & Naval', Japanese:'Infantry & Naval',
+  Jurchens:'Cavalry & Gunpowder', Khitans:'Cavalry & Infantry',
+  Khmer:'Elephant & Siege', Koreans:'Tower & Archer',
+  Lithuanians:'Cavalry & Infantry', Malay:'Naval & Infantry',
+  Malians:'Infantry & Cavalry', Magyars:'Cavalry',
+  Mapuche:'Cavalry', Mayans:'Archer & Infantry',
+  Mongols:'Cavalry Archer & Siege', Muisca:'Archer & Infantry',
+  Persians:'Cavalry & Naval', Poles:'Cavalry',
+  Portuguese:'Naval & Gunpowder', Romans:'Infantry',
+  Saracens:'Camel & Naval', Shu:'Archer & Siege',
+  Sicilians:'Infantry & Cavalry', Slavs:'Infantry & Siege',
+  Spanish:'Monk & Gunpowder', Tatars:'Cavalry Archer & Cavalry',
+  Teutons:'Infantry & Defensive', Tupi:'Infantry & Archer',
+  Turks:'Cavalry & Gunpowder', Vietnamese:'Archer & Elephant',
+  Vikings:'Infantry & Naval', Wei:'Cavalry', Wu:'Infantry & Naval',
 };
 
 const NEW_CIVS = new Set(["Jurchens","Khitans","Shu","Wei","Wu","Mapuche","Muisca","Tupi"]);
@@ -694,6 +777,8 @@ function civInfoHtml(civName) {
   const isNew = NEW_CIVS.has(civName);
 
   let h = `<div class="info-name">${civName}</div>`;
+  const focus = CIV_FOCUS[civName];
+  if (focus) h += `<div style="font-size:12px;color:var(--amber);margin-bottom:10px;font-weight:500">${focus}</div>`;
 
   if (wr.length) {
     h += `<div class="info-sl">Win rates &middot; 1v1 RM ${isNew ? '(estimated)' : '(approx)'}</div>`;
@@ -726,8 +811,7 @@ function civInfoHtml(civName) {
   return h;
 }
 
-function itemInfoHtml(idx) {
-  const item = selected[idx];
+function itemInfoHtml(item) {
   if (!item) return '';
   const d = item.data || {};
 
@@ -801,7 +885,7 @@ function showCivInfo(civ) {
 
 function showItemInfo(idx) {
   const p = document.getElementById('info-panel');
-  p.innerHTML = `<button class="close-panel" onclick="closePanel()">×</button>` + itemInfoHtml(idx);
+  p.innerHTML = `<button class="close-panel" onclick="closePanel()">×</button>` + itemInfoHtml(selected[idx]);
   p.classList.add('visible');
   if (isMobile) p.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -820,9 +904,26 @@ function showCivTooltip(civ, e) {
   moveTooltip(e);
 }
 
-function showItemTooltip(idx, e) {
+/* Build a temporary item object (for suggestion-button hover preview) */
+function buildTempItem(name) {
+  const uid = UNIT_IDS[name], tid = TECH_IDS[name];
+  if (uid === undefined && tid === undefined) return null;
+  const id = uid ?? tid;
+  const itemType = uid !== undefined ? 'unit' : 'tech';
+  const d = itemType === 'unit' ? unitsById[id] : techsById[id];
+  const civsWith = new Set(ALL_CIVS.filter(civ => {
+    const cd = civData[civ];
+    if (!cd) return false;
+    return itemType === 'unit' ? cd.units.has(id) : cd.techs.has(id);
+  }));
+  return { id, name, itemType, civsWith, data: d || {} };
+}
+
+function showItemTooltip(idxOrItem, e) {
+  const item = typeof idxOrItem === 'number' ? selected[idxOrItem] : idxOrItem;
+  if (!item) return;
   const tt = document.getElementById('tooltip');
-  tt.innerHTML = itemInfoHtml(idx);
+  tt.innerHTML = itemInfoHtml(item);
   tt.style.display = 'block';
   moveTooltip(e);
 }
@@ -869,8 +970,29 @@ function closeDropdown() {
    SUGGESTIONS
    ================================================================ */
 function renderSuggestions() {
-  document.getElementById('suggestions').innerHTML =
-    QUICK_UNITS.map(q => `<button class="sug-btn" data-q="${q}">${q}</button>`).join('');
+  const el = document.getElementById('suggestions');
+  el.innerHTML = QUICK_CATEGORIES.map(cat => `
+    <div class="cat-section">
+      <span class="cat-label">${cat.label}</span>
+      <div class="cat-btns">
+        ${cat.items.map(q => `<button class="sug-btn" data-q="${q}">${q}</button>`).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  // Attach click + desktop hover to every suggestion button
+  el.querySelectorAll('.sug-btn').forEach(btn => {
+    const name = btn.dataset.q;
+    btn.addEventListener('click', () => handleSuggestion(name));
+    btn.addEventListener('mouseenter', e => {
+      if (!isMobile && dataLoaded) {
+        const item = buildTempItem(name);
+        if (item) showItemTooltip(item, e);
+      }
+    });
+    btn.addEventListener('mousemove', moveTooltip);
+    btn.addEventListener('mouseleave', hideTooltip);
+  });
 }
 
 function selectFromName(q) {
@@ -921,12 +1043,6 @@ function initEvents() {
   // Mode buttons
   document.getElementById('mode-all').addEventListener('click', () => setMode('ALL'));
   document.getElementById('mode-any').addEventListener('click', () => setMode('ANY'));
-
-  // Suggestions
-  document.getElementById('suggestions').addEventListener('click', e => {
-    const q = e.target.dataset?.q;
-    if (q) handleSuggestion(q);
-  });
 
   // Hide tooltip on scroll
   window.addEventListener('scroll', hideTooltip, { passive: true });
