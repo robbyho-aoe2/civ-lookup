@@ -1277,7 +1277,11 @@ function renderSuggestions() {
     <div class="cat-section">
       <span class="cat-label">${cat.label}</span>
       <div class="cat-btns">
-        ${cat.items.map(q => {
+        ${[...cat.items].sort((a, b) => {
+          const aAll = getItemCivCount(a) === total;
+          const bAll = getItemCivCount(b) === total;
+          return aAll === bAll ? 0 : aAll ? 1 : -1;
+        }).map(q => {
           const n = getItemCivCount(q);
           const isAll = n === total;
           const badge = n !== null
