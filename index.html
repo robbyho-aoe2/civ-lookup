@@ -487,7 +487,7 @@ const UNIQUE_TECH_DESCRIPTIONS = {
   "Eupseong":"Watch Tower-line +2 range",
   "Fabric Shields":"Kamayuks, Slingers and Champi Warriors +1 melee/+1 pierce armor",
   "Farimba":"Cavalry +5 attack",
-  "Fereters":"Infantry (except Spearman-line) +30 HP",
+  "Fereters":"Infantry (except Spearman-line) +30 HP; Warrior Priests heal +100% faster",
   "First Crusade":"Up to 5 Town Centers spawn 5 Serjeants each; units more resistant to conversion",
   "Flemish Revolution":"All existing Villagers are transformed to Flemish Militia",
   "Forced Levy":"Militia-line gold cost is replaced by additional food cost",
@@ -563,6 +563,62 @@ const UNIQUE_TECH_DESCRIPTIONS = {
 const ECO_BUILDING_NAME = { Khitans:"Pastures (replaces Farms)", Poles:"Folwark (replaces Mill)" };
 
 const NEW_CIVS = new Set(["Jurchens","Khitans","Shu","Wei","Wu","Mapuche","Muisca","Tupi"]);
+
+const TEAM_BONUS = {
+  Armenians: "Infantry +2 line of sight",
+  Aztecs: "Relics generate +33% gold",
+  Bengalis: "Trade Units generate +10% food in addition to gold",
+  Berbers: "Genitour available at the Archery Range starting in Castle Age",
+  Bohemians: "Markets work +80% faster",
+  Britons: "Archery Ranges work +10% faster",
+  Bulgarians: "Blacksmiths work +80% faster",
+  Burgundians: "Relics generate food in addition to gold",
+  Burmese: "Relics visible on the map at the start of the game",
+  Byzantines: "Monks heal +100% faster",
+  Celts: "Siege Workshops work +20% faster",
+  Chinese: "Farms +10% food",
+  Cumans: "Palisade Walls +33% HP",
+  Dravidians: "Docks provide +5 population space",
+  Ethiopians: "Outposts +3 line of sight and cost no stone",
+  Franks: "Knight-line +2 line of sight",
+  Georgians: "Building repairs cost -25%",
+  Goths: "Barracks work +20% faster",
+  Gurjaras: "Camel and Elephant Units train +25% faster",
+  Hindustanis: "Scout Cavalry-line and Camel Units +2 attack vs. buildings",
+  Huns: "Stables work +20% faster",
+  Incas: "Start with a free Llama",
+  Italians: "Condottiero available at the Barracks in Imperial Age",
+  Japanese: "Galley-line +4 line of sight",
+  Jurchens: "Gunpowder Units +2 line of sight",
+  Khitans: "Infantry +2 attack vs. Ranged Soldiers",
+  Khmer: "Scorpions +1 range",
+  Koreans: "Villagers +3 line of sight",
+  Lithuanians: "Monasteries work +20% faster",
+  Magyars: "Mounted Archers train +25% faster",
+  Malay: "Docks +6 line of sight",
+  Malians: "Universities work +80% faster",
+  Mapuche: "Spearman-line and Skirmishers +2 line of sight",
+  Mayans: "Walls cost -50%",
+  Mongols: "Scout Cavalry-line +2 line of sight",
+  Muisca: "Natural gold sources last +15% longer",
+  Persians: "Knight-line +2 attack vs. Ranged Soldiers",
+  Poles: "Scout Cavalry-line +1 attack vs. Ranged Soldiers",
+  Portuguese: "Technologies research +25% faster",
+  Romans: "Scorpions minimum range reduced",
+  Saracens: "Foot Archers and Skirmishers +2 attack vs. buildings",
+  Shu: "Foot Archers +2 line of sight",
+  Sicilians: "Transport Ships +5 line of sight and cost -50%",
+  Slavs: "Military buildings (except Castles) provide +5 population space",
+  Spanish: "Trade Units generate +25% gold",
+  Tatars: "Mounted Archers +2 line of sight",
+  Teutons: "Units more resistant to conversion",
+  Tupi: "Towers and Castles provide +10 population space",
+  Turks: "Gunpowder Units train +25% faster",
+  Vietnamese: "Imperial Skirmisher upgrade available in Imperial Age",
+  Vikings: "Docks cost -15%",
+  Wei: "Cavalry +2 attack vs. Siege Weapons",
+  Wu: "Houses built +100% faster",
+};
 const GAME_DUR_WR = {
   Armenians:[50.2,50.5,50.1],
   Aztecs:[52.5,51.8,52.1],
@@ -632,74 +688,74 @@ const ABS = {
   },
   'Cavalry Archer':{
     Mongols:{b:2,c:0,u:1,n:["Cavalry Archers attack +25% faster","Mangudai unique CA"]},
-    Tatars:{b:2,c:1,u:1,n:["+25% dmg from elevation","Silk Armor: CA +1/+1 armor","Keshik UU cavalry archer"]},
+    Tatars:{b:2,c:1,u:1,n:["+25% dmg from elevation","Silk Armor: CA +1/+1 armor","Keshik Unique Unit (cavalry archer)"]},
     Huns:{b:2,c:0,u:0,n:["Cavalry Archers -10/20% cost"]},
     Cumans:{b:1,c:1,u:1,n:["Mounted units faster","Steppe Husbandry: CA train 100% faster","Kipchak unique CA"]},
     Jurchens:{b:1,c:0,u:0,n:["Mounted units attack +25% faster"]},
     Magyars:{b:0,c:1,u:0,n:["Recurve Bow: Mounted Archers +1 atk, +1 range"]},
     Koreans:{b:1,c:0,u:0,n:["Cavalry Archer upgrades free"]},
-    Berbers:{b:1,c:0,u:1,n:["Stable units cheaper","Camel Archer unique CA UU"]},
+    Berbers:{b:1,c:0,u:1,n:["Stable units cheaper","Camel Archer Unique Unit"]},
     Japanese:{b:1,c:0,u:0,n:["CA +2 attack vs Ranged Soldiers"]},
     Khitans:{b:1,c:0,u:0,n:["Heavy CA upgrade Castle Age, -50%"]},
   },
   'Cavalry':{
     Franks:{b:2,c:1,u:0,n:["Mounted Units +20% HP","Chivalry: Stables +40% faster"]},
-    Lithuanians:{b:2,c:0,u:1,n:["Relics +1 to +4 attack to Knight-line","Leitis + Winged Hussar UU"]},
+    Lithuanians:{b:2,c:0,u:1,n:["Relics +1 to +4 attack to Knight-line","Leitis + Winged Hussar Unique Unit"]},
     Mongols:{b:2,c:0,u:0,n:["Scout Cav-line +20/30% HP in Castle/Imperial"]},
-    Georgians:{b:2,c:1,u:1,n:["Cavalry regenerates HP/min","Aznauri Cavalry: Mounted -20% pop space","Monaspa UU cavalry"]},
-    Bulgarians:{b:0,c:2,u:1,n:["Stirrups: Cavalry attacks +33% faster (huge)","Konnik unique cavalry UU"]},
+    Georgians:{b:2,c:1,u:1,n:["Cavalry regenerates HP/min","Aznauri Cavalry: Mounted -20% pop space","Monaspa Unique Unit (cavalry)"]},
+    Bulgarians:{b:0,c:2,u:1,n:["Stirrups: Cavalry attacks +33% faster (huge)","Konnik Unique Unit"]},
     Poles:{b:1,c:2,u:0,n:["Bloodlines/Scout upgrades -50% food","Szlachta: Knights -60% gold + Lechitic Legacy: trample"]},
-    Burgundians:{b:2,c:0,u:1,n:["Stable techs -50%; Cavalier in Castle Age","Coustillier unique cavalry UU"]},
-    Tatars:{b:1,c:1,u:1,n:["+25% dmg from elevation","Silk Armor: Cav +1/+1 armor","Keshik unique cavalry UU"]},
+    Burgundians:{b:2,c:0,u:1,n:["Stable techs -50%; Cavalier in Castle Age","Coustillier Unique Unit"]},
+    Tatars:{b:1,c:1,u:1,n:["+25% dmg from elevation","Silk Armor: Cav +1/+1 armor","Keshik Unique Unit"]},
     Sicilians:{b:1,c:1,u:0,n:["Soldiers -40% bonus damage","Hauberk: Knight-line +1/+2 armor"]},
     Cumans:{b:1,c:1,u:0,n:["Mounted units faster","Cuman Mercenaries: team free elite Kipchaks"]},
     Khitans:{b:1,c:1,u:0,n:["Melee attack upgrade effects doubled","Ordo Cavalry: cavalry regen HP in combat"]},
-    Jurchens:{b:1,c:0,u:1,n:["Mounted units attack +25% faster","Iron Pagoda unique cavalry UU"]},
-    Wei:{b:1,c:0,u:1,n:["Hei Guang Cavalry +20/30% HP","Tiger Cavalry unique cavalry UU"]},
-    Magyars:{b:1,c:1,u:1,n:["Scout line -15%; melee attack upgrades free","Corvinian Army: Huszar gold→food","Magyar Huszar unique UU"]},
+    Jurchens:{b:1,c:0,u:1,n:["Mounted units attack +25% faster","Iron Pagoda Unique Unit"]},
+    Wei:{b:1,c:0,u:1,n:["Hei Guang Cavalry +20/30% HP","Tiger Cavalry Unique Unit"]},
+    Magyars:{b:1,c:1,u:1,n:["Scout line -15%; melee attack upgrades free","Corvinian Army: Huszar gold→food","Magyar Huszar Unique Unit"]},
   },
   'Infantry':{
-    Goths:{b:2,c:1,u:1,n:["Infantry -15→30% cheaper; +1/2/3 attack vs buildings","Perfusion: Barracks +100% faster","Huskarl unique infantry UU"]},
-    Japanese:{b:2,c:0,u:1,n:["Infantry attack +33% faster","Samurai unique infantry UU"]},
-    Celts:{b:2,c:0,u:1,n:["Infantry move +5/10/15/20% faster","Woad Raider unique infantry UU"]},
-    Romans:{b:2,c:1,u:1,n:["Infantry armor effects doubled","Comitatenses: Militia train faster + charge","Legionary + Centurion UU"]},
-    Khitans:{b:2,c:1,u:1,n:["Melee attack effects doubled","Lamellar Armor: Infantry reflect melee","Liao Dao unique infantry UU"]},
-    Aztecs:{b:1,c:1,u:1,n:["Military train +15% faster","Garland Wars: Infantry +4 attack","Jaguar Warrior unique UU"]},
+    Goths:{b:2,c:1,u:1,n:["Infantry -15→30% cheaper; +1/2/3 attack vs buildings","Perfusion: Barracks +100% faster","Huskarl Unique Unit"]},
+    Japanese:{b:2,c:0,u:1,n:["Infantry attack +33% faster","Samurai Unique Unit"]},
+    Celts:{b:2,c:0,u:1,n:["Infantry move +5/10/15/20% faster","Woad Raider Unique Unit"]},
+    Romans:{b:2,c:1,u:1,n:["Infantry armor effects doubled","Comitatenses: Militia train faster + charge","Legionary + Centurion Unique Unit"]},
+    Khitans:{b:2,c:1,u:1,n:["Melee attack effects doubled","Lamellar Armor: Infantry reflect melee","Liao Dao Unique Unit"]},
+    Aztecs:{b:1,c:1,u:1,n:["Military train +15% faster","Garland Wars: Infantry +4 attack","Jaguar Warrior Unique Unit"]},
     Slavs:{b:1,c:1,u:0,n:["Arson free; Monks faster","Druzhina: Infantry trample damage"]},
-    Armenians:{b:1,c:1,u:1,n:["Spear/Militia upgrades 1 age earlier","Fereters: Infantry +30 HP","Warrior Priest UU"]},
+    Armenians:{b:1,c:1,u:1,n:["Spear/Militia upgrades 1 age earlier","Fereters: Infantry +30 HP","Warrior Priest Unique Unit"]},
     Bulgarians:{b:1,c:1,u:0,n:["Militia upgrades free","Bagains: Militia-line +5 melee armor"]},
-    Teutons:{b:1,c:0,u:1,n:["Barracks/Stable units +1/+2 melee armor","Teutonic Knight unique infantry UU"]},
-    Wu:{b:2,c:0,u:1,n:["Infantry regenerates 10/15/30 HP/min","Jian Swordsman unique UU"]},
-    Malians:{b:1,c:0,u:1,n:["Barracks units +1/2/3 pierce armor/Age","Gbeto unique infantry UU"]},
-    Dravidians:{b:1,c:0,u:1,n:["Barracks technologies -50%","Urumi Swordsman unique infantry UU"]},
+    Teutons:{b:1,c:0,u:1,n:["Barracks/Stable units +1/+2 melee armor","Teutonic Knight Unique Unit"]},
+    Wu:{b:2,c:0,u:1,n:["Infantry regenerates 10/15/30 HP/min","Jian Swordsman Unique Unit"]},
+    Malians:{b:1,c:0,u:1,n:["Barracks units +1/2/3 pierce armor/Age","Gbeto Unique Unit"]},
+    Dravidians:{b:1,c:0,u:1,n:["Barracks technologies -50%","Urumi Swordsman Unique Unit"]},
   },
   'Siege':{
     Celts:{b:2,c:1,u:0,n:["Siege weapons +25% faster","Furor Celtica: Siege +40% HP"]},
-    Bohemians:{b:1,c:1,u:1,n:["Chemistry in Castle Age","Wagenburg Tactics: Gunpowder move faster","Hussite Wagon + Houfnice unique siege UU"]},
+    Bohemians:{b:1,c:1,u:1,n:["Chemistry in Castle Age","Wagenburg Tactics: Gunpowder move faster","Hussite Wagon + Houfnice Unique Unit"]},
     Mongols:{b:0,c:1,u:0,n:["Drill: Siege units move +50% faster"]},
     Turks:{b:1,c:1,u:0,n:["Gunpowder units +25% HP","Artillery: BB/BC/CG +2 range"]},
     Jurchens:{b:1,c:1,u:0,n:["Siege Engineers available Castle Age","Thunderclap Bombs: units detonate"]},
     Slavs:{b:1,c:0,u:0,n:["Siege Workshop -15% cost"]},
     Ethiopians:{b:0,c:1,u:0,n:["Torsion Engines: Siege blast radius increased"]},
-    Khmer:{b:1,c:1,u:1,n:["No building prerequisites","Double Crossbow: Scorpions fire extra projectile","Ballista Elephant unique siege UU"]},
-    Shu:{b:1,c:0,u:1,n:["Siege move +10/15% faster","War Chariot unique siege UU"]},
-    Khitans:{b:0,c:0,u:1,n:["Mounted Trebuchet unique siege UU"]},
+    Khmer:{b:1,c:1,u:1,n:["No building prerequisites","Double Crossbow: Scorpions fire extra projectile","Ballista Elephant Unique Unit"]},
+    Shu:{b:1,c:0,u:1,n:["Siege move +10/15% faster","War Chariot Unique Unit"]},
+    Khitans:{b:0,c:0,u:1,n:["Mounted Trebuchet Unique Unit"]},
     Tatars:{b:0,c:1,u:0,n:["Timurid Siegecraft: Trebuchets +2 range"]},
     Chinese:{b:0,c:1,u:0,n:["Rocketry: Scorpions/Rocket Carts +25% attack"]},
   },
   'Naval':{
-    Vikings:{b:2,c:1,u:1,n:["Warships -10/15/20%","Bogsveigar: Longboats +1 attack","Longboat unique warship UU"]},
-    Portuguese:{b:2,c:1,u:1,n:["All units -20% gold; Ships +10/15/20% HP","Circumnavigation: Ships train faster","Caravel unique warship UU"]},
-    Koreans:{b:1,c:1,u:1,n:["Warships -20% wood","Shinkichon: Turtle Ships +range + extra projectile","Turtle Ship unique UU"]},
+    Vikings:{b:2,c:1,u:1,n:["Warships -10/15/20%","Bogsveigar: Longboats +1 attack","Longboat Unique Unit"]},
+    Portuguese:{b:2,c:1,u:1,n:["All units -20% gold; Ships +10/15/20% HP","Circumnavigation: Ships train faster","Caravel Unique Unit"]},
+    Koreans:{b:1,c:1,u:1,n:["Warships -20% wood","Shinkichon: Turtle Ships +range + extra projectile","Turtle Ship Unique Unit"]},
     Malay:{b:2,c:1,u:0,n:["Age advance 66% faster; Fish Traps","Thalassocracy: Docks → Harbors"]},
     Saracens:{b:2,c:0,u:0,n:["Galley-line attacks +25% faster","Transport Ships +100% HP"]},
-    Italians:{b:1,c:1,u:1,n:["Dock/Univ techs -25%","Pirotechnia: HC pass-through","Caravel unique UU"]},
+    Italians:{b:1,c:1,u:1,n:["Dock/Univ techs -25%","Pirotechnia: HC pass-through","Caravel Unique Unit"]},
     Armenians:{b:1,c:1,u:0,n:["Galley-line fires extra projectile","Cilician Fleet: Galley +1 range"]},
-    Dravidians:{b:1,c:0,u:1,n:["Fishermen carry +15; +200 wood per Age","Thirisadai unique warship UU"]},
+    Dravidians:{b:1,c:0,u:1,n:["Fishermen carry +15; +200 wood per Age","Thirisadai Unique Unit"]},
     Bengalis:{b:1,c:0,u:0,n:["Ships regenerate 15 HP/min"]},
     Romans:{b:1,c:1,u:0,n:["Galley-line +1/+1 armor","Ballistas: Galley-line +2 attack"]},
     Wu:{b:1,c:1,u:0,n:["Careening/Dry Dock free","Red Cliffs Tactics: Demo Ships fire damage"]},
-    Chinese:{b:1,c:0,u:1,n:["Fire Ships move faster","Dragon Ship unique warship UU"]},
+    Chinese:{b:1,c:0,u:1,n:["Fire Ships move faster","Dragon Ship Unique Unit"]},
   },
   'Monastery':{
     Aztecs:{b:2,c:0,u:0,n:["Monks +5 HP per Monastery tech"]},
@@ -707,12 +763,12 @@ const ABS = {
     Teutons:{b:1,c:0,u:0,n:["Monks +100% healing range"]},
     Bohemians:{b:1,c:1,u:0,n:["Sanctity/Fervor affect Villagers","Hussite Reforms: Monks gold→food"]},
     Saracens:{b:0,c:1,u:0,n:["Bimaristan: Monks passively heal multiple units"]},
-    Spanish:{b:0,c:1,u:1,n:["Inquisition: Monks convert faster","Missionary unique Monk UU"]},
+    Spanish:{b:0,c:1,u:1,n:["Inquisition: Monks convert faster","Missionary Unique Unit"]},
     Lithuanians:{b:1,c:0,u:0,n:["Monasteries work 100% faster"]},
     Slavs:{b:1,c:0,u:0,n:["Monks move +20% faster"]},
     Muisca:{b:1,c:0,u:0,n:["Monks regain faith +50% faster"]},
-    Georgians:{b:1,c:0,u:1,n:["Monks work 40% faster","Warrior Priest UU heals and fights"]},
-    Armenians:{b:1,c:0,u:1,n:["Monastery work rate bonus","Warrior Priest unique UU"]},
+    Georgians:{b:1,c:0,u:1,n:["Monks work 40% faster","Warrior Priest Unique Unit heals and fights"]},
+    Armenians:{b:1,c:1,u:1,n:["First Fortified Church receives a free Relic","Fereters: Warrior Priests heal +100% faster","Warrior Priest Unique Unit"]},
     Byzantines:{b:1,c:0,u:0,n:["Team Monks +50% heal speed"]},
   },
   'Eco':{
@@ -742,28 +798,28 @@ const ABS = {
     Sicilians:{b:1,c:0,u:0,n:["Fortifications built +50% faster; soldiers -40% bonus dmg"]},
   },
   'Gunpowder':{
-    Turks:{b:2,c:1,u:1,n:["Gunpowder +25% HP; Chemistry free","Artillery: BB/BC/CG +2 range","Janissary unique gunpowder UU"]},
-    Bohemians:{b:1,c:1,u:1,n:["Chemistry in Castle Age","Wagenburg Tactics: Gunpowder faster","Hussite Wagon + Houfnice unique UU"]},
+    Turks:{b:2,c:1,u:1,n:["Gunpowder +25% HP; Chemistry free","Artillery: BB/BC/CG +2 range","Janissary Unique Unit"]},
+    Bohemians:{b:1,c:1,u:1,n:["Chemistry in Castle Age","Wagenburg Tactics: Gunpowder faster","Hussite Wagon + Houfnice Unique Unit"]},
     Hindustanis:{b:1,c:1,u:0,n:["Gunpowder +1/+1 armor","Shatagni: Hand Cannoneers +2 range"]},
     Burgundians:{b:1,c:0,u:0,n:["Gunpowder units +25% attack"]},
-    Spanish:{b:1,c:0,u:1,n:["Gunpowder +18% faster","Conquistador unique mounted gunner UU"]},
-    Portuguese:{b:1,c:1,u:1,n:["All units -20% gold","Arquebus: Gunpowder more accurate","Organ Gun unique UU"]},
-    Jurchens:{b:1,c:1,u:1,n:["Units +25% attack; Siege Engineers Castle Age","Thunderclap Bombs","Grenadier unique UU"]},
+    Spanish:{b:1,c:0,u:1,n:["Gunpowder +18% faster","Conquistador Unique Unit"]},
+    Portuguese:{b:1,c:1,u:1,n:["All units -20% gold","Arquebus: Gunpowder more accurate","Organ Gun Unique Unit"]},
+    Jurchens:{b:1,c:1,u:1,n:["Units +25% attack; Siege Engineers Castle Age","Thunderclap Bombs","Grenadier Unique Unit"]},
     Italians:{b:1,c:1,u:0,n:["Gunpowder -20% cost","Pirotechnia: HC +pass-through damage"]},
   },
   'Elephant':{
-    Burmese:{b:1,c:1,u:1,n:["Battle Elephants +1/+1 armor","Howdah: Battle Elephants +1/+1 more armor","Arambai unique UU"]},
-    Khmer:{b:1,c:1,u:1,n:["Battle Elephants move +10% faster","Tusk Swords: Battle Elephants +3 attack","Ballista Elephant unique siege UU"]},
-    Malay:{b:1,c:0,u:1,n:["Battle Elephants -25/35% cost","Karambit Warrior UU (different unit)"]},
+    Burmese:{b:1,c:1,u:1,n:["Battle Elephants +1/+1 armor","Howdah: Battle Elephants +1/+1 more armor","Arambai Unique Unit"]},
+    Khmer:{b:1,c:1,u:1,n:["Battle Elephants move +10% faster","Tusk Swords: Battle Elephants +3 attack","Ballista Elephant Unique Unit"]},
+    Malay:{b:1,c:0,u:1,n:["Battle Elephants -25/35% cost","Karambit Warrior (different Unique Unit)"]},
     Vietnamese:{b:0,c:1,u:0,n:["Chatras: Battle Elephants +100 HP"]},
-    Bengalis:{b:1,c:1,u:1,n:["Elephant units take -25% bonus damage; resist conversion","Paiks: Elephant Units attack +20% faster","Ratha unique UU"]},
-    Dravidians:{b:0,c:1,u:1,n:["Medical Corps: Elephant Units regen 30 HP/min","Urumi Swordsman unique UU (different)"]},
-    Persians:{b:0,c:0,u:1,n:["War Elephant unique elephant UU (heavy cavalry type)"]},
+    Bengalis:{b:1,c:1,u:1,n:["Elephant units take -25% bonus damage; resist conversion","Paiks: Elephant Units attack +20% faster","Ratha Unique Unit"]},
+    Dravidians:{b:0,c:1,u:1,n:["Medical Corps: Elephant Units regen 30 HP/min","Urumi Swordsman Unique Unit (different)"]},
+    Persians:{b:0,c:0,u:1,n:["War Elephant Unique Unit (heavy cavalry type)"]},
   },
   'Camel':{
-    Saracens:{b:2,c:0,u:1,n:["Camel units +25% HP","Mameluke unique camel cavalry UU"]},
-    Hindustanis:{b:2,c:1,u:2,n:["Camels attack +20% faster; upgrades cheaper","Shatagni helps (partial)","Imperial Camel Rider + Ghulam unique UU"]},
-    Berbers:{b:1,c:1,u:1,n:["Stable units -15/20%","Maghrebi Camels: Camel Units regen 15 HP/min","Camel Archer unique UU"]},
+    Saracens:{b:2,c:0,u:1,n:["Camel units +25% HP","Mameluke Unique Unit"]},
+    Hindustanis:{b:2,c:1,u:2,n:["Camels attack +20% faster; upgrades cheaper","Shatagni helps (partial)","Imperial Camel Rider + Ghulam Unique Unit"]},
+    Berbers:{b:1,c:1,u:1,n:["Stable units -15/20%","Maghrebi Camels: Camel Units regen 15 HP/min","Camel Archer Unique Unit"]},
     Gurjaras:{b:1,c:1,u:0,n:["Mounted units deal +20/30/40% bonus dmg","Frontier Guards: Camel Riders +4 melee armor"]},
     Ethiopians:{b:0,c:1,u:0,n:["Royal Heirs: Camel Riders -3 dmg from Mounted"]},
     Tatars:{b:0,c:1,u:0,n:["Silk Armor: partial armor benefit to camels"]},
@@ -777,13 +833,14 @@ const UNIT_IDS = {
   'Hand Cannoneer':5,
   'Cavalry Archer':39,'Heavy Cavalry Archer':474,
   'Scout Cavalry':448,'Light Cavalry':546,
-  'Hussar / Winged Hussar':[441,1707],
+  'Hussar':[441,1707],
   'Knight':38,'Cavalier':283,
-  'Paladin / Savar':[569,1813],
+  'Paladin':[569,1813],
   'Camel Rider':329,'Heavy Camel Rider':330,'Imperial Camel Rider':207,
   'Steppe Lancer':1370,'Elite Steppe Lancer':1372,
   'Battle Elephant':1132,'Elite Battle Elephant':1134,
-  'Long Swordsman':75,'Two-Handed Swordsman':77,'Champion':473,
+  'Elephant Archer':873,'Elite Elephant Archer':875,
+  'Long Swordsman':75,'Two-Handed Swordsman':77,'Champion':473,'Champi Warrior':2552,
   'Spearman':74,'Pikeman':93,'Halberdier':359,
   'Eagle Scout':751,'Eagle Warrior':752,'Elite Eagle Warrior':753,
   'Mangonel':280,'Onager':550,'Siege Onager':588,
@@ -803,6 +860,12 @@ const UNIT_IDS = {
    not separate tech-tree choices). */
 const HEI_GUANG_IDS = [1944, 1946];   // base + upgraded Hei Guang Cavalry (Wei/Shu/Wu)
 const XIANBEI_IDS = [1952];            // Xianbei Raider (Wei's Cavalry Archer replacement)
+
+/* Incas, Muisca, and Tupi have no access to the Militia-line (Long Swordsman/
+   Two-Handed Swordsman/Champion) — their equivalent upgrade path is the shared
+   Champi Warrior line. Counted as equivalent to Champion for Infantry archetype
+   scoring for these three civs specifically. */
+const CHAMPI_IDS = [2552, 2554];
 
 const TECH_IDS = {
   'Fletching':199,'Bodkin Arrow':200,'Bracer':201,
@@ -904,11 +967,11 @@ const UNIT_DESCRIPTIONS = {
   448:'Fast scout. Low attack power; best used for map control and early harassment',
   546:'Fast raider. Strong vs monks, siege, and trade units; weak vs spearmen and camels',
   441:'Elite raider. Strong vs monks, siege, and trade units; weak vs spearmen and camels',
-  1707:'Elite raider with charge attack (Lithuanians, Poles). Strong vs monks and siege; weak vs spearmen',
+  1707:'Elite raider. Strong vs monks, siege, and trade units; weak vs spearmen and camels',
   38:'Heavy cavalry. Strong vs archers and infantry; weak vs spearmen and camels',
   283:'Upgraded Knight. Strong vs archers and infantry; weak vs spearmen and camels',
   569:'Elite heavy cavalry. Strong vs archers and infantry; weak vs spearmen and camels',
-  1813:'Persian elite cavalry (replaces Paladin). Strong vs archers and infantry; weak vs spearmen and camels',
+  1813:'Elite heavy cavalry. Strong vs archers and infantry; weak vs spearmen and camels',
   329:'Anti-cavalry unit. Strong vs cavalry; weak vs archers and infantry',
   330:'Upgraded Camel Rider. Strong vs cavalry; weak vs archers and infantry',
   207:'Elite Camel (Hindustanis only). Strong vs cavalry; weak vs archers and infantry',
@@ -916,9 +979,12 @@ const UNIT_DESCRIPTIONS = {
   1372:'Upgraded Steppe Lancer. Strong vs cavalry; weak vs camels and spearmen',
   1132:'Massive slow cavalry. Strong vs buildings and melee infantry; weak vs halbs and monks',
   1134:'Elite Battle Elephant. Strong vs buildings and melee; weak vs halbs and monks',
+  873:'Ranged elephant unit (Bengalis, Dravidians, Gurjaras). Strong vs infantry at range; weak vs cavalry and skirmishers',
+  875:'Elite Elephant Archer. Strong vs infantry at range; weak vs cavalry and skirmishers',
   75:'Upgraded Militia-line. Strong vs buildings; weak vs archers',
   77:'Heavy swordsman. Strong vs cavalry and buildings; weak vs archers',
   473:'Elite swordsman. Strong vs cavalry, buildings, and spearmen; weak vs archers',
+  2552:'Meso/South American Militia-line replacement (Incas, Muisca, Tupi). Strong vs cavalry and buildings; weak vs archers',
   74:'Anti-cavalry infantry. Strong vs cavalry; weak vs archers and other infantry',
   93:'Upgraded Spearman. Strong vs cavalry; weak vs archers',
   359:'Elite spearman. Strong vs cavalry and elephants; weak vs archers',
@@ -970,16 +1036,16 @@ const QUICK_CATEGORIES = [
     'Thumb Ring','Bracer','Bodkin Arrow','Fletching','Ballistics','Parthian Tactics',
   ]},
   { label:'Cavalry Archer', color:CAT_COLORS['Cavalry Archer'], items:[
-    'Heavy Cavalry Archer',
+    'Cavalry Archer','Heavy Cavalry Archer','Elephant Archer','Elite Elephant Archer',
     'Bloodlines','Husbandry','Thumb Ring','Parthian Tactics','Ballistics',
   ]},
   { label:'Cavalry', color:CAT_COLORS.Cavalry, items:[
-    'Paladin / Savar','Hussar / Winged Hussar','Cavalier','Imperial Camel Rider','Heavy Camel Rider',
+    'Paladin','Hussar','Cavalier','Imperial Camel Rider','Heavy Camel Rider',
     'Battle Elephant','Elite Battle Elephant','Steppe Lancer',
     'Bloodlines','Plate Barding Armor','Chain Barding Armor','Husbandry',
   ]},
   { label:'Infantry', color:CAT_COLORS.Infantry, items:[
-    'Champion','Two-Handed Swordsman','Halberdier','Pikeman',
+    'Champion','Champi Warrior','Two-Handed Swordsman','Halberdier','Pikeman',
     'Eagle Warrior','Elite Eagle Warrior',
     'Plate Mail Armor','Chain Mail Armor','Squires','Arson',
   ]},
@@ -1013,11 +1079,11 @@ const QUICK_CATEGORIES = [
    as Paladin-tier cavalry for Wei/Shu/Wu) added on top of the normal id match. */
 const CIV_ARCHETYPES = [
   {emoji:'🏹',label:'Archer',bonusKey:'Archer',items:[
-    {t:'unit',id:492},{t:'unit',id:6},{t:'unit',id:474},{t:'unit',id:5},
+    {t:'unit',id:492},{t:'unit',id:6},
     {t:'tech',id:437},{t:'tech',id:201},{t:'tech',id:200},{t:'tech',id:199},{t:'tech',id:47},
   ]},
-  {emoji:'🎯',label:'Cavalry Archer',bonusKey:'Cavalry Archer',items:[
-    {t:'unit',id:474,extra:XIANBEI_IDS},
+  {emoji:'🎯',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Vietnamese','Vikings','Wu','Bengalis','Dravidians','Gurjaras'],items:[
+    {t:'unit',id:474,extra:XIANBEI_IDS},{t:'unit',id:[873,875]},
     {t:'tech',id:435},{t:'tech',id:39},{t:'tech',id:437},{t:'tech',id:436},{t:'tech',id:47},
   ]},
   {emoji:'⚔️',label:'Cavalry',bonusKey:'Cavalry',items:[
@@ -1025,7 +1091,7 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:435},{t:'tech',id:80},{t:'tech',id:82},{t:'tech',id:81},{t:'tech',id:39},
   ]},
   {emoji:'🛡',label:'Infantry',bonusKey:'Infantry',items:[
-    {t:'unit',id:473},{t:'unit',id:359},{t:'unit',id:77},
+    {t:'unit',id:473,extra:CHAMPI_IDS},{t:'unit',id:359},{t:'unit',id:77},
     {t:'tech',id:77},{t:'tech',id:76},{t:'tech',id:74},{t:'tech',id:215},{t:'tech',id:602},
   ]},
   {emoji:'💣',label:'Siege',bonusKey:'Siege',items:[
@@ -1344,6 +1410,11 @@ function renderArchetypeGrid() {
     </div>`;
   });
   html += `</div>`;
+  html += `<div style="text-align:center;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+    <button onclick="clearArchetype()" style="background:var(--amberBg);border:1px solid var(--amber);color:var(--amberL);padding:7px 18px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer">
+      × Clear ${arch.emoji} ${arch.label} ranking
+    </button>
+  </div>`;
   document.getElementById('civ-section').innerHTML = html;
   attachCardEvents();
 }
@@ -1369,6 +1440,11 @@ function renderTimingGrid() {
     </div>`;
   });
   html += `</div>`;
+  html += `<div style="text-align:center;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+    <button onclick="clearArchetype()" style="background:var(--amberBg);border:1px solid var(--amber);color:var(--amberL);padding:7px 18px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer">
+      × Clear ${t.emoji} ${t.label} ranking
+    </button>
+  </div>`;
   document.getElementById('civ-section').innerHTML = html;
   attachCardEvents();
 }
@@ -1474,8 +1550,76 @@ function attachCardEvents() {
   });
 }
 /* ================================================================
-   BONUS TEXT COLOR-CODING
+   VISUAL HELPERS: radial progress ring + radar/fingerprint chart
    ================================================================ */
+function radialRing(pct, color, size) {
+  size = size || 46;
+  const r = size / 2 - 4;
+  const c = 2 * Math.PI * r;
+  const offset = c * (1 - pct);
+  const cx = size / 2, cy = size / 2;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="4"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="4"
+      stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round"
+      transform="rotate(-90 ${cx} ${cy})"/>
+  </svg>`;
+}
+
+/* Radar axes: the universal archetypes only (skip Camel/Elephant since those
+   are restricted to a handful of civs and would just read as 0 or N/A for
+   everyone else, distorting the shape rather than describing playstyle) */
+const RADAR_AXES = ['Archer','Cavalry Archer','Cavalry','Infantry','Siege','Naval','Monk','Eco','Defensive','Gunpowder'];
+
+function radarChartSVG(civName) {
+  const size = 280, cx = size/2, cy = size/2, maxR = 100;
+  const axes = RADAR_AXES.map(label => CIV_ARCHETYPES.find(a => a.label === label)).filter(Boolean);
+  const n = axes.length;
+  const values = axes.map(arch => {
+    const pool = archetypeCivList(arch);
+    if (!pool.includes(civName)) return 0;
+    const r = archetypeRank(civName, CIV_ARCHETYPES.indexOf(arch));
+    return r ? (1 - (r.rank - 1) / r.of) : 0; // 0..1, higher = better rank
+  });
+
+  const pts = values.map((v, i) => {
+    const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+    const rad = 20 + v * maxR;
+    return [cx + rad * Math.cos(angle), cy + rad * Math.sin(angle)];
+  });
+  const polyPoints = pts.map(p => p.join(',')).join(' ');
+
+  // Grid rings at 25/50/75/100%
+  let gridRings = '';
+  [0.25, 0.5, 0.75, 1].forEach(f => {
+    const ringPts = axes.map((_, i) => {
+      const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+      const rad = 20 + f * maxR;
+      return [cx + rad * Math.cos(angle), cy + rad * Math.sin(angle)].join(',');
+    }).join(' ');
+    gridRings += `<polygon points="${ringPts}" fill="none" stroke="var(--border)" stroke-width="1"/>`;
+  });
+
+  // Axis lines + labels
+  let axisLines = '', labels = '';
+  axes.forEach((arch, i) => {
+    const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+    const x2 = cx + (20 + maxR) * Math.cos(angle), y2 = cy + (20 + maxR) * Math.sin(angle);
+    axisLines += `<line x1="${cx}" y1="${cy}" x2="${x2}" y2="${y2}" stroke="var(--border)" stroke-width="1"/>`;
+    const lx = cx + (20 + maxR + 16) * Math.cos(angle), ly = cy + (20 + maxR + 16) * Math.sin(angle);
+    const anchor = Math.abs(Math.cos(angle)) < 0.3 ? 'middle' : (Math.cos(angle) > 0 ? 'start' : 'end');
+    labels += `<text x="${lx}" y="${ly}" font-size="9" fill="var(--text3)" text-anchor="${anchor}" dominant-baseline="middle">${arch.emoji}</text>`;
+  });
+
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    ${gridRings}${axisLines}
+    <polygon points="${polyPoints}" fill="rgba(200,146,42,.25)" stroke="var(--amber)" stroke-width="2"/>
+    ${pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="var(--amberL)"/>`).join('')}
+    ${labels}
+  </svg>`;
+}
+
+
 function classifyBonusText(text) {
   const t = text.toLowerCase();
   if (/cavalry|mounted|knight|hussar|paladin|camel|elephant|cataphract/.test(t) && !/archer/.test(t)) return CAT_COLORS.Cavalry;
@@ -1546,21 +1690,48 @@ function civInfoHtml(civName, compact) {
     h += `</ul>`;
   }
 
-  // Archetype rankings summary (only in full panel, not hover tooltip)
+  const teamBonus = TEAM_BONUS[civName];
+  if (teamBonus) {
+    h += `<div class="info-sl">Team bonus</div>`;
+    h += `<p style="font-size:12px;color:var(--text2);display:flex;gap:7px;align-items:flex-start">
+      <span class="bonus-dot" style="background:var(--amberL);margin-top:3px"></span>
+      <span>${teamBonus}</span>
+    </p>`;
+  }
+
+  // Archetype rankings: radial rings, sorted best rank first (only in full panel)
   if (!compact) {
-    h += `<div class="info-sl">Archetype rankings</div>`;
-    h += `<div class="arch-rank-grid">`;
-    CIV_ARCHETYPES.forEach((arch, i) => {
-      const pool = archetypeCivList(arch);
-      if (!pool.includes(civName)) return;
-      const r = archetypeRank(civName, i);
-      if (!r) return;
-      const pct = 1 - (r.rank - 1) / r.of;
-      const color = pct >= 0.8 ? 'var(--green)' : pct >= 0.5 ? 'var(--amberL)' : 'var(--text3)';
-      const bg = pct >= 0.8 ? 'var(--greenBg)' : pct >= 0.5 ? 'var(--amberBg)' : 'var(--surf)';
-      h += `<span class="arch-rank-item" style="background:${bg};color:${color};border:1px solid ${color}" title="Click to explore ${arch.label} ranking">${arch.emoji} ${arch.label} #${r.rank}/${r.of}</span>`;
-    });
-    h += `</div>`;
+    const ranked = CIV_ARCHETYPES
+      .map((arch, i) => {
+        const pool = archetypeCivList(arch);
+        if (!pool.includes(civName)) return null;
+        const r = archetypeRank(civName, i);
+        return r ? { arch, i, r } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.r.rank - b.r.rank);
+
+    if (ranked.length) {
+      h += `<div class="info-sl">Archetype rankings — best first</div>`;
+      h += `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">`;
+      ranked.forEach(({ arch, i, r }) => {
+        const pct = 1 - (r.rank - 1) / r.of;
+        const color = pct >= 0.8 ? 'var(--green)' : pct >= 0.5 ? 'var(--amberL)' : 'var(--text3)';
+        h += `<div class="arch-rank-ring" data-arch-i="${i}" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;width:60px" title="Click to see full ${arch.label} ranking">
+          <div style="position:relative;display:flex;align-items:center;justify-content:center">
+            ${radialRing(pct, color, 46)}
+            <span style="position:absolute;font-size:14px">${arch.emoji}</span>
+          </div>
+          <span style="font-size:9px;color:var(--text3);text-align:center;line-height:1.2">${arch.label}</span>
+          <span style="font-size:10px;font-weight:700;color:${color}">#${r.rank}/${r.of}</span>
+        </div>`;
+      });
+      h += `</div>`;
+    }
+
+    // Radar / fingerprint chart
+    h += `<div class="info-sl">Civ fingerprint</div>`;
+    h += `<div style="display:flex;justify-content:center;margin-top:4px">${radarChartSVG(civName)}</div>`;
   }
 
   // If a tech-tree archetype is active, show item-by-item checklist for this civ
@@ -1675,6 +1846,13 @@ function showCivInfo(civ) {
   const p = document.getElementById('info-panel');
   p.innerHTML = `<button class="close-panel" onclick="closePanel()">×</button>` + civInfoHtml(civ, false);
   p.classList.add('visible');
+  p.querySelectorAll('.arch-rank-ring').forEach(el => {
+    el.addEventListener('click', () => {
+      selectArchetype(+el.dataset.archI);
+      const gridTop = document.getElementById('civ-section');
+      if (gridTop) gridTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
   if (isMobile) p.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
