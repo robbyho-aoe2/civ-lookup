@@ -109,9 +109,9 @@ h1{font-size:22px;font-weight:700;color:var(--amberL);}
 .wr-mini-lbl{font-size:8px;color:var(--text3);}
 .wr-mini-val{font-size:11px;font-weight:700;}
 /* Info panel */
-#info-panel{display:none;margin-top:20px;padding:16px;background:var(--surf);border:1px solid var(--border);border-radius:12px;}
+#info-panel{display:none;margin-top:20px;padding:16px;background:var(--surf);border:1px solid var(--border);border-radius:12px;position:relative;}
 #info-panel.visible{display:block;}
-.close-panel{float:right;background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;}
+.close-panel{position:absolute;top:14px;right:14px;background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;z-index:5;}
 .close-panel:hover{color:var(--text);}
 /* Tooltip */
 #tooltip{display:none;position:fixed;width:340px;background:var(--surf2);border:1px solid var(--border2);border-radius:12px;padding:16px;box-shadow:0 24px 60px rgba(0,0,0,.85);z-index:1000;pointer-events:none;}
@@ -1747,17 +1747,36 @@ function civGrade(civName, arch) {
 
 /* Aggregate letter grade across every archetype a civ qualifies for —
    average the numeric grade value, then map back to the nearest letter. */
-function overallCivGrade(civName) {
+/* Raw average archetype-grade-value for every civ (0 if the civ has no
+   qualifying archetypes at all, which shouldn't happen in practice). */
+function rawOverallAverage(civName) {
   const values = [];
   CIV_ARCHETYPES.forEach(arch => {
     const g = civGrade(civName, arch);
     if (g) values.push(GRADE_VALUE[g]);
   });
-  if (!values.length) return null;
-  const avg = values.reduce((a,b) => a+b, 0) / values.length;
-  const rounded = Math.round(avg);
-  const letters = ['F','D','C','B','A','S']; // index 1..6 maps to F..S
-  return letters[Math.max(1, Math.min(6, rounded)) - 1];
+  return values.length ? values.reduce((a,b) => a+b, 0) / values.length : 0;
+}
+
+/* Overall grade: averaging several already-bell-curved archetype grades
+   naturally regresses toward the middle (a civ with one S and one F in
+   different categories averages to the same C as a civ that's C everywhere).
+   To keep the overall grade meaningfully spread out, the raw averages for
+   ALL 53 civs are re-ranked and re-bucketed into a fresh S–F bell curve,
+   the same way each individual archetype grade is computed — rather than
+   mapping the raw average directly onto a fixed 1–6 scale. */
+function overallCivGrade(civName) {
+  const all = ALL_CIVS.map(c => ({ c, avg: rawOverallAverage(c) })).filter(x => x.avg > 0);
+  const tiers = tierRangeForPoolSize(all.length);
+  const m = tiers.length;
+  const uniqueAvgs = [...new Set(all.map(x => x.avg))].sort((a, b) => b - a);
+  const k = uniqueAvgs.length;
+
+  const target = all.find(x => x.c === civName);
+  if (!target) return null;
+  const idx = uniqueAvgs.indexOf(target.avg);
+  const tierIdx = k <= 1 ? 0 : Math.min(m - 1, Math.floor(idx * m / k));
+  return tiers[tierIdx];
 }
 
 function civInfoHtml(civName, compact) {
@@ -1771,12 +1790,12 @@ function civInfoHtml(civName, compact) {
 
   const oGrade = compact ? null : overallCivGrade(civName);
   const oColor = oGrade ? GRADE_COLOR[oGrade] : 'var(--text3)';
-  let h = `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+  let h = `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-right:32px">
     <div>
       <div class="info-name">${civName}</div>
       ${focus ? `<div class="info-focus">${focus}</div>` : ''}
     </div>
-    ${oGrade ? `<div style="flex-shrink:0;text-align:center;padding:4px 12px;background:${oColor}15;border:2px solid ${oColor};border-radius:10px" title="Average grade across all archetype rankings">
+    ${oGrade ? `<div style="flex-shrink:0;text-align:center;padding:4px 12px;background:${oColor}15;border:2px solid ${oColor};border-radius:10px;margin-right:4px" title="Average grade across all archetype rankings, re-ranked against all civs">
       <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Overall</div>
       <div style="font-size:26px;font-weight:800;color:${oColor};line-height:1.1">${oGrade}</div>
     </div>` : ''}
