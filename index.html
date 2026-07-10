@@ -872,6 +872,12 @@ const SLINGER_ID = 185;                // Bonus ranged unit for Incas/Mapuche/Mu
    scoring for these three civs specifically. */
 const CHAMPI_IDS = [2552, 2554];       // Champi Warrior + Elite Champi Warrior
 
+/* Khitans replace Farms with Pastures, which have their own 3-tier upgrade
+   chain (Livestock Husbandry / Enclosures / Grazing Grasslands) matching the
+   cost/tier progression of Horse Collar / Heavy Plow / Crop Rotation exactly —
+   functionally the Farm-tech equivalent, not a Market-tech equivalent. */
+const KHITAN_PASTURE_IDS = { horseCollar:[1014], heavyPlow:[1013], cropRotation:[1012] };
+
 const TECH_IDS = {
   'Fletching':199,'Bodkin Arrow':200,'Bracer':201,
   'Thumb Ring':437,'Parthian Tactics':436,'Ballistics':93,
@@ -890,6 +896,7 @@ const TECH_IDS = {
   'Conscription':315,
   'Wheelbarrow':213,'Hand Cart':249,
   'Horse Collar':14,'Heavy Plow':13,'Crop Rotation':12,
+  'Livestock Husbandry':1014,'Enclosures':1013,'Grazing Grasslands':1012,
   'Double Bit Axe':202,'Bow Saw':203,'Two-Man Saw':221,
   'Gold Mining':55,'Gold Shaft Mining':182,
   'Stone Mining':278,'Stone Shaft Mining':279,
@@ -944,6 +951,9 @@ const TECH_DESCRIPTIONS = {
   14: 'Farms produce 75 more food',
   13: 'Farms produce 125 more food (cumulative)',
   12: 'Farms produce 125 more food (cumulative — total +325 food with all three)',
+  1014: 'Khitan Pasture tier 1 — equivalent to Horse Collar (more food from Pastures)',
+  1013: 'Khitan Pasture tier 2 — equivalent to Heavy Plow',
+  1012: 'Khitan Pasture tier 3 — equivalent to Crop Rotation',
   202:'Lumberjacks work 20% faster',
   203:'Lumberjacks work 20% faster (cumulative)',
   221:'Lumberjacks work 10% faster (cumulative — total +50% with all three)',
@@ -1033,6 +1043,12 @@ const EQUIVALENCE_NOTES = {
   2554: 'has Elite Champi Warrior instead (also counts for Two-Handed Swordsman)',
   1901: 'has Fire Lancer instead',
   1903: 'has Elite Fire Lancer instead',
+  1012: 'has Grazing Grasslands (Pasture tier) instead',
+  1013: 'has Enclosures (Pasture tier) instead',
+  1014: 'has Livestock Husbandry (Pasture tier) instead',
+  1014: 'has Livestock Husbandry (Pasture tier 1) instead',
+  1013: 'has Enclosures (Pasture tier 2) instead',
+  1012: 'has Grazing Grasslands (Pasture tier 3) instead',
 };
 
 const ARMOR_CLASSES = {
@@ -1049,6 +1065,10 @@ const CAT_COLORS = {
   Archer:'var(--teal)', 'Cavalry Archer':'var(--cyan)', Cavalry:'var(--blue)',
   Infantry:'var(--orange)', Siege:'var(--red)', Navy:'var(--cyan)',
   Monastery:'var(--purple)', Economy:'var(--green)', Fortifications:'var(--yellow)',
+  // Aliases matching CIV_ARCHETYPES[].label naming (slightly different strings
+  // from the quick-filter category names above, same practical colors)
+  Naval:'var(--cyan)', Monk:'var(--purple)', Eco:'var(--green)', Defensive:'var(--yellow)',
+  Camel:'#d97706', Elephant:'#7c3aed', Gunpowder:'var(--pink)',
 };
 
 /* ── Quick filter categories ──
@@ -1133,7 +1153,10 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:438},{t:'tech',id:45},{t:'tech',id:233},
   ]},
   {emoji:'💰',label:'Eco',bonusKey:'Eco',items:[
-    {t:'tech',id:213},{t:'tech',id:249},{t:'tech',id:12},{t:'tech',id:13},
+    {t:'tech',id:213},{t:'tech',id:249},
+    {t:'tech',id:14,extra:[1014]},
+    {t:'tech',id:13,extra:[1013]},
+    {t:'tech',id:12,extra:[1012]},
     {t:'tech',id:221},{t:'tech',id:202},{t:'tech',id:203},
     {t:'tech',id:182},{t:'tech',id:279},
   ]},
@@ -1150,7 +1173,7 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:435},{t:'tech',id:80},
   ]},
   {emoji:'🔫',label:'Gunpowder',bonusKey:'Gunpowder',items:[
-    {t:'unit',id:5},{t:'unit',id:36},{t:'unit',id:691},{t:'unit',id:420},
+    {t:'unit',id:5},{t:'unit',id:36},
     {t:'tech',id:47},
   ]},
 ];
@@ -1158,6 +1181,7 @@ const CIV_ARCHETYPES = [
 /* Game-timing archetypes — separate group, scored on estimated win rate by
    game duration rather than tech tree completeness */
 const TIMING_ARCHETYPES = [
+  {emoji:'🏆',label:'Overall',idx:-1,desc:'win rate across all game lengths combined'},
   {emoji:'⚡',label:'Early Game',idx:0,desc:'Win rate in games ending 0–20 minutes'},
   {emoji:'🏯',label:'Mid Game',idx:1,desc:'Win rate in games ending 20–40 minutes'},
   {emoji:'👑',label:'Late Game',idx:2,desc:'Win rate in games ending 40+ minutes'},
@@ -1188,6 +1212,21 @@ function extraUUBonus(civName, archLabel) {
     if (!rule.civs.includes(civName)) return;
     if (rule.ids.some(id => cd.units.has(id))) { pts += 1; notes.push(rule.note); }
   });
+  return { pts, notes };
+}
+
+/* Manual point adjustments for cases that don't fit a general rule —
+   verified against the live tech tree data rather than assumed. */
+const MANUAL_ADJUSTMENTS = {
+  Spanish: [{ arch:'Archer', pts:-1, note:'No Crossbowman upgrade — stuck on base Archer, cannot reach Arbalester' }],
+  Portuguese: [{ arch:'Eco', pts:1, note:'Can build Feitoria (Imperial Age resource-generating building)' }],
+};
+
+function manualAdjustment(civName, archLabel) {
+  const rules = MANUAL_ADJUSTMENTS[civName];
+  if (!rules) return { pts: 0, notes: [] };
+  let pts = 0, notes = [];
+  rules.filter(r => r.arch === archLabel).forEach(r => { pts += r.pts; notes.push(r.note); });
   return { pts, notes };
 }
 /* ================================================================
@@ -1279,12 +1318,62 @@ function techScoreCiv(civName, arch) {
 
 /* Bonus score from civ bonuses/castle techs/unique units (ABS data),
    worth 2 points per qualifying category (b=civ bonus, c=castle tech, u=unique unit) */
+/* Manual category overrides for specific castle/imperial techs whose effect
+   genuinely spans two archetypes but wouldn't both get picked up by keyword
+   classification (e.g. Circumnavigation's "sets map explored" clause doesn't
+   read as Defensive, but map awareness is a real defensive advantage). */
+const TECH_EXTRA_CATEGORY = {
+  'Circumnavigation': ['Defensive'],
+};
+
+/* Rule-based bonus scoring:
+     +2 per civ bonus that classifies into this archetype's category
+     +2 for the team bonus, if it classifies into this category
+     +2 for the 1st (Castle Age) unique tech, if relevant
+     +1 for the 2nd (Imperial Age) unique tech, if relevant
+     +1 per unique unit tagged with this category (also covers Monastery
+        Unique Units and the Fortified Church unique-Relic bonus, which are
+        tagged the same way as any other unique unit)
+   Manual adjustments (verified exceptions like Spanish lacking Crossbowman,
+   or Portuguese's Feitoria) are added on top. */
 function bonusScoreCiv(civName, arch) {
-  const abs = ABS[arch.bonusKey];
-  if (!abs || !abs[civName]) return { pts: 0, notes: [] };
-  const d = abs[civName];
-  const pts = (d.b || 0) + (d.c || 0) + (d.u || 0);
-  return { pts: pts * 2, notes: d.n || [], raw: d };
+  const label = arch.label;
+  let pts = 0;
+  const notes = [];
+
+  (CB[civName] || []).forEach(b => {
+    if (classifyBonusCategories(b).includes(label)) { pts += 2; notes.push(b); }
+  });
+
+  const team = TEAM_BONUS[civName];
+  if (team && classifyBonusCategories(team).includes(label)) {
+    pts += 2; notes.push(`Team bonus: ${team}`);
+  }
+
+  const uts = UNIQUE_TECHS[civName] || [];
+  uts.forEach((techName, i) => {
+    const desc = UNIQUE_TECH_DESCRIPTIONS[techName] || '';
+    const cats = classifyBonusCategories(techName + ' ' + desc);
+    const extra = TECH_EXTRA_CATEGORY[techName] || [];
+    const relevant = cats.includes(label) || extra.includes(label);
+    if (relevant) {
+      const tierPts = i === 0 ? 2 : 1;
+      pts += tierPts;
+      notes.push(`${techName}${desc ? ': ' + desc : ''}`);
+    }
+  });
+
+  const uu = (UNIQUE_UNITS[civName] || '').split(',').map(s => s.trim()).filter(Boolean);
+  uu.forEach(name => {
+    const cats = UNIQUE_UNIT_CATEGORY[name] || [];
+    if (cats.includes(label)) { pts += 1; notes.push(`${name} Unique Unit`); }
+  });
+
+  const manual = manualAdjustment(civName, label);
+  pts += manual.pts;
+  notes.push(...manual.notes);
+
+  return { pts, notes };
 }
 
 function totalScoreCiv(civName, arch) {
@@ -1458,8 +1547,13 @@ function renderArchetypeGrid() {
     const fill = pctBase >= 0.8 ? 'var(--green)' : pctBase >= 0.5 ? 'var(--amberL)' : 'var(--red)';
     const cls = civScoreClass(s.tech, max);
     const isActive = activeCard === c ? ' active' : '';
+    const grade = civGrade(c, arch);
+    const gcolor = grade ? GRADE_COLOR[grade] : 'var(--text3)';
     html += `<div class="civ-card ${cls}${isActive}" data-civ="${c}">
-      <div class="cname">${c}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="cname">${c}</div>
+        ${grade ? `<span style="font-size:11px;font-weight:800;color:${gcolor};background:${gcolor}22;border:1px solid ${gcolor};border-radius:5px;padding:0 5px;flex-shrink:0">${grade}</span>` : ''}
+      </div>
       <div class="score-bar-wrap"><div class="score-bar-fill" style="width:${Math.round(pctBase*100)}%;background:${fill}"></div></div>
       <div class="score-txt">${scoreLabel(s, max)}</div>
     </div>`;
@@ -1474,12 +1568,32 @@ function renderArchetypeGrid() {
   attachCardEvents();
 }
 
+function timingWR(civ, t) {
+  return t.idx === -1 ? (WR[civ] || [0])[0] : (GAME_DUR_WR[civ] || [0,0,0])[t.idx];
+}
+
+function timingGrades(t) {
+  const scores = {};
+  ALL_CIVS.forEach(c => { scores[c] = timingWR(c, t); });
+  const tiers = tierRangeForPoolSize(53);
+  const m = tiers.length;
+  const uniqueVals = [...new Set(Object.values(scores))].sort((a, b) => b - a);
+  const k = uniqueVals.length;
+  const grades = {};
+  ALL_CIVS.forEach(c => {
+    const idx = uniqueVals.indexOf(scores[c]);
+    const tierIdx = k <= 1 ? 0 : Math.min(m - 1, Math.floor(idx * m / k));
+    grades[c] = tiers[tierIdx];
+  });
+  return grades;
+}
+
 function renderTimingGrid() {
   const t = TIMING_ARCHETYPES[activeTiming];
-  const scored = ALL_CIVS.map(c => ({ c, wr: (GAME_DUR_WR[c]||[0,0,0])[t.idx] }))
-    .sort((a, b) => b.wr - a.wr);
+  const scored = ALL_CIVS.map(c => ({ c, wr: timingWR(c, t) })).sort((a, b) => b.wr - a.wr);
   const maxWr = Math.max(...scored.map(x => x.wr));
   const minWr = Math.min(...scored.map(x => x.wr));
+  const grades = timingGrades(t);
 
   let html = `<div class="section-hdr all">${t.emoji} ${t.label} — ${t.desc} (community-estimated, not official aoestats data)</div>`;
   html += `<div class="civ-grid">`;
@@ -1488,8 +1602,13 @@ function renderTimingGrid() {
     const cls = pct >= 0.7 ? 'has' : pct >= 0.35 ? 'partial' : 'missing';
     const fill = pct >= 0.7 ? 'var(--green)' : pct >= 0.35 ? 'var(--amberL)' : 'var(--red)';
     const isActive = activeCard === c ? ' active' : '';
+    const grade = grades[c];
+    const gcolor = grade ? GRADE_COLOR[grade] : 'var(--text3)';
     html += `<div class="civ-card ${cls}${isActive}" data-civ="${c}">
-      <div class="cname">${c}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="cname">${c}</div>
+        ${grade ? `<span style="font-size:11px;font-weight:800;color:${gcolor};background:${gcolor}22;border:1px solid ${gcolor};border-radius:5px;padding:0 5px;flex-shrink:0">${grade}</span>` : ''}
+      </div>
       <div class="score-bar-wrap"><div class="score-bar-fill" style="width:${Math.round(pct*100)}%;background:${fill}"></div></div>
       <div class="score-txt">${wr}% win rate</div>
     </div>`;
@@ -1681,19 +1800,118 @@ function radarChartSVG(civName) {
 }
 
 
-function classifyBonusText(text) {
+/* Classifies bonus/tech text into one or more archetype categories.
+   Returns an array of archetype LABELS (matching CIV_ARCHETYPES[].label)
+   so a single bonus can count toward more than one category when it
+   genuinely applies to both (e.g. a Camel Archer bonus is both Camel and
+   Cavalry Archer relevant). Order of checks matters: more specific
+   categories (Camel, Elephant, Cavalry Archer, Gunpowder) are checked
+   before the broader Cavalry/Archer buckets so they don't get swallowed. */
+function classifyBonusCategories(text) {
   const t = text.toLowerCase();
-  if (/cavalry|mounted|knight|hussar|paladin|camel|elephant|cataphract/.test(t) && !/archer/.test(t)) return CAT_COLORS.Cavalry;
-  if (/archer|skirmish|crossbow|longbow|arbalest/.test(t)) return CAT_COLORS.Archer;
-  if (/infantry|militia|swordsman|spearman|pikeman|halberdier|eagle/.test(t)) return CAT_COLORS.Infantry;
-  if (/siege|trebuchet|mangonel|onager|scorpion|ram\b/.test(t)) return CAT_COLORS.Siege;
-  if (/ship|dock|galley|galleon|fish|naval/.test(t)) return CAT_COLORS.Navy;
-  if (/monk|monaster|faith|relic|conver/.test(t)) return CAT_COLORS.Monastery;
-  if (/villager|farm|food|wood|gold|stone|resource|market|trade|mill|mining|lumber/.test(t)) return CAT_COLORS.Economy;
-  if (/tower|castle|wall|building|garrison|hp\b|armor|fortif/.test(t)) return CAT_COLORS.Fortifications;
-  if (/gunpowder|cannon|hand cannon/.test(t)) return 'var(--pink)';
-  return 'var(--text2)';
+  const cats = new Set();
+
+  // Strip age-progression references ("Castle Age", "Feudal/Castle/Imperial Age",
+  // "in Castle/Imperial Age", etc.) before checking for the word "castle" as a
+  // defensive-building keyword — otherwise any bonus scaling by age ("Ships
+  // +15% HP in Castle/Imperial Age") gets falsely tagged Defensive.
+  const tForDefense = t.replace(/\b(dark|feudal|castle|imperial)(\s*\/\s*(dark|feudal|castle|imperial))*\s+age\b/g, ' ');
+
+  const isCamel = /camel/.test(t);
+  const isElephant = /elephant/.test(t);
+  const isCavArcher = /cavalry archer|mounted archer|horse archer/.test(t);
+  const isGunpowder = /gunpowder|hand cannon|cannon galleon|bombard/.test(t);
+  const isCavalryish = /cavalry|mounted|knight|hussar|paladin|cataphract|steppe lancer/.test(t);
+  const isArcherish = /archer|skirmish|crossbow|longbow|arbalest/.test(t);
+  const isInfantry = /infantry|militia|swordsman|spearman|pikeman|halberdier|eagle warrior|champion/.test(t);
+  const isSiege = /siege|trebuchet|mangonel|onager|scorpion|\bram\b|battering/.test(t);
+  const isNavy = /ship|dock|galley|galleon|fish|naval|harbor/.test(t);
+  const isMonastery = /monk|monaster|faith|relic|conver|church/.test(t);
+  const isEco = /villager|farm|food|wood(?!en)|gold\b|stone\b|resource|market|trade|mill\b|mining|lumber|technolog.*research|research.*faster|research.*cheaper|technolog.*cheaper|technolog.*faster/.test(t);
+  const isDefensive = /tower|castles?\b|\bwalls?\b|\bbuildings?\b|garrison|fortif|elevation/.test(tForDefense);
+
+  if (isCamel) cats.add('Camel');
+  if (isElephant) cats.add('Elephant');
+  if (isCavArcher) cats.add('Cavalry Archer');
+  if (isGunpowder) cats.add('Gunpowder');
+  if (isCavalryish && !isArcherish) cats.add('Cavalry');
+  if (isArcherish) cats.add('Archer');
+  if (isInfantry) cats.add('Infantry');
+  if (isSiege) cats.add('Siege');
+  if (isNavy) cats.add('Naval');
+  if (isMonastery) cats.add('Monk');
+  if (isEco) cats.add('Eco');
+  if (isDefensive) cats.add('Defensive');
+
+  return [...cats];
 }
+
+/* Display color for a bonus line — picks the first matching category's color. */
+function classifyBonusText(text) {
+  const cats = classifyBonusCategories(text);
+  if (!cats.length) return 'var(--text2)';
+  const arch = CIV_ARCHETYPES.find(a => a.label === cats[0]);
+  return arch ? CAT_COLORS[arch.label] || 'var(--text2)' : 'var(--text2)';
+}
+
+/* Hand-tagged category map for unique units — short unit names rarely
+   contain useful keywords (e.g. "Konnik" tells you nothing programmatically),
+   so this is curated from known unit roles rather than auto-classified. */
+const UNIQUE_UNIT_CATEGORY = {
+  'Composite Bowman':['Archer'], 'Warrior Priest':['Monk'],
+  'Jaguar Warrior':['Infantry'],
+  'Ratha':['Cavalry Archer'],
+  'Camel Archer':['Camel','Cavalry Archer'], 'Genitour':['Archer'],
+  'Hussite Wagon':['Siege'], 'Houfnice':['Siege'],
+  'Longbowman':['Archer'],
+  'Konnik':['Cavalry'],
+  'Coustillier':['Cavalry'], 'Flemish Militia':['Infantry'],
+  'Arambai':['Cavalry Archer'],
+  'Cataphract':['Cavalry'],
+  'Woad Raider':['Infantry'],
+  'Chu Ko Nu':['Archer'], 'Dragon Ship':['Naval'],
+  'Kipchak':['Cavalry Archer'],
+  'Urumi Swordsman':['Infantry'], 'Thirisadai':['Naval'],
+  'Shotel Warrior':['Infantry'],
+  'Throwing Axeman':['Infantry'],
+  'Monaspa':['Cavalry'],
+  'Huskarl':['Infantry'],
+  'Chakram Thrower':['Archer'], 'Shrivamsha Rider':['Cavalry'], 'Camel Scout':['Camel'],
+  'Ghulam':['Infantry'], 'Imperial Camel Rider':['Camel'],
+  'Tarkan':['Cavalry'],
+  'Kamayuk':['Infantry'],
+  'Genoese Crossbowman':['Archer'], 'Condottiero':['Infantry'],
+  'Samurai':['Infantry'],
+  'Iron Pagoda':['Cavalry'], 'Grenadier':['Gunpowder'],
+  'Liao Dao':['Infantry'], 'Mounted Trebuchet':['Siege'],
+  'Ballista Elephant':['Siege','Elephant'],
+  'War Wagon':['Siege'], 'Turtle Ship':['Naval'],
+  'Leitis':['Cavalry'],
+  'Magyar Huszar':['Cavalry'],
+  'Karambit Warrior':['Infantry'],
+  'Gbeto':['Archer'],
+  'Kona':['Cavalry'], 'Bolas Rider':['Cavalry'],
+  'Plumed Archer':['Archer'],
+  'Mangudai':['Cavalry Archer'],
+  'Guecha Warrior':['Archer'], 'Temple Guard':['Infantry'],
+  'War Elephant':['Elephant'], 'Savar':['Cavalry'],
+  'Obuch':['Infantry'], 'Winged Hussar':['Cavalry'],
+  'Organ Gun':['Gunpowder'], 'Caravel':['Naval'],
+  'Centurion':['Infantry'], 'Legionary':['Infantry'],
+  'Mameluke':['Infantry','Camel'],
+  'White Feather Guard':['Archer'], 'War Chariot':['Siege'],
+  'Serjeant':['Infantry'],
+  'Boyar':['Cavalry'],
+  'Conquistador':['Gunpowder'], 'Missionary':['Monk'],
+  'Keshik':['Cavalry'], 'Flaming Camel':['Camel'],
+  'Teutonic Knight':['Infantry'],
+  'Blackwood Archer':['Archer'], 'Ibirapema Warrior':['Infantry'],
+  'Janissary':['Gunpowder'],
+  'Rattan Archer':['Archer'], 'Imperial Skirmisher':['Archer'],
+  'Berserk':['Infantry'], 'Longboat':['Naval'],
+  'Tiger Cavalry':['Cavalry'], 'Xianbei Raider':['Cavalry Archer'],
+  'Fire Archer':['Infantry'], 'Jian Swordsman':['Infantry'],
+};
 
 /* ================================================================
    INFO CONTENT
