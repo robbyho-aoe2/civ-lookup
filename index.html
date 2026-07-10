@@ -1342,6 +1342,13 @@ const TECH_EXTRA_CATEGORY = {
 const BONUS_CATEGORY_OVERRIDE = {
   'Settlements can train Spearman-line and Skirmishers': { exclude:['Archer','Infantry'], include:['Defensive'] },
 
+  // Vietnamese: Archery Range trains Archer-, Skirmisher-, AND Cavalry
+  // Archer-line units in-game, so "Archery Range units" legitimately covers
+  // Cavalry Archer too — the classifier only catches generic Archer from
+  // this text. Fire Lancers are shock infantry but don't match any Infantry
+  // keyword ("fire lancer" isn't in that list), so Infantry needs adding too.
+  'Archery Range units and Fire Lancers +20% HP': { include:['Cavalry Archer','Infantry'] },
+
   // Wei's team bonus mentions "Siege Weapons" as the target being attacked,
   // not a siege-strength bonus for Wei itself — classifier picks up "siege"
   // as a keyword regardless of which side of the bonus it's on.
@@ -1856,7 +1863,7 @@ function radialRing(pct, color, size) {
 /* Radar axes: the universal archetypes only (skip Camel/Elephant since those
    are restricted to a handful of civs and would just read as 0 or N/A for
    everyone else, distorting the shape rather than describing playstyle) */
-const RADAR_AXES = ['Archer','Cavalry Archer','Cavalry','Infantry','Siege','Naval','Monk','Eco','Defensive','Gunpowder'];
+const RADAR_AXES = ['Archer','Cavalry Archer','Cavalry','Camel','Elephant','Siege','Naval','Monk','Eco','Defensive','Gunpowder','Infantry'];
 
 function radarChartSVG(civName) {
   // Larger canvas with generous label padding so text never clips.
@@ -2219,20 +2226,23 @@ function civInfoHtml(civName, compact) {
     </p>`;
   }
 
-  // Archetype rankings: radial rings, sorted best rank first (only in full panel)
+  // Archetype rankings: radial rings, sorted by tier — S first, F last
+  // (raw rank alone can disagree with tier since ties share a grade; grade
+  // is the primary sort key, rank only breaks ties within the same tier).
   if (!compact) {
     const ranked = CIV_ARCHETYPES
       .map((arch, i) => {
         const pool = archetypeCivList(arch);
         if (!pool.includes(civName)) return null;
         const r = archetypeRank(civName, i);
-        return r ? { arch, i, r } : null;
+        const grade = civGrade(civName, arch);
+        return (r && grade) ? { arch, i, r, grade } : null;
       })
       .filter(Boolean)
-      .sort((a, b) => a.r.rank - b.r.rank);
+      .sort((a, b) => GRADE_VALUE[b.grade] - GRADE_VALUE[a.grade] || a.r.rank - b.r.rank);
 
     if (ranked.length) {
-      h += `<div class="info-sl">Archetype rankings — best first</div>`;
+      h += `<div class="info-sl">Archetype rankings — by tier, S to F</div>`;
       h += `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">`;
       ranked.forEach(({ arch, i, r }) => {
         const pct = 1 - (r.rank - 1) / r.of;
