@@ -1444,7 +1444,8 @@ const BONUS_CATEGORY_OVERRIDE = {
   // Korean bonus reduces the wood cost of generic army units (Ranged
   // Soldiers + Infantry) — a defensive-economy hybrid bonus, not really
   // about archer or infantry combat strength specifically.
-  'Ranged Soldiers and Infantry cost -50% wood': { exclude:['Infantry'], include:['Defensive','Archer'] },
+  'Ranged Soldiers and Infantry cost -50% wood': { exclude:['Infantry','Eco'], include:['Defensive','Archer'] },
+  'Villagers +3 line of sight': { exclude:['Eco'], include:['Defensive'] },
   'Warships cost -20% wood': { exclude:['Eco'] },
 
   // Spearman-line + Skirmisher pairings are a recurring "cheap defensive
