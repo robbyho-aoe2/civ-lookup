@@ -890,6 +890,7 @@ const KHITAN_PASTURE_IDS = { horseCollar:[1014], heavyPlow:[1013], cropRotation:
 
 const TECH_IDS = {
   'Fletching':199,'Bodkin Arrow':200,'Bracer':201,
+  'Padded Archer Armor':211,'Leather Archer Armor':212,'Ring Archer Armor':219,
   'Thumb Ring':437,'Parthian Tactics':436,'Ballistics':93,
   'Bloodlines':435,'Husbandry':39,
   'Scale Barding Armor':81,'Chain Barding Armor':82,'Plate Barding Armor':80,
@@ -917,6 +918,9 @@ const TECH_DESCRIPTIONS = {
   199:'Archer-line +1 attack, +1 range',
   200:'Archer-line +1 attack, +1 range (cumulative)',
   201:'Archer-line +1 attack, +1 range (cumulative — total +3/+3 with all three)',
+  211:'Blacksmith tech: Archers and Cavalry Archers +1 melee/+1 pierce armor',
+  212:'Blacksmith tech: Archers and Cavalry Archers +1 melee/+1 pierce armor (cumulative)',
+  219:'Blacksmith tech: Archers and Cavalry Archers +1 melee/+2 pierce armor (cumulative — total +3/+4 with all three)',
   437:'Archers fire 100% accurately and reload faster',
   436:'Cavalry Archers +2 pierce armor, +1 attack vs Infantry',
   93: 'Projectile units aim at predicted position — greatly reduces misses vs moving targets. Also required for gunpowder accuracy',
@@ -1089,10 +1093,13 @@ const QUICK_CATEGORIES = [
   { label:'Archers', color:CAT_COLORS.Archer, items:[
     'Arbalester','Elite Skirmisher','Hand Cannoneer',
     'Thumb Ring','Bracer','Bodkin Arrow','Fletching','Ballistics','Parthian Tactics',
+    'Padded Archer Armor','Leather Archer Armor','Ring Archer Armor',
   ]},
   { label:'Cavalry Archer', color:CAT_COLORS['Cavalry Archer'], items:[
     'Cavalry Archer','Heavy Cavalry Archer','Elephant Archer','Elite Elephant Archer',
     'Bloodlines','Husbandry','Thumb Ring','Parthian Tactics','Ballistics',
+    'Fletching','Bodkin Arrow','Bracer',
+    'Padded Archer Armor','Leather Archer Armor','Ring Archer Armor',
   ]},
   { label:'Cavalry', color:CAT_COLORS.Cavalry, items:[
     'Paladin','Hussar','Cavalier','Imperial Camel Rider','Heavy Camel Rider',
@@ -1140,6 +1147,8 @@ const CIV_ARCHETYPES = [
   {emoji:'🎯',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras'],items:[
     {t:'unit',id:474,extra:[...XIANBEI_IDS,...ELE_ARCHER_IDS]},
     {t:'tech',id:435},{t:'tech',id:39},{t:'tech',id:437},{t:'tech',id:436},{t:'tech',id:47},
+    {t:'tech',id:199},{t:'tech',id:200},{t:'tech',id:201},
+    {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
   {emoji:'⚔️',label:'Cavalry',bonusKey:'Cavalry',items:[
     {t:'unit',id:[569,1813],extra:HEI_GUANG_IDS},{t:'unit',id:[441,1707]},{t:'unit',id:283,extra:HEI_GUANG_IDS},
