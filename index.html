@@ -45,14 +45,10 @@ h1{font-size:22px;font-weight:700;color:var(--amberL);}
 .mode-btn.active{background:var(--amber);color:#1a0a00;}
 /* Archetypes */
 .arch-group-label{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
-#arch-btns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;}
-#arch-btns-timing{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.arch-pill-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:2px;}
 .arch-btn{font-size:12px;padding:5px 12px;background:var(--surf);border:1px solid var(--border);border-radius:20px;color:var(--text2);cursor:pointer;transition:.12s;}
 .arch-btn:hover{border-color:var(--amber);color:var(--amberL);}
 .arch-btn.on{background:var(--amber);color:#1a0a00;border-color:var(--amber);font-weight:700;}
-/* Active filter bar */
-#active-arch-bar{display:none;align-items:center;justify-content:space-between;background:var(--amberBg);border:1px solid var(--amber);border-radius:var(--radius);padding:6px 12px;margin-bottom:8px;font-size:12px;color:var(--amberL);}
-#active-arch-bar button{background:none;border:none;color:var(--amberL);cursor:pointer;font-size:14px;font-weight:700;}
 /* Quick filters */
 #quick-filters-details{margin-bottom:14px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--surf);}
 #quick-filters-details[open]{padding-bottom:14px;}
@@ -196,17 +192,6 @@ h1{font-size:22px;font-weight:700;color:var(--amberL);}
   </details>
   <div id="filter-chips"></div>
   <div id="status-bar"></div>
-  <div class="sug-label">Civ archetypes</div>
-  <div class="arch-group-label">Tech tree rankings</div>
-  <div id="arch-btns"></div>
-  <div class="arch-group-label" style="margin-top:6px">Game timing (estimated win rates by game length)</div>
-  <div id="arch-btns-timing"></div>
-  <div class="arch-group-label" style="margin-top:6px">Overall</div>
-  <div id="arch-btn-overall-tier"></div>
-  <div id="active-arch-bar">
-    <span id="active-arch-label"></span>
-    <button onclick="clearArchetype()">× Clear</button>
-  </div>
   <div id="civ-section"></div>
   <div id="info-panel"></div>
   <div class="footer">
@@ -1297,6 +1282,21 @@ const MANUAL_ADJUSTMENTS = {
   // treated as loosely equivalent to the tower tech cluster thematically,
   // even though it can't be wired in as a real per-tech equivalence.
   Bulgarians: [{ arch:'Defensive', pts:1, note:'Can build Krepost in Castle Age — a defensive structure with tower- and Castle-like properties' }],
+
+  // Ethiopians' foot archer attack-speed bonus is treated as exceptionally
+  // strong — worth +4 total instead of the standard +2.
+  Ethiopians: [{ arch:'Archer', pts:2, note:'Foot Archers attack +18% faster — treated as double value' }],
+  // Mongols' Cavalry Archer attack-speed bonus is treated as worth +3 total.
+  Mongols: [{ arch:'Cavalry Archer', pts:1, note:'Cavalry Archers attack +25% faster — treated as +1 extra value' }],
+  // Vietnamese: Archery Range units + Fire Lancers HP bonus worth +3 in both
+  // Archer and Infantry instead of the standard +2 each.
+  Vietnamese: [
+    { arch:'Archer', pts:1, note:'Archery Range units and Fire Lancers +20% HP — treated as +1 extra value' },
+    { arch:'Infantry', pts:1, note:'Archery Range units and Fire Lancers +20% HP — treated as +1 extra value' },
+  ],
+  // Franks' mounted-unit HP bonus is treated as worth +3 in Cavalry instead
+  // of the standard +2.
+  Franks: [{ arch:'Cavalry', pts:1, note:'Mounted Units +20% HP starting in Feudal Age — treated as +1 extra value' }],
 };
 
 function manualAdjustment(civName, archLabel) {
@@ -1395,6 +1395,25 @@ function hasIds(cd, ids, type) {
 function techScoreCiv(civName, arch) {
   const cd = civData[civName];
   if (!cd) return 0;
+
+  // Gunpowder special case: a civ with neither Hand Cannoneer nor Bombard
+  // Cannon has no real gunpowder identity — score 0/4 outright rather than
+  // give partial credit for Chemistry or Ring Archer Armor alone. And Ring
+  // Archer Armor only matters to a civ that can actually train Hand
+  // Cannoneers to benefit from it, so it's excluded for civs lacking that
+  // unit specifically (even if they do have Bombard Cannon).
+  if (arch.label === 'Gunpowder') {
+    const hasHC = cd.units.has(5);
+    const hasBC = cd.units.has(36);
+    if (!hasHC && !hasBC) return 0;
+    return arch.items.filter(it => {
+      if (it.t === 'tech' && it.id === 219 && !hasHC) return false; // Ring Archer Armor
+      const ids = Array.isArray(it.id) ? it.id : [it.id];
+      const allIds = it.extra ? [...ids, ...it.extra] : ids;
+      return it.t === 'unit' ? allIds.some(id => cd.units.has(id)) : allIds.some(id => cd.techs.has(id));
+    }).length;
+  }
+
   return arch.items.filter(it => {
     const ids = Array.isArray(it.id) ? it.id : [it.id];
     const allIds = it.extra ? [...ids, ...it.extra] : ids;
@@ -1500,6 +1519,7 @@ const BONUS_CATEGORY_OVERRIDE = {
   // ── Vietnamese ──
   'Imperial Skirmisher upgrade available in Imperial Age': { exclude:['Archer'], include:['Defensive'] },
   'Conscription free': { include:['Eco'] },
+  'Enemy Town Centers are revealed at the start of the game': { include:['Defensive'] },
 
   // ── Persians ──
   'Town Centers and Docks +100% HP and work +5/10/15/20% faster in Dark/Feudal/Castle/Imperial Age': { include:['Eco','Defensive'] },
@@ -1881,21 +1901,18 @@ function setMode(m) {
 function selectArchetype(idx) {
   if (activeArchetype === idx) { activeArchetype = null; }
   else { activeArchetype = idx; activeTiming = null; activeOverallTier = false; }
-  syncArchButtons();
   render();
 }
 
 function selectTiming(idx) {
   if (activeTiming === idx) { activeTiming = null; }
   else { activeTiming = idx; activeArchetype = null; activeOverallTier = false; }
-  syncArchButtons();
   render();
 }
 
 function selectOverallTier() {
   activeOverallTier = !activeOverallTier;
   if (activeOverallTier) { activeArchetype = null; activeTiming = null; }
-  syncArchButtons();
   render();
 }
 
@@ -1903,29 +1920,39 @@ function clearArchetype() {
   activeArchetype = null;
   activeTiming = null;
   activeOverallTier = true; // return to the default home view, not the old flat list
-  syncArchButtons();
   render();
 }
 
-function syncArchButtons() {
-  document.querySelectorAll('#arch-btns .arch-btn').forEach((b, i) => b.classList.toggle('on', i === activeArchetype));
-  document.querySelectorAll('#arch-btns-timing .arch-btn').forEach((b, i) => b.classList.toggle('on', i === activeTiming));
-  document.querySelectorAll('#arch-btn-overall-tier .arch-btn').forEach(b => b.classList.toggle('on', activeOverallTier));
-  const bar = document.getElementById('active-arch-bar');
-  if (activeArchetype !== null) {
-    bar.style.display = 'flex';
-    const a = CIV_ARCHETYPES[activeArchetype];
-    document.getElementById('active-arch-label').textContent = `${a.emoji} Ranking by ${a.label} completeness (tech + civ bonuses + castle techs + unique units)`;
-  } else if (activeTiming !== null) {
-    bar.style.display = 'flex';
-    const t = TIMING_ARCHETYPES[activeTiming];
-    document.getElementById('active-arch-label').textContent = `${t.emoji} Ranking by ${t.desc}`;
-  } else if (activeOverallTier) {
-    bar.style.display = 'flex';
-    document.getElementById('active-arch-label').textContent = `🏅 Tier List Overall — ranked by aggregate grade across every archetype`;
-  } else {
-    bar.style.display = 'none';
-  }
+/* Combined selector row — archetypes, timing, and overall-tier pills all in
+   one place, rendered fresh (with correct 'on' state baked in) every time
+   results redraw. Lives directly above the civ results, in the same spot
+   the old S/A/B/C/D/F navigation pills used to occupy. */
+function renderSelectorPillsHtml() {
+  let html = `<div class="arch-group-label">Tech tree rankings</div><div class="arch-pill-row">`;
+  CIV_ARCHETYPES.forEach((a, i) => {
+    const on = activeArchetype === i ? ' on' : '';
+    html += `<button class="arch-btn${on}" data-kind="archetype" data-i="${i}">${a.emoji} ${a.label}</button>`;
+  });
+  html += `</div><div class="arch-group-label" style="margin-top:8px">Game timing</div><div class="arch-pill-row">`;
+  TIMING_ARCHETYPES.forEach((t, i) => {
+    const on = activeTiming === i ? ' on' : '';
+    html += `<button class="arch-btn${on}" data-kind="timing" data-i="${i}">${t.emoji} ${t.label}</button>`;
+  });
+  const overallOn = activeOverallTier ? ' on' : '';
+  html += `<button class="arch-btn${overallOn}" data-kind="overall">🏅 Overall</button>`;
+  html += `</div>`;
+  return html;
+}
+
+function attachSelectorPillEvents(root) {
+  root.querySelectorAll('.arch-btn[data-kind]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const kind = btn.dataset.kind;
+      if (kind === 'archetype') selectArchetype(+btn.dataset.i);
+      else if (kind === 'timing') selectTiming(+btn.dataset.i);
+      else selectOverallTier();
+    });
+  });
 }
 
 /* ================================================================
@@ -1961,23 +1988,16 @@ function renderTierListShared(opts) {
     byGrade[g].sort((a, b) => valueOf(b) - valueOf(a) || a.localeCompare(b));
   });
 
-  let html = `<div class="section-hdr all">${headerHtml}</div>`;
+  // Selector pills live here now — same spot the old S/A/B/C/D/F
+  // tier-navigation row used to occupy, directly above the results.
+  let html = renderSelectorPillsHtml();
+  html += `<div class="section-hdr all" style="margin-top:14px">${headerHtml}</div>`;
   if (subHeaderHtml) html += `<div style="font-size:11px;color:var(--text3);margin-bottom:8px">${subHeaderHtml}</div>`;
-
-  html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">`;
-  TIER_ORDER.forEach(g => {
-    const gcolor = GRADE_COLOR[g];
-    const count = byGrade[g].length;
-    html += `<a href="#tier-${g}" style="text-decoration:none;display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;background:${gcolor}18;border:1px solid ${gcolor};color:${gcolor};font-size:12px;font-weight:700">
-      <span>${g} Tier</span><span style="opacity:.7;font-weight:500">${count}</span>
-    </a>`;
-  });
-  html += `</div>`;
 
   TIER_ORDER.forEach(g => {
     const civs = byGrade[g];
     const gcolor = GRADE_COLOR[g];
-    html += `<div id="tier-${g}" class="section-hdr" style="color:${gcolor};border-top-color:${gcolor}44">${g} Tier — ${civs.length} civ${civs.length !== 1 ? 's' : ''}</div>`;
+    html += `<div class="section-hdr" style="color:${gcolor};border-top-color:${gcolor}44">${g} Tier — ${civs.length} civ${civs.length !== 1 ? 's' : ''}</div>`;
     if (!civs.length) {
       html += `<div style="font-size:12px;color:var(--text3);padding:4px 0 8px">No civs landed in this tier this ranking.</div>`;
     } else {
@@ -1996,12 +2016,9 @@ function renderTierListShared(opts) {
     }
   });
 
-  html += `<div style="text-align:center;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
-    <button onclick="clearArchetype()" style="background:var(--amberBg);border:1px solid var(--amber);color:var(--amberL);padding:7px 18px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer">
-      × Clear ${clearLabel}
-    </button>
-  </div>`;
-  document.getElementById('civ-section').innerHTML = html;
+  const root = document.getElementById('civ-section');
+  root.innerHTML = html;
+  attachSelectorPillEvents(root);
   attachCardEvents();
 }
 
@@ -2119,7 +2136,8 @@ function renderGrid() {
   missing.sort((a, b) => civMatchCount(b) - civMatchCount(a) || a.localeCompare(b));
 
   const lbl = selected.length === 1 ? selected[0].name : `all ${selected.length} items`;
-  let html = '';
+  let html = renderSelectorPillsHtml();
+  html += `<div style="margin-top:14px"></div>`;
   if (!selected.length) {
     html += `<div class="section-hdr all">All 53 civilizations — click any civ to see its full tech tree by category</div>`;
     html += `<div class="civ-grid">${ALL_CIVS.map(c => cardHtml(c, 'neutral')).join('')}</div>`;
@@ -2137,7 +2155,9 @@ function renderGrid() {
       html += `<div class="civ-grid">${unknown.map(c => cardHtml(c, 'unknown')).join('')}</div>`;
     }
   }
-  document.getElementById('civ-section').innerHTML = html;
+  const root = document.getElementById('civ-section');
+  root.innerHTML = html;
+  attachSelectorPillEvents(root);
   attachCardEvents();
 }
 
@@ -2355,7 +2375,7 @@ const UNIQUE_UNIT_CATEGORY = {
   'Organ Gun':['Gunpowder'], 'Caravel':['Naval'],
   'Centurion':['Infantry'], 'Legionary':['Infantry'],
   'Mameluke':['Infantry','Camel'],
-  'White Feather Guard':['Archer'], 'War Chariot':['Siege'],
+  'White Feather Guard':['Infantry'], 'War Chariot':['Siege'],
   'Serjeant':['Infantry'],
   'Boyar':['Cavalry'],
   'Conquistador':['Gunpowder'], 'Missionary':['Monk'],
@@ -2618,12 +2638,20 @@ function civInfoHtml(civName, compact) {
 
       // Left: checklist
       h += `<div class="arch-items" style="flex:1;min-width:0">`;
+      // Same special case as techScoreCiv: a civ with neither Hand
+      // Cannoneer nor Bombard Cannon has no real gunpowder identity, so
+      // every item shows as missing rather than a misleading partial
+      // checkmark on Chemistry/Ring Archer Armor.
+      const gunpowderLocked = arch.label === 'Gunpowder' && cd && !cd.units.has(5) && !cd.units.has(36);
+      const noHandCannoneer = arch.label === 'Gunpowder' && cd && !cd.units.has(5);
       arch.items.forEach(it => {
         const ids = Array.isArray(it.id) ? it.id : [it.id];
-        const baseHas = cd ? ids.some(id => it.t === 'unit' ? cd.units.has(id) : cd.techs.has(id)) : false;
-        const extraMatch = (!baseHas && it.extra && cd)
+        let baseHas = cd ? ids.some(id => it.t === 'unit' ? cd.units.has(id) : cd.techs.has(id)) : false;
+        let extraMatch = (!baseHas && it.extra && cd)
           ? it.extra.find(id => it.t === 'unit' ? cd.units.has(id) : cd.techs.has(id))
           : null;
+        if (gunpowderLocked) { baseHas = false; extraMatch = null; }
+        else if (noHandCannoneer && it.t === 'tech' && it.id === 219) { baseHas = false; extraMatch = null; }
         const hasIt = baseHas || !!extraMatch;
         const mainId = ids[0];
         const nameEntry = it.t === 'unit'
@@ -2922,28 +2950,6 @@ function renderSuggestions() {
   });
 }
 
-function renderArchetypes() {
-  const el = document.getElementById('arch-btns');
-  el.innerHTML = CIV_ARCHETYPES.map((a, i) =>
-    `<button class="arch-btn" data-i="${i}">${a.emoji} ${a.label}</button>`
-  ).join('');
-  el.querySelectorAll('.arch-btn').forEach(btn => {
-    btn.addEventListener('click', () => selectArchetype(+btn.dataset.i));
-  });
-
-  const elT = document.getElementById('arch-btns-timing');
-  elT.innerHTML = TIMING_ARCHETYPES.map((a, i) =>
-    `<button class="arch-btn" data-i="${i}">${a.emoji} ${a.label}</button>`
-  ).join('');
-  elT.querySelectorAll('.arch-btn').forEach(btn => {
-    btn.addEventListener('click', () => selectTiming(+btn.dataset.i));
-  });
-
-  const elO = document.getElementById('arch-btn-overall-tier');
-  elO.innerHTML = `<button class="arch-btn">🏅 Tier List Overall</button>`;
-  elO.querySelector('.arch-btn').addEventListener('click', selectOverallTier);
-}
-
 /* ================================================================
    EVENTS
    ================================================================ */
@@ -2972,9 +2978,7 @@ function initEvents() {
    INIT
    ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
-  renderArchetypes();
   renderSuggestions();
-  syncArchButtons();
   initEvents();
   loadData();
 });
