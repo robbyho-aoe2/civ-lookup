@@ -227,7 +227,7 @@ const ALL_CIVS = [
   "Burmese","Byzantines","Celts","Chinese","Cumans","Dravidians","Ethiopians","Franks",
   "Georgians","Goths","Gurjaras","Hindustanis","Huns","Incas","Italians","Japanese",
   "Jurchens","Khitans","Khmer","Koreans","Lithuanians","Malay","Malians","Magyars",
-  "Mapuche","Mayans","Mongols","Muisca","Persians","Poles","Portuguese","Romans",
+  "Mapuche","Maya","Mongols","Muisca","Persians","Poles","Portuguese","Romans",
   "Saracens","Shu","Sicilians","Slavs","Spanish","Tatars","Teutons","Tupi",
   "Turks","Vietnamese","Vikings","Wei","Wu"
 ];
@@ -249,7 +249,7 @@ const WR = {
   Khmer:[52.6,52.1,52.7,53.0,52.8],     Koreans:[48.9,48.4,48.8,49.2,49.8],
   Lithuanians:[52.2,51.3,52.0,52.6,53.1],Malay:[49.5,48.7,49.3,49.8,50.4],
   Malians:[51.9,51.0,51.7,52.2,52.8],   Magyars:[51.1,50.2,50.9,51.5,52.1],
-  Mapuche:[50.2,49.8,50.3,50.6,51.0],   Mayans:[53.3,52.4,53.2,53.7,54.2],
+  Mapuche:[50.2,49.8,50.3,50.6,51.0],   Maya:[53.3,52.4,53.2,53.7,54.2],
   Mongols:[52.5,51.7,52.4,52.9,53.3],   Muisca:[49.8,49.4,49.9,50.2,50.6],
   Persians:[51.3,50.5,51.1,51.6,52.0],  Poles:[51.6,50.7,51.4,51.9,52.4],
   Portuguese:[50.4,49.6,50.2,50.8,51.3],Romans:[50.7,49.9,50.5,51.0,51.5],
@@ -297,7 +297,7 @@ const CB = {
   Malians:["Buildings cost -15% wood","Villagers drop off +10% more gold","Barracks Units +1/+2/+3 pierce armor in Feudal/Castle/Imperial Age"],
   Magyars:["Villagers defeat wolves with one strike","Scout Cavalry-line costs -15%","Melee attack upgrades free"],
   Mapuche:["Foragers drop off +25% food","Settlements can train Spearman-line and Skirmishers","Infantry, Slingers and Skirmishers +5/10/15 HP in Feudal/Castle/Imperial Age","Mounted Units generate +3 gold when defeating military units","Enemy Castles are revealed on the map"],
-  Mayans:["Start with +1 Villager, but -50 food","Resources last +15% longer","Foot Archers cost -10/20/30% in Feudal/Castle/Imperial Age"],
+  Maya:["Start with +1 Villager, but -50 food","Resources last +15% longer","Foot Archers cost -10/20/30% in Feudal/Castle/Imperial Age"],
   Mongols:["Hunters work +40% faster","Cavalry Archers attack +25% faster","Scout Cavalry-line and Steppe Lancers +20/30% HP in Castle/Imperial Age"],
   Muisca:["Advancing to the next Age costs -50% gold","Settlements cost -33% and heal nearby units","Champi Warriors and Archery Range Units +1/2/3 melee armor in Feudal/Castle/Imperial Age","Monks regain faith +50% faster","Caravan, Guilds free"],
   Persians:["Start with +50 wood and +50 food","Town Centers and Docks +100% HP and work +5/10/15/20% faster in Dark/Feudal/Castle/Imperial Age","Parthian Tactics available in Castle Age","Can build Caravanserai in Imperial Age"],
@@ -336,7 +336,7 @@ const CIV_FOCUS = {
   Khmer:"Siege and Elephant", Koreans:"Defensive and Naval",
   Lithuanians:"Cavalry and Monk", Malay:"Naval",
   Malians:"Infantry", Magyars:"Cavalry",
-  Mapuche:"Cavalry and Counter-Units", Mayans:"Archer",
+  Mapuche:"Cavalry and Counter-Units", Maya:"Archer",
   Mongols:"Cavalry Archer", Muisca:"Archer and Monk",
   Persians:"Cavalry", Poles:"Cavalry",
   Portuguese:"Naval and Gunpowder", Romans:"Infantry and Cavalry",
@@ -382,7 +382,7 @@ const UNIQUE_UNITS = {
   Malay:"Karambit Warrior",
   Malians:"Gbeto",
   Mapuche:"Kona, Bolas Rider",
-  Mayans:"Plumed Archer",
+  Maya:"Plumed Archer",
   Mongols:"Mangudai",
   Muisca:"Guecha Warrior, Temple Guard",
   Persians:"War Elephant, Savar",
@@ -438,7 +438,7 @@ const UNIQUE_TECHS = {
   Malay:["Thalassocracy","Forced Levy"],
   Malians:["Tigui","Farimba"],
   Mapuche:["Malon","Butalmapu"],
-  Mayans:["Hul'che Javelineers","Holcans"],
+  Maya:["Hul'che Javelineers","Holcans"],
   Mongols:["Nomads","Drill"],
   Muisca:["Herbalism","Huaracas"],
   Persians:["Kamandaran","Citadels"],
@@ -608,7 +608,7 @@ const TEAM_BONUS = {
   Malay: "Docks +6 line of sight",
   Malians: "Universities work +80% faster",
   Mapuche: "Spearman-line and Skirmishers +2 line of sight",
-  Mayans: "Walls cost -50%",
+  Maya: "Walls cost -50%",
   Mongols: "Scout Cavalry-line +2 line of sight",
   Muisca: "Natural gold sources last +15% longer",
   Persians: "Knight-line +2 attack vs. Ranged Soldiers",
@@ -663,7 +663,7 @@ const GAME_DUR_WR = {
   Malians:[50.5,52.0,51.8],
   Magyars:[50.8,51.5,51.0],
   Mapuche:[50.0,50.5,50.2],
-  Mayans:[50.5,53.5,52.5],
+  Maya:[50.5,53.5,52.5],
   Mongols:[52.0,52.0,52.5],
   Muisca:[49.5,50.0,50.2],
   Persians:[50.5,51.5,51.5],
@@ -689,7 +689,7 @@ const ABS = {
   'Archer':{
     Britons:{b:2,c:1,u:0,n:["Foot Archers +1/+2 range","Yeomen: Archers +1 more range"]},
     Ethiopians:{b:2,c:0,u:0,n:["Archers attack +18% faster"]},
-    Mayans:{b:2,c:0,u:0,n:["Archers cost -10/20/30% per Age"]},
+    Maya:{b:2,c:0,u:0,n:["Archers cost -10/20/30% per Age"]},
     Vietnamese:{b:2,c:0,u:1,n:["Archery Range units +20% HP","Rattan Archer + Imperial Skirmisher unique"]},
     Shu:{b:1,c:1,u:0,n:["Archery techs -25%","Bolt Magazine: Archers fire extra projectile"]},
     Koreans:{b:1,c:0,u:0,n:["Archer armor upgrades free"]},
@@ -791,7 +791,7 @@ const ABS = {
     Sicilians:{b:2,c:0,u:0,n:["Farm upgrades +125% extra food; start +100 stone"]},
     Wei:{b:2,c:0,u:0,n:["Free Villager per economic upgrade researched"]},
     Gurjaras:{b:1,c:0,u:0,n:["Garrison livestock in Mills; forage bushes at start"]},
-    Mayans:{b:1,c:0,u:0,n:["Resources last +15% longer"]},
+    Maya:{b:1,c:0,u:0,n:["Resources last +15% longer"]},
     Poles:{b:1,c:0,u:0,n:["Stone Miners generate gold; Folwark replaces Mill"]},
     Persians:{b:1,c:0,u:0,n:["TC/Dock work +5/10/15/20% faster per Age"]},
     Portuguese:{b:1,c:0,u:0,n:["Foragers generate wood in addition to food"]},
@@ -1086,6 +1086,12 @@ const EQUIVALENCE_NOTES = {
   1744: 'has Armored Elephant instead (no normal ram access)',
   1746: 'has Elite Armored Elephant instead (no normal ram access)',
   1132: 'has Battle Elephant instead',
+  1370: 'has Steppe Lancer instead',
+  1372: 'has Elite Steppe Lancer instead',
+  2566: 'has Kona instead',
+  2568: 'has Elite Kona instead',
+  2569: 'has Bolas Rider instead',
+  2571: 'has Elite Bolas Rider instead',
   1134: 'has Elite Battle Elephant instead',
   1012: 'has Grazing Grasslands (Pasture tier) instead',
   1013: 'has Enclosures (Pasture tier) instead',
@@ -1178,17 +1184,17 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:437},{t:'tech',id:201},{t:'tech',id:200},{t:'tech',id:199},{t:'tech',id:47},
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
-  {emoji:'🎯',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras'],items:[
-    {t:'unit',id:474,extra:[...XIANBEI_IDS,...ELE_ARCHER_IDS]},
+  {emoji:'🎯',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras'],items:[
+    {t:'unit',id:474,extra:[...XIANBEI_IDS,...ELE_ARCHER_IDS,2569,2571]},
     {t:'tech',id:435},{t:'tech',id:39},{t:'tech',id:437},{t:'tech',id:436},{t:'tech',id:47},
     {t:'tech',id:199},{t:'tech',id:200},{t:'tech',id:201},
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
-  {emoji:'⚔️',label:'Cavalry',bonusKey:'Cavalry',items:[
-    {t:'unit',id:[569,1813],extra:[...HEI_GUANG_IDS,1134]},
+  {emoji:'⚔️',label:'Cavalry',bonusKey:'Cavalry',restrictTo:['Armenians','Bengalis','Berbers','Bohemians','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Dravidians','Ethiopians','Franks','Georgians','Goths','Gurjaras','Hindustanis','Huns','Incas','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Malay','Malians','Magyars','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Tupi','Turks','Vietnamese','Vikings','Wei','Wu'],items:[
+    {t:'unit',id:[569,1813],extra:[...HEI_GUANG_IDS,1134,1372,2568]},
     {t:'unit',id:[441,1707]},
-    {t:'unit',id:283,extra:[...HEI_GUANG_IDS,1134]},
-    {t:'unit',id:38,extra:[1132]},
+    {t:'unit',id:283,extra:[...HEI_GUANG_IDS,1134,1372,2568]},
+    {t:'unit',id:38,extra:[1132,1370,2566]},
     {t:'tech',id:435},{t:'tech',id:80},{t:'tech',id:82},{t:'tech',id:81},{t:'tech',id:39},
     {t:'tech',id:67},{t:'tech',id:68},{t:'tech',id:75},{t:'tech',id:45},{t:'tech',id:46},
   ]},
@@ -1232,7 +1238,7 @@ const CIV_ARCHETYPES = [
   ]},
   {emoji:'🐪',label:'Camel',bonusKey:'Camel',restrictTo:['Berbers','Byzantines','Cumans','Ethiopians','Gurjaras','Hindustanis','Khitans','Malians','Mongols','Persians','Saracens','Tatars','Turks'],items:[
     {t:'unit',id:330},{t:'unit',id:329},
-    {t:'tech',id:435},{t:'tech',id:39},
+    {t:'tech',id:435},{t:'tech',id:39},{t:'tech',id:80},{t:'tech',id:82},{t:'tech',id:81},
   ]},
   {emoji:'🐘',label:'Elephant',bonusKey:'Elephant',restrictTo:['Bengalis','Burmese','Dravidians','Khmer','Malay','Vietnamese','Persians'],items:[
     {t:'unit',id:1132},{t:'unit',id:1134},
@@ -1518,6 +1524,108 @@ const BONUS_CATEGORY_OVERRIDE = {
 
   // ── Lithuanians ──
   'Each garrisoned Relic provides +1 attack to Knight-line and Leitis (maximum +4)': { exclude:['Monk','Defensive'], include:['Cavalry'] },
+
+  // ── Aztecs ──
+  'Military Units train +15% faster': { include:['Infantry','Archer'] },
+
+  // ── Britons ──
+  'Shepherds work +25% faster': { include:['Eco'] },
+
+  // ── Bulgarians (team bonus) ──
+  'Blacksmiths work +80% faster': { include:['Defensive'] },
+
+  // ── Burmese ──
+  'Battle Elephants +1 melee/+1 pierce armor': { include:['Cavalry'] },
+
+  // ── Celts ──
+  'Livestock animals within Celt unit line of sight cannot be stolen': { include:['Eco'] },
+
+  // ── Cumans ──
+  'One additional Town Center can be built in Feudal Age': { include:['Eco'] },
+  'Mounted Units move +5/10/15% faster in Feudal/Castle/Imperial Age': { include:['Cavalry Archer','Camel'] },
+
+  // ── Franks ──
+  'Foragers work +15% faster': { include:['Eco'] },
+  'Castles cost -15/25% in Castle/Imperial Age': { include:['Eco'] },
+  'Mounted Units +20% HP starting in Feudal Age': { include:['Cavalry Archer'] },
+
+  // ── Georgians ──
+  'Fortified Churches provide Villagers in a 9 tiles radius with +10% work rate': { exclude:['Defensive'] },
+  'Mounted Units regenerate 2/8/14 HP per minute in Feudal/Castle/Imperial Age': { include:['Cavalry Archer'] },
+  'Building repairs cost -25%': { include:['Eco'] },
+
+  // ── Goths ──
+  'Anarchy: Huskarls can be trained at Barracks': { include:['Infantry'] },
+  'Perfusion: Barracks work +100% faster': { include:['Infantry'] },
+  'Infantry +1/+2/+3 attack vs. buildings in Feudal/Castle/Imperial Age': { exclude:['Defensive'] },
+  'Loom is researched instantly': { include:['Defensive'] },
+  'Hunters carry +15; hunted animals last +20% longer': { include:['Eco'] },
+  '+10 population space in Imperial Age': { include:['Eco'] },
+
+  // ── Gurjaras ──
+  'Start with 2 Forage Bushes': { include:['Eco'] },
+  'Mounted Units deal +20/30/40% bonus damage in Feudal/Castle/Imperial Age': { include:['Camel','Cavalry Archer'] },
+  'Docks +5 garrison capacity': { include:['Defensive'] },
+  'Camel and Elephant Units train +25% faster': { include:['Cavalry Archer','Siege'] },
+
+  // ── Huns ──
+
+  // ── Incas ──
+  'Houses and Settlements provide +5 population space': { include:['Eco'] },
+  'Villagers affected by Infantry Blacksmith upgrades starting in Castle Age': { exclude:['Eco'], include:['Defensive'] },
+  'Start with a free Llama': { include:['Eco'] },
+
+  // ── Khitans ──
+  'Skirmishers, Spearman-, and Scout Cavalry-line train and upgrade +15% faster': { include:['Cavalry','Defensive'] },
+
+  // ── Magyars ──
+  'Melee attack upgrades free': { include:['Infantry','Cavalry'] },
+
+  // ── Malians ──
+  'Buildings cost -15% wood': { exclude:['Defensive'] },
+  'Barracks Units +1/+2/+3 pierce armor in Feudal/Castle/Imperial Age': { include:['Infantry'] },
+  'Universities work +80% faster': { include:['Defensive'] },
+
+  // ── Mapuche ──
+  'Infantry, Slingers and Skirmishers +5/10/15 HP in Feudal/Castle/Imperial Age': { include:['Defensive'] },
+
+  // ── Maya (formerly Mayans) ──
+
+  // ── Mongols ──
+  'Hunters work +40% faster': { include:['Eco'] },
+
+  // ── Muisca ──
+  'Settlements cost -33% and heal nearby units': { include:['Eco'] },
+  'Caravan, Guilds free': { include:['Eco'] },
+
+  // ── Poles ──
+  'Bloodlines and Scout Cavalry-line upgrades cost -50% food': { exclude:['Eco'] },
+
+  // ── Shu ──
+
+  // ── Slavs ──
+  'Arson, Gambesons free': { include:['Infantry'] },
+  'Military buildings (except Castles) provide +5 population space': { include:['Eco'] },
+
+  // ── Tatars ──
+  'Units deal +25% damage when fighting from higher elevation': { include:['Cavalry Archer','Cavalry','Camel'] },
+
+  // ── Tupi ──
+  'Villagers can garrison in Settlements': { exclude:['Eco'], include:['Defensive'] },
+  'Fallen units return 15% of their cost': { include:['Eco'] },
+  'Archery Range and Barracks upgrades cost -50% food': { include:['Infantry'] },
+
+  // ── Vikings ──
+  'Wheelbarrow, Hand Cart free': { include:['Eco'] },
+
+  // ── Wei ──
+  'Hei Guang Cavalry and Xianbei Raider +20/30% HP in Castle/Imperial Age': { include:['Cavalry Archer'] },
+  'Traction Trebuchets and Lou Chuans cost -25%': { include:['Naval'] },
+
+  // ── Wu ──
+  'Jian Swordsmen and Hei Guang Cavalry +2 attack in Imperial Age': { include:['Infantry'] },
+  'Careening, Dry Dock free': { include:['Naval'] }, // already Naval via keyword, explicit for clarity
+  'Military production buildings and Docks provide +55 food': { include:['Eco'] },
 };
 
 /* Same idea as BONUS_CATEGORY_OVERRIDE, but for Castle/Imperial unique techs,
@@ -1551,6 +1659,26 @@ const UNIQUE_TECH_CATEGORY_OVERRIDE = {
   'Shinkichon': { include:['Siege'] },
   'Hill Forts': { include:['Defensive'] },
   'First Crusade': { include:['Infantry'] },
+
+  'Steppe Husbandry': { include:['Cavalry Archer','Camel'] },
+  'Cuman Mercenaries': { include:['Cavalry Archer'] },
+  'Bearded Axe': { include:['Infantry'] },
+  'Chivalry': { include:['Cavalry'] },
+  'Kshatriyas': { include:['Eco'] },
+  'Frontier Guards': { include:['Cavalry Archer'] },
+  'Marauders': { include:['Cavalry'] },
+  'Andean Sling': { exclude:['Archer'], include:['Defensive'] },
+  'Fabric Shields': { include:['Infantry'] },
+  'Lamellar Armor': { include:['Defensive'] },
+  'Ordo Cavalry': { include:['Camel','Cavalry Archer'] },
+  'Butalmapu': { exclude:['Defensive'], include:['Cavalry Archer'] },
+  "Hul'che Javelineers": { exclude:['Archer'], include:['Defensive'] },
+  'Nomads': { include:['Eco'] },
+  'Herbalism': { include:['Infantry'] },
+  'Huaracas': { include:['Defensive'] },
+  'Szlachta Privileges': { exclude:['Eco'], include:['Cavalry'] },
+  'Bolt Magazine': { include:['Naval'] },
+  'Silk Armor': { include:['Cavalry'] },
 };
 
 function applyBonusOverride(text, cats) {
@@ -2129,7 +2257,7 @@ function classifyBonusCategories(text) {
   const isArcherish = /archer|skirmish|crossbow|longbow|arbalest/.test(t);
   const isInfantry = /infantry|militia|swordsman|spearman|pikeman|halberdier|eagle warrior|champion/.test(t);
   const isSiege = /siege|trebuchet|mangonel|onager|scorpion|\bram\b|battering/.test(t);
-  const isNavy = /ship|dock|galley|galleon|fish|naval|harbor/.test(t);
+  const isNavy = /ship|dock|galley|galleon|fish|naval|harbor|dromon|lou chuan/.test(t);
   const isMonastery = /monk|monaster|faith|relic|conver|church/.test(t);
   const isEco = /villager|farm|food|wood(?!en)|gold\b|stone\b|resource|market|trade|mill\b|mining|lumber|mule cart|technolog.*research|research.*faster|research.*cheaper|technolog.*cheaper|technolog.*faster/.test(t);
   const isDefensive = /tower|castles?\b|\bwalls?\b|\bbuildings?\b|garrison|fortif|elevation/.test(tForDefense);
@@ -2214,7 +2342,7 @@ const UNIQUE_UNIT_CATEGORY = {
   'Rattan Archer':['Archer'], 'Imperial Skirmisher':[],
   'Berserk':['Infantry'], 'Longboat':['Naval'],
   'Tiger Cavalry':['Cavalry'], 'Xianbei Raider':['Cavalry Archer'],
-  'Fire Archer':['Infantry'], 'Jian Swordsman':['Infantry'],
+  'Fire Archer':['Archer'], 'Jian Swordsman':['Infantry'],
 };
 
 /* ================================================================
