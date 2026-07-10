@@ -860,12 +860,15 @@ const UNIT_IDS = {
    not separate tech-tree choices). */
 const HEI_GUANG_IDS = [1944, 1946];   // base + upgraded Hei Guang Cavalry (Wei/Shu/Wu)
 const XIANBEI_IDS = [1952];            // Xianbei Raider (Wei's Cavalry Archer replacement)
+const ELE_ARCHER_IDS = [873, 875];     // Elephant Archer + Elite (Bengalis/Dravidians/Gurjaras' CA replacement)
+const TRACTION_TREB_IDS = [1942];      // Traction Trebuchet (Wei/Shu/Wu's Trebuchet replacement)
+const SLINGER_ID = 185;                // Bonus ranged unit for Incas/Mapuche/Muisca/Tupi (not a replacement — they also have normal Archers)
 
 /* Incas, Muisca, and Tupi have no access to the Militia-line (Long Swordsman/
    Two-Handed Swordsman/Champion) — their equivalent upgrade path is the shared
    Champi Warrior line. Counted as equivalent to Champion for Infantry archetype
    scoring for these three civs specifically. */
-const CHAMPI_IDS = [2552, 2554];
+const CHAMPI_IDS = [2552, 2554];       // Champi Warrior + Elite Champi Warrior
 
 const TECH_IDS = {
   'Fletching':199,'Bodkin Arrow':200,'Bracer':201,
@@ -981,6 +984,8 @@ const UNIT_DESCRIPTIONS = {
   1134:'Elite Battle Elephant. Strong vs buildings and melee; weak vs halbs and monks',
   873:'Ranged elephant unit (Bengalis, Dravidians, Gurjaras). Strong vs infantry at range; weak vs cavalry and skirmishers',
   875:'Elite Elephant Archer. Strong vs infantry at range; weak vs cavalry and skirmishers',
+  185:'Cheap early ranged infantry (Incas, Mapuche, Muisca, Tupi). Strong vs infantry in numbers; weak vs cavalry',
+  1942:'Long-range catapult (Wei/Shu/Wu Trebuchet replacement). Strong vs buildings; must pack/unpack to move',
   75:'Upgraded Militia-line. Strong vs buildings; weak vs archers',
   77:'Heavy swordsman. Strong vs cavalry and buildings; weak vs archers',
   473:'Elite swordsman. Strong vs cavalry, buildings, and spearmen; weak vs archers',
@@ -1008,6 +1013,20 @@ const UNIT_DESCRIPTIONS = {
   527:'Explosive ship. Sacrifices itself for massive AoE damage; strong vs ship groups',
   528:'Elite demo ship. Sacrifices itself for heavy AoE damage; strong vs ship groups',
   125:'Healer and converter. Strong vs cavalry (conversion bonus); weak vs everything in direct combat',
+};
+
+/* Maps a substitute unit's ID to a human note explaining what it replaces and
+   for whom — used to annotate the archetype tech checklist so a civ's card
+   shows "Champion (has Elite Champi Warrior instead)" rather than a flat ✗. */
+const EQUIVALENCE_NOTES = {
+  1944: 'has Hei Guang Cavalry instead',
+  1946: 'has Hei Guang Cavalry instead',
+  1952: 'has Xianbei Raider instead',
+  873:  'has Elephant Archer instead',
+  875:  'has Elite Elephant Archer instead',
+  1942: 'has Traction Trebuchet instead',
+  2552: 'has Champi Warrior instead',
+  2554: 'has Elite Champi Warrior instead (also counts for Two-Handed Swordsman)',
 };
 
 const ARMOR_CLASSES = {
@@ -1083,7 +1102,7 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:437},{t:'tech',id:201},{t:'tech',id:200},{t:'tech',id:199},{t:'tech',id:47},
   ]},
   {emoji:'🎯',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Vietnamese','Vikings','Wu','Bengalis','Dravidians','Gurjaras'],items:[
-    {t:'unit',id:474,extra:XIANBEI_IDS},{t:'unit',id:[873,875]},
+    {t:'unit',id:474,extra:[...XIANBEI_IDS,...ELE_ARCHER_IDS]},
     {t:'tech',id:435},{t:'tech',id:39},{t:'tech',id:437},{t:'tech',id:436},{t:'tech',id:47},
   ]},
   {emoji:'⚔️',label:'Cavalry',bonusKey:'Cavalry',items:[
@@ -1091,12 +1110,12 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:435},{t:'tech',id:80},{t:'tech',id:82},{t:'tech',id:81},{t:'tech',id:39},
   ]},
   {emoji:'🛡',label:'Infantry',bonusKey:'Infantry',items:[
-    {t:'unit',id:473,extra:CHAMPI_IDS},{t:'unit',id:359},{t:'unit',id:77},
+    {t:'unit',id:473,extra:[2554]},{t:'unit',id:359},{t:'unit',id:77,extra:[2554]},
     {t:'tech',id:77},{t:'tech',id:76},{t:'tech',id:74},{t:'tech',id:215},{t:'tech',id:602},
   ]},
   {emoji:'💣',label:'Siege',bonusKey:'Siege',items:[
-    {t:'unit',id:588},{t:'unit',id:542},{t:'unit',id:36},{t:'unit',id:331},
-    {t:'tech',id:47},{t:'tech',id:377},{t:'tech',id:321},{t:'tech',id:50},
+    {t:'unit',id:588},{t:'unit',id:542},{t:'unit',id:36},{t:'unit',id:331,extra:TRACTION_TREB_IDS},
+    {t:'tech',id:47},{t:'tech',id:377},{t:'tech',id:321},
   ]},
   {emoji:'⛵',label:'Naval',bonusKey:'Naval',items:[
     {t:'unit',id:691},{t:'unit',id:420},{t:'unit',id:528},{t:'unit',id:539},
@@ -1137,6 +1156,33 @@ const TIMING_ARCHETYPES = [
   {emoji:'🏯',label:'Mid Game',idx:1,desc:'Win rate in games ending 20–40 minutes'},
   {emoji:'👑',label:'Late Game',idx:2,desc:'Win rate in games ending 40+ minutes'},
 ];
+
+/* Small additive bonuses (+1 point each, distinct from the 2-point ABS civ-trait
+   bonuses) for civs whose unique units meaningfully strengthen an archetype
+   even though they don't replace a specific missing tech-tree slot — e.g.
+   Slingers give Incas/Mapuche/Muisca/Tupi a cheap extra ranged option on top
+   of their normal Archer line, rather than substituting for it. */
+const EXTRA_UU_BONUS = {
+  Archer: [
+    { ids:[185], civs:['Incas','Mapuche','Muisca','Tupi'], note:'Slinger — cheap bonus ranged unit alongside normal Archers' },
+  ],
+  Infantry: [
+    { ids:[2582,2584], civs:['Tupi'], note:'Ibirapema Warrior — unique ranged-infantry hybrid' },
+    { ids:[879,881], civs:['Incas'], note:'Kamayuk — unique anti-cavalry infantry' },
+  ],
+};
+
+function extraUUBonus(civName, archLabel) {
+  const cd = civData[civName];
+  const rules = EXTRA_UU_BONUS[archLabel];
+  if (!cd || !rules) return { pts: 0, notes: [] };
+  let pts = 0, notes = [];
+  rules.forEach(rule => {
+    if (!rule.civs.includes(civName)) return;
+    if (rule.ids.some(id => cd.units.has(id))) { pts += 1; notes.push(rule.note); }
+  });
+  return { pts, notes };
+}
 /* ================================================================
    STATE
    ================================================================ */
@@ -1237,7 +1283,9 @@ function bonusScoreCiv(civName, arch) {
 function totalScoreCiv(civName, arch) {
   const tech = techScoreCiv(civName, arch);
   const bonus = bonusScoreCiv(civName, arch);
-  return { tech, bonusPts: bonus.pts, total: tech + bonus.pts, notes: bonus.notes };
+  const extraUU = extraUUBonus(civName, arch.label);
+  const bonusPts = bonus.pts + extraUU.pts;
+  return { tech, bonusPts, total: tech + bonusPts, notes: [...bonus.notes, ...extraUU.notes] };
 }
 
 function archetypeCivList(arch) {
@@ -1572,7 +1620,8 @@ function radialRing(pct, color, size) {
 const RADAR_AXES = ['Archer','Cavalry Archer','Cavalry','Infantry','Siege','Naval','Monk','Eco','Defensive','Gunpowder'];
 
 function radarChartSVG(civName) {
-  const size = 280, cx = size/2, cy = size/2, maxR = 100;
+  // Larger canvas with generous label padding so text never clips
+  const size = 420, cx = size/2, cy = size/2, maxR = 130;
   const axes = RADAR_AXES.map(label => CIV_ARCHETYPES.find(a => a.label === label)).filter(Boolean);
   const n = axes.length;
   const values = axes.map(arch => {
@@ -1584,7 +1633,7 @@ function radarChartSVG(civName) {
 
   const pts = values.map((v, i) => {
     const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
-    const rad = 20 + v * maxR;
+    const rad = 24 + v * maxR;
     return [cx + rad * Math.cos(angle), cy + rad * Math.sin(angle)];
   });
   const polyPoints = pts.map(p => p.join(',')).join(' ');
@@ -1594,27 +1643,29 @@ function radarChartSVG(civName) {
   [0.25, 0.5, 0.75, 1].forEach(f => {
     const ringPts = axes.map((_, i) => {
       const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
-      const rad = 20 + f * maxR;
+      const rad = 24 + f * maxR;
       return [cx + rad * Math.cos(angle), cy + rad * Math.sin(angle)].join(',');
     }).join(' ');
     gridRings += `<polygon points="${ringPts}" fill="none" stroke="var(--border)" stroke-width="1"/>`;
   });
 
-  // Axis lines + labels
+  // Axis lines + two-line labels (emoji on top, archetype name below)
   let axisLines = '', labels = '';
   axes.forEach((arch, i) => {
     const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
-    const x2 = cx + (20 + maxR) * Math.cos(angle), y2 = cy + (20 + maxR) * Math.sin(angle);
+    const x2 = cx + (24 + maxR) * Math.cos(angle), y2 = cy + (24 + maxR) * Math.sin(angle);
     axisLines += `<line x1="${cx}" y1="${cy}" x2="${x2}" y2="${y2}" stroke="var(--border)" stroke-width="1"/>`;
-    const lx = cx + (20 + maxR + 16) * Math.cos(angle), ly = cy + (20 + maxR + 16) * Math.sin(angle);
-    const anchor = Math.abs(Math.cos(angle)) < 0.3 ? 'middle' : (Math.cos(angle) > 0 ? 'start' : 'end');
-    labels += `<text x="${lx}" y="${ly}" font-size="9" fill="var(--text3)" text-anchor="${anchor}" dominant-baseline="middle">${arch.emoji}</text>`;
+    const cosA = Math.cos(angle), sinA = Math.sin(angle);
+    const lx = cx + (24 + maxR + 34) * cosA, ly = cy + (24 + maxR + 34) * sinA;
+    const anchor = Math.abs(cosA) < 0.25 ? 'middle' : (cosA > 0 ? 'start' : 'end');
+    labels += `<text x="${lx}" y="${ly - 6}" font-size="15" text-anchor="${anchor}">${arch.emoji}</text>`;
+    labels += `<text x="${lx}" y="${ly + 9}" font-size="10" font-weight="600" fill="var(--text2)" text-anchor="${anchor}">${arch.label}</text>`;
   });
 
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
     ${gridRings}${axisLines}
     <polygon points="${polyPoints}" fill="rgba(200,146,42,.25)" stroke="var(--amber)" stroke-width="2"/>
-    ${pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="var(--amberL)"/>`).join('')}
+    ${pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="var(--amberL)"/>`).join('')}
     ${labels}
   </svg>`;
 }
@@ -1637,6 +1688,42 @@ function classifyBonusText(text) {
 /* ================================================================
    INFO CONTENT
    ================================================================ */
+/* ================================================================
+   TIER GRADES (S/A/B/C/D/F) — based on raw score, bell-curve distributed
+   ================================================================ */
+function tierGradesForArchetype(arch) {
+  const pool = archetypeCivList(arch);
+  const scored = pool.map(c => ({ c, score: totalScoreCiv(c, arch).total }))
+    .sort((a, b) => b.score - a.score);
+  const n = scored.length;
+  const sCount = Math.min(5, Math.max(1, Math.round(n * 0.07)));
+  const fCount = sCount;
+  const rest = Math.max(0, n - sCount - fCount);
+  const aCount = Math.round(rest * 0.22);
+  const dCount = Math.round(rest * 0.22);
+  const bcRest = Math.max(0, rest - aCount - dCount);
+  const bCount = Math.round(bcRest * 0.5);
+  const cCount = bcRest - bCount;
+
+  const grades = {};
+  let i = 0;
+  const assign = (count, letter) => { for (let k=0;k<count && i<n;k++,i++) grades[scored[i].c] = letter; };
+  assign(sCount, 'S'); assign(aCount, 'A'); assign(bCount, 'B');
+  assign(cCount, 'C'); assign(dCount, 'D'); assign(fCount, 'F');
+  // Any rounding leftover goes to C (the bulk tier)
+  while (i < n) { grades[scored[i].c] = 'C'; i++; }
+  return grades;
+}
+
+const GRADE_COLOR = { S:'var(--green)', A:'#86efac', B:'var(--amberL)', C:'var(--text2)', D:'#fb923c', F:'var(--red)' };
+
+function civGrade(civName, arch) {
+  const pool = archetypeCivList(arch);
+  if (!pool.includes(civName)) return null;
+  const grades = tierGradesForArchetype(arch);
+  return grades[civName] || null;
+}
+
 function civInfoHtml(civName, compact) {
   const wr = WR[civName] || [];
   const bonuses = CB[civName] || [];
@@ -1650,7 +1737,9 @@ function civInfoHtml(civName, compact) {
   if (focus) h += `<div class="info-focus">${focus}</div>`;
 
   if (wr.length) {
-    h += `<div class="info-sl">Win rates · 1v1 RM ${isNew ? '(est.)' : '(approx)'}</div>`;
+    const wrRank = ALL_CIVS.map(c => ({ c, o: (WR[c]||[0])[0] })).sort((a,b) => b.o - a.o);
+    const myRank = wrRank.findIndex(x => x.c === civName) + 1;
+    h += `<div class="info-sl">Win rates · 1v1 RM ${isNew ? '(est.)' : '(approx)'} <span style="color:var(--amberL);font-weight:700;text-transform:none;letter-spacing:normal">— overall rank #${myRank}/53</span></div>`;
     h += `<div class="wr-grid">`;
     WRL.forEach((lbl, i) => {
       const r = wr[i];
@@ -1716,7 +1805,9 @@ function civInfoHtml(civName, compact) {
       h += `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">`;
       ranked.forEach(({ arch, i, r }) => {
         const pct = 1 - (r.rank - 1) / r.of;
-        const color = pct >= 0.8 ? 'var(--green)' : pct >= 0.5 ? 'var(--amberL)' : 'var(--text3)';
+        const color = pct >= 0.66 ? 'var(--green)' : pct >= 0.33 ? 'var(--amberL)' : 'var(--red)';
+        const grade = civGrade(civName, arch);
+        const gcolor = grade ? GRADE_COLOR[grade] : 'var(--text3)';
         h += `<div class="arch-rank-ring" data-arch-i="${i}" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;width:60px" title="Click to see full ${arch.label} ranking">
           <div style="position:relative;display:flex;align-items:center;justify-content:center">
             ${radialRing(pct, color, 46)}
@@ -1724,6 +1815,7 @@ function civInfoHtml(civName, compact) {
           </div>
           <span style="font-size:9px;color:var(--text3);text-align:center;line-height:1.2">${arch.label}</span>
           <span style="font-size:10px;font-weight:700;color:${color}">#${r.rank}/${r.of}</span>
+          <span style="font-size:13px;font-weight:800;color:${gcolor};background:${gcolor}22;border:1px solid ${gcolor};border-radius:5px;padding:0 6px;margin-top:1px">${grade || 'N/A'}</span>
         </div>`;
       });
       h += `</div>`;
@@ -1740,24 +1832,45 @@ function civInfoHtml(civName, compact) {
     const pool = archetypeCivList(arch);
     if (pool.includes(civName)) {
       const cd = civData[civName];
-      const bonus = bonusScoreCiv(civName, arch);
+      const s = totalScoreCiv(civName, arch);
+      const grade = civGrade(civName, arch);
+      const gcolor = grade ? GRADE_COLOR[grade] : 'var(--text3)';
+
       h += `<div class="info-sl">${arch.emoji} ${arch.label} — tech checklist</div>`;
-      h += `<div class="arch-items">`;
+      h += `<div style="display:flex;gap:16px;align-items:flex-start">`;
+
+      // Left: checklist
+      h += `<div class="arch-items" style="flex:1;min-width:0">`;
       arch.items.forEach(it => {
         const ids = Array.isArray(it.id) ? it.id : [it.id];
-        const allIds = it.extra ? [...ids, ...it.extra] : ids;
-        const hasIt = cd ? allIds.some(id => it.t === 'unit' ? cd.units.has(id) : cd.techs.has(id)) : false;
+        const baseHas = cd ? ids.some(id => it.t === 'unit' ? cd.units.has(id) : cd.techs.has(id)) : false;
+        const extraMatch = (!baseHas && it.extra && cd)
+          ? it.extra.find(id => it.t === 'unit' ? cd.units.has(id) : cd.techs.has(id))
+          : null;
+        const hasIt = baseHas || !!extraMatch;
         const mainId = ids[0];
         const nameEntry = it.t === 'unit'
           ? Object.entries(UNIT_IDS).find(([,v]) => (Array.isArray(v) ? v[0] : v) === mainId)
           : Object.entries(TECH_IDS).find(([,v]) => v === mainId);
         const itemName = nameEntry ? nameEntry[0] : `ID ${mainId}`;
-        h += `<div class="arch-item ${hasIt ? 'ai-has' : 'ai-miss'}">${hasIt ? '✓' : '✗'} ${itemName}</div>`;
+        const note = extraMatch ? EQUIVALENCE_NOTES[extraMatch] : null;
+        h += `<div class="arch-item ${hasIt ? 'ai-has' : 'ai-miss'}">${hasIt ? '✓' : '✗'} ${itemName}${note ? ` <span style="color:var(--amberL);font-weight:400">(${note})</span>` : ''}</div>`;
       });
-      if (bonus.pts > 0) {
-        h += `<div class="arch-item ai-note">⚡ +${bonus.pts} bonus points from civ traits:</div>`;
-        bonus.notes.forEach(n => h += `<div class="arch-note">• ${n}</div>`);
+      const extraUU = extraUUBonus(civName, arch.label);
+      const allNotes = [...(bonusScoreCiv(civName, arch).notes || []), ...extraUU.notes];
+      if (s.bonusPts > 0) {
+        h += `<div class="arch-item ai-note">⚡ +${s.bonusPts} bonus points from civ traits:</div>`;
+        allNotes.forEach(n => h += `<div class="arch-note">• ${n}</div>`);
       }
+      h += `</div>`;
+
+      // Right: big overall grade for this archetype
+      h += `<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 14px;background:${gcolor}15;border:1px solid ${gcolor};border-radius:12px">
+        <span style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Grade</span>
+        <span style="font-size:34px;font-weight:800;color:${gcolor};line-height:1">${grade || 'N/A'}</span>
+        <span style="font-size:10px;color:var(--text3)">${s.total} pts</span>
+      </div>`;
+
       h += `</div>`;
     }
   }
@@ -1848,9 +1961,11 @@ function showCivInfo(civ) {
   p.classList.add('visible');
   p.querySelectorAll('.arch-rank-ring').forEach(el => {
     el.addEventListener('click', () => {
+      // Update the top grid to this archetype's ranking, but keep the panel
+      // in place and refresh it in-place with the checklist for this civ —
+      // no scroll-to-top, since the user is looking at the bottom.
       selectArchetype(+el.dataset.archI);
-      const gridTop = document.getElementById('civ-section');
-      if (gridTop) gridTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      showCivInfo(civ);
     });
   });
   if (isMobile) p.scrollIntoView({ behavior:'smooth', block:'nearest' });
