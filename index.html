@@ -1613,7 +1613,7 @@ const BONUS_CATEGORY_OVERRIDE = {
   'Start with a free Llama': { include:['Eco'] },
 
   // ── Khitans ──
-  'Skirmishers, Spearman-, and Scout Cavalry-line train and upgrade +15% faster': { exclude:['Infantry'], include:['Cavalry','Defensive'] },
+  'Skirmishers, Spearman-, and Scout Cavalry-line train and upgrade +15% faster': { exclude:['Infantry','Archer'], include:['Cavalry','Defensive'] },
 
   // ── Magyars ──
   'Melee attack upgrades free': { include:['Infantry','Cavalry'] },
@@ -1706,7 +1706,8 @@ const UNIQUE_TECH_CATEGORY_OVERRIDE = {
   'Marauders': { include:['Cavalry'] },
   'Andean Sling': { exclude:['Archer'], include:['Defensive'] },
   'Fabric Shields': { include:['Infantry'] },
-  'Lamellar Armor': { include:['Defensive'] },
+  'Lamellar Armor': { exclude:['Archer'], include:['Defensive'] },
+  'Atlatl': { exclude:['Archer'], include:['Defensive'] },
   'Ordo Cavalry': { include:['Camel','Cavalry Archer'] },
   'Butalmapu': { exclude:['Defensive'], include:['Cavalry Archer'] },
   "Hul'che Javelineers": { exclude:['Archer'], include:['Defensive'] },
