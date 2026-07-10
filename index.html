@@ -858,7 +858,9 @@ const UNIT_IDS = {
   'Mangonel':280,'Onager':550,'Siege Onager':588,
   'Scorpion':279,'Heavy Scorpion':542,
   'Bombard Cannon':36,'Trebuchet':331,
-  'Siege Ram':548,'Battering Ram':1258,
+  'Siege Ram':548,'Capped Ram':1258,
+  'Rocket Cart':1904,'Heavy Rocket Cart':1907,
+  'Carrack':2628,
   'Cannon Galleon':420,'Elite Cannon Galleon':691,
   'Fire Ship':529,'Fast Fire Ship':539,
   'Demolition Ship':527,'Heavy Demolition Ship':528,
@@ -891,6 +893,9 @@ const KHITAN_PASTURE_IDS = { horseCollar:[1014], heavyPlow:[1013], cropRotation:
 const TECH_IDS = {
   'Fletching':199,'Bodkin Arrow':200,'Bracer':201,
   'Padded Archer Armor':211,'Leather Archer Armor':212,'Ring Archer Armor':219,
+  'Devotion':46,'Block Printing':230,'Heresy':439,'Herbal Medicine':441,
+  'Keep':63,'Bombard Tower':64,'Guard Tower':140,'Fortified Wall':194,'Arrowslits':608,
+  'Gambesons':875,'Carvel Hull':907,
   'Thumb Ring':437,'Parthian Tactics':436,'Ballistics':93,
   'Bloodlines':435,'Husbandry':39,
   'Scale Barding Armor':81,'Chain Barding Armor':82,'Plate Barding Armor':80,
@@ -952,7 +957,18 @@ const TECH_DESCRIPTIONS = {
   373:'Ships constructed 80% faster and cost -20% wood',
   65: 'Fishing Ships work 20% faster',
   22: 'Villagers +1/+1 armor, +15 HP',
-  45: 'Your Monks take 500% longer to be converted by enemies',
+  45: 'All your units +4 min/+4 max conversion resistance (stacks with Devotion) — protects expensive units like cavalry and siege from enemy Monks',
+  46: 'All your units +1 min/+1 max conversion resistance — available to every civ, protects expensive units like cavalry and siege from enemy Monks',
+  230:'Monks +100% heal effectiveness',
+  439:'Enemy Monks convert your units 20% slower',
+  441:'Monks +50% heal speed',
+  63: 'Watch Tower upgrade: Towers +2 attack, +25% HP',
+  64: 'Unlocks Bombard Tower — heavy gunpowder tower, strong vs siege and buildings',
+  140:'Watch Tower upgrade: Towers +2 range, +2 attack',
+  194:'Walls upgrade to Fortified Walls: +55% HP, garrisoned infantry can fire arrows',
+  608:'Towers +1/+2/+3 attack (Watch/Guard/Keep tier); also boosts secondary arrows',
+  875:'Infantry +1 pierce armor',
+  907:'Transport Ships, Galleons and Cannon Galleons +10% HP, move 10% faster',
   231:'Monks +15 HP',
   252:'Monks move 15% faster',
   316:'Monks can convert siege weapons, ships, and buildings',
@@ -1032,7 +1048,10 @@ const UNIT_DESCRIPTIONS = {
   36:'Gunpowder siege. Strong vs buildings and armored units; weak vs cavalry and skirmishers',
   331:'Long-range catapult. Strong vs buildings; must pack/unpack to move; vulnerable while packed',
   548:'Heavy battering ram. Strong vs buildings; extremely weak vs combat units',
-  1258:'Basic ram. Strong vs buildings; very weak vs all combat units',
+  1258:'Anti-building siege weapon (Capped Ram tier). Strong vs buildings; very weak vs all combat units; garrisoned Infantry boosts speed and attack',
+  1904:'Ranged siege cart (Chinese/Jurchens/Khitans). Strong vs infantry and archers in groups; weak vs cavalry',
+  1907:'Elite Rocket Cart. Strong vs infantry and archers in groups; weak vs cavalry',
+  2628:'Late-tier warship. Strong vs other ships and buildings; slower than lighter warships',
   21:'Basic warship. Strong vs other ships; weak vs fire ships',
   420:'Siege ship. Strong vs buildings and ships at range; weak vs fire ships',
   691:'Elite siege ship. Strong vs buildings and galleys; weak vs fire ships',
@@ -1057,6 +1076,10 @@ const EQUIVALENCE_NOTES = {
   2554: 'has Elite Champi Warrior instead (also counts for Two-Handed Swordsman)',
   1901: 'has Fire Lancer instead',
   1903: 'has Elite Fire Lancer instead',
+  1904: 'has Rocket Cart instead',
+  1907: 'has Heavy Rocket Cart instead',
+  1120: 'has Ballista Elephant instead',
+  1122: 'has Elite Ballista Elephant instead',
   1012: 'has Grazing Grasslands (Pasture tier) instead',
   1013: 'has Enclosures (Pasture tier) instead',
   1014: 'has Livestock Husbandry (Pasture tier) instead',
@@ -1105,23 +1128,28 @@ const QUICK_CATEGORIES = [
     'Paladin','Hussar','Cavalier','Imperial Camel Rider','Heavy Camel Rider',
     'Battle Elephant','Elite Battle Elephant','Steppe Lancer',
     'Bloodlines','Plate Barding Armor','Chain Barding Armor','Husbandry',
+    'Forging','Iron Casting','Blast Furnace','Devotion','Faith',
   ]},
   { label:'Infantry', color:CAT_COLORS.Infantry, items:[
     'Champion','Champi Warrior','Fire Lancer','Two-Handed Swordsman','Halberdier','Pikeman',
     'Eagle Warrior','Elite Eagle Warrior',
     'Plate Mail Armor','Chain Mail Armor','Squires','Arson',
+    'Forging','Iron Casting','Blast Furnace','Gambesons',
   ]},
   { label:'Siege', color:CAT_COLORS.Siege, items:[
-    'Trebuchet','Siege Onager','Heavy Scorpion','Bombard Cannon','Siege Ram',
-    'Chemistry','Siege Engineers','Heated Shot','Sappers',
+    'Trebuchet','Siege Onager','Onager','Heavy Scorpion','Bombard Cannon',
+    'Capped Ram','Siege Ram','Rocket Cart','Heavy Rocket Cart',
+    'Chemistry','Siege Engineers','Sappers',
   ]},
   { label:'Navy', color:CAT_COLORS.Navy, items:[
-    'Elite Cannon Galleon','Heavy Demolition Ship','Cannon Galleon','Fast Fire Ship',
-    'Galleon','War Galley','Dry Dock','Careening','Gillnets','Shipwright',
+    'Elite Cannon Galleon','Heavy Demolition Ship','Cannon Galleon','Fast Fire Ship','Carrack',
+    'Galleon','War Galley','Dry Dock','Careening','Shipwright',
+    'Bracer','Iron Casting','Blast Furnace','Carvel Hull',
   ]},
   { label:'Monastery', color:CAT_COLORS.Monastery, items:[
-    'Monk','Faith','Sanctity','Fervor','Redemption',
+    'Monk','Sanctity','Fervor','Redemption',
     'Atonement','Theocracy','Illumination','Conscription',
+    'Block Printing','Heresy','Herbal Medicine',
   ]},
   { label:'Economy', color:CAT_COLORS.Economy, items:[
     'Loom','Wheelbarrow','Hand Cart','Crop Rotation',
@@ -1130,6 +1158,7 @@ const QUICK_CATEGORIES = [
   ]},
   { label:'Fortifications', color:CAT_COLORS.Fortifications, items:[
     'Hoardings','Masonry','Architecture','Murder Holes',
+    'Keep','Bombard Tower','Guard Tower','Fortified Wall','Arrowslits',
   ]},
 ];
 
@@ -1143,6 +1172,7 @@ const CIV_ARCHETYPES = [
   {emoji:'🏹',label:'Archer',bonusKey:'Archer',items:[
     {t:'unit',id:492},{t:'unit',id:6},
     {t:'tech',id:437},{t:'tech',id:201},{t:'tech',id:200},{t:'tech',id:199},{t:'tech',id:47},
+    {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
   {emoji:'🎯',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras'],items:[
     {t:'unit',id:474,extra:[...XIANBEI_IDS,...ELE_ARCHER_IDS]},
@@ -1153,23 +1183,32 @@ const CIV_ARCHETYPES = [
   {emoji:'⚔️',label:'Cavalry',bonusKey:'Cavalry',items:[
     {t:'unit',id:[569,1813],extra:HEI_GUANG_IDS},{t:'unit',id:[441,1707]},{t:'unit',id:283,extra:HEI_GUANG_IDS},
     {t:'tech',id:435},{t:'tech',id:80},{t:'tech',id:82},{t:'tech',id:81},{t:'tech',id:39},
+    {t:'tech',id:67},{t:'tech',id:68},{t:'tech',id:75},{t:'tech',id:45},{t:'tech',id:46},
   ]},
   {emoji:'🛡',label:'Infantry',bonusKey:'Infantry',items:[
     {t:'unit',id:473,extra:[2554,1901,1903]},{t:'unit',id:359,extra:[1901,1903]},{t:'unit',id:77,extra:[2554,1901,1903]},
     {t:'tech',id:77},{t:'tech',id:76},{t:'tech',id:74},{t:'tech',id:215},{t:'tech',id:602},
+    {t:'tech',id:67},{t:'tech',id:68},{t:'tech',id:75},{t:'tech',id:875},
   ]},
   {emoji:'💣',label:'Siege',bonusKey:'Siege',items:[
-    {t:'unit',id:588},{t:'unit',id:542},{t:'unit',id:36},{t:'unit',id:331,extra:TRACTION_TREB_IDS},
+    {t:'unit',id:550,extra:[1904,1907]},
+    {t:'unit',id:588,extra:[1907]},
+    {t:'unit',id:542},{t:'unit',id:36},
+    {t:'unit',id:331,extra:TRACTION_TREB_IDS},
+    {t:'unit',id:1258,extra:[1120,1122]},
+    {t:'unit',id:548,extra:[1120,1122]},
     {t:'tech',id:47},{t:'tech',id:377},{t:'tech',id:321},
   ]},
   {emoji:'⛵',label:'Naval',bonusKey:'Naval',items:[
-    {t:'unit',id:691},{t:'unit',id:420},{t:'unit',id:528},{t:'unit',id:539},
-    {t:'tech',id:35},{t:'tech',id:34},{t:'tech',id:375},{t:'tech',id:374},{t:'tech',id:373},{t:'tech',id:65},{t:'tech',id:380},{t:'tech',id:47},
+    {t:'unit',id:691},{t:'unit',id:420},{t:'unit',id:528},{t:'unit',id:539},{t:'unit',id:2628},
+    {t:'tech',id:35},{t:'tech',id:34},{t:'tech',id:375},{t:'tech',id:374},{t:'tech',id:373},{t:'tech',id:47},
+    {t:'tech',id:201},{t:'tech',id:68},{t:'tech',id:75},{t:'tech',id:907},
   ]},
   {emoji:'✝',label:'Monk',bonusKey:'Monastery',items:[
     {t:'unit',id:125},
     {t:'tech',id:231},{t:'tech',id:252},{t:'tech',id:316},{t:'tech',id:319},
-    {t:'tech',id:438},{t:'tech',id:45},{t:'tech',id:233},
+    {t:'tech',id:438},{t:'tech',id:233},
+    {t:'tech',id:230},{t:'tech',id:439},{t:'tech',id:441},
   ]},
   {emoji:'💰',label:'Eco',bonusKey:'Eco',items:[
     {t:'tech',id:213},{t:'tech',id:249},
@@ -1182,6 +1221,7 @@ const CIV_ARCHETYPES = [
   {emoji:'🏰',label:'Defensive',bonusKey:'Defensive',items:[
     {t:'tech',id:379},{t:'tech',id:50},{t:'tech',id:51},
     {t:'tech',id:322},{t:'tech',id:380},{t:'tech',id:321},{t:'tech',id:315},
+    {t:'tech',id:63},{t:'tech',id:64},{t:'tech',id:140},{t:'tech',id:194},{t:'tech',id:608},
   ]},
   {emoji:'🐪',label:'Camel',bonusKey:'Camel',restrictTo:['Berbers','Byzantines','Cumans','Ethiopians','Gurjaras','Hindustanis','Khitans','Malians','Mongols','Persians','Saracens','Tatars','Turks'],items:[
     {t:'unit',id:330},{t:'unit',id:329},
@@ -1235,6 +1275,13 @@ function extraUUBonus(civName, archLabel) {
 const MANUAL_ADJUSTMENTS = {
   Spanish: [{ arch:'Archer', pts:-1, note:'No Crossbowman upgrade — stuck on base Archer, cannot reach Arbalester' }],
   Portuguese: [{ arch:'Eco', pts:1, note:'Can build Feitoria (Imperial Age resource-generating building)' }],
+  // Krepost is a special Bulgarian defensive structure with no tracked tech/unit
+  // ID in the underlying data (it's a standalone building, not a research
+  // item), so it can't be checked the normal way — applied as a flat manual
+  // bonus instead. It functions like a mini-Castle/tower hybrid, so it's
+  // treated as loosely equivalent to the tower tech cluster thematically,
+  // even though it can't be wired in as a real per-tech equivalence.
+  Bulgarians: [{ arch:'Defensive', pts:1, note:'Can build Krepost in Castle Age — a defensive structure with tower- and Castle-like properties' }],
 };
 
 function manualAdjustment(civName, archLabel) {
@@ -1371,6 +1418,17 @@ const BONUS_CATEGORY_OVERRIDE = {
   'Thumb Ring, Parthian Tactics free': { include:['Archer','Cavalry Archer'] },
   'Livestock animals last +50% longer': { include:['Eco'] },
   'New Town Centers spawn 2 Sheep starting in Castle Age': { include:['Eco'] },
+
+  // Korean bonus reduces the wood cost of generic army units (Ranged
+  // Soldiers + Infantry) — a defensive-economy hybrid bonus, not really
+  // about archer or infantry combat strength specifically.
+  'Ranged Soldiers and Infantry cost -50% wood': { exclude:['Archer','Infantry'], include:['Defensive'] },
+
+  // Spearman-line + Skirmisher pairings are a recurring "cheap defensive
+  // garrison" civ-design pattern — grouped under Defensive rather than
+  // split across Infantry/Archer.
+  'Spearman-line and Skirmisher-line move +10% faster': { exclude:['Infantry','Archer'], include:['Defensive'] },
+  'Spearman-line and Skirmishers +2 line of sight': { exclude:['Infantry','Archer'], include:['Defensive'] },
 };
 
 /* Same idea as BONUS_CATEGORY_OVERRIDE, but for Castle/Imperial unique techs,
@@ -1383,6 +1441,8 @@ const UNIQUE_TECH_CATEGORY_OVERRIDE = {
   // "Champi Warriors" doesn't match the Infantry keyword list (requires
   // "champion"), so this wouldn't auto-classify at all otherwise.
   'Caciques': { include:['Infantry','Defensive'] },
+  // Same Spearman/Skirmisher defensive-pairing logic as the BONUS overrides above.
+  'Tower Shields': { exclude:['Infantry','Archer'], include:['Defensive'] },
 };
 
 function applyBonusOverride(text, cats) {
