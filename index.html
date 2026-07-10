@@ -614,61 +614,58 @@ const TEAM_BONUS = {
   Wei: "Cavalry +2 attack vs. Siege Weapons",
   Wu: "Houses built +100% faster",
 };
-const GAME_DUR_WR = {
-  Armenians:[50.2,50.5,50.1],
-  Aztecs:[52.5,51.8,52.1],
-  Bengalis:[49.5,50.3,49.8],
-  Berbers:[50.8,51.5,51.0],
-  Bohemians:[49.5,50.8,53.0],
-  Britons:[50.5,53.0,53.2],
-  Bulgarians:[51.0,50.8,50.5],
-  Burgundians:[50.5,52.5,51.2],
-  Burmese:[49.5,49.5,49.0],
-  Byzantines:[50.2,51.5,51.5],
-  Celts:[51.5,51.5,51.2],
-  Chinese:[49.5,51.0,51.5],
-  Cumans:[51.8,50.5,49.8],
-  Dravidians:[49.5,49.8,49.5],
-  Ethiopians:[50.5,52.0,52.5],
-  Franks:[51.0,54.5,52.0],
-  Georgians:[50.2,51.0,51.5],
-  Goths:[53.0,51.0,49.5],
-  Gurjaras:[51.0,52.5,52.0],
-  Hindustanis:[50.8,52.0,52.0],
-  Huns:[51.0,52.0,51.0],
-  Incas:[50.5,51.0,51.5],
-  Italians:[49.5,50.2,50.8],
-  Japanese:[50.5,51.5,51.5],
-  Jurchens:[50.2,51.0,51.5],
-  Khitans:[50.5,51.5,51.8],
-  Khmer:[51.0,52.5,52.5],
-  Koreans:[48.5,49.0,52.0],
-  Lithuanians:[50.5,52.0,52.5],
-  Malay:[51.5,49.8,49.5],
-  Malians:[50.5,52.0,51.8],
-  Magyars:[50.8,51.5,51.0],
-  Mapuche:[50.0,50.5,50.2],
-  Maya:[50.5,53.5,52.5],
-  Mongols:[52.0,52.0,52.5],
-  Muisca:[49.5,50.0,50.2],
-  Persians:[50.5,51.5,51.5],
-  Poles:[50.8,52.0,51.5],
-  Portuguese:[48.5,50.5,51.8],
-  Romans:[50.5,51.0,50.8],
-  Saracens:[50.5,51.5,51.2],
-  Shu:[50.0,50.5,50.2],
-  Sicilians:[50.5,52.0,51.5],
-  Slavs:[50.5,51.5,51.5],
-  Spanish:[50.0,50.8,51.5],
-  Tatars:[50.5,52.0,51.5],
-  Teutons:[48.5,51.0,52.5],
-  Tupi:[50.5,50.8,50.5],
-  Turks:[49.5,51.0,53.5],
-  Vietnamese:[49.0,50.0,51.5],
-  Vikings:[50.5,51.5,52.0],
-  Wei:[50.5,51.5,52.0],
-  Wu:[50.5,51.0,50.8],
+const MAP_WR = {
+  Armenians:{Arabia:49.74,Arena:54.58,Megarandom:53.1,Glade:52.37,Lowland:52.88,Haboob:54.26,Socotra:52.52,Graveyards:50.57,Shrubland:50.69,Valley:55.78},
+  Aztecs:{Arabia:49.33,Arena:47.5,Megarandom:48.11,Glade:49.81,Lowland:49.08,Haboob:52.22,Socotra:50.07,Graveyards:48.96,Shrubland:43.93,Valley:47.69},
+  Bengalis:{Arabia:49.19,Arena:52.82,Megarandom:51.57,Glade:48.9,Lowland:46.76,Haboob:48.9,Socotra:46.2,Graveyards:51.22,Shrubland:50.78,Valley:47.8},
+  Berbers:{Arabia:50.61,Arena:43.6,Megarandom:48.99,Glade:40.72,Lowland:50.73,Haboob:44.73,Socotra:41.31,Graveyards:50.0,Shrubland:48.24,Valley:47.35},
+  Bohemians:{Arabia:46.48,Arena:53.36,Megarandom:47.04,Glade:51.88,Lowland:45.86,Haboob:43.41,Socotra:46.23,Graveyards:45.94,Shrubland:43.19,Valley:50.0},
+  Britons:{Arabia:47.52,Arena:47.56,Megarandom:48.42,Glade:46.08,Lowland:44.75,Haboob:45.85,Socotra:45.01,Graveyards:46.02,Shrubland:44.65,Valley:47.97},
+  Bulgarians:{Arabia:53.13,Arena:50.35,Megarandom:54.17,Glade:57.17,Lowland:52.29,Haboob:59.39,Socotra:53.32,Graveyards:51.39,Shrubland:53.75,Valley:58.27},
+  Burgundians:{Arabia:48.19,Arena:50.9,Megarandom:48.9,Glade:47.44,Lowland:50.19,Haboob:46.01,Socotra:46.46,Graveyards:51.74,Shrubland:46.22,Valley:47.46},
+  Burmese:{Arabia:48.03,Arena:49.16,Megarandom:48.57,Glade:50.36,Lowland:48.64,Haboob:51.08,Socotra:50.0,Graveyards:52.36,Shrubland:44.96,Valley:46.81},
+  Byzantines:{Arabia:47.81,Arena:44.0,Megarandom:45.5,Glade:50.55,Lowland:46.58,Haboob:46.51,Socotra:50.43,Graveyards:46.09,Shrubland:46.5,Valley:44.89},
+  Celts:{Arabia:49.21,Arena:52.14,Megarandom:50.15,Glade:52.72,Lowland:51.25,Haboob:46.32,Socotra:49.8,Graveyards:47.1,Shrubland:47.11,Valley:44.0},
+  Chinese:{Arabia:50.01,Arena:44.41,Megarandom:50.99,Glade:48.49,Lowland:46.48,Haboob:44.79,Socotra:49.03,Graveyards:51.35,Shrubland:44.83,Valley:45.27},
+  Cumans:{Arabia:48.05,Arena:52.23,Megarandom:47.27,Glade:48.82,Lowland:52.61,Haboob:44.36,Socotra:45.38,Graveyards:45.09,Shrubland:47.5,Valley:49.25},
+  Dravidians:{Arabia:48.07,Arena:50.32,Megarandom:47.84,Glade:45.6,Lowland:47.4,Haboob:46.63,Socotra:47.98,Graveyards:49.86,Shrubland:54.63,Valley:51.9},
+  Ethiopians:{Arabia:50.28,Arena:49.45,Megarandom:49.58,Glade:48.66,Lowland:52.09,Haboob:52.38,Socotra:51.51,Graveyards:48.63,Shrubland:49.14,Valley:52.24},
+  Franks:{Arabia:51.4,Arena:46.79,Megarandom:49.64,Glade:47.06,Lowland:53.29,Haboob:44.05,Socotra:43.43,Graveyards:52.77,Shrubland:56.7,Valley:49.83},
+  Georgians:{Arabia:47.36,Arena:41.74,Megarandom:50.82,Glade:41.37,Lowland:48.35,Haboob:48.78,Socotra:42.86,Graveyards:51.85,Shrubland:42.44,Valley:45.65},
+  Goths:{Arabia:50.29,Arena:48.31,Megarandom:49.24,Glade:52.46,Lowland:50.17,Haboob:53.89,Socotra:54.03,Graveyards:51.38,Shrubland:45.98,Valley:52.13},
+  Gurjaras:{Arabia:48.05,Arena:46.0,Megarandom:46.36,Glade:46.82,Lowland:48.02,Haboob:45.99,Socotra:48.49,Graveyards:45.69,Shrubland:45.18,Valley:50.15},
+  Hindustanis:{Arabia:52.72,Arena:51.41,Megarandom:52.62,Glade:47.49,Lowland:52.12,Haboob:48.53,Socotra:44.44,Graveyards:49.73,Shrubland:51.88,Valley:51.22},
+  Huns:{Arabia:51.25,Arena:42.91,Megarandom:53.67,Glade:43.85,Lowland:52.71,Haboob:50.12,Socotra:47.65,Graveyards:53.19,Shrubland:49.79,Valley:51.61},
+  Incas:{Arabia:51.92,Arena:45.15,Megarandom:50.93,Glade:50.04,Lowland:50.33,Haboob:54.23,Socotra:55.13,Graveyards:51.27,Shrubland:51.13,Valley:49.66},
+  Italians:{Arabia:49.02,Arena:51.04,Megarandom:51.8,Glade:49.35,Lowland:45.55,Haboob:48.1,Socotra:47.21,Graveyards:47.49,Shrubland:50.23,Valley:52.74},
+  Japanese:{Arabia:50.8,Arena:50.77,Megarandom:51.75,Glade:55.93,Lowland:50.41,Haboob:55.24,Socotra:55.28,Graveyards:50.23,Shrubland:48.34,Valley:51.76},
+  Khmer:{Arabia:48.73,Arena:51.2,Megarandom:46.54,Glade:48.54,Lowland:49.27,Haboob:45.74,Socotra:47.56,Graveyards:46.72,Shrubland:43.09,Valley:48.68},
+  Koreans:{Arabia:49.51,Arena:46.7,Megarandom:49.07,Glade:51.05,Lowland:46.25,Haboob:52.28,Socotra:49.73,Graveyards:45.89,Shrubland:44.26,Valley:46.9},
+  Lithuanians:{Arabia:49.5,Arena:46.06,Megarandom:49.73,Glade:44.66,Lowland:50.17,Haboob:49.59,Socotra:47.86,Graveyards:51.24,Shrubland:50.52,Valley:51.38},
+  Magyars:{Arabia:50.92,Arena:43.84,Megarandom:50.55,Glade:43.1,Lowland:53.99,Haboob:50.49,Socotra:45.56,Graveyards:53.48,Shrubland:54.81,Valley:52.6},
+  Malay:{Arabia:50.95,Arena:54.27,Megarandom:53.71,Glade:55.93,Lowland:49.68,Haboob:51.48,Socotra:49.09,Graveyards:51.83,Shrubland:44.7,Valley:47.09},
+  Malians:{Arabia:51.81,Arena:53.45,Megarandom:51.88,Glade:53.19,Lowland:51.38,Haboob:52.22,Socotra:55.17,Graveyards:50.06,Shrubland:45.43,Valley:52.81},
+  Maya:{Arabia:50.56,Arena:41.71,Megarandom:49.48,Glade:46.16,Lowland:47.88,Haboob:53.22,Socotra:52.87,Graveyards:51.49,Shrubland:48.29,Valley:46.29},
+  Mongols:{Arabia:50.47,Arena:47.8,Megarandom:50.6,Glade:46.01,Lowland:53.79,Haboob:55.16,Socotra:50.38,Graveyards:52.8,Shrubland:51.28,Valley:52.1},
+  Persians:{Arabia:51.83,Arena:47.43,Megarandom:51.26,Glade:49.13,Lowland:51.23,Haboob:52.48,Socotra:51.92,Graveyards:48.07,Shrubland:51.35,Valley:49.28},
+  Poles:{Arabia:47.84,Arena:54.12,Megarandom:48.62,Glade:50.34,Lowland:49.87,Haboob:46.3,Socotra:46.54,Graveyards:48.72,Shrubland:44.44,Valley:50.38},
+  Portuguese:{Arabia:49.04,Arena:48.96,Megarandom:47.75,Glade:51.74,Lowland:43.95,Haboob:44.28,Socotra:53.28,Graveyards:47.38,Shrubland:57.59,Valley:45.57},
+  Romans:{Arabia:54.04,Arena:52.53,Megarandom:53.37,Glade:57.64,Lowland:54.02,Haboob:58.28,Socotra:55.85,Graveyards:54.26,Shrubland:54.78,Valley:56.38},
+  Saracens:{Arabia:47.85,Arena:46.98,Megarandom:49.84,Glade:47.33,Lowland:48.51,Haboob:42.67,Socotra:49.13,Graveyards:48.76,Shrubland:51.06,Valley:49.64},
+  Shu:{Arabia:51.01,Arena:44.22,Megarandom:47.49,Glade:49.61,Lowland:44.92,Haboob:50.63,Socotra:53.72,Graveyards:50.14,Shrubland:52.43,Valley:52.88},
+  Sicilians:{Arabia:51.01,Arena:50.69,Megarandom:51.94,Glade:56.54,Lowland:51.44,Haboob:54.49,Socotra:53.29,Graveyards:56.15,Shrubland:47.79,Valley:52.59},
+  Slavs:{Arabia:49.18,Arena:48.89,Megarandom:49.53,Glade:50.91,Lowland:48.19,Haboob:49.05,Socotra:47.25,Graveyards:52.58,Shrubland:47.45,Valley:51.39},
+  Spanish:{Arabia:48.7,Arena:54.13,Megarandom:51.76,Glade:53.5,Lowland:47.4,Haboob:46.79,Socotra:47.61,Graveyards:46.67,Shrubland:47.44,Valley:47.5},
+  Tatars:{Arabia:49.46,Arena:40.09,Megarandom:50.3,Glade:43.48,Lowland:51.97,Haboob:45.21,Socotra:47.04,Graveyards:52.53,Shrubland:51.45,Valley:47.38},
+  Teutons:{Arabia:49.05,Arena:52.58,Megarandom:48.27,Glade:53.26,Lowland:47.71,Haboob:45.8,Socotra:50.11,Graveyards:48.68,Shrubland:42.74,Valley:45.41},
+  Turks:{Arabia:46.11,Arena:57.49,Megarandom:48.82,Glade:51.08,Lowland:43.0,Haboob:46.08,Socotra:44.55,Graveyards:45.07,Shrubland:45.45,Valley:44.11},
+  Vietnamese:{Arabia:48.43,Arena:46.61,Megarandom:45.85,Glade:44.79,Lowland:46.66,Haboob:43.44,Socotra:49.04,Graveyards:47.05,Shrubland:43.51,Valley:48.36},
+  Vikings:{Arabia:53.18,Arena:50.23,Megarandom:52.98,Glade:52.78,Lowland:52.47,Haboob:53.51,Socotra:52.22,Graveyards:54.3,Shrubland:52.73,Valley:50.95},
+  Wei:{Arabia:51.68,Arena:51.12,Megarandom:50.33,Glade:48.72,Lowland:52.0,Haboob:42.34,Socotra:49.26,Graveyards:54.64,Shrubland:50.0,Valley:53.58},
+  Wu:{Arabia:52.86,Arena:45.96,Megarandom:51.46,Glade:53.99,Lowland:51.54,Haboob:57.12,Socotra:51.6,Graveyards:46.95,Shrubland:53.14,Valley:45.41},
 };
+
+const MAP_LIST = ['Arabia','Arena','Megarandom','Glade','Lowland','Haboob','Socotra','Graveyards','Shrubland','Valley'];
 
 const ABS = {
   'Archer':{
@@ -1240,10 +1237,21 @@ const CIV_ARCHETYPES = [
 
 /* Game-timing archetypes — separate group, scored on estimated win rate by
    game duration rather than tech tree completeness */
-const TIMING_ARCHETYPES = [
-  {emoji:'⚡',label:'Early Game',idx:0,desc:'Win rate in games ending 0–20 minutes'},
-  {emoji:'🏯',label:'Mid Game',idx:1,desc:'Win rate in games ending 20–40 minutes'},
-  {emoji:'👑',label:'Late Game',idx:2,desc:'Win rate in games ending 40+ minutes'},
+/* Real per-map win rates from aoestats.io (fetched Jul 10 2026), covering the
+   10 maps with statistically meaningful sample sizes (~97% of all games).
+   Unlike the old game-duration feature, this data is 100% real — pulled
+   directly from aoestats.io's map pages, not estimated. */
+const MAP_ARCHETYPES = [
+  {emoji:'🏜',label:'Arabia',key:'Arabia'},
+  {emoji:'🏛',label:'Arena',key:'Arena'},
+  {emoji:'🎲',label:'Megarandom',key:'Megarandom'},
+  {emoji:'🌳',label:'Glade',key:'Glade'},
+  {emoji:'🏞',label:'Lowland',key:'Lowland'},
+  {emoji:'🌪',label:'Haboob',key:'Haboob'},
+  {emoji:'🏝',label:'Socotra',key:'Socotra'},
+  {emoji:'⚰️',label:'Graveyards',key:'Graveyards'},
+  {emoji:'🌿',label:'Shrubland',key:'Shrubland'},
+  {emoji:'⛰',label:'Valley',key:'Valley'},
 ];
 
 /* Small additive bonuses (+1 point each, distinct from the 2-point ABS civ-trait
@@ -1316,7 +1324,7 @@ let mode = 'ALL';
 let dropItems = [];
 let activeCard = null;
 let activeArchetype = null;   // index into CIV_ARCHETYPES
-let activeTiming = null;      // index into TIMING_ARCHETYPES
+let activeMap = null;         // index into MAP_ARCHETYPES
 let activeOverallTier = true; // Tier List Overall ranking toggle — default landing view
 let isMobile = false;
 let dataLoaded = false;
@@ -1840,13 +1848,6 @@ function archetypeRank(civName, archIdx) {
   return { rank, of: pool.length };
 }
 
-function timingRank(civName, timingIdx) {
-  const scored = ALL_CIVS.map(c => ({ c, wr: (GAME_DUR_WR[c] || [0,0,0])[timingIdx] }))
-    .sort((a, b) => b.wr - a.wr);
-  const rank = scored.findIndex(x => x.c === civName) + 1;
-  return { rank, of: ALL_CIVS.length, wr: (GAME_DUR_WR[civName] || [0,0,0])[timingIdx] };
-}
-
 /* ================================================================
    ITEM SELECTION
    ================================================================ */
@@ -1904,25 +1905,25 @@ function setMode(m) {
    ================================================================ */
 function selectArchetype(idx) {
   if (activeArchetype === idx) { activeArchetype = null; }
-  else { activeArchetype = idx; activeTiming = null; activeOverallTier = false; }
+  else { activeArchetype = idx; activeMap = null; activeOverallTier = false; }
   render();
 }
 
-function selectTiming(idx) {
-  if (activeTiming === idx) { activeTiming = null; }
-  else { activeTiming = idx; activeArchetype = null; activeOverallTier = false; }
+function selectMap(idx) {
+  if (activeMap === idx) { activeMap = null; }
+  else { activeMap = idx; activeArchetype = null; activeOverallTier = false; }
   render();
 }
 
 function selectOverallTier() {
   activeOverallTier = !activeOverallTier;
-  if (activeOverallTier) { activeArchetype = null; activeTiming = null; }
+  if (activeOverallTier) { activeArchetype = null; activeMap = null; }
   render();
 }
 
 function clearArchetype() {
   activeArchetype = null;
-  activeTiming = null;
+  activeMap = null;
   activeOverallTier = true; // return to the default home view, not the old flat list
   render();
 }
@@ -1939,10 +1940,10 @@ function renderSelectorPillsHtml() {
     const on = activeArchetype === i ? ' on' : '';
     html += `<button class="arch-btn${on}" data-kind="archetype" data-i="${i}">${a.emoji} ${a.label}</button>`;
   });
-  html += `</div><div class="arch-group-label" style="margin-top:8px">Game timing</div><div class="arch-pill-row">`;
-  TIMING_ARCHETYPES.forEach((t, i) => {
-    const on = activeTiming === i ? ' on' : '';
-    html += `<button class="arch-btn${on}" data-kind="timing" data-i="${i}">${t.emoji} ${t.label}</button>`;
+  html += `</div><div class="arch-group-label" style="margin-top:8px">Maps <span style="font-weight:400;text-transform:none;letter-spacing:normal;opacity:.7">(real aoestats.io win rates)</span></div><div class="arch-pill-row">`;
+  MAP_ARCHETYPES.forEach((m, i) => {
+    const on = activeMap === i ? ' on' : '';
+    html += `<button class="arch-btn${on}" data-kind="map" data-i="${i}">${m.emoji} ${m.label}</button>`;
   });
   html += `</div>`;
   return html;
@@ -1953,7 +1954,7 @@ function attachSelectorPillEvents(root) {
     btn.addEventListener('click', () => {
       const kind = btn.dataset.kind;
       if (kind === 'archetype') selectArchetype(+btn.dataset.i);
-      else if (kind === 'timing') selectTiming(+btn.dataset.i);
+      else if (kind === 'map') selectMap(+btn.dataset.i);
       else selectOverallTier();
     });
   });
@@ -2041,37 +2042,44 @@ function renderArchetypeGrid() {
   });
 }
 
-function timingWR(civ, t) {
-  return (GAME_DUR_WR[civ] || [0,0,0])[t.idx];
+function mapWR(civ, m) {
+  const entry = MAP_WR[civ];
+  return entry && entry[m.key] != null ? entry[m.key] : null;
 }
 
-function timingGrades(t) {
+function mapGrades(m) {
   const scores = {};
-  ALL_CIVS.forEach(c => { scores[c] = timingWR(c, t); });
-  const tiers = tierRangeForPoolSize(53);
-  const m = tiers.length;
+  ALL_CIVS.forEach(c => {
+    const wr = mapWR(c, m);
+    if (wr != null) scores[c] = wr;
+  });
+  const civsWithData = Object.keys(scores);
+  const tiers = tierRangeForPoolSize(civsWithData.length);
+  const tCount = tiers.length;
   const uniqueVals = [...new Set(Object.values(scores))].sort((a, b) => b - a);
   const k = uniqueVals.length;
   const grades = {};
-  ALL_CIVS.forEach(c => {
+  civsWithData.forEach(c => {
     const idx = uniqueVals.indexOf(scores[c]);
-    const tierIdx = k <= 1 ? 0 : Math.min(m - 1, Math.floor(idx * m / k));
+    const tierIdx = k <= 1 ? 0 : Math.min(tCount - 1, Math.floor(idx * tCount / k));
     grades[c] = tiers[tierIdx];
   });
   return grades;
 }
 
-function renderTimingGrid() {
-  const t = TIMING_ARCHETYPES[activeTiming];
-  const grades = timingGrades(t);
+function renderMapGrid() {
+  const m = MAP_ARCHETYPES[activeMap];
+  const grades = mapGrades(m);
+  const civsWithData = ALL_CIVS.filter(c => mapWR(c, m) != null);
+  const missingData = ALL_CIVS.filter(c => mapWR(c, m) == null);
   renderTierListShared({
     pool: ALL_CIVS,
-    gradeOf: c => grades[c],
-    valueOf: c => timingWR(c, t),
-    valueLabel: c => `${timingWR(c, t)}% win rate`,
-    headerHtml: `${t.emoji} ${t.label} — ${t.desc} (community-estimated, not official aoestats data)`,
-    subHeaderHtml: null,
-    clearLabel: `${t.emoji} ${t.label} ranking`,
+    gradeOf: c => grades[c] || null,
+    valueOf: c => mapWR(c, m) || 0,
+    valueLabel: c => `${mapWR(c, m)}% win rate`,
+    headerHtml: `${m.emoji} ${m.label} — real win rate data from aoestats.io (1v1 Random Map, all ratings)`,
+    subHeaderHtml: missingData.length ? `${missingData.join(', ')} — insufficient games on this map for reliable data yet` : null,
+    clearLabel: `${m.emoji} ${m.label} ranking`,
   });
 }
 
@@ -2127,7 +2135,7 @@ function renderChips() {
 
 function renderGrid() {
   if (activeArchetype !== null) { renderArchetypeGrid(); return; }
-  if (activeTiming !== null) { renderTimingGrid(); return; }
+  if (activeMap !== null) { renderMapGrid(); return; }
   if (activeOverallTier) { renderOverallTierGrid(); return; }
 
   const has = [], missing = [], unknown = [];
@@ -2685,7 +2693,7 @@ function civInfoHtml(civName, compact) {
   }
 
   // No filter + no archetype active: show FULL tech tree availability by category
-  if (!compact && activeArchetype === null && activeTiming === null && !selected.length) {
+  if (!compact && activeArchetype === null && activeMap === null && !selected.length) {
     const cd = civData[civName];
     if (cd) {
       h += `<div class="info-sl">Full tech tree by category</div>`;
