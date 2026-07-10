@@ -715,11 +715,12 @@ const ABS = {
     Magyars:{b:1,c:1,u:1,n:["Scout line -15%; melee attack upgrades free","Corvinian Army: Huszar gold→food","Magyar Huszar Unique Unit"]},
   },
   'Infantry':{
+    Jurchens:{b:2,c:0,u:0,n:["Mounted Units and Fire Lancers attack +25% faster starting in Feudal Age (Jurchens are the only civ that can't upgrade Militia-line, but Fire Lancer fills that gap)","Units receive -50% friendly fire damage — helps stack Fire Lancers safely"]},
     Goths:{b:2,c:1,u:1,n:["Infantry -15→30% cheaper; +1/2/3 attack vs buildings","Perfusion: Barracks +100% faster","Huskarl Unique Unit"]},
     Japanese:{b:2,c:0,u:1,n:["Infantry attack +33% faster","Samurai Unique Unit"]},
     Celts:{b:2,c:0,u:1,n:["Infantry move +5/10/15/20% faster","Woad Raider Unique Unit"]},
     Romans:{b:2,c:1,u:1,n:["Infantry armor effects doubled","Comitatenses: Militia train faster + charge","Legionary + Centurion Unique Unit"]},
-    Khitans:{b:2,c:1,u:1,n:["Melee attack effects doubled","Lamellar Armor: Infantry reflect melee","Liao Dao Unique Unit"]},
+    Khitans:{b:2,c:1,u:1,n:["Melee attack effects doubled","Infantry +2 damage vs archers","Lamellar Armor: Infantry reflect melee","Liao Dao Unique Unit"]},
     Aztecs:{b:1,c:1,u:1,n:["Military train +15% faster","Garland Wars: Infantry +4 attack","Jaguar Warrior Unique Unit"]},
     Slavs:{b:1,c:1,u:0,n:["Arson free; Monks faster","Druzhina: Infantry trample damage"]},
     Armenians:{b:1,c:1,u:1,n:["Spear/Militia upgrades 1 age earlier","Fereters: Infantry +30 HP","Warrior Priest Unique Unit"]},
@@ -841,6 +842,7 @@ const UNIT_IDS = {
   'Battle Elephant':1132,'Elite Battle Elephant':1134,
   'Elephant Archer':873,'Elite Elephant Archer':875,
   'Long Swordsman':75,'Two-Handed Swordsman':77,'Champion':473,'Champi Warrior':2552,
+  'Fire Lancer':1901,'Elite Fire Lancer':1903,
   'Spearman':74,'Pikeman':93,'Halberdier':359,
   'Eagle Scout':751,'Eagle Warrior':752,'Elite Eagle Warrior':753,
   'Mangonel':280,'Onager':550,'Siege Onager':588,
@@ -990,6 +992,8 @@ const UNIT_DESCRIPTIONS = {
   77:'Heavy swordsman. Strong vs cavalry and buildings; weak vs archers',
   473:'Elite swordsman. Strong vs cavalry, buildings, and spearmen; weak vs archers',
   2552:'Meso/South American Militia-line replacement (Incas, Muisca, Tupi). Strong vs cavalry and buildings; weak vs archers',
+  1901:'Regional shock infantry with a ranged charge attack (Chinese, Jurchens, Khitans, Koreans, Vietnamese). Strong vs cavalry and camels; weak vs Hand Cannoneers and other shock infantry',
+  1903:'Elite Fire Lancer. Strong vs cavalry and camels; weak vs Hand Cannoneers and other shock infantry',
   74:'Anti-cavalry infantry. Strong vs cavalry; weak vs archers and other infantry',
   93:'Upgraded Spearman. Strong vs cavalry; weak vs archers',
   359:'Elite spearman. Strong vs cavalry and elephants; weak vs archers',
@@ -1027,6 +1031,8 @@ const EQUIVALENCE_NOTES = {
   1942: 'has Traction Trebuchet instead',
   2552: 'has Champi Warrior instead',
   2554: 'has Elite Champi Warrior instead (also counts for Two-Handed Swordsman)',
+  1901: 'has Fire Lancer instead',
+  1903: 'has Elite Fire Lancer instead',
 };
 
 const ARMOR_CLASSES = {
@@ -1064,7 +1070,7 @@ const QUICK_CATEGORIES = [
     'Bloodlines','Plate Barding Armor','Chain Barding Armor','Husbandry',
   ]},
   { label:'Infantry', color:CAT_COLORS.Infantry, items:[
-    'Champion','Champi Warrior','Two-Handed Swordsman','Halberdier','Pikeman',
+    'Champion','Champi Warrior','Fire Lancer','Two-Handed Swordsman','Halberdier','Pikeman',
     'Eagle Warrior','Elite Eagle Warrior',
     'Plate Mail Armor','Chain Mail Armor','Squires','Arson',
   ]},
@@ -1110,7 +1116,7 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:435},{t:'tech',id:80},{t:'tech',id:82},{t:'tech',id:81},{t:'tech',id:39},
   ]},
   {emoji:'🛡',label:'Infantry',bonusKey:'Infantry',items:[
-    {t:'unit',id:473,extra:[2554]},{t:'unit',id:359},{t:'unit',id:77,extra:[2554]},
+    {t:'unit',id:473,extra:[2554,1901,1903]},{t:'unit',id:359,extra:[1901,1903]},{t:'unit',id:77,extra:[2554,1901,1903]},
     {t:'tech',id:77},{t:'tech',id:76},{t:'tech',id:74},{t:'tech',id:215},{t:'tech',id:602},
   ]},
   {emoji:'💣',label:'Siege',bonusKey:'Siege',items:[
@@ -1169,6 +1175,7 @@ const EXTRA_UU_BONUS = {
   Infantry: [
     { ids:[2582,2584], civs:['Tupi'], note:'Ibirapema Warrior — unique ranged-infantry hybrid' },
     { ids:[879,881], civs:['Incas'], note:'Kamayuk — unique anti-cavalry infantry' },
+    { ids:[1901,1903], civs:['Chinese','Koreans','Vietnamese'], note:'Fire Lancer — bonus anti-cavalry shock infantry alongside full normal Militia/Spearman-line access' },
   ],
 };
 
@@ -1620,8 +1627,11 @@ function radialRing(pct, color, size) {
 const RADAR_AXES = ['Archer','Cavalry Archer','Cavalry','Infantry','Siege','Naval','Monk','Eco','Defensive','Gunpowder'];
 
 function radarChartSVG(civName) {
-  // Larger canvas with generous label padding so text never clips
-  const size = 420, cx = size/2, cy = size/2, maxR = 130;
+  // Larger canvas with generous label padding so text never clips.
+  // Also set overflow:visible on the <svg> itself — SVG elements clip their
+  // own content at the viewBox edge by default, which was cutting off
+  // descenders (Cavalry, Infantry) and left-anchored text (Defensive).
+  const size = 420, cx = size/2, cy = size/2, maxR = 118;
   const axes = RADAR_AXES.map(label => CIV_ARCHETYPES.find(a => a.label === label)).filter(Boolean);
   const n = axes.length;
   const values = axes.map(arch => {
@@ -1656,13 +1666,13 @@ function radarChartSVG(civName) {
     const x2 = cx + (24 + maxR) * Math.cos(angle), y2 = cy + (24 + maxR) * Math.sin(angle);
     axisLines += `<line x1="${cx}" y1="${cy}" x2="${x2}" y2="${y2}" stroke="var(--border)" stroke-width="1"/>`;
     const cosA = Math.cos(angle), sinA = Math.sin(angle);
-    const lx = cx + (24 + maxR + 34) * cosA, ly = cy + (24 + maxR + 34) * sinA;
+    const lx = cx + (24 + maxR + 40) * cosA, ly = cy + (24 + maxR + 40) * sinA;
     const anchor = Math.abs(cosA) < 0.25 ? 'middle' : (cosA > 0 ? 'start' : 'end');
-    labels += `<text x="${lx}" y="${ly - 6}" font-size="15" text-anchor="${anchor}">${arch.emoji}</text>`;
-    labels += `<text x="${lx}" y="${ly + 9}" font-size="10" font-weight="600" fill="var(--text2)" text-anchor="${anchor}">${arch.label}</text>`;
+    labels += `<text x="${lx}" y="${ly - 6}" font-size="16" text-anchor="${anchor}">${arch.emoji}</text>`;
+    labels += `<text x="${lx}" y="${ly + 10}" font-size="11" font-weight="600" fill="var(--text2)" text-anchor="${anchor}">${arch.label}</text>`;
   });
 
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="overflow:visible">
     ${gridRings}${axisLines}
     <polygon points="${polyPoints}" fill="rgba(200,146,42,.25)" stroke="var(--amber)" stroke-width="2"/>
     ${pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="var(--amberL)"/>`).join('')}
@@ -1691,37 +1701,63 @@ function classifyBonusText(text) {
 /* ================================================================
    TIER GRADES (S/A/B/C/D/F) — based on raw score, bell-curve distributed
    ================================================================ */
+/* Small candidate pools don't have enough spread to justify a full S-F range —
+   being 7th-of-7 in a niche archetype like Elephant isn't "failing," it's just
+   less specialized. The available tier range compresses with pool size:
+     ≤15 civs  → S/A/B/C only (no D/F)
+     ≤46 civs  → S/A/B/C/D   (no F)
+     >46 civs  → full S/A/B/C/D/F (the 9 universal archetypes, all 53 civs) */
+function tierRangeForPoolSize(n) {
+  if (n <= 15) return ['S','A','B','C'];
+  if (n <= 46) return ['S','A','B','C','D'];
+  return ['S','A','B','C','D','F'];
+}
+
+/* Ties share a tier: civs are grouped by distinct score value first, then
+   score-groups are distributed across the available tiers proportionally.
+   This prevents an arbitrary sort-order tiebreak from giving one civ 'S' and
+   an equally-scored civ 'F'. */
 function tierGradesForArchetype(arch) {
   const pool = archetypeCivList(arch);
-  const scored = pool.map(c => ({ c, score: totalScoreCiv(c, arch).total }))
-    .sort((a, b) => b.score - a.score);
-  const n = scored.length;
-  const sCount = Math.min(5, Math.max(1, Math.round(n * 0.07)));
-  const fCount = sCount;
-  const rest = Math.max(0, n - sCount - fCount);
-  const aCount = Math.round(rest * 0.22);
-  const dCount = Math.round(rest * 0.22);
-  const bcRest = Math.max(0, rest - aCount - dCount);
-  const bCount = Math.round(bcRest * 0.5);
-  const cCount = bcRest - bCount;
+  const n = pool.length;
+  const tiers = tierRangeForPoolSize(n);
+  const m = tiers.length;
+
+  const scored = pool.map(c => ({ c, score: totalScoreCiv(c, arch).total }));
+  const uniqueScores = [...new Set(scored.map(s => s.score))].sort((a, b) => b - a);
+  const k = uniqueScores.length;
 
   const grades = {};
-  let i = 0;
-  const assign = (count, letter) => { for (let k=0;k<count && i<n;k++,i++) grades[scored[i].c] = letter; };
-  assign(sCount, 'S'); assign(aCount, 'A'); assign(bCount, 'B');
-  assign(cCount, 'C'); assign(dCount, 'D'); assign(fCount, 'F');
-  // Any rounding leftover goes to C (the bulk tier)
-  while (i < n) { grades[scored[i].c] = 'C'; i++; }
+  uniqueScores.forEach((score, i) => {
+    const tierIdx = k <= 1 ? 0 : Math.min(m - 1, Math.floor(i * m / k));
+    scored.filter(s => s.score === score).forEach(s => { grades[s.c] = tiers[tierIdx]; });
+  });
   return grades;
 }
 
 const GRADE_COLOR = { S:'var(--green)', A:'#86efac', B:'var(--amberL)', C:'var(--text2)', D:'#fb923c', F:'var(--red)' };
+const GRADE_VALUE = { S:6, A:5, B:4, C:3, D:2, F:1 };
 
 function civGrade(civName, arch) {
   const pool = archetypeCivList(arch);
   if (!pool.includes(civName)) return null;
   const grades = tierGradesForArchetype(arch);
   return grades[civName] || null;
+}
+
+/* Aggregate letter grade across every archetype a civ qualifies for —
+   average the numeric grade value, then map back to the nearest letter. */
+function overallCivGrade(civName) {
+  const values = [];
+  CIV_ARCHETYPES.forEach(arch => {
+    const g = civGrade(civName, arch);
+    if (g) values.push(GRADE_VALUE[g]);
+  });
+  if (!values.length) return null;
+  const avg = values.reduce((a,b) => a+b, 0) / values.length;
+  const rounded = Math.round(avg);
+  const letters = ['F','D','C','B','A','S']; // index 1..6 maps to F..S
+  return letters[Math.max(1, Math.min(6, rounded)) - 1];
 }
 
 function civInfoHtml(civName, compact) {
@@ -1733,8 +1769,18 @@ function civInfoHtml(civName, compact) {
   const isNew = NEW_CIVS.has(civName);
   const ecoBuilding = ECO_BUILDING_NAME[civName];
 
-  let h = `<div class="info-name">${civName}</div>`;
-  if (focus) h += `<div class="info-focus">${focus}</div>`;
+  const oGrade = compact ? null : overallCivGrade(civName);
+  const oColor = oGrade ? GRADE_COLOR[oGrade] : 'var(--text3)';
+  let h = `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+    <div>
+      <div class="info-name">${civName}</div>
+      ${focus ? `<div class="info-focus">${focus}</div>` : ''}
+    </div>
+    ${oGrade ? `<div style="flex-shrink:0;text-align:center;padding:4px 12px;background:${oColor}15;border:2px solid ${oColor};border-radius:10px" title="Average grade across all archetype rankings">
+      <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Overall</div>
+      <div style="font-size:26px;font-weight:800;color:${oColor};line-height:1.1">${oGrade}</div>
+    </div>` : ''}
+  </div>`;
 
   if (wr.length) {
     const wrRank = ALL_CIVS.map(c => ({ c, o: (WR[c]||[0])[0] })).sort((a,b) => b.o - a.o);
