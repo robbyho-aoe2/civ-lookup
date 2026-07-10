@@ -1716,6 +1716,9 @@ const UNIQUE_TECH_CATEGORY_OVERRIDE = {
   'Szlachta Privileges': { exclude:['Eco'], include:['Cavalry'] },
   'Bolt Magazine': { include:['Naval'] },
   'Chatras': { include:['Cavalry'] },
+  // "Bombard Towers" reads as a Gunpowder keyword, but this is a wall/tower
+  // HP tech (already correctly tagged Defensive via "walls"/"tower").
+  'Great Wall': { exclude:['Gunpowder'] },
   'Silk Armor': { include:['Cavalry'] },
   'Flemish Revolution': { exclude:['Eco'] },
   'Anarchy': { include:['Infantry'] },
@@ -1928,7 +1931,9 @@ function clearArchetype() {
    results redraw. Lives directly above the civ results, in the same spot
    the old S/A/B/C/D/F navigation pills used to occupy. */
 function renderSelectorPillsHtml() {
+  const overallOn = activeOverallTier ? ' on' : '';
   let html = `<div class="arch-group-label">Tech tree rankings</div><div class="arch-pill-row">`;
+  html += `<button class="arch-btn${overallOn}" data-kind="overall">🏅 Overall</button>`;
   CIV_ARCHETYPES.forEach((a, i) => {
     const on = activeArchetype === i ? ' on' : '';
     html += `<button class="arch-btn${on}" data-kind="archetype" data-i="${i}">${a.emoji} ${a.label}</button>`;
@@ -1938,8 +1943,6 @@ function renderSelectorPillsHtml() {
     const on = activeTiming === i ? ' on' : '';
     html += `<button class="arch-btn${on}" data-kind="timing" data-i="${i}">${t.emoji} ${t.label}</button>`;
   });
-  const overallOn = activeOverallTier ? ' on' : '';
-  html += `<button class="arch-btn${overallOn}" data-kind="overall">🏅 Overall</button>`;
   html += `</div>`;
   return html;
 }
