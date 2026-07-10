@@ -189,6 +189,8 @@ h1{font-size:22px;font-weight:700;color:var(--amberL);}
   <div id="arch-btns"></div>
   <div class="arch-group-label" style="margin-top:6px">Game timing (estimated win rates by game length)</div>
   <div id="arch-btns-timing"></div>
+  <div class="arch-group-label" style="margin-top:6px">Overall</div>
+  <div id="arch-btn-overall-tier"></div>
   <div id="active-arch-bar">
     <span id="active-arch-label"></span>
     <button onclick="clearArchetype()">× Clear</button>
@@ -1181,7 +1183,6 @@ const CIV_ARCHETYPES = [
 /* Game-timing archetypes — separate group, scored on estimated win rate by
    game duration rather than tech tree completeness */
 const TIMING_ARCHETYPES = [
-  {emoji:'🏆',label:'Overall',idx:-1,desc:'win rate across all game lengths combined'},
   {emoji:'⚡',label:'Early Game',idx:0,desc:'Win rate in games ending 0–20 minutes'},
   {emoji:'🏯',label:'Mid Game',idx:1,desc:'Win rate in games ending 20–40 minutes'},
   {emoji:'👑',label:'Late Game',idx:2,desc:'Win rate in games ending 40+ minutes'},
@@ -1193,9 +1194,6 @@ const TIMING_ARCHETYPES = [
    Slingers give Incas/Mapuche/Muisca/Tupi a cheap extra ranged option on top
    of their normal Archer line, rather than substituting for it. */
 const EXTRA_UU_BONUS = {
-  Archer: [
-    { ids:[185], civs:['Incas','Mapuche','Muisca','Tupi'], note:'Slinger — cheap bonus ranged unit alongside normal Archers' },
-  ],
   Infantry: [
     { ids:[2582,2584], civs:['Tupi'], note:'Ibirapema Warrior — unique ranged-infantry hybrid' },
     { ids:[879,881], civs:['Incas'], note:'Kamayuk — unique anti-cavalry infantry' },
@@ -1240,6 +1238,7 @@ let dropItems = [];
 let activeCard = null;
 let activeArchetype = null;   // index into CIV_ARCHETYPES
 let activeTiming = null;      // index into TIMING_ARCHETYPES
+let activeOverallTier = false; // Tier List Overall ranking toggle
 let isMobile = false;
 let dataLoaded = false;
 let pendingQ = null;
@@ -1326,6 +1325,22 @@ const TECH_EXTRA_CATEGORY = {
   'Circumnavigation': ['Defensive'],
 };
 
+/* Overrides for specific civ-bonus lines that the keyword auto-classifier
+   tags into a category that doesn't really fit thematically. Keyed by the
+   exact bonus text as it appears in CB[]. `exclude` removes categories the
+   classifier would otherwise assign; `include` adds ones it wouldn't. */
+const BONUS_CATEGORY_OVERRIDE = {
+  'Settlements can train Spearman-line and Skirmishers': { exclude:['Archer','Infantry'], include:['Defensive'] },
+};
+
+function applyBonusOverride(text, cats) {
+  const rule = BONUS_CATEGORY_OVERRIDE[text];
+  if (!rule) return cats;
+  let out = cats.filter(c => !(rule.exclude || []).includes(c));
+  (rule.include || []).forEach(c => { if (!out.includes(c)) out.push(c); });
+  return out;
+}
+
 /* Rule-based bonus scoring:
      +2 per civ bonus that classifies into this archetype's category
      +2 for the team bonus, if it classifies into this category
@@ -1342,7 +1357,8 @@ function bonusScoreCiv(civName, arch) {
   const notes = [];
 
   (CB[civName] || []).forEach(b => {
-    if (classifyBonusCategories(b).includes(label)) { pts += 2; notes.push(b); }
+    const cats = applyBonusOverride(b, classifyBonusCategories(b));
+    if (cats.includes(label)) { pts += 2; notes.push(b); }
   });
 
   const team = TEAM_BONUS[civName];
@@ -1372,6 +1388,17 @@ function bonusScoreCiv(civName, arch) {
   const manual = manualAdjustment(civName, label);
   pts += manual.pts;
   notes.push(...manual.notes);
+
+  // Any civ that can't reach Arbalester is meaningfully behind as a pure
+  // archer civ — applied programmatically rather than per-civ authored data,
+  // since it's a direct tech-tree fact, not a judgment call.
+  if (label === 'Archer') {
+    const cd = civData[civName];
+    if (cd && !cd.units.has(492)) {
+      pts -= 1;
+      notes.push('No Arbalester upgrade available');
+    }
+  }
 
   return { pts, notes };
 }
@@ -1478,14 +1505,21 @@ function setMode(m) {
    ================================================================ */
 function selectArchetype(idx) {
   if (activeArchetype === idx) { activeArchetype = null; }
-  else { activeArchetype = idx; activeTiming = null; }
+  else { activeArchetype = idx; activeTiming = null; activeOverallTier = false; }
   syncArchButtons();
   render();
 }
 
 function selectTiming(idx) {
   if (activeTiming === idx) { activeTiming = null; }
-  else { activeTiming = idx; activeArchetype = null; }
+  else { activeTiming = idx; activeArchetype = null; activeOverallTier = false; }
+  syncArchButtons();
+  render();
+}
+
+function selectOverallTier() {
+  activeOverallTier = !activeOverallTier;
+  if (activeOverallTier) { activeArchetype = null; activeTiming = null; }
   syncArchButtons();
   render();
 }
@@ -1493,6 +1527,7 @@ function selectTiming(idx) {
 function clearArchetype() {
   activeArchetype = null;
   activeTiming = null;
+  activeOverallTier = false;
   syncArchButtons();
   render();
 }
@@ -1500,6 +1535,7 @@ function clearArchetype() {
 function syncArchButtons() {
   document.querySelectorAll('#arch-btns .arch-btn').forEach((b, i) => b.classList.toggle('on', i === activeArchetype));
   document.querySelectorAll('#arch-btns-timing .arch-btn').forEach((b, i) => b.classList.toggle('on', i === activeTiming));
+  document.querySelectorAll('#arch-btn-overall-tier .arch-btn').forEach(b => b.classList.toggle('on', activeOverallTier));
   const bar = document.getElementById('active-arch-bar');
   if (activeArchetype !== null) {
     bar.style.display = 'flex';
@@ -1509,6 +1545,9 @@ function syncArchButtons() {
     bar.style.display = 'flex';
     const t = TIMING_ARCHETYPES[activeTiming];
     document.getElementById('active-arch-label').textContent = `${t.emoji} Ranking by ${t.desc}`;
+  } else if (activeOverallTier) {
+    bar.style.display = 'flex';
+    document.getElementById('active-arch-label').textContent = `🏅 Tier List Overall — ranked by aggregate grade across every archetype`;
   } else {
     bar.style.display = 'none';
   }
@@ -1569,7 +1608,7 @@ function renderArchetypeGrid() {
 }
 
 function timingWR(civ, t) {
-  return t.idx === -1 ? (WR[civ] || [0])[0] : (GAME_DUR_WR[civ] || [0,0,0])[t.idx];
+  return (GAME_DUR_WR[civ] || [0,0,0])[t.idx];
 }
 
 function timingGrades(t) {
@@ -1623,6 +1662,51 @@ function renderTimingGrid() {
   attachCardEvents();
 }
 
+const TIER_ORDER = ['S','A','B','C','D','F'];
+
+function renderOverallTierGrid() {
+  const byGrade = {};
+  TIER_ORDER.forEach(g => byGrade[g] = []);
+  ALL_CIVS.forEach(c => {
+    const g = overallCivGrade(c);
+    if (g) byGrade[g].push(c);
+  });
+  // Sort within each tier by raw average descending, for stable meaningful order
+  TIER_ORDER.forEach(g => {
+    byGrade[g].sort((a, b) => rawOverallAverage(b) - rawOverallAverage(a) || a.localeCompare(b));
+  });
+
+  let html = `<div class="section-hdr all">🏅 Tier List Overall — aggregate grade across every archetype (re-ranked, not a simple average)</div>`;
+
+  TIER_ORDER.forEach(g => {
+    const civs = byGrade[g];
+    if (!civs.length) return;
+    const gcolor = GRADE_COLOR[g];
+    html += `<div class="section-hdr" style="color:${gcolor};border-top-color:${gcolor}44">${g} Tier — ${civs.length} civ${civs.length !== 1 ? 's' : ''}</div>`;
+    html += `<div class="civ-grid">`;
+    civs.forEach(c => {
+      const isActive = activeCard === c ? ' active' : '';
+      const avg = rawOverallAverage(c);
+      html += `<div class="civ-card ${isActive}" style="border-color:${gcolor}55" data-civ="${c}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="cname">${c}</div>
+          <span style="font-size:11px;font-weight:800;color:${gcolor};background:${gcolor}22;border:1px solid ${gcolor};border-radius:5px;padding:0 5px;flex-shrink:0">${g}</span>
+        </div>
+        <div class="score-txt">avg grade value ${avg.toFixed(1)} / 6</div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  html += `<div style="text-align:center;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+    <button onclick="clearArchetype()" style="background:var(--amberBg);border:1px solid var(--amber);color:var(--amberL);padding:7px 18px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer">
+      × Clear Tier List Overall ranking
+    </button>
+  </div>`;
+  document.getElementById('civ-section').innerHTML = html;
+  attachCardEvents();
+}
+
 /* ================================================================
    RENDERING
    ================================================================ */
@@ -1662,6 +1746,7 @@ function renderChips() {
 function renderGrid() {
   if (activeArchetype !== null) { renderArchetypeGrid(); return; }
   if (activeTiming !== null) { renderTimingGrid(); return; }
+  if (activeOverallTier) { renderOverallTierGrid(); return; }
 
   const has = [], missing = [], unknown = [];
   ALL_CIVS.forEach(c => {
@@ -2444,6 +2529,10 @@ function renderArchetypes() {
   elT.querySelectorAll('.arch-btn').forEach(btn => {
     btn.addEventListener('click', () => selectTiming(+btn.dataset.i));
   });
+
+  const elO = document.getElementById('arch-btn-overall-tier');
+  elO.innerHTML = `<button class="arch-btn">🏅 Tier List Overall</button>`;
+  elO.querySelector('.arch-btn').addEventListener('click', selectOverallTier);
 }
 
 /* ================================================================
