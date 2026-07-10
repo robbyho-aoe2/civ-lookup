@@ -189,6 +189,13 @@ h1{font-size:22px;font-weight:700;color:var(--amberL);}
       <button class="mode-btn" id="mode-any">Any</button>
     </div>
   </div>
+  <details id="quick-filters-details">
+    <summary class="qf-summary">🔍 Browse units &amp; techs individually — click to expand</summary>
+    <div class="sug-label" style="margin-top:8px">Quick filters — hover for stats · click to add · click chip to remove</div>
+    <div id="suggestions"></div>
+  </details>
+  <div id="filter-chips"></div>
+  <div id="status-bar"></div>
   <div class="sug-label">Civ archetypes</div>
   <div class="arch-group-label">Tech tree rankings</div>
   <div id="arch-btns"></div>
@@ -200,13 +207,6 @@ h1{font-size:22px;font-weight:700;color:var(--amberL);}
     <span id="active-arch-label"></span>
     <button onclick="clearArchetype()">× Clear</button>
   </div>
-  <details id="quick-filters-details">
-    <summary class="qf-summary">🔍 Browse units &amp; techs individually — click to expand</summary>
-    <div class="sug-label" style="margin-top:8px">Quick filters — hover for stats · click to add · click chip to remove</div>
-    <div id="suggestions"></div>
-  </details>
-  <div id="filter-chips"></div>
-  <div id="status-bar"></div>
   <div id="civ-section"></div>
   <div id="info-panel"></div>
   <div class="footer">
