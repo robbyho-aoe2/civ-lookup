@@ -1364,6 +1364,13 @@ function parseRaw(raw) {
       techs: new Set((c.Tech || []).map(Number)),
     };
   });
+  // The live SiegeEngineers data source still keys this civ as "Mayans"
+  // (the underlying game's internal name), but the app renamed it to "Maya"
+  // everywhere else — alias the fetched entry so lookups match.
+  if (civData['Mayans'] && !civData['Maya']) {
+    civData['Maya'] = civData['Mayans'];
+    delete civData['Mayans'];
+  }
   const list = [
     ...Object.entries(UNIT_IDS).map(([name, id]) => {
       const ids = Array.isArray(id) ? id : [id];
@@ -1497,7 +1504,6 @@ const BONUS_CATEGORY_OVERRIDE = {
   'Parthian Tactics available in Castle Age': { include:['Cavalry Archer'] },
 
   // ── Burgundians ──
-  'Flemish Revolution: All existing Villagers are transformed to Flemish Militia': { exclude:['Eco'] },
   'Relics generate food in addition to gold': { exclude:['Monk'] },
   'Stable technologies cost -50%': { include:['Cavalry'] },
   'Cavalier upgrade available in Castle Age': { include:['Cavalry'] },
@@ -1555,9 +1561,17 @@ const BONUS_CATEGORY_OVERRIDE = {
   'Building repairs cost -25%': { include:['Eco'] },
 
   // ── Goths ──
-  'Anarchy: Huskarls can be trained at Barracks': { include:['Infantry'] },
-  'Perfusion: Barracks work +100% faster': { include:['Infantry'] },
   'Infantry +1/+2/+3 attack vs. buildings in Feudal/Castle/Imperial Age': { exclude:['Defensive'] },
+  'Barracks work +20% faster': { include:['Infantry'] },
+
+  // ── Newly audited gaps: team bonuses / civ bonuses that matched zero
+  // categories because their text has no keyword the classifier recognizes.
+  'Stables work +20% faster': { include:['Cavalry'] },
+  'Condottiero available at the Barracks in Imperial Age': { include:['Infantry'] },
+  'Houses built +100% faster': { include:['Eco'] },
+  'Units receive -50% friendly fire damage': { include:['Siege','Gunpowder'] },
+  'Melee attack upgrade effects are doubled': { include:['Infantry','Cavalry','Camel'] },
+  'Soldiers receive -40% bonus damage': { include:['Defensive'] },
   'Loom is researched instantly': { include:['Defensive'] },
   'Hunters carry +15; hunted animals last +20% longer': { include:['Eco'] },
   '+10 population space in Imperial Age': { include:['Eco'] },
@@ -1679,6 +1693,9 @@ const UNIQUE_TECH_CATEGORY_OVERRIDE = {
   'Szlachta Privileges': { exclude:['Eco'], include:['Cavalry'] },
   'Bolt Magazine': { include:['Naval'] },
   'Silk Armor': { include:['Cavalry'] },
+  'Flemish Revolution': { exclude:['Eco'] },
+  'Anarchy': { include:['Infantry'] },
+  'Perfusion': { include:['Infantry'] },
 };
 
 function applyBonusOverride(text, cats) {
