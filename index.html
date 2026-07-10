@@ -1129,12 +1129,12 @@ const CIV_ARCHETYPES = [
     {t:'unit',id:492},{t:'unit',id:6},
     {t:'tech',id:437},{t:'tech',id:201},{t:'tech',id:200},{t:'tech',id:199},{t:'tech',id:47},
   ]},
-  {emoji:'🎯',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Vietnamese','Vikings','Wu','Bengalis','Dravidians','Gurjaras'],items:[
+  {emoji:'🎯',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras'],items:[
     {t:'unit',id:474,extra:[...XIANBEI_IDS,...ELE_ARCHER_IDS]},
     {t:'tech',id:435},{t:'tech',id:39},{t:'tech',id:437},{t:'tech',id:436},{t:'tech',id:47},
   ]},
   {emoji:'⚔️',label:'Cavalry',bonusKey:'Cavalry',items:[
-    {t:'unit',id:[569,1813],extra:HEI_GUANG_IDS},{t:'unit',id:[441,1707]},{t:'unit',id:283},
+    {t:'unit',id:[569,1813],extra:HEI_GUANG_IDS},{t:'unit',id:[441,1707]},{t:'unit',id:283,extra:HEI_GUANG_IDS},
     {t:'tech',id:435},{t:'tech',id:80},{t:'tech',id:82},{t:'tech',id:81},{t:'tech',id:39},
   ]},
   {emoji:'🛡',label:'Infantry',bonusKey:'Infantry',items:[
@@ -1324,6 +1324,7 @@ function techScoreCiv(civName, arch) {
    read as Defensive, but map awareness is a real defensive advantage). */
 const TECH_EXTRA_CATEGORY = {
   'Circumnavigation': ['Defensive'],
+  'Ming Guang Armor': ['Cavalry Archer'],
 };
 
 /* Overrides for specific civ-bonus lines that the keyword auto-classifier
@@ -1332,6 +1333,32 @@ const TECH_EXTRA_CATEGORY = {
    classifier would otherwise assign; `include` adds ones it wouldn't. */
 const BONUS_CATEGORY_OVERRIDE = {
   'Settlements can train Spearman-line and Skirmishers': { exclude:['Archer','Infantry'], include:['Defensive'] },
+
+  // Wei's team bonus mentions "Siege Weapons" as the target being attacked,
+  // not a siege-strength bonus for Wei itself — classifier picks up "siege"
+  // as a keyword regardless of which side of the bonus it's on.
+  'Cavalry +2 attack vs. Siege Weapons': { exclude:['Siege'], include:['Cavalry'] },
+
+  // Huns: town-center-spawned scout horse is a resource/scouting head start,
+  // not related to any of the auto-detected keywords.
+  'On Nomadic maps, the first Town Center spawns a scouting Horse': { include:['Eco'] },
+
+  // Tatars: tech names alone (no descriptive keywords) don't auto-classify.
+  'Thumb Ring, Parthian Tactics free': { include:['Archer','Cavalry Archer'] },
+  'Livestock animals last +50% longer': { include:['Eco'] },
+  'New Town Centers spawn 2 Sheep starting in Castle Age': { include:['Eco'] },
+};
+
+/* Same idea as BONUS_CATEGORY_OVERRIDE, but for Castle/Imperial unique techs,
+   keyed by tech name (not the full concatenated name+description string
+   used for classification, which is fragile to match exactly). */
+const UNIQUE_TECH_CATEGORY_OVERRIDE = {
+  // "resources" reads as an Eco keyword, but Atheism is purely a
+  // Relic/Monastery-denial tech.
+  'Atheism': { exclude:['Eco'], include:['Monk'] },
+  // "Champi Warriors" doesn't match the Infantry keyword list (requires
+  // "champion"), so this wouldn't auto-classify at all otherwise.
+  'Caciques': { include:['Infantry','Defensive'] },
 };
 
 function applyBonusOverride(text, cats) {
@@ -1345,8 +1372,7 @@ function applyBonusOverride(text, cats) {
 /* Rule-based bonus scoring:
      +2 per civ bonus that classifies into this archetype's category
      +2 for the team bonus, if it classifies into this category
-     +2 for the 1st (Castle Age) unique tech, if relevant
-     +1 for the 2nd (Imperial Age) unique tech, if relevant
+     +2 for each relevant Castle/Imperial unique tech (both count equally)
      +1 per unique unit tagged with this category (also covers Monastery
         Unique Units and the Fortified Church unique-Relic bonus, which are
         tagged the same way as any other unique unit)
@@ -1363,19 +1389,26 @@ function bonusScoreCiv(civName, arch) {
   });
 
   const team = TEAM_BONUS[civName];
-  if (team && classifyBonusCategories(team).includes(label)) {
-    pts += 2; notes.push(`Team bonus: ${team}`);
+  if (team) {
+    const cats = applyBonusOverride(team, classifyBonusCategories(team));
+    if (cats.includes(label)) { pts += 2; notes.push(`Team bonus: ${team}`); }
   }
 
   const uts = UNIQUE_TECHS[civName] || [];
-  uts.forEach((techName, i) => {
+  uts.forEach((techName) => {
     const desc = UNIQUE_TECH_DESCRIPTIONS[techName] || '';
-    const cats = classifyBonusCategories(techName + ' ' + desc);
+    let cats = classifyBonusCategories(techName + ' ' + desc);
+    const override = UNIQUE_TECH_CATEGORY_OVERRIDE[techName];
+    if (override) {
+      cats = cats.filter(c => !(override.exclude || []).includes(c));
+      (override.include || []).forEach(c => { if (!cats.includes(c)) cats.push(c); });
+    }
     const extra = TECH_EXTRA_CATEGORY[techName] || [];
     const relevant = cats.includes(label) || extra.includes(label);
     if (relevant) {
-      const tierPts = i === 0 ? 2 : 1;
-      pts += tierPts;
+      // Both the Castle and Imperial unique tech are worth +2 — a civ's two
+      // signature techs matter roughly equally, not tapered by tier.
+      pts += 2;
       notes.push(`${techName}${desc ? ': ' + desc : ''}`);
     }
   });
@@ -1929,7 +1962,7 @@ function classifyBonusCategories(text) {
   const isSiege = /siege|trebuchet|mangonel|onager|scorpion|\bram\b|battering/.test(t);
   const isNavy = /ship|dock|galley|galleon|fish|naval|harbor/.test(t);
   const isMonastery = /monk|monaster|faith|relic|conver|church/.test(t);
-  const isEco = /villager|farm|food|wood(?!en)|gold\b|stone\b|resource|market|trade|mill\b|mining|lumber|technolog.*research|research.*faster|research.*cheaper|technolog.*cheaper|technolog.*faster/.test(t);
+  const isEco = /villager|farm|food|wood(?!en)|gold\b|stone\b|resource|market|trade|mill\b|mining|lumber|mule cart|technolog.*research|research.*faster|research.*cheaper|technolog.*cheaper|technolog.*faster/.test(t);
   const isDefensive = /tower|castles?\b|\bwalls?\b|\bbuildings?\b|garrison|fortif|elevation/.test(tForDefense);
 
   if (isCamel) cats.add('Camel');
@@ -1937,7 +1970,7 @@ function classifyBonusCategories(text) {
   if (isCavArcher) cats.add('Cavalry Archer');
   if (isGunpowder) cats.add('Gunpowder');
   if (isCavalryish && !isArcherish) cats.add('Cavalry');
-  if (isArcherish) cats.add('Archer');
+  if (isArcherish && !isCavArcher) cats.add('Archer');
   if (isInfantry) cats.add('Infantry');
   if (isSiege) cats.add('Siege');
   if (isNavy) cats.add('Naval');
