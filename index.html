@@ -1253,6 +1253,7 @@ async function loadData() {
     const raw = await res.json();
     parseRaw(raw);
     dataLoaded = true;
+    invalidateGradeCaches();
     renderSuggestions();
     const el = document.getElementById('error-msg');
     el.style.color = 'var(--green)';
@@ -1665,37 +1666,53 @@ function renderTimingGrid() {
 const TIER_ORDER = ['S','A','B','C','D','F'];
 
 function renderOverallTierGrid() {
+  const grades = getOverallGrades(); // single computation, reused everywhere below
+
   const byGrade = {};
   TIER_ORDER.forEach(g => byGrade[g] = []);
   ALL_CIVS.forEach(c => {
-    const g = overallCivGrade(c);
-    if (g) byGrade[g].push(c);
+    const entry = grades[c];
+    if (entry) byGrade[entry.grade].push(c);
   });
-  // Sort within each tier by raw average descending, for stable meaningful order
+  // Sort within each tier by raw average descending, using the cached value
   TIER_ORDER.forEach(g => {
-    byGrade[g].sort((a, b) => rawOverallAverage(b) - rawOverallAverage(a) || a.localeCompare(b));
+    byGrade[g].sort((a, b) => grades[b].avg - grades[a].avg || a.localeCompare(b));
   });
 
   let html = `<div class="section-hdr all">🏅 Tier List Overall — aggregate grade across every archetype (re-ranked, not a simple average)</div>`;
 
+  // Tier navigation pills — one per tier, always shown (even if empty), with counts
+  html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">`;
+  TIER_ORDER.forEach(g => {
+    const gcolor = GRADE_COLOR[g];
+    const count = byGrade[g].length;
+    html += `<a href="#tier-${g}" style="text-decoration:none;display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;background:${gcolor}18;border:1px solid ${gcolor};color:${gcolor};font-size:12px;font-weight:700">
+      <span>${g} Tier</span><span style="opacity:.7;font-weight:500">${count}</span>
+    </a>`;
+  });
+  html += `</div>`;
+
   TIER_ORDER.forEach(g => {
     const civs = byGrade[g];
-    if (!civs.length) return;
     const gcolor = GRADE_COLOR[g];
-    html += `<div class="section-hdr" style="color:${gcolor};border-top-color:${gcolor}44">${g} Tier — ${civs.length} civ${civs.length !== 1 ? 's' : ''}</div>`;
-    html += `<div class="civ-grid">`;
-    civs.forEach(c => {
-      const isActive = activeCard === c ? ' active' : '';
-      const avg = rawOverallAverage(c);
-      html += `<div class="civ-card ${isActive}" style="border-color:${gcolor}55" data-civ="${c}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div class="cname">${c}</div>
-          <span style="font-size:11px;font-weight:800;color:${gcolor};background:${gcolor}22;border:1px solid ${gcolor};border-radius:5px;padding:0 5px;flex-shrink:0">${g}</span>
-        </div>
-        <div class="score-txt">avg grade value ${avg.toFixed(1)} / 6</div>
-      </div>`;
-    });
-    html += `</div>`;
+    html += `<div id="tier-${g}" class="section-hdr" style="color:${gcolor};border-top-color:${gcolor}44">${g} Tier — ${civs.length} civ${civs.length !== 1 ? 's' : ''}</div>`;
+    if (!civs.length) {
+      html += `<div style="font-size:12px;color:var(--text3);padding:4px 0 8px">No civs landed in this tier this ranking.</div>`;
+    } else {
+      html += `<div class="civ-grid">`;
+      civs.forEach(c => {
+        const isActive = activeCard === c ? ' active' : '';
+        const avg = grades[c].avg;
+        html += `<div class="civ-card ${isActive}" style="border-color:${gcolor}55" data-civ="${c}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div class="cname">${c}</div>
+            <span style="font-size:11px;font-weight:800;color:${gcolor};background:${gcolor}22;border:1px solid ${gcolor};border-radius:5px;padding:0 5px;flex-shrink:0">${g}</span>
+          </div>
+          <div class="score-txt">avg grade value ${avg.toFixed(1)} / 6</div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
   });
 
   html += `<div style="text-align:center;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
@@ -2020,7 +2037,7 @@ function tierRangeForPoolSize(n) {
    score-groups are distributed across the available tiers proportionally.
    This prevents an arbitrary sort-order tiebreak from giving one civ 'S' and
    an equally-scored civ 'F'. */
-function tierGradesForArchetype(arch) {
+function computeTierGradesForArchetype(arch) {
   const pool = archetypeCivList(arch);
   const n = pool.length;
   const tiers = tierRangeForPoolSize(n);
@@ -2038,6 +2055,20 @@ function tierGradesForArchetype(arch) {
   return grades;
 }
 
+/* Per-archetype grade computation is expensive (scores every civ in the
+   pool), so results are cached per archetype label. civData is only
+   populated once (on initial page load) and never changes afterward, so a
+   simple never-invalidated cache is safe and turns what was ~1.8 million
+   redundant scoring calls (rendering the Tier List view) into a few hundred
+   cheap lookups. */
+let _tierGradeCache = {};
+function tierGradesForArchetype(arch) {
+  if (!_tierGradeCache[arch.label]) {
+    _tierGradeCache[arch.label] = computeTierGradesForArchetype(arch);
+  }
+  return _tierGradeCache[arch.label];
+}
+
 const GRADE_COLOR = { S:'var(--green)', A:'#86efac', B:'var(--amberL)', C:'var(--text2)', D:'#fb923c', F:'var(--red)' };
 const GRADE_VALUE = { S:6, A:5, B:4, C:3, D:2, F:1 };
 
@@ -2048,8 +2079,6 @@ function civGrade(civName, arch) {
   return grades[civName] || null;
 }
 
-/* Aggregate letter grade across every archetype a civ qualifies for —
-   average the numeric grade value, then map back to the nearest letter. */
 /* Raw average archetype-grade-value for every civ (0 if the civ has no
    qualifying archetypes at all, which shouldn't happen in practice). */
 function rawOverallAverage(civName) {
@@ -2067,19 +2096,42 @@ function rawOverallAverage(civName) {
    To keep the overall grade meaningfully spread out, the raw averages for
    ALL 53 civs are re-ranked and re-bucketed into a fresh S–F bell curve,
    the same way each individual archetype grade is computed — rather than
-   mapping the raw average directly onto a fixed 1–6 scale. */
-function overallCivGrade(civName) {
+   mapping the raw average directly onto a fixed 1–6 scale.
+   The full {grade, avg} map for every civ is computed once and cached —
+   this is the single source of truth for both individual grade lookups
+   (overallCivGrade) and the Tier List Overall view, so neither has to
+   redo the "average across all civs" work per civ. */
+let _overallGradeCache = null;
+function computeAllOverallGrades() {
   const all = ALL_CIVS.map(c => ({ c, avg: rawOverallAverage(c) })).filter(x => x.avg > 0);
   const tiers = tierRangeForPoolSize(all.length);
   const m = tiers.length;
   const uniqueAvgs = [...new Set(all.map(x => x.avg))].sort((a, b) => b - a);
   const k = uniqueAvgs.length;
 
-  const target = all.find(x => x.c === civName);
-  if (!target) return null;
-  const idx = uniqueAvgs.indexOf(target.avg);
-  const tierIdx = k <= 1 ? 0 : Math.min(m - 1, Math.floor(idx * m / k));
-  return tiers[tierIdx];
+  const result = {};
+  all.forEach(({ c, avg }) => {
+    const idx = uniqueAvgs.indexOf(avg);
+    const tierIdx = k <= 1 ? 0 : Math.min(m - 1, Math.floor(idx * m / k));
+    result[c] = { grade: tiers[tierIdx], avg };
+  });
+  return result;
+}
+
+function getOverallGrades() {
+  if (!_overallGradeCache) _overallGradeCache = computeAllOverallGrades();
+  return _overallGradeCache;
+}
+
+function overallCivGrade(civName) {
+  return getOverallGrades()[civName]?.grade || null;
+}
+
+/* Clear all grade caches — call once after SiegeEngineers data finishes
+   loading, since every score depends on civData which is empty until then. */
+function invalidateGradeCaches() {
+  _tierGradeCache = {};
+  _overallGradeCache = null;
 }
 
 function civInfoHtml(civName, compact) {
