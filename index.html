@@ -1090,6 +1090,8 @@ const EQUIVALENCE_NOTES = {
   1372: 'has Elite Steppe Lancer instead',
   2566: 'has Kona instead',
   2568: 'has Elite Kona instead',
+  1751: 'has Shrivamsha Rider instead',
+  1753: 'has Elite Shrivamsha Rider instead',
   2569: 'has Bolas Rider instead',
   2571: 'has Elite Bolas Rider instead',
   1134: 'has Elite Battle Elephant instead',
@@ -1190,11 +1192,11 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:199},{t:'tech',id:200},{t:'tech',id:201},
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
-  {emoji:'⚔️',label:'Cavalry',bonusKey:'Cavalry',restrictTo:['Armenians','Bengalis','Berbers','Bohemians','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Dravidians','Ethiopians','Franks','Georgians','Goths','Gurjaras','Hindustanis','Huns','Incas','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Malay','Malians','Magyars','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Tupi','Turks','Vietnamese','Vikings','Wei','Wu'],items:[
-    {t:'unit',id:[569,1813],extra:[...HEI_GUANG_IDS,1134,1372,2568]},
+  {emoji:'⚔️',label:'Cavalry',bonusKey:'Cavalry',restrictTo:['Armenians','Bengalis','Berbers','Bohemians','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Dravidians','Ethiopians','Franks','Georgians','Goths','Gurjaras','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Malay','Malians','Magyars','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Vietnamese','Vikings','Wei','Wu'],items:[
+    {t:'unit',id:[569,1813],extra:[...HEI_GUANG_IDS,1134,1372,2568,1753]},
     {t:'unit',id:[441,1707]},
-    {t:'unit',id:283,extra:[...HEI_GUANG_IDS,1134,1372,2568]},
-    {t:'unit',id:38,extra:[1132,1370,2566]},
+    {t:'unit',id:283,extra:[...HEI_GUANG_IDS,1134,1372,2568,1753]},
+    {t:'unit',id:38,extra:[1132,1370,2566,1751]},
     {t:'tech',id:435},{t:'tech',id:80},{t:'tech',id:82},{t:'tech',id:81},{t:'tech',id:39},
     {t:'tech',id:67},{t:'tech',id:68},{t:'tech',id:75},{t:'tech',id:45},{t:'tech',id:46},
   ]},
@@ -1590,7 +1592,7 @@ const BONUS_CATEGORY_OVERRIDE = {
   'Start with a free Llama': { include:['Eco'] },
 
   // ── Khitans ──
-  'Skirmishers, Spearman-, and Scout Cavalry-line train and upgrade +15% faster': { include:['Cavalry','Defensive'] },
+  'Skirmishers, Spearman-, and Scout Cavalry-line train and upgrade +15% faster': { exclude:['Infantry'], include:['Cavalry','Defensive'] },
 
   // ── Magyars ──
   'Melee attack upgrades free': { include:['Infantry','Cavalry'] },
@@ -1692,6 +1694,7 @@ const UNIQUE_TECH_CATEGORY_OVERRIDE = {
   'Huaracas': { include:['Defensive'] },
   'Szlachta Privileges': { exclude:['Eco'], include:['Cavalry'] },
   'Bolt Magazine': { include:['Naval'] },
+  'Chatras': { include:['Cavalry'] },
   'Silk Armor': { include:['Cavalry'] },
   'Flemish Revolution': { exclude:['Eco'] },
   'Anarchy': { include:['Infantry'] },
@@ -2209,9 +2212,12 @@ function radarChartSVG(civName) {
   });
   const polyPoints = pts.map(p => p.join(',')).join(' ');
 
-  // Grid rings at 6 evenly-spaced radii, each labeled with its approximate
-  // tier (S at the outer edge down to F at the center) so the fingerprint
-  // shape can be read against the same S–F scale used everywhere else.
+  // Grid rings at 6 evenly-spaced radii, filled with a very muted version of
+  // each tier's color (same S-F palette used everywhere else in the app,
+  // just toned way down to sit quietly behind the gold data line rather
+  // than compete with it). Drawn largest-first (S) so each smaller ring
+  // painted on top naturally forms concentric bands.
+  const TIER_RING_COLORS = ['rgba(248,113,113,0.26)','rgba(251,146,60,0.26)','rgba(240,180,88,0.26)','rgba(74,222,128,0.24)','rgba(96,165,250,0.24)','rgba(136,135,128,0.20)'];
   const ringFractions = [1, 0.833, 0.667, 0.5, 0.333, 0.167];
   const ringLabels = ['S','A','B','C','D','F'];
   let gridRings = '';
@@ -2221,7 +2227,7 @@ function radarChartSVG(civName) {
       const rad = 24 + f * maxR;
       return [cx + rad * Math.cos(angle), cy + rad * Math.sin(angle)].join(',');
     }).join(' ');
-    gridRings += `<polygon points="${ringPts}" fill="none" stroke="var(--border)" stroke-width="1"/>`;
+    gridRings += `<polygon points="${ringPts}" fill="${TIER_RING_COLORS[ri]}" stroke="var(--border)" stroke-width="1"/>`;
     // Label placed just above the top axis point of this ring
     const labelY = cy - (24 + f * maxR) - 3;
     gridRings += `<text x="${cx}" y="${labelY}" font-size="9" font-weight="700" fill="var(--text3)" text-anchor="middle">${ringLabels[ri]}</text>`;
@@ -2242,7 +2248,7 @@ function radarChartSVG(civName) {
 
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="overflow:visible">
     ${gridRings}${axisLines}
-    <polygon points="${polyPoints}" fill="rgba(200,146,42,.25)" stroke="var(--amber)" stroke-width="2"/>
+    <polygon points="${polyPoints}" fill="rgba(120,80,10,.55)" stroke="var(--amber)" stroke-width="2"/>
     ${pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="var(--amberL)"/>`).join('')}
     ${labels}
   </svg>`;
