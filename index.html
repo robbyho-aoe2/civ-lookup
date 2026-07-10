@@ -54,6 +54,11 @@ h1{font-size:22px;font-weight:700;color:var(--amberL);}
 #active-arch-bar{display:none;align-items:center;justify-content:space-between;background:var(--amberBg);border:1px solid var(--amber);border-radius:var(--radius);padding:6px 12px;margin-bottom:8px;font-size:12px;color:var(--amberL);}
 #active-arch-bar button{background:none;border:none;color:var(--amberL);cursor:pointer;font-size:14px;font-weight:700;}
 /* Quick filters */
+#quick-filters-details{margin-bottom:14px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--surf);}
+#quick-filters-details[open]{padding-bottom:14px;}
+.qf-summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--amberL);list-style:none;user-select:none;}
+.qf-summary::-webkit-details-marker{display:none;}
+.qf-summary:hover{color:var(--amber);}
 .sug-label{font-size:11px;color:var(--text3);margin-bottom:5px;}
 #suggestions{margin-bottom:12px;}
 .cat-section{margin-bottom:10px;}
@@ -195,8 +200,11 @@ h1{font-size:22px;font-weight:700;color:var(--amberL);}
     <span id="active-arch-label"></span>
     <button onclick="clearArchetype()">× Clear</button>
   </div>
-  <div class="sug-label">Quick filters — hover for stats · click to add · click chip to remove</div>
-  <div id="suggestions"></div>
+  <details id="quick-filters-details">
+    <summary class="qf-summary">🔍 Browse units &amp; techs individually — click to expand</summary>
+    <div class="sug-label" style="margin-top:8px">Quick filters — hover for stats · click to add · click chip to remove</div>
+    <div id="suggestions"></div>
+  </details>
   <div id="filter-chips"></div>
   <div id="status-bar"></div>
   <div id="civ-section"></div>
@@ -1238,7 +1246,7 @@ let dropItems = [];
 let activeCard = null;
 let activeArchetype = null;   // index into CIV_ARCHETYPES
 let activeTiming = null;      // index into TIMING_ARCHETYPES
-let activeOverallTier = false; // Tier List Overall ranking toggle
+let activeOverallTier = true; // Tier List Overall ranking toggle — default landing view
 let isMobile = false;
 let dataLoaded = false;
 let pendingQ = null;
@@ -1561,7 +1569,7 @@ function selectOverallTier() {
 function clearArchetype() {
   activeArchetype = null;
   activeTiming = null;
-  activeOverallTier = false;
+  activeOverallTier = true; // return to the default home view, not the old flat list
   syncArchButtons();
   render();
 }
@@ -1601,44 +1609,82 @@ function scoreLabel(scoreObj, max) {
   return s;
 }
 
-function renderArchetypeGrid() {
-  const arch = CIV_ARCHETYPES[activeArchetype];
-  const max = arch.items.length;
-  const pool = archetypeCivList(arch);
+const TIER_ORDER = ['S','A','B','C','D','F'];
 
-  const scored = pool.map(c => ({ c, s: totalScoreCiv(c, arch) }))
-    .sort((a, b) => b.s.total - a.s.total || a.c.localeCompare(b.c));
+/* Shared tier-list renderer — used for the default Tier List Overall view,
+   every tech-tree archetype ranking, and every game-timing ranking. All
+   three modes group civs into S/A/B/C/D/F sections with tier-navigation
+   pills at the top; only the grade/value lookup and header text differ. */
+function renderTierListShared(opts) {
+  const { pool, gradeOf, valueOf, valueLabel, headerHtml, subHeaderHtml, clearLabel } = opts;
 
-  let html = `<div class="section-hdr all">${arch.emoji} ${arch.label} — ranked by tech tree + civ bonuses (${max} tech items, +2 pts per qualifying bonus)</div>`;
-  if (arch.restrictTo) {
-    html += `<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Only civs with access to this archetype's core units are shown (${pool.length} of 53)</div>`;
-  }
+  const byGrade = {};
+  TIER_ORDER.forEach(g => byGrade[g] = []);
+  pool.forEach(c => {
+    const g = gradeOf(c);
+    if (g) byGrade[g].push(c);
+  });
+  TIER_ORDER.forEach(g => {
+    byGrade[g].sort((a, b) => valueOf(b) - valueOf(a) || a.localeCompare(b));
+  });
 
-  html += `<div class="civ-grid">`;
-  scored.forEach(({ c, s }) => {
-    const pctBase = max > 0 ? s.tech / max : 0;
-    const fill = pctBase >= 0.8 ? 'var(--green)' : pctBase >= 0.5 ? 'var(--amberL)' : 'var(--red)';
-    const cls = civScoreClass(s.tech, max);
-    const isActive = activeCard === c ? ' active' : '';
-    const grade = civGrade(c, arch);
-    const gcolor = grade ? GRADE_COLOR[grade] : 'var(--text3)';
-    html += `<div class="civ-card ${cls}${isActive}" data-civ="${c}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div class="cname">${c}</div>
-        ${grade ? `<span style="font-size:11px;font-weight:800;color:${gcolor};background:${gcolor}22;border:1px solid ${gcolor};border-radius:5px;padding:0 5px;flex-shrink:0">${grade}</span>` : ''}
-      </div>
-      <div class="score-bar-wrap"><div class="score-bar-fill" style="width:${Math.round(pctBase*100)}%;background:${fill}"></div></div>
-      <div class="score-txt">${scoreLabel(s, max)}</div>
-    </div>`;
+  let html = `<div class="section-hdr all">${headerHtml}</div>`;
+  if (subHeaderHtml) html += `<div style="font-size:11px;color:var(--text3);margin-bottom:8px">${subHeaderHtml}</div>`;
+
+  html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">`;
+  TIER_ORDER.forEach(g => {
+    const gcolor = GRADE_COLOR[g];
+    const count = byGrade[g].length;
+    html += `<a href="#tier-${g}" style="text-decoration:none;display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;background:${gcolor}18;border:1px solid ${gcolor};color:${gcolor};font-size:12px;font-weight:700">
+      <span>${g} Tier</span><span style="opacity:.7;font-weight:500">${count}</span>
+    </a>`;
   });
   html += `</div>`;
+
+  TIER_ORDER.forEach(g => {
+    const civs = byGrade[g];
+    const gcolor = GRADE_COLOR[g];
+    html += `<div id="tier-${g}" class="section-hdr" style="color:${gcolor};border-top-color:${gcolor}44">${g} Tier — ${civs.length} civ${civs.length !== 1 ? 's' : ''}</div>`;
+    if (!civs.length) {
+      html += `<div style="font-size:12px;color:var(--text3);padding:4px 0 8px">No civs landed in this tier this ranking.</div>`;
+    } else {
+      html += `<div class="civ-grid">`;
+      civs.forEach(c => {
+        const isActive = activeCard === c ? ' active' : '';
+        html += `<div class="civ-card ${isActive}" style="border-color:${gcolor}55" data-civ="${c}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div class="cname">${c}</div>
+            <span style="font-size:11px;font-weight:800;color:${gcolor};background:${gcolor}22;border:1px solid ${gcolor};border-radius:5px;padding:0 5px;flex-shrink:0">${g}</span>
+          </div>
+          <div class="score-txt">${valueLabel(c)}</div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+  });
+
   html += `<div style="text-align:center;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
     <button onclick="clearArchetype()" style="background:var(--amberBg);border:1px solid var(--amber);color:var(--amberL);padding:7px 18px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer">
-      × Clear ${arch.emoji} ${arch.label} ranking
+      × Clear ${clearLabel}
     </button>
   </div>`;
   document.getElementById('civ-section').innerHTML = html;
   attachCardEvents();
+}
+
+function renderArchetypeGrid() {
+  const arch = CIV_ARCHETYPES[activeArchetype];
+  const max = arch.items.length;
+  const pool = archetypeCivList(arch);
+  renderTierListShared({
+    pool,
+    gradeOf: c => civGrade(c, arch),
+    valueOf: c => totalScoreCiv(c, arch).total,
+    valueLabel: c => scoreLabel(totalScoreCiv(c, arch), max),
+    headerHtml: `${arch.emoji} ${arch.label} — ranked by tech tree + civ bonuses (${max} tech items, +2 pts per qualifying bonus)`,
+    subHeaderHtml: arch.restrictTo ? `Only civs with access to this archetype's core units are shown (${pool.length} of 53)` : null,
+    clearLabel: `${arch.emoji} ${arch.label} ranking`,
+  });
 }
 
 function timingWR(civ, t) {
@@ -1663,99 +1709,31 @@ function timingGrades(t) {
 
 function renderTimingGrid() {
   const t = TIMING_ARCHETYPES[activeTiming];
-  const scored = ALL_CIVS.map(c => ({ c, wr: timingWR(c, t) })).sort((a, b) => b.wr - a.wr);
-  const maxWr = Math.max(...scored.map(x => x.wr));
-  const minWr = Math.min(...scored.map(x => x.wr));
   const grades = timingGrades(t);
-
-  let html = `<div class="section-hdr all">${t.emoji} ${t.label} — ${t.desc} (community-estimated, not official aoestats data)</div>`;
-  html += `<div class="civ-grid">`;
-  scored.forEach(({ c, wr }) => {
-    const pct = maxWr > minWr ? (wr - minWr) / (maxWr - minWr) : 0.5;
-    const cls = pct >= 0.7 ? 'has' : pct >= 0.35 ? 'partial' : 'missing';
-    const fill = pct >= 0.7 ? 'var(--green)' : pct >= 0.35 ? 'var(--amberL)' : 'var(--red)';
-    const isActive = activeCard === c ? ' active' : '';
-    const grade = grades[c];
-    const gcolor = grade ? GRADE_COLOR[grade] : 'var(--text3)';
-    html += `<div class="civ-card ${cls}${isActive}" data-civ="${c}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div class="cname">${c}</div>
-        ${grade ? `<span style="font-size:11px;font-weight:800;color:${gcolor};background:${gcolor}22;border:1px solid ${gcolor};border-radius:5px;padding:0 5px;flex-shrink:0">${grade}</span>` : ''}
-      </div>
-      <div class="score-bar-wrap"><div class="score-bar-fill" style="width:${Math.round(pct*100)}%;background:${fill}"></div></div>
-      <div class="score-txt">${wr}% win rate</div>
-    </div>`;
+  renderTierListShared({
+    pool: ALL_CIVS,
+    gradeOf: c => grades[c],
+    valueOf: c => timingWR(c, t),
+    valueLabel: c => `${timingWR(c, t)}% win rate`,
+    headerHtml: `${t.emoji} ${t.label} — ${t.desc} (community-estimated, not official aoestats data)`,
+    subHeaderHtml: null,
+    clearLabel: `${t.emoji} ${t.label} ranking`,
   });
-  html += `</div>`;
-  html += `<div style="text-align:center;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
-    <button onclick="clearArchetype()" style="background:var(--amberBg);border:1px solid var(--amber);color:var(--amberL);padding:7px 18px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer">
-      × Clear ${t.emoji} ${t.label} ranking
-    </button>
-  </div>`;
-  document.getElementById('civ-section').innerHTML = html;
-  attachCardEvents();
 }
-
-const TIER_ORDER = ['S','A','B','C','D','F'];
 
 function renderOverallTierGrid() {
-  const grades = getOverallGrades(); // single computation, reused everywhere below
-
-  const byGrade = {};
-  TIER_ORDER.forEach(g => byGrade[g] = []);
-  ALL_CIVS.forEach(c => {
-    const entry = grades[c];
-    if (entry) byGrade[entry.grade].push(c);
+  const grades = getOverallGrades();
+  renderTierListShared({
+    pool: ALL_CIVS,
+    gradeOf: c => grades[c]?.grade,
+    valueOf: c => grades[c]?.avg || 0,
+    valueLabel: c => `avg grade value ${(grades[c]?.avg || 0).toFixed(1)} / 6`,
+    headerHtml: `🏅 Tier List Overall — aggregate grade across every archetype (re-ranked, not a simple average)`,
+    subHeaderHtml: null,
+    clearLabel: `Tier List Overall ranking`,
   });
-  // Sort within each tier by raw average descending, using the cached value
-  TIER_ORDER.forEach(g => {
-    byGrade[g].sort((a, b) => grades[b].avg - grades[a].avg || a.localeCompare(b));
-  });
-
-  let html = `<div class="section-hdr all">🏅 Tier List Overall — aggregate grade across every archetype (re-ranked, not a simple average)</div>`;
-
-  // Tier navigation pills — one per tier, always shown (even if empty), with counts
-  html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">`;
-  TIER_ORDER.forEach(g => {
-    const gcolor = GRADE_COLOR[g];
-    const count = byGrade[g].length;
-    html += `<a href="#tier-${g}" style="text-decoration:none;display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;background:${gcolor}18;border:1px solid ${gcolor};color:${gcolor};font-size:12px;font-weight:700">
-      <span>${g} Tier</span><span style="opacity:.7;font-weight:500">${count}</span>
-    </a>`;
-  });
-  html += `</div>`;
-
-  TIER_ORDER.forEach(g => {
-    const civs = byGrade[g];
-    const gcolor = GRADE_COLOR[g];
-    html += `<div id="tier-${g}" class="section-hdr" style="color:${gcolor};border-top-color:${gcolor}44">${g} Tier — ${civs.length} civ${civs.length !== 1 ? 's' : ''}</div>`;
-    if (!civs.length) {
-      html += `<div style="font-size:12px;color:var(--text3);padding:4px 0 8px">No civs landed in this tier this ranking.</div>`;
-    } else {
-      html += `<div class="civ-grid">`;
-      civs.forEach(c => {
-        const isActive = activeCard === c ? ' active' : '';
-        const avg = grades[c].avg;
-        html += `<div class="civ-card ${isActive}" style="border-color:${gcolor}55" data-civ="${c}">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start">
-            <div class="cname">${c}</div>
-            <span style="font-size:11px;font-weight:800;color:${gcolor};background:${gcolor}22;border:1px solid ${gcolor};border-radius:5px;padding:0 5px;flex-shrink:0">${g}</span>
-          </div>
-          <div class="score-txt">avg grade value ${avg.toFixed(1)} / 6</div>
-        </div>`;
-      });
-      html += `</div>`;
-    }
-  });
-
-  html += `<div style="text-align:center;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
-    <button onclick="clearArchetype()" style="background:var(--amberBg);border:1px solid var(--amber);color:var(--amberL);padding:7px 18px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer">
-      × Clear Tier List Overall ranking
-    </button>
-  </div>`;
-  document.getElementById('civ-section').innerHTML = html;
-  attachCardEvents();
 }
+
 
 /* ================================================================
    RENDERING
@@ -2650,6 +2628,7 @@ function initEvents() {
 document.addEventListener('DOMContentLoaded', () => {
   renderArchetypes();
   renderSuggestions();
+  syncArchButtons();
   initEvents();
   loadData();
 });
