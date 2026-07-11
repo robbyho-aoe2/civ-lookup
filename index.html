@@ -1305,6 +1305,9 @@ const MANUAL_ADJUSTMENTS = {
   // Franks' mounted-unit HP bonus is treated as worth +3 in Cavalry instead
   // of the standard +2.
   Franks: [{ arch:'Cavalry', pts:1, note:'Mounted Units +20% HP starting in Feudal Age — treated as +1 extra value' }],
+  // Vikings' free Wheelbarrow/Hand Cart is treated as exceptionally strong —
+  // worth +4 total instead of the standard +2.
+  Vikings: [{ arch:'Eco', pts:2, note:'Wheelbarrow, Hand Cart free — treated as double value' }],
 };
 
 function manualAdjustment(civName, archLabel) {
@@ -1486,7 +1489,7 @@ const BONUS_CATEGORY_OVERRIDE = {
   'Builders work +30% faster': { include:['Eco'] },
 
   // ── Bohemians ──
-  'Fervor and Sanctity affect Villagers': { include:['Defensive'] },
+  'Fervor and Sanctity affect Villagers': { exclude:['Eco'], include:['Defensive'] },
   'Spearman-line deals +25% bonus damage': { exclude:['Infantry'], include:['Defensive'] },
 
   // ── Byzantines ──
@@ -1522,11 +1525,11 @@ const BONUS_CATEGORY_OVERRIDE = {
   'Docks provide +5 population space': { exclude:['Naval'], include:['Eco'] },
   'Siege Weapons cost -33% wood': { exclude:['Eco'] },
   'Skirmishers and Elephant Archers attack +25% faster': { exclude:['Archer'], include:['Defensive','Cavalry Archer'] },
-  'Barracks technologies cost -50%': { include:['Eco'] },
+  'Barracks technologies cost -50%': { include:['Infantry'] },
 
   // ── Vietnamese ──
   'Imperial Skirmisher upgrade available in Imperial Age': { exclude:['Archer'], include:['Defensive'] },
-  'Conscription free': { include:['Eco'] },
+  'Conscription free': { exclude:['Eco'], include:['Infantry','Cavalry','Archer','Siege','Gunpowder'] },
   'Enemy Town Centers are revealed at the start of the game': { include:['Defensive'] },
 
   // ── Persians ──
@@ -1549,7 +1552,7 @@ const BONUS_CATEGORY_OVERRIDE = {
   'Murder Holes, Herbal Medicine free': { include:['Defensive'] },
 
   // ── Berbers ──
-  'Stable Units cost -15/20% in Castle/Imperial Age': { include:['Camel','Cavalry','Eco'] },
+  'Stable Units cost -15/20% in Castle/Imperial Age': { include:['Camel','Cavalry'] },
 
   // ── Malay ──
   'Fish Traps cost -33% and provide +200% food': { exclude:['Naval'], include:['Eco'] },
@@ -1709,7 +1712,7 @@ const UNIQUE_TECH_CATEGORY_OVERRIDE = {
   'Cuman Mercenaries': { include:['Cavalry Archer'] },
   'Bearded Axe': { include:['Infantry'] },
   'Chivalry': { include:['Cavalry'] },
-  'Kshatriyas': { include:['Eco'] },
+  'Kshatriyas': { exclude:['Eco'], include:['Infantry','Cavalry','Archer','Siege','Gunpowder'] },
   'Frontier Guards': { include:['Cavalry Archer'] },
   'Marauders': { include:['Cavalry'] },
   'Andean Sling': { exclude:['Archer'], include:['Defensive'] },
@@ -1728,6 +1731,9 @@ const UNIQUE_TECH_CATEGORY_OVERRIDE = {
   // "Bombard Towers" reads as a Gunpowder keyword, but this is a wall/tower
   // HP tech (already correctly tagged Defensive via "walls"/"tower").
   'Great Wall': { exclude:['Gunpowder'] },
+  // "gold"/"food" cost-conversion reads as an Eco keyword, but this is a
+  // Monastery-cost tech, already correctly tagged Monk via "monastery".
+  'Hussite Reforms': { exclude:['Eco'] },
   'Silk Armor': { include:['Cavalry'] },
   'Flemish Revolution': { exclude:['Eco'] },
   'Anarchy': { include:['Infantry'] },
