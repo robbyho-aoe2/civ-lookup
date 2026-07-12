@@ -2302,13 +2302,14 @@ function renderSelectorPillsHtml() {
   });
   html += `</div><div class="arch-group-label" style="margin-top:8px">Players <span style="font-weight:400;text-transform:none;letter-spacing:normal;opacity:.7">(real personal win rates, one-time snapshot — not live)</span></div>`;
   html += `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px">`;
-  html += `<input type="text" id="player-search" placeholder="Search loaded players…" style="height:30px;padding:0 10px;background:var(--surf);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:12px;outline:none;width:180px">`;
+  html += `<input type="text" id="player-search" placeholder="Search or request a player…" style="height:30px;padding:0 10px;background:var(--surf);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:12px;outline:none;width:200px">`;
   html += `<div class="arch-pill-row" id="player-pill-row" style="flex:1">`;
   PLAYER_LIST.forEach((p, i) => {
     const on = activePlayer === i ? ' on' : '';
     html += `<button class="arch-btn${on}" data-kind="player" data-i="${i}" data-name="${p.label.toLowerCase()}">${p.emoji} ${p.label}</button>`;
   });
   html += `</div></div>`;
+  html += `<div id="player-request-note" style="display:none;margin:-2px 0 8px;padding:10px 12px;background:var(--amberBg);border:1px solid var(--amber);border-radius:10px;font-size:12px;color:var(--text2)"></div>`;
   const activePlayerEntry = activePlayer !== null ? PLAYER_LIST[activePlayer] : null;
   if (activePlayerEntry && activePlayerEntry.source === 'match') {
     html += `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px">`;
@@ -2343,12 +2344,47 @@ function attachSelectorPillEvents(root) {
     });
   });
   const searchEl = root.querySelector('#player-search');
+  const noteEl = root.querySelector('#player-request-note');
   if (searchEl) {
     searchEl.addEventListener('input', () => {
       const q = searchEl.value.toLowerCase().trim();
+      let anyVisible = false;
       root.querySelectorAll('#player-pill-row .arch-btn').forEach(btn => {
-        btn.style.display = !q || btn.dataset.name.includes(q) ? '' : 'none';
+        const match = !q || btn.dataset.name.includes(q);
+        btn.style.display = match ? '' : 'none';
+        if (match) anyVisible = true;
       });
+      if (noteEl) {
+        if (q && !anyVisible) {
+          const requestText = `Hey Robby — can you add "${searchEl.value.trim()}" to the civ tool's Players list? Their aoe2insights.com profile: [paste link here]`;
+          noteEl.style.display = 'block';
+          noteEl.innerHTML = `
+            <b style="color:var(--amberL)">"${searchEl.value.trim()}" isn't loaded yet.</b>
+            This tool can't search players live — but if you find their profile at
+            <a href="https://www.aoe2insights.com/" target="_blank" style="color:var(--amberL)">aoe2insights.com</a>
+            (search their name there, copy the profile URL), send it to Robby and he can get them added — same real data as everyone else here, just a manual one-time pull.
+            <div style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <button id="copy-player-request" style="font-size:11px;padding:4px 10px;background:var(--amber);color:#1a0a00;border:none;border-radius:20px;font-weight:700;cursor:pointer">📋 Copy request message</button>
+              <span id="copy-player-request-status" style="font-size:11px;color:var(--text3)"></span>
+            </div>`;
+          const copyBtn = noteEl.querySelector('#copy-player-request');
+          if (copyBtn) {
+            copyBtn.addEventListener('click', () => {
+              const status = noteEl.querySelector('#copy-player-request-status');
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(requestText)
+                  .then(() => { if (status) status.textContent = 'Copied!'; })
+                  .catch(() => { if (status) status.textContent = requestText; });
+              } else if (status) {
+                status.textContent = requestText;
+              }
+            });
+          }
+        } else {
+          noteEl.style.display = 'none';
+          noteEl.innerHTML = '';
+        }
+      }
     });
   }
 }
