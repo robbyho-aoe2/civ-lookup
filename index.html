@@ -1554,12 +1554,16 @@ const MAP_ARCHETYPES = [
    is blocked from automated access (robots.txt) and requires manual pasting
    to refresh. Curated list, expand by pulling more players the same way. */
 const PLAYER_LIST = [
-  {emoji:'🖱',label:'not A theist (1v1 PC)',key:'1v1 PC',source:'match'},
-  {emoji:'🖱',label:'not A theist (Team PC)',key:'Team PC',source:'match'},
-  {emoji:'🎮',label:'not A theist (1v1 Console)',key:'1v1 Console',source:'match'},
-  {emoji:'🎮',label:'not A theist (Team Console)',key:'Team Console',source:'match'},
-  {emoji:'👑',label:'Hera',key:'Hera',source:'aggregate'},
+  {emoji:'🎥',label:'not A theist',key:'not A theist',source:'match',
+   ladderKeys:{'1v1 PC':'1v1 PC','Team PC':'Team PC','1v1 Console':'1v1 Console','Team Console':'Team Console'}},
+  {emoji:'👑',label:'Hera',key:'Hera',source:'aggregate',ladderKeys:null},
 ];
+
+/* Ladder filter — which mode/platform combo to pull a match-sourced
+   player's data from. Only meaningful for players with ladderKeys (i.e.
+   raw per-match data split by mode); aggregate-source players ignore it.
+   Defaults to 1v1 PC as the most "pure individual skill" signal. */
+const LADDER_OPTIONS = ['1v1 PC','Team PC','1v1 Console','Team Console','All'];
 
 /* Minimum-games-played filter for the Players view — small samples (1-2
    games) can make a 100% or 0% civ look far more meaningful than it is.
@@ -1648,6 +1652,7 @@ let activeMap = null;         // index into MAP_ARCHETYPES
 let activePlayer = null;      // index into PLAYER_LIST
 let activeMinGames = 5;       // minimum games-played filter for Players view
 let activePlayerMapFilter = null; // map key filtering the currently active player, if any
+let activeLadder = '1v1 PC';      // which mode/platform combo to pull match-sourced player data from
 let activeOverallTier = true; // Tier List Overall ranking toggle — default landing view
 let isMobile = false;
 let dataLoaded = false;
@@ -2258,6 +2263,12 @@ function selectMinGames(value) {
   render();
 }
 
+function selectLadder(ladder) {
+  activeLadder = ladder;
+  activePlayerMapFilter = null; // switching ladders invalidates any map filter (different match pool)
+  render();
+}
+
 function selectOverallTier() {
   activeOverallTier = !activeOverallTier;
   if (activeOverallTier) { activeArchetype = null; activeMap = null; activePlayer = null; }
@@ -2298,6 +2309,16 @@ function renderSelectorPillsHtml() {
     html += `<button class="arch-btn${on}" data-kind="player" data-i="${i}" data-name="${p.label.toLowerCase()}">${p.emoji} ${p.label}</button>`;
   });
   html += `</div></div>`;
+  const activePlayerEntry = activePlayer !== null ? PLAYER_LIST[activePlayer] : null;
+  if (activePlayerEntry && activePlayerEntry.source === 'match') {
+    html += `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px">`;
+    html += `<span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Ladder:</span>`;
+    LADDER_OPTIONS.forEach(l => {
+      const on = activeLadder === l ? ' on' : '';
+      html += `<button class="arch-btn${on}" data-kind="ladder" data-ladder="${l}" style="font-size:11px;padding:3px 10px">${l}</button>`;
+    });
+    html += `</div>`;
+  }
   html += `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">`;
   html += `<span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Min. games per civ:</span>`;
   MIN_GAMES_OPTIONS.forEach(opt => {
@@ -2316,6 +2337,7 @@ function attachSelectorPillEvents(root) {
       else if (kind === 'map') selectMap(+btn.dataset.i);
       else if (kind === 'player') selectPlayer(+btn.dataset.i);
       else if (kind === 'mingames') selectMinGames(+btn.dataset.value);
+      else if (kind === 'ladder') selectLadder(btn.dataset.ladder);
       else if (kind === 'playermap') selectPlayerMapFilter(btn.dataset.map);
       else selectOverallTier();
     });
@@ -2464,12 +2486,29 @@ function renderMapGrid() {
      per-match data) — map-filtering isn't possible, since there's no
      civ-on-map cross-tabulation available from that source.
    Returns { [civ]: {wr, games} }, already filtered by minGames. */
-function getPlayerCivStats(playerKey, mapFilter, minGames) {
+/* Resolve the raw match list for a match-sourced player under the current
+   ladder selection — a specific ladder key, or 'All' to combine every
+   ladder that player has data for. */
+function getPlayerMatches(playerKey, ladder) {
+  const listEntry = PLAYER_LIST.find(p => p.key === playerKey);
+  if (!listEntry || listEntry.source !== 'match' || !listEntry.ladderKeys) return [];
+  if (ladder === 'All') {
+    let all = [];
+    Object.values(listEntry.ladderKeys).forEach(k => {
+      all = all.concat(PLAYER_MATCH_DATA[k]?.matches || []);
+    });
+    return all;
+  }
+  const dataKey = listEntry.ladderKeys[ladder];
+  return dataKey ? (PLAYER_MATCH_DATA[dataKey]?.matches || []) : [];
+}
+
+function getPlayerCivStats(playerKey, ladder, mapFilter, minGames) {
   const listEntry = PLAYER_LIST.find(p => p.key === playerKey);
   if (!listEntry) return {};
 
   if (listEntry.source === 'match') {
-    const matches = PLAYER_MATCH_DATA[playerKey]?.matches || [];
+    const matches = getPlayerMatches(playerKey, ladder);
     const filtered = mapFilter ? matches.filter(m => m.map === mapFilter) : matches;
     const agg = {};
     filtered.forEach(m => {
@@ -2484,7 +2523,7 @@ function getPlayerCivStats(playerKey, mapFilter, minGames) {
     return out;
   }
 
-  // aggregate source — map-filtering unsupported, ignore mapFilter
+  // aggregate source — ladder selection and map-filtering both unsupported
   const civs = PLAYER_DATA[playerKey]?.civs || {};
   const out = {};
   Object.entries(civs).forEach(([civ, e]) => {
@@ -2495,11 +2534,11 @@ function getPlayerCivStats(playerKey, mapFilter, minGames) {
 
 /* Every map a player has data for, from whichever source — used to build
    the "select a map to filter" pills and the top-played-maps readout. */
-function getPlayerMapList(playerKey) {
+function getPlayerMapList(playerKey, ladder) {
   const listEntry = PLAYER_LIST.find(p => p.key === playerKey);
   if (!listEntry) return [];
   if (listEntry.source === 'match') {
-    const matches = PLAYER_MATCH_DATA[playerKey]?.matches || [];
+    const matches = getPlayerMatches(playerKey, ladder);
     const agg = {};
     matches.forEach(m => {
       if (!agg[m.map]) agg[m.map] = { wins: 0, games: 0 };
@@ -2512,8 +2551,8 @@ function getPlayerMapList(playerKey) {
   return Object.entries(maps).map(([map, e]) => ({ map, wr: e.wr, games: e.games }));
 }
 
-function playerGrades(playerKey, mapFilter, minGames) {
-  const stats = getPlayerCivStats(playerKey, mapFilter, minGames);
+function playerGrades(playerKey, ladder, mapFilter, minGames) {
+  const stats = getPlayerCivStats(playerKey, ladder, mapFilter, minGames);
   const civsWithData = Object.keys(stats);
   const tiers = tierRangeForPoolSize(civsWithData.length);
   const tCount = tiers.length;
@@ -2531,14 +2570,17 @@ function playerGrades(playerKey, mapFilter, minGames) {
 function renderPlayerGrid() {
   const p = PLAYER_LIST[activePlayer];
   const isMatchSource = p.source === 'match';
-  const meta = isMatchSource ? PLAYER_MATCH_DATA[p.key].meta : PLAYER_DATA[p.key].meta;
-  const stats = getPlayerCivStats(p.key, activePlayerMapFilter, activeMinGames);
-  const grades = playerGrades(p.key, activePlayerMapFilter, activeMinGames);
+  const activeDataKey = isMatchSource ? (p.ladderKeys[activeLadder] || null) : null;
+  const meta = isMatchSource
+    ? (activeLadder === 'All' ? { source:'data.aoe2companion.com (raw match API)', pulledDate:'2026-07-12', mode:'All ladders combined' } : PLAYER_MATCH_DATA[activeDataKey]?.meta)
+    : PLAYER_DATA[p.key].meta;
+  const stats = getPlayerCivStats(p.key, activeLadder, activePlayerMapFilter, activeMinGames);
+  const grades = playerGrades(p.key, activeLadder, activePlayerMapFilter, activeMinGames);
 
   // Map pills: select one to filter this player's civ list to that map
-  // specifically (only possible for raw-match-sourced players). Clicking
-  // the active one again clears the filter.
-  const mapList = getPlayerMapList(p.key).sort((a,b) => b.games - a.games);
+  // specifically (only possible for raw-match-sourced players/ladders).
+  // Clicking the active one again clears the filter.
+  const mapList = getPlayerMapList(p.key, activeLadder).sort((a,b) => b.games - a.games);
   let mapPillsHtml = '';
   if (isMatchSource && mapList.length) {
     mapPillsHtml = `<div style="margin-top:8px"><b style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Filter to a map (click again to clear)</b><div class="arch-pill-row" style="margin-top:4px">` +
@@ -2553,18 +2595,19 @@ function renderPlayerGrid() {
         <b style="color:var(--amberL)">${m.map}</b> ${m.wr}% <span style="color:var(--text3)">(${m.games}g)</span>
       </span>`
     ).join('');
-    mapPillsHtml = `<div style="margin-top:8px"><b style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Top-played maps (civ-on-map filtering unavailable for this source)</b><br>${mapHtml}</div>`;
+    mapPillsHtml = `<div style="margin-top:8px"><b style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Top-played maps — click-to-filter unavailable (this player's source has no raw per-match data)</b><br>${mapHtml || '<span style="color:var(--text3);font-size:11px">No map data on record.</span>'}</div>`;
   }
 
   const missingData = ALL_CIVS.filter(c => !stats[c]);
   const filterNote = activePlayerMapFilter ? ` · filtered to <b style="color:var(--amberL)">${activePlayerMapFilter}</b> only` : '';
+  const ladderNote = isMatchSource ? ` · ${activeLadder}` : '';
 
   renderTierListShared({
     pool: ALL_CIVS,
     gradeOf: c => grades[c] || null,
     valueOf: c => stats[c]?.wr || 0,
     valueLabel: c => `${stats[c].wr}% win rate (${stats[c].games} game${stats[c].games !== 1 ? 's' : ''})`,
-    headerHtml: `${p.emoji} ${p.label} — real personal civ win rates, ${meta.mode}${filterNote}`,
+    headerHtml: `${p.emoji} ${p.label} — real personal civ win rates${ladderNote}${filterNote}`,
     subHeaderHtml: `Snapshot from ${meta.source}, pulled ${meta.pulledDate} — not live. Showing civs with ${activeMinGames > 0 ? activeMinGames + '+' : 'any number of'} games.${missingData.length ? ` No qualifying data for: ${missingData.slice(0,15).join(', ')}${missingData.length>15?'…':''}.` : ''}${mapPillsHtml}`,
     clearLabel: `${p.emoji} ${p.label} tier list`,
   });
@@ -2738,7 +2781,7 @@ function radarChartSVG(civName) {
   // just toned way down to sit quietly behind the gold data line rather
   // than compete with it). Drawn largest-first (S) so each smaller ring
   // painted on top naturally forms concentric bands.
-  const TIER_RING_COLORS = ['rgba(248,113,113,0.26)','rgba(251,146,60,0.26)','rgba(240,180,88,0.26)','rgba(74,222,128,0.24)','rgba(96,165,250,0.24)','rgba(136,135,128,0.20)'];
+  const TIER_RING_COLORS = ['rgba(255,51,85,0.24)','rgba(255,149,0,0.22)','rgba(255,229,0,0.20)','rgba(57,255,106,0.20)','rgba(0,212,255,0.20)','rgba(176,38,255,0.18)'];
   const ringFractions = [1, 0.833, 0.667, 0.5, 0.333, 0.167];
   const ringLabels = ['S','A','B','C','D','F'];
   let gridRings = '';
@@ -2943,7 +2986,7 @@ function tierGradesForArchetype(arch) {
   return _tierGradeCache[arch.label];
 }
 
-const GRADE_COLOR = { S:'var(--green)', A:'#86efac', B:'var(--amberL)', C:'var(--text2)', D:'#fb923c', F:'var(--red)' };
+const GRADE_COLOR = { S:'#FF3355', A:'#FF9500', B:'#FFE500', C:'#39FF6A', D:'#00D4FF', F:'#B026FF' };
 const GRADE_VALUE = { S:6, A:5, B:4, C:3, D:2, F:1 };
 
 function civGrade(civName, arch) {
