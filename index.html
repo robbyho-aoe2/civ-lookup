@@ -2356,14 +2356,16 @@ function attachSelectorPillEvents(root) {
       });
       if (noteEl) {
         if (q && !anyVisible) {
+          const DISCORD_INVITE = 'https://discord.gg/rYuTAhbc99';
           const requestText = `Hey Robby — can you add "${searchEl.value.trim()}" to the civ tool's Players list? Their aoe2insights.com profile: [paste link here]`;
           noteEl.style.display = 'block';
           noteEl.innerHTML = `
             <b style="color:var(--amberL)">"${searchEl.value.trim()}" isn't loaded yet.</b>
             This tool can't search players live — but if you find their profile at
             <a href="https://www.aoe2insights.com/" target="_blank" style="color:var(--amberL)">aoe2insights.com</a>
-            (search their name there, copy the profile URL), send it to Robby and he can get them added — same real data as everyone else here, just a manual one-time pull.
+            (search their name there, copy the profile URL), drop a request in the Discord and Robby can get them added — same real data as everyone else here, just a manual one-time pull.
             <div style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <a href="${DISCORD_INVITE}" target="_blank" style="font-size:11px;padding:4px 10px;background:#5865F2;color:#fff;border-radius:20px;font-weight:700;text-decoration:none;display:inline-block">💬 Request in Discord</a>
               <button id="copy-player-request" style="font-size:11px;padding:4px 10px;background:var(--amber);color:#1a0a00;border:none;border-radius:20px;font-weight:700;cursor:pointer">📋 Copy request message</button>
               <span id="copy-player-request-status" style="font-size:11px;color:var(--text3)"></span>
             </div>`;
@@ -2373,7 +2375,7 @@ function attachSelectorPillEvents(root) {
               const status = noteEl.querySelector('#copy-player-request-status');
               if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(requestText)
-                  .then(() => { if (status) status.textContent = 'Copied!'; })
+                  .then(() => { if (status) status.textContent = 'Copied! Paste it in Discord.'; })
                   .catch(() => { if (status) status.textContent = requestText; });
               } else if (status) {
                 status.textContent = requestText;
