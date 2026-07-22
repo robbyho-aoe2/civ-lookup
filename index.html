@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v2.0 · Win rates from aoestats.io &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.25 · Win rates from aoestats.io &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -16597,6 +16597,27 @@ function playerGrades(playerKey, ladder, mapFilter, minGames) {
   return computeGradesFromScored(scored, tiers);
 }
 
+/* Most-recent pulledDate across this player's ladders — reads whichever
+   underlying data source actually applies (compiled MATCH_DATA_SOURCES
+   for pro, cached remote JSON for console/pc/streamer), so the "Snapshot
+   from... pulled X" line always reflects the real data instead of a
+   hardcoded placeholder. */
+function getPlayerPulledDate(playerKey) {
+  const listEntry = PLAYER_LIST.find(p => p.key === playerKey);
+  if (!listEntry) return null;
+  let metas = [];
+  if (listEntry.source === 'remote') {
+    const cached = _remotePlayerCache[listEntry.profileId];
+    metas = Object.values(cached?.ladders || {}).map(l => l?.meta);
+  } else if (listEntry.source === 'match' && listEntry.ladderKeys) {
+    const dataObj = MATCH_DATA_SOURCES[listEntry.matchDataSource];
+    metas = Object.values(listEntry.ladderKeys).map(k => dataObj?.[k]?.meta);
+  }
+  const dates = metas.map(m => m?.pulledDate).filter(Boolean);
+  if (!dates.length) return null;
+  return dates.reduce((max, d) => (d > max ? d : max), dates[0]);
+}
+
 function renderPlayerGrid() {
   const p = PLAYER_LIST[activePlayer];
   if (p.source === 'remote' && !isPlayerDataReady(p.key)) {
@@ -16614,7 +16635,7 @@ function renderPlayerGrid() {
   const isMatchSource = p.source === 'match' || p.source === 'remote';
   const meta = isMatchSource
     ? (activeLadder === 'All'
-        ? { source:'data.aoe2companion.com (raw match API)', pulledDate:'2026-07-13', mode:'All ladders combined', totalGames: getPlayerMatches(p.key, 'All').length }
+        ? { source:'data.aoe2companion.com (raw match API)', pulledDate: getPlayerPulledDate(p.key), mode:'All ladders combined', totalGames: getPlayerMatches(p.key, 'All').length }
         : getPlayerMatchMeta(p.key, activeLadder))
     : PLAYER_DATA[p.key].meta;
   const stats = getPlayerCivStats(p.key, activeLadder, activePlayerMapFilter, activeMinGames);
@@ -16673,7 +16694,7 @@ function renderPlayerGrid() {
     valueOf: c => stats[c]?.wr || 0,
     valueLabel: c => `${stats[c].wr}% win rate (${stats[c].games} game${stats[c].games !== 1 ? 's' : ''})`,
     headerHtml: `${p.emoji} ${p.label} — real personal civ win rates${ladderNote}${filterNote}${currentPatchNote}${recentFormNote}`,
-    subHeaderHtml: `<b style="color:var(--amberL)">${gamesLabel}</b> · Snapshot from ${meta.source}, pulled ${meta.pulledDate} — not live. Showing civs with ${activeMinGames > 0 ? activeMinGames + '+' : 'any number of'} games.${activeRecencyMode === 'form' ? ' Win rates below are recency-weighted, not flat averages.' : ''}${missingData.length ? ` No qualifying data for: ${missingData.slice(0,15).join(', ')}${missingData.length>15?'…':''}.` : ''}${mapPillsHtml}`,
+    subHeaderHtml: `<b style="color:var(--amberL)">${gamesLabel}</b> · Snapshot from ${meta.source}, pulled ${meta.pulledDate || 'recently'} — not live. Showing civs with ${activeMinGames > 0 ? activeMinGames + '+' : 'any number of'} games.${activeRecencyMode === 'form' ? ' Win rates below are recency-weighted, not flat averages.' : ''}${missingData.length ? ` No qualifying data for: ${missingData.slice(0,15).join(', ')}${missingData.length>15?'…':''}.` : ''}${mapPillsHtml}`,
     clearLabel: `${p.emoji} ${p.label} tier list`,
   });
 }
