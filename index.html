@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.29 · Win rates from aoestats.io &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.30 · Win rates from aoestats.io &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -15972,6 +15972,10 @@ function selectGroupOverall(group) {
   else {
     activeGroupOverall = group; activePlayer = null; activeArchetype = null; activeMap = null; activeOverallTier = false; activeMapOverall = null;
     activeLadder = GROUP_DEFAULT_LADDER[group] || activeLadder;
+    // Patch/Recent-Form filtering needs raw per-match data, which pooled
+    // aggregate stats don't carry — reset to All Time so the tool never
+    // shows a filter pill as "on" while silently doing nothing.
+    if (GROUP_SOURCES[group]?.mode === 'remote') activeRecencyMode = 'all';
     // Map filter carries over as-is; renderGroupOverallGrid re-derives the
     // map list fresh from that whole group's players combined, so an
     // invalid/no-longer-present map just naturally yields no filtering.
@@ -16096,9 +16100,15 @@ function renderSelectorPillsHtml() {
     const allOn = activeRecencyMode === 'all' ? ' on' : '';
     const patchOn = activeRecencyMode === 'patch' ? ' on' : '';
     const formOn = activeRecencyMode === 'form' ? ' on' : '';
+    // Patch/Recent-Form need raw per-match data. Individual players (once
+    // fetched) have that. Pooled group-overall views sourced from
+    // aggregate.json only have totals, no per-match dates — so those two
+    // pills are disabled there rather than shown as clickable no-ops.
+    const groupIsPooled = activeGroupOverall && GROUP_SOURCES[activeGroupOverall]?.mode === 'remote';
+    const disabledAttrs = groupIsPooled ? ' disabled title="Not available for pooled community stats — only for individual players\' own match history" style="font-size:11px;padding:3px 10px;opacity:.4;cursor:not-allowed"' : ' style="font-size:11px;padding:3px 10px"';
     html += `<button class="arch-btn${allOn}" data-kind="recencymode" data-mode="all" style="font-size:11px;padding:3px 10px">🕰 All Time</button>`;
-    html += `<button class="arch-btn${patchOn}" data-kind="recencymode" data-mode="patch" style="font-size:11px;padding:3px 10px">🩹 Current patch only</button>`;
-    html += `<button class="arch-btn${formOn}" data-kind="recencymode" data-mode="form" style="font-size:11px;padding:3px 10px">📈 Recent games weighted more</button>`;
+    html += `<button class="arch-btn${patchOn}" data-kind="recencymode" data-mode="patch"${disabledAttrs}>🩹 Current patch only</button>`;
+    html += `<button class="arch-btn${formOn}" data-kind="recencymode" data-mode="form"${disabledAttrs}>📈 Recent games weighted more</button>`;
     html += `</div>`;
   }
   if (activePlayer !== null || activeGroupOverall !== null) {
@@ -16133,6 +16143,7 @@ function attachSelectorPillEvents(root) {
           activeArchetype = null; activeMap = null; activeOverallTier = false;
           activePlayer = null; activeMapOverall = null;
           activeLadder = GROUP_DEFAULT_LADDER.console;
+          activeRecencyMode = 'all';
         }
         render();
       }
