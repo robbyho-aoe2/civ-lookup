@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.37 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.38 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2764,11 +2764,9 @@ function renderSelectorPillsHtml() {
     }).join('');
   const pcOverallOn = activeGroupOverall === 'pc' ? ' on' : '';
   const pcOverallPill = pcPlayers.length ? `<button class="arch-btn${pcOverallOn}" data-kind="groupoverall" data-group="pc" data-name="pc overall" style="font-weight:700">🖥️ PC Overall</button>` : '';
-  const streamerOverallOn = activeGroupOverall === 'streamer' ? ' on' : '';
-  const streamerOverallPill = streamerPlayers.length ? `<button class="arch-btn${streamerOverallOn}" data-kind="groupoverall" data-group="streamer" data-name="streamer overall" style="font-weight:700">📺 Streamer Overall</button>` : '';
   html += `<div id="player-pill-row">`;
   html += renderPlayerGroup('Pro Players', proPlayers, proOverallPill, 'pro');
-  html += renderPlayerGroup('Streamers', streamerPlayers, streamerOverallPill, 'streamer');
+  html += renderPlayerGroup('Streamers', streamerPlayers, null, 'streamer');
   html += renderPlayerGroup('PC Players', pcPlayers, pcOverallPill, 'pc');
   html += renderPlayerGroup('Console Players — sorted by 1v1 Console rating', consolePlayers, consoleOverallPill, 'console');
   html += `</div>`;
@@ -3571,7 +3569,6 @@ const GROUP_OVERALL_META = {
   pro: { emoji: '🏆', label: 'Pro Overall', groupLabel: 'Pro Players' },
   console: { emoji: '🎮', label: 'Console Overall', groupLabel: 'Console Players' },
   pc: { emoji: '🖥️', label: 'PC Overall', groupLabel: 'PC Players' },
-  streamer: { emoji: '📺', label: 'Streamer Overall', groupLabel: 'Streamers' },
 };
 
 function renderGroupOverallGrid() {
