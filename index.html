@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.33 · Win rates from aoestats.io &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.34 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2599,14 +2599,26 @@ function selectMap(idx) {
   render();
 }
 
+/* Whatever group is currently being viewed — an individual player's group,
+   or the group behind an active Group Overall — or null if neither. Used
+   to decide whether switching selection should reset the ladder pill:
+   same group keeps whatever ladder was manually chosen, different group
+   (console -> pro, etc.) resets to that group's sensible default. */
+function getCurrentEffectiveGroup() {
+  if (activePlayer !== null) return PLAYER_LIST[activePlayer]?.group ?? null;
+  if (activeGroupOverall !== null) return activeGroupOverall;
+  return null;
+}
+
 function selectPlayer(idx) {
   const wasMapFilter = activePlayerMapFilter;
+  const prevGroup = getCurrentEffectiveGroup();
   activeGroupOverall = null;
   if (activePlayer === idx) { activePlayer = null; activePlayerMapFilter = null; }
   else {
     activePlayer = idx; activeArchetype = null; activeMap = null; activeOverallTier = false; activeConsoleElo = null; activeMapOverall = null;
     const entry = PLAYER_LIST[idx];
-    activeLadder = GROUP_DEFAULT_LADDER[entry.group] || activeLadder;
+    if (prevGroup !== entry.group) activeLadder = GROUP_DEFAULT_LADDER[entry.group] || activeLadder;
     // Remote players: kick off the lazy fetch if we don't have them cached
     // yet. render() below shows a loading state immediately; once the
     // fetch resolves we render() again and everything downstream (which
@@ -2630,10 +2642,11 @@ function selectPlayer(idx) {
 }
 
 function selectGroupOverall(group) {
+  const prevGroup = getCurrentEffectiveGroup();
   if (activeGroupOverall === group) { activeGroupOverall = null; activePlayerMapFilter = null; }
   else {
     activeGroupOverall = group; activePlayer = null; activeArchetype = null; activeMap = null; activeOverallTier = false; activeMapOverall = null;
-    activeLadder = GROUP_DEFAULT_LADDER[group] || activeLadder;
+    if (prevGroup !== group) activeLadder = GROUP_DEFAULT_LADDER[group] || activeLadder;
     // Map filter carries over as-is; renderGroupOverallGrid re-derives the
     // map list fresh from that whole group's players combined, so an
     // invalid/no-longer-present map just naturally yields no filtering.
@@ -2716,10 +2729,14 @@ function renderSelectorPillsHtml() {
       const rb = playerConsoleRating(b.p) ?? -1;
       return rb - ra;
     });
+  const pcPlayers = PLAYER_LIST.map((p, i) => ({ p, i })).filter(x => x.p.group === 'pc')
+    .sort((a, b) => (playerDisplayRating(b.p) ?? -1) - (playerDisplayRating(a.p) ?? -1));
+  const streamerPlayers = PLAYER_LIST.map((p, i) => ({ p, i })).filter(x => x.p.group === 'streamer')
+    .sort((a, b) => (playerDisplayRating(b.p) ?? -1) - (playerDisplayRating(a.p) ?? -1));
   const renderPlayerGroup = (label, entries, extraFirstPill, groupKey) => {
     const pills = entries.map(({ p, i }) => {
       const on = activePlayer === i ? ' on' : '';
-      const rating = playerConsoleRating(p);
+      const rating = playerDisplayRating(p);
       const ratingTag = rating != null ? ` <span style="opacity:.65">(${rating})</span>` : '';
       return `<button class="arch-btn${on}" data-kind="player" data-i="${i}" data-name="${p.label.toLowerCase()}" data-group="${groupKey}">${p.emoji} ${p.label}${ratingTag}</button>`;
     }).join('');
@@ -2728,6 +2745,7 @@ function renderSelectorPillsHtml() {
     const rowOverflow = expanded ? 'auto' : 'hidden';
     const toggleLbl = expanded ? '▲ collapse' : `▼ +${entries.length} players`;
     const searchBar = groupKey === 'console' ? `<input type="text" id="console-player-search" placeholder="Search console players…" style="height:26px;padding:0 8px;background:var(--surf);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:11px;outline:none;width:160px;margin-top:4px">` : '';
+    if (!entries.length && !extraFirstPill) return ''; // hide empty PC/Streamer sections entirely until players exist
     return `<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:6px">${label}</div>${searchBar}
       <div class="arch-pill-row player-pill-scroll" style="max-height:${rowH};overflow-y:${rowOverflow};overflow-x:hidden;padding-right:2px">${extraFirstPill || ''}${pills}</div>
       <button data-kind="togglegroup" data-group="${groupKey}" style="font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;padding:2px 4px;margin-top:1px">${toggleLbl}</button>`;
@@ -2740,9 +2758,15 @@ function renderSelectorPillsHtml() {
       const on = activeConsoleElo === key ? ' on' : '';
       return `<button class="arch-btn${on}" data-kind="consoleelo" data-elo="${key}" style="font-size:11px">${b.label}</button>`;
     }).join('');
+  const pcOverallOn = activeGroupOverall === 'pc' ? ' on' : '';
+  const pcOverallPill = pcPlayers.length ? `<button class="arch-btn${pcOverallOn}" data-kind="groupoverall" data-group="pc" data-name="pc overall" style="font-weight:700">🖥️ PC Overall</button>` : '';
+  const streamerOverallOn = activeGroupOverall === 'streamer' ? ' on' : '';
+  const streamerOverallPill = streamerPlayers.length ? `<button class="arch-btn${streamerOverallOn}" data-kind="groupoverall" data-group="streamer" data-name="streamer overall" style="font-weight:700">📺 Streamer Overall</button>` : '';
   html += `<div id="player-pill-row">`;
   html += renderPlayerGroup('Pro Players', proPlayers, proOverallPill, 'pro');
   html += renderPlayerGroup('Console Players — sorted by 1v1 Console rating', consolePlayers, consoleOverallPill, 'console');
+  html += renderPlayerGroup('PC Players', pcPlayers, pcOverallPill, 'pc');
+  html += renderPlayerGroup('Streamers', streamerPlayers, streamerOverallPill, 'streamer');
   html += `</div>`;
   html += `<div id="player-request-note" style="display:none;margin:8px 0 8px;padding:10px 12px;background:var(--amberBg);border:1px solid var(--amber);border-radius:10px;font-size:12px;color:var(--text2)"></div>`;
   const activePlayerEntry = activePlayer !== null ? PLAYER_LIST[activePlayer] : null;
@@ -2789,12 +2813,13 @@ function attachSelectorPillEvents(root) {
       else if (kind === 'recencymode') selectRecencyMode(btn.dataset.mode);
       else if (kind === 'consoleelo') {
         const elo = btn.dataset.elo;
+        const prevGroup = getCurrentEffectiveGroup();
         activeConsoleElo = activeConsoleElo === elo ? null : elo;
         if (activeConsoleElo) {
           activeGroupOverall = 'console';
           activeArchetype = null; activeMap = null; activeOverallTier = false;
           activePlayer = null; activeMapOverall = null;
-          activeLadder = GROUP_DEFAULT_LADDER.console;
+          if (prevGroup !== 'console') activeLadder = GROUP_DEFAULT_LADDER.console;
           // Form/Patch and ELO bracket are separate single-dimension slices
           // in the aggregate (no combined "form-weighted, this bracket only"
           // data) — reset Form so clicking a bracket reliably shows
@@ -3412,6 +3437,16 @@ function playerConsoleRating(p) {
   return ds?.['1v1 Console']?.meta?.latestRating ?? null;
 }
 
+/* Rating shown on the roster pill — console players show their console
+   rating, everyone else (pro/pc/streamer, all PC-primary) shows PC rating
+   instead so the badge is actually meaningful for that group. */
+function playerDisplayRating(p) {
+  if (p.group === 'console') return playerConsoleRating(p);
+  if (p.source === 'remote') return p.ratings?.['1v1 PC'] ?? p.ratings?.['1v1 Console'] ?? null;
+  const ds = MATCH_DATA_SOURCES[p.matchDataSource];
+  return ds?.['1v1 PC']?.meta?.latestRating ?? ds?.['1v1 Console']?.meta?.latestRating ?? null;
+}
+
 /* Converts one of aggregate.json's pre-pooled {civ:{games,wins,pickRate}}
    slices into the {civ:{wr,games,contributors}} shape the rest of the tier
    list / grading code already expects. contributors isn't tracked in the
@@ -3531,6 +3566,8 @@ function groupOverallGrades(group, mapFilter, minGames) {
 const GROUP_OVERALL_META = {
   pro: { emoji: '🏆', label: 'Pro Overall', groupLabel: 'Pro Players' },
   console: { emoji: '🎮', label: 'Console Overall', groupLabel: 'Console Players' },
+  pc: { emoji: '🖥️', label: 'PC Overall', groupLabel: 'PC Players' },
+  streamer: { emoji: '📺', label: 'Streamer Overall', groupLabel: 'Streamers' },
 };
 
 function renderGroupOverallGrid() {
