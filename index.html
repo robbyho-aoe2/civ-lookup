@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.28 · Win rates from aoestats.io &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.29 · Win rates from aoestats.io &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -16864,7 +16864,13 @@ function renderGroupOverallGrid() {
     pool: ALL_CIVS,
     gradeOf: c => grades[c] || null,
     valueOf: c => stats[c]?.wr || 0,
-    valueLabel: c => `${stats[c].wr}% win rate (${stats[c].games} games total, ${stats[c].contributors} player${stats[c].contributors !== 1 ? 's' : ''})`,
+    valueLabel: c => {
+      const s = stats[c];
+      const contribClause = s.contributors != null
+        ? `, ${s.contributors} player${s.contributors !== 1 ? 's' : ''}`
+        : '';
+      return `${s.wr}% win rate (${s.games} games total${contribClause})`;
+    },
     headerHtml: `${meta.emoji} ${meta.label} — pooled across ${playerCount} ${meta.groupLabel}${eloNote} · ${activeLadder}${filterNote}${currentPatchNote}${recentFormNote}`,
     subHeaderHtml: `Each civ's win rate is total wins ÷ total games across ${activeConsoleElo ? `the ${playerCount} ${CONSOLE_ELO_BRACKETS[activeConsoleElo].label}-ELO Console Players (${CONSOLE_ELO_BRACKETS[activeConsoleElo].max === Infinity ? CONSOLE_ELO_BRACKETS[activeConsoleElo].min + '+' : CONSOLE_ELO_BRACKETS[activeConsoleElo].min + '–' + CONSOLE_ELO_BRACKETS[activeConsoleElo].max} 1v1 Console rating)` : `every ${meta.groupLabel.slice(0,-1)}`}'s real matches, pooled together — weighted by games played, so a player with 500 games on a civ counts proportionally more than one with 5. Showing civs with ${activeMinGames > 0 ? activeMinGames + '+' : 'any number of'} total pooled games.${missingData.length ? ` No qualifying data for: ${missingData.slice(0,15).join(', ')}${missingData.length>15?'…':''}.` : ''}${mapPillsHtml}`,
     clearLabel: `${meta.emoji} ${meta.label} tier list`,
