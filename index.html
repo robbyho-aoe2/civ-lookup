@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.25 · Win rates from aoestats.io &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.28 · Win rates from aoestats.io &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -15055,6 +15055,10 @@ const GROUP_SOURCES = {
   pc:       { mode: 'remote' },
   streamer: { mode: 'remote' },
 };
+/* Auto-selected ladder pill whenever a player/group/bracket is opened —
+   console players live on the console ladder, pro/pc/streamer players
+   live on PC. */
+const GROUP_DEFAULT_LADDER = { console: 'Console', pro: 'PC', pc: 'PC', streamer: 'PC' };
 let unitsById = {}, techsById = {}, civData = {}, searchIdx = {};
 let AGGREGATE = null;          // fetched once at load: pooled stats for every remote group
 let playerDataLoaded = false;  // separate from dataLoaded (tech tree) — both gate rendering readiness
@@ -15940,6 +15944,7 @@ function selectPlayer(idx) {
   else {
     activePlayer = idx; activeArchetype = null; activeMap = null; activeOverallTier = false; activeConsoleElo = null; activeMapOverall = null;
     const entry = PLAYER_LIST[idx];
+    activeLadder = GROUP_DEFAULT_LADDER[entry.group] || activeLadder;
     // Remote players: kick off the lazy fetch if we don't have them cached
     // yet. render() below shows a loading state immediately; once the
     // fetch resolves we render() again and everything downstream (which
@@ -15966,6 +15971,7 @@ function selectGroupOverall(group) {
   if (activeGroupOverall === group) { activeGroupOverall = null; activePlayerMapFilter = null; }
   else {
     activeGroupOverall = group; activePlayer = null; activeArchetype = null; activeMap = null; activeOverallTier = false; activeMapOverall = null;
+    activeLadder = GROUP_DEFAULT_LADDER[group] || activeLadder;
     // Map filter carries over as-is; renderGroupOverallGrid re-derives the
     // map list fresh from that whole group's players combined, so an
     // invalid/no-longer-present map just naturally yields no filtering.
@@ -16126,6 +16132,7 @@ function attachSelectorPillEvents(root) {
           activeGroupOverall = 'console';
           activeArchetype = null; activeMap = null; activeOverallTier = false;
           activePlayer = null; activeMapOverall = null;
+          activeLadder = GROUP_DEFAULT_LADDER.console;
         }
         render();
       }
@@ -16733,7 +16740,7 @@ function aggregateSliceToStats(slice, minGames) {
   const out = {};
   Object.entries(slice || {}).forEach(([civ, e]) => {
     if (e.games < minGames) return;
-    out[civ] = { wr: e.games ? e.wins / e.games : 0, games: e.games, contributors: null };
+    out[civ] = { wr: e.games ? Math.round(e.wins / e.games * 1000) / 10 : 0, games: e.games, contributors: null };
   });
   return out;
 }
