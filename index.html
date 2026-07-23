@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.34 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.36 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1075,7 +1075,7 @@ const ITEM_AGES = {
     80:3, 81:1, 82:2, 93:2, 140:2, 182:2, 194:2, 199:1, 200:2, 201:3,
     202:1, 203:2, 211:1, 212:2, 213:1, 215:2, 219:3, 221:3, 230:3, 231:2,
     233:3, 249:2, 252:2, 279:2, 315:3, 316:2, 319:2, 321:3, 322:2, 373:3,
-    374:2, 375:3, 377:3, 379:3, 380:2, 435:1, 436:3, 437:3, 438:3, 439:2,
+    374:2, 375:3, 377:3, 379:3, 380:2, 435:1, 436:3, 437:2, 438:3, 439:2,
     441:2, 602:1, 608:3, 875:2, 907:3,
   },
 };
@@ -2745,7 +2745,8 @@ function renderSelectorPillsHtml() {
     const rowOverflow = expanded ? 'auto' : 'hidden';
     const toggleLbl = expanded ? '▲ collapse' : `▼ +${entries.length} players`;
     const searchBar = groupKey === 'console' ? `<input type="text" id="console-player-search" placeholder="Search console players…" style="height:26px;padding:0 8px;background:var(--surf);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:11px;outline:none;width:160px;margin-top:4px">` : '';
-    if (!entries.length && !extraFirstPill) return ''; // hide empty PC/Streamer sections entirely until players exist
+    // PC/Streamer sections stay visible even with 0 players — better to
+    // show "no players yet" than silently disappear once they're added.
     return `<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:6px">${label}</div>${searchBar}
       <div class="arch-pill-row player-pill-scroll" style="max-height:${rowH};overflow-y:${rowOverflow};overflow-x:hidden;padding-right:2px">${extraFirstPill || ''}${pills}</div>
       <button data-kind="togglegroup" data-group="${groupKey}" style="font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;padding:2px 4px;margin-top:1px">${toggleLbl}</button>`;
@@ -2764,9 +2765,9 @@ function renderSelectorPillsHtml() {
   const streamerOverallPill = streamerPlayers.length ? `<button class="arch-btn${streamerOverallOn}" data-kind="groupoverall" data-group="streamer" data-name="streamer overall" style="font-weight:700">📺 Streamer Overall</button>` : '';
   html += `<div id="player-pill-row">`;
   html += renderPlayerGroup('Pro Players', proPlayers, proOverallPill, 'pro');
-  html += renderPlayerGroup('Console Players — sorted by 1v1 Console rating', consolePlayers, consoleOverallPill, 'console');
-  html += renderPlayerGroup('PC Players', pcPlayers, pcOverallPill, 'pc');
   html += renderPlayerGroup('Streamers', streamerPlayers, streamerOverallPill, 'streamer');
+  html += renderPlayerGroup('PC Players', pcPlayers, pcOverallPill, 'pc');
+  html += renderPlayerGroup('Console Players — sorted by 1v1 Console rating', consolePlayers, consoleOverallPill, 'console');
   html += `</div>`;
   html += `<div id="player-request-note" style="display:none;margin:8px 0 8px;padding:10px 12px;background:var(--amberBg);border:1px solid var(--amber);border-radius:10px;font-size:12px;color:var(--text2)"></div>`;
   const activePlayerEntry = activePlayer !== null ? PLAYER_LIST[activePlayer] : null;
