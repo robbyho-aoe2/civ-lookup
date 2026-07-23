@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.31 · Win rates from aoestats.io &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.32 · Win rates from aoestats.io &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -15972,10 +15972,6 @@ function selectGroupOverall(group) {
   else {
     activeGroupOverall = group; activePlayer = null; activeArchetype = null; activeMap = null; activeOverallTier = false; activeMapOverall = null;
     activeLadder = GROUP_DEFAULT_LADDER[group] || activeLadder;
-    // Recent-Form needs per-match dates, which pooled aggregate stats don't
-    // carry — reset only that one. Patch filtering now has real byPatch
-    // data behind it, so it's fine to carry over.
-    if (GROUP_SOURCES[group]?.mode === 'remote' && activeRecencyMode === 'form') activeRecencyMode = 'all';
     // Map filter carries over as-is; renderGroupOverallGrid re-derives the
     // map list fresh from that whole group's players combined, so an
     // invalid/no-longer-present map just naturally yields no filtering.
@@ -16100,15 +16096,9 @@ function renderSelectorPillsHtml() {
     const allOn = activeRecencyMode === 'all' ? ' on' : '';
     const patchOn = activeRecencyMode === 'patch' ? ' on' : '';
     const formOn = activeRecencyMode === 'form' ? ' on' : '';
-    // Recent-Form needs per-match dates, which pooled aggregate stats don't
-    // carry — stays disabled for group-overall views. Current-patch now
-    // has real byPatch data behind it (aggregate.currentPatch / byPatch),
-    // so it's enabled for both individual players and pooled group views.
-    const groupIsPooled = activeGroupOverall && GROUP_SOURCES[activeGroupOverall]?.mode === 'remote';
-    const formDisabledAttrs = groupIsPooled ? ' disabled title="Not available for pooled community stats — only for individual players\' own match history" style="font-size:11px;padding:3px 10px;opacity:.4;cursor:not-allowed"' : ' style="font-size:11px;padding:3px 10px"';
     html += `<button class="arch-btn${allOn}" data-kind="recencymode" data-mode="all" style="font-size:11px;padding:3px 10px">🕰 All Time</button>`;
     html += `<button class="arch-btn${patchOn}" data-kind="recencymode" data-mode="patch" style="font-size:11px;padding:3px 10px">🩹 Current patch only</button>`;
-    html += `<button class="arch-btn${formOn}" data-kind="recencymode" data-mode="form"${formDisabledAttrs}>📈 Recent games weighted more</button>`;
+    html += `<button class="arch-btn${formOn}" data-kind="recencymode" data-mode="form" style="font-size:11px;padding:3px 10px">📈 Recent games weighted more</button>`;
     html += `</div>`;
   }
   if (activePlayer !== null || activeGroupOverall !== null) {
@@ -16143,6 +16133,11 @@ function attachSelectorPillEvents(root) {
           activeArchetype = null; activeMap = null; activeOverallTier = false;
           activePlayer = null; activeMapOverall = null;
           activeLadder = GROUP_DEFAULT_LADDER.console;
+          // Form/Patch and ELO bracket are separate single-dimension slices
+          // in the aggregate (no combined "form-weighted, this bracket only"
+          // data) — reset Form so clicking a bracket reliably shows
+          // bracket-filtered results instead of Form silently winning
+          // precedence and making the bracket click look like a no-op.
           if (activeRecencyMode === 'form') activeRecencyMode = 'all';
         }
         render();
@@ -16756,6 +16751,36 @@ function aggregateSliceToStats(slice, minGames) {
   return out;
 }
 
+/* Same Recent Form decay curve individual players already use (90-day
+   half-life via recentFormWeight), just replayed against weekly totals
+   instead of per-match dates — aggregate.json buckets by week (Monday
+   start) rather than storing every match's date, which would defeat the
+   whole point of a small, fast-loading pooled aggregate. Slightly coarser
+   than per-match weighting but the same shape of curve: recent weeks count
+   more, older ones fade out smoothly rather than a hard cutoff. */
+function aggregateByWeekToStats(byWeek, minGames) {
+  const totals = {}; // civ -> { games, wins, weightedGames, weightedWins }
+  Object.entries(byWeek || {}).forEach(([weekStart, civs]) => {
+    const w = recentFormWeight(weekStart);
+    Object.entries(civs).forEach(([civ, e]) => {
+      if (!totals[civ]) totals[civ] = { games: 0, wins: 0, weightedGames: 0, weightedWins: 0 };
+      totals[civ].games += e.games;
+      totals[civ].wins += e.wins;
+      totals[civ].weightedGames += e.games * w;
+      totals[civ].weightedWins += e.wins * w;
+    });
+  });
+  const out = {};
+  Object.entries(totals).forEach(([civ, t]) => {
+    if (t.games < minGames) return;
+    const wr = t.weightedGames > 0
+      ? Math.round(t.weightedWins / t.weightedGames * 1000) / 10
+      : 0;
+    out[civ] = { wr, games: t.games, contributors: null };
+  });
+  return out;
+}
+
 function getGroupOverallCivStats(group, mapFilter, minGames) {
   const src = GROUP_SOURCES[group];
 
@@ -16764,10 +16789,11 @@ function getGroupOverallCivStats(group, mapFilter, minGames) {
     const g = AGGREGATE[group];
     // Precedence when multiple filters are active at once (the aggregate
     // only stores each dimension pre-pooled separately, not combined):
-    // map filter > current-patch > ELO bracket > specific ladder > default.
+    // map filter > recent-form / current-patch > ELO bracket > ladder > default.
+    if (mapFilter && g.byMap?.[mapFilter]) return aggregateSliceToStats(g.byMap[mapFilter], minGames);
+    if (activeRecencyMode === 'form' && g.byWeek) return aggregateByWeekToStats(g.byWeek, minGames);
     let slice;
-    if (mapFilter && g.byMap?.[mapFilter]) slice = g.byMap[mapFilter];
-    else if (activeRecencyMode === 'patch' && AGGREGATE.currentPatch && g.byPatch?.[AGGREGATE.currentPatch]) slice = g.byPatch[AGGREGATE.currentPatch];
+    if (activeRecencyMode === 'patch' && AGGREGATE.currentPatch && g.byPatch?.[AGGREGATE.currentPatch]) slice = g.byPatch[AGGREGATE.currentPatch];
     else if (group === 'console' && activeConsoleElo && g.byEloBracket?.[activeConsoleElo]) slice = g.byEloBracket[activeConsoleElo];
     else if (activeLadder && activeLadder !== 'All' && g.byLadder?.[activeLadder]) slice = g.byLadder[activeLadder];
     else slice = g.civWinRates;
