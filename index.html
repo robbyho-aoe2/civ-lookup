@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.30 · Win rates from aoestats.io &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.31 · Win rates from aoestats.io &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -15972,10 +15972,10 @@ function selectGroupOverall(group) {
   else {
     activeGroupOverall = group; activePlayer = null; activeArchetype = null; activeMap = null; activeOverallTier = false; activeMapOverall = null;
     activeLadder = GROUP_DEFAULT_LADDER[group] || activeLadder;
-    // Patch/Recent-Form filtering needs raw per-match data, which pooled
-    // aggregate stats don't carry — reset to All Time so the tool never
-    // shows a filter pill as "on" while silently doing nothing.
-    if (GROUP_SOURCES[group]?.mode === 'remote') activeRecencyMode = 'all';
+    // Recent-Form needs per-match dates, which pooled aggregate stats don't
+    // carry — reset only that one. Patch filtering now has real byPatch
+    // data behind it, so it's fine to carry over.
+    if (GROUP_SOURCES[group]?.mode === 'remote' && activeRecencyMode === 'form') activeRecencyMode = 'all';
     // Map filter carries over as-is; renderGroupOverallGrid re-derives the
     // map list fresh from that whole group's players combined, so an
     // invalid/no-longer-present map just naturally yields no filtering.
@@ -16100,15 +16100,15 @@ function renderSelectorPillsHtml() {
     const allOn = activeRecencyMode === 'all' ? ' on' : '';
     const patchOn = activeRecencyMode === 'patch' ? ' on' : '';
     const formOn = activeRecencyMode === 'form' ? ' on' : '';
-    // Patch/Recent-Form need raw per-match data. Individual players (once
-    // fetched) have that. Pooled group-overall views sourced from
-    // aggregate.json only have totals, no per-match dates — so those two
-    // pills are disabled there rather than shown as clickable no-ops.
+    // Recent-Form needs per-match dates, which pooled aggregate stats don't
+    // carry — stays disabled for group-overall views. Current-patch now
+    // has real byPatch data behind it (aggregate.currentPatch / byPatch),
+    // so it's enabled for both individual players and pooled group views.
     const groupIsPooled = activeGroupOverall && GROUP_SOURCES[activeGroupOverall]?.mode === 'remote';
-    const disabledAttrs = groupIsPooled ? ' disabled title="Not available for pooled community stats — only for individual players\' own match history" style="font-size:11px;padding:3px 10px;opacity:.4;cursor:not-allowed"' : ' style="font-size:11px;padding:3px 10px"';
+    const formDisabledAttrs = groupIsPooled ? ' disabled title="Not available for pooled community stats — only for individual players\' own match history" style="font-size:11px;padding:3px 10px;opacity:.4;cursor:not-allowed"' : ' style="font-size:11px;padding:3px 10px"';
     html += `<button class="arch-btn${allOn}" data-kind="recencymode" data-mode="all" style="font-size:11px;padding:3px 10px">🕰 All Time</button>`;
-    html += `<button class="arch-btn${patchOn}" data-kind="recencymode" data-mode="patch"${disabledAttrs}>🩹 Current patch only</button>`;
-    html += `<button class="arch-btn${formOn}" data-kind="recencymode" data-mode="form"${disabledAttrs}>📈 Recent games weighted more</button>`;
+    html += `<button class="arch-btn${patchOn}" data-kind="recencymode" data-mode="patch" style="font-size:11px;padding:3px 10px">🩹 Current patch only</button>`;
+    html += `<button class="arch-btn${formOn}" data-kind="recencymode" data-mode="form"${formDisabledAttrs}>📈 Recent games weighted more</button>`;
     html += `</div>`;
   }
   if (activePlayer !== null || activeGroupOverall !== null) {
@@ -16143,7 +16143,7 @@ function attachSelectorPillEvents(root) {
           activeArchetype = null; activeMap = null; activeOverallTier = false;
           activePlayer = null; activeMapOverall = null;
           activeLadder = GROUP_DEFAULT_LADDER.console;
-          activeRecencyMode = 'all';
+          if (activeRecencyMode === 'form') activeRecencyMode = 'all';
         }
         render();
       }
@@ -16764,9 +16764,10 @@ function getGroupOverallCivStats(group, mapFilter, minGames) {
     const g = AGGREGATE[group];
     // Precedence when multiple filters are active at once (the aggregate
     // only stores each dimension pre-pooled separately, not combined):
-    // map filter > ELO bracket > specific ladder > default pooled totals.
+    // map filter > current-patch > ELO bracket > specific ladder > default.
     let slice;
     if (mapFilter && g.byMap?.[mapFilter]) slice = g.byMap[mapFilter];
+    else if (activeRecencyMode === 'patch' && AGGREGATE.currentPatch && g.byPatch?.[AGGREGATE.currentPatch]) slice = g.byPatch[AGGREGATE.currentPatch];
     else if (group === 'console' && activeConsoleElo && g.byEloBracket?.[activeConsoleElo]) slice = g.byEloBracket[activeConsoleElo];
     else if (activeLadder && activeLadder !== 'All' && g.byLadder?.[activeLadder]) slice = g.byLadder[activeLadder];
     else slice = g.civWinRates;
@@ -16868,7 +16869,7 @@ function renderGroupOverallGrid() {
 
   const missingData = ALL_CIVS.filter(c => !stats[c]);
   const filterNote = activePlayerMapFilter ? ` · filtered to <b style="color:var(--amberL)">${activePlayerMapFilter}</b> only` : '';
-  const currentPatchNote = activeRecencyMode === 'patch' ? ` · <b style="color:var(--amberL)">current patch only</b>` : '';
+  const currentPatchNote = activeRecencyMode === 'patch' ? ` · <b style="color:var(--amberL)">current patch only${AGGREGATE?.currentPatch ? ` (${AGGREGATE.currentPatch})` : ''}</b>` : '';
   const recentFormNote = activeRecencyMode === 'form' ? ` · <b style="color:var(--amberL)">More recent games weighted more heavily than older ones</b>` : '';
 
   renderTierListShared({
