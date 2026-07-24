@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.38 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.39 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1780,7 +1780,8 @@ async function loadData() {
 /* Fallback emoji for auto-discovered remote players not in our hand-picked
    EMOJI_MAP below — keeps the roster usable the moment new players show up
    in aggregate.json, with zero tool code changes required. */
-const DEFAULT_PLAYER_EMOJI = '🎮';
+const DEFAULT_PLAYER_EMOJI = '🎮';       // console / pc fallback
+const STREAMER_DEFAULT_EMOJI = '📹';     // streamer fallback
 const EMOJI_MAP = {
   'Hera':'👑','TheViper':'🐍','Liereyy':'⚔️','TaToH':'🎯','JorDan_AoE':'🧭','MbL':'🔥',
   'BORJA GZ80':'🇪🇸','FriedericusR':'🏰','LastBoyScout466':'🏕️','MoneyManSage':'💵',
@@ -1797,6 +1798,43 @@ const EMOJI_MAP = {
   'hmwheeler':'🔧','HappyJoey361532':'😊',
 };
 
+/* Every pro player gets a unique emoji — the handful above are manually
+   picked and locked in; anyone else lazily draws from this pool. Deter-
+   ministic (same roster -> same assignments every render) via a stable
+   hash of profileId, walking forward through the pool to the first slot
+   not already claimed by another currently-known pro. Kept distinct from
+   the manually-picked six above so new pros don't visually clash with them. */
+const PRO_EMOJI_POOL = [
+  '🦅','🐉','🦁','🐺','🦂','🦈','🐆','🦇','🦉','🦊',
+  '🏹','🛡️','⚡','🌪️','🌋','☄️','💎','🗡️','🪓','🏆',
+  '🎖️','🥇','🧨','🔱','⚜️','🎲','🃏','🧩','🚀','🛸',
+  '🌟','🔮','🧭','🗿','⛏️','🪃','🏔️','🌊','🔨','🎺',
+];
+function simpleHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) { h = (h * 31 + str.charCodeAt(i)) | 0; }
+  return Math.abs(h);
+}
+function assignProEmojis(proEntries) {
+  // proEntries: [{name, profileId}], sorted by profileId for determinism
+  const sorted = [...proEntries].sort((a, b) => a.profileId - b.profileId);
+  const claimed = new Set();
+  const out = {}; // name -> emoji
+  sorted.forEach(({ name, profileId }) => {
+    if (EMOJI_MAP[name]) { claimed.add(EMOJI_MAP[name]); out[name] = EMOJI_MAP[name]; return; }
+    let idx = simpleHash(String(profileId)) % PRO_EMOJI_POOL.length;
+    let tries = 0;
+    while (claimed.has(PRO_EMOJI_POOL[idx]) && tries < PRO_EMOJI_POOL.length) {
+      idx = (idx + 1) % PRO_EMOJI_POOL.length;
+      tries++;
+    }
+    const emoji = claimed.has(PRO_EMOJI_POOL[idx]) ? DEFAULT_PLAYER_EMOJI : PRO_EMOJI_POOL[idx]; // pool exhausted, extremely unlikely
+    claimed.add(emoji);
+    out[name] = emoji;
+  });
+  return out;
+}
+
 async function loadPlayerData() {
   try {
     // Cache-bust: raw.githubusercontent.com caches aggressively at both the
@@ -1808,12 +1846,17 @@ async function loadPlayerData() {
 
     // Build roster entries for every group marked 'remote' — dynamic, so
     // new auto-discovered players appear with no code changes here.
+    const proEmojis = assignProEmojis(
+      (AGGREGATE.players || []).filter(p => p.group === 'pro').map(p => ({ name: p.name, profileId: p.profileId }))
+    );
     (AGGREGATE.players || []).forEach(p => {
       const src = GROUP_SOURCES[p.group];
       if (!src || src.mode !== 'remote') return;
       if (PLAYER_LIST.some(e => e.key === p.name)) return; // don't duplicate
+      const groupDefault = p.group === 'streamer' ? STREAMER_DEFAULT_EMOJI : DEFAULT_PLAYER_EMOJI;
+      const emoji = p.group === 'pro' ? (proEmojis[p.name] || groupDefault) : (EMOJI_MAP[p.name] || groupDefault);
       PLAYER_LIST.push({
-        emoji: EMOJI_MAP[p.name] || DEFAULT_PLAYER_EMOJI,
+        emoji,
         label: p.name,
         key: p.name,
         source: 'remote',
@@ -3394,8 +3437,19 @@ function renderPlayerGrid() {
   // hardcoded figure, so it can't drift out of sync with the civ table.
   let gamesLabel;
   if (isMatchSource) {
-    const kind = activeLadder === 'All' ? 'matches across all ladders' : (activeLadder.includes('Team') ? 'ranked team matches' : 'ranked 1v1 matches');
-    gamesLabel = `${meta.totalGames.toLocaleString()} ${kind}`;
+    // Always the REAL currently-filtered count (map + current-patch both
+    // applied) — never the stored/unfiltered meta.totalGames, which would
+    // silently drift out of sync with the civ table the moment a filter
+    // narrows things down (e.g. "current patch only" showing the full
+    // all-time game count instead of just that patch's games).
+    const filteredCount = filterMatches(getPlayerMatches(p.key, activeLadder), activePlayerMapFilter).length;
+    const kind =
+      activeLadder === 'All' ? 'matches across all ladders' :
+      activeLadder === 'Console' ? 'ranked console games (1v1 + Team)' :
+      activeLadder === 'PC' ? 'ranked PC games (1v1 + Team)' :
+      activeLadder.includes('Team') ? 'ranked team matches' :
+      'ranked 1v1 matches';
+    gamesLabel = `${filteredCount.toLocaleString()} ${kind}`;
   } else {
     gamesLabel = `${meta.totalGames.toLocaleString()} ranked 1v1 matches`;
   }
