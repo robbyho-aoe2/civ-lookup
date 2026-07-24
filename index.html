@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.40 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.41 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1525,6 +1525,21 @@ const MAP_CATEGORY = {
 };
 let activeMapCategory = 'all';
 
+/* Player-stats map filter categories — separate from MAP_CATEGORY above
+   (which is single-category, used only for tech tree correlation weights).
+   A map can belong to multiple categories here (e.g. Arena is both closed
+   and land), matching how these properties actually overlap in-game. */
+const PLAYER_MAP_CATEGORIES = {
+  closed:  ['arena','black forest','hideout','fortress','enclosed','amazon tunnel','michi'],
+  open:    ['arabia','glade','four lakes','gold rush','haboob','golden pit'],
+  land:    ['arena','arabia','hideout','fortress','glade','african clearing','land nomad','steppe','gold rush','amazon tunnel','haboob','michi','golden pit'],
+  water:   [],
+  hybrid:  ['coastal forest','four lakes'],
+  nomad:   ['nomad','african clearing','land nomad','steppe'],
+  chaotic: ['megarandom'],
+};
+const PLAYER_MAP_CATEGORY_LABELS = { closed:'Closed', open:'Open', land:'Land', water:'Water', hybrid:'Hybrid', nomad:'Nomad', chaotic:'Chaotic' };
+
 /* Correlation weights per archetype per map.
    Derived from Spearman r between archetype rank and map win rate.
    Positive weight = specializing here helps WR on this map.
@@ -2691,10 +2706,17 @@ function selectPlayer(idx) {
 
 function selectGroupOverall(group) {
   const prevGroup = getCurrentEffectiveGroup();
-  if (activeGroupOverall === group) { activeGroupOverall = null; activePlayerMapFilter = null; }
+  if (activeGroupOverall === group) {
+    activeGroupOverall = null; activePlayerMapFilter = null;
+    activeConsoleElo = null; activePcElo = null;
+  }
   else {
     activeGroupOverall = group; activePlayer = null; activeArchetype = null; activeMap = null; activeOverallTier = false; activeMapOverall = null;
     if (prevGroup !== group) activeLadder = GROUP_DEFAULT_LADDER[group] || activeLadder;
+    // ELO brackets are group-specific pills — whichever group we're NOT
+    // viewing anymore should never stay lit up as "selected" underneath.
+    if (group !== 'console') activeConsoleElo = null;
+    if (group !== 'pc') activePcElo = null;
     // Map filter carries over as-is; renderGroupOverallGrid re-derives the
     // map list fresh from that whole group's players combined, so an
     // invalid/no-longer-present map just naturally yields no filtering.
@@ -2866,6 +2888,7 @@ function attachSelectorPillEvents(root) {
         const elo = btn.dataset.elo;
         const prevGroup = getCurrentEffectiveGroup();
         activeConsoleElo = activeConsoleElo === elo ? null : elo;
+        activePcElo = null;
         if (activeConsoleElo) {
           activeGroupOverall = 'console';
           activeArchetype = null; activeMap = null; activeOverallTier = false;
@@ -2884,6 +2907,7 @@ function attachSelectorPillEvents(root) {
         const elo = btn.dataset.elo;
         const prevGroup = getCurrentEffectiveGroup();
         activePcElo = activePcElo === elo ? null : elo;
+        activeConsoleElo = null;
         if (activePcElo) {
           activeGroupOverall = 'pc';
           activeArchetype = null; activeMap = null; activeOverallTier = false;
@@ -2919,16 +2943,39 @@ function attachSelectorPillEvents(root) {
     mapFilterDetails.addEventListener('toggle', () => { mapFilterDetailsOpen = mapFilterDetails.open; });
   }
   const mapFilterSearch = root.querySelector('#map-filter-search');
-  if (mapFilterSearch) {
-    mapFilterSearch.addEventListener('input', () => {
-      const q = mapFilterSearch.value.toLowerCase().trim();
-      root.querySelectorAll('[data-map-pill-row] .arch-btn').forEach(btn => {
-        btn.style.display = (!q || (btn.dataset.name || '').includes(q)) ? '' : 'none';
-      });
+  const mapCategoryRow = root.querySelector('[data-map-category-row]');
+  let activeMapCatFilter = null; // local to this render — purely a live-browse aid, not persisted app state
+  const applyMapPillFilters = () => {
+    const q = mapFilterSearch ? mapFilterSearch.value.toLowerCase().trim() : '';
+    const catList = activeMapCatFilter ? PLAYER_MAP_CATEGORIES[activeMapCatFilter] : null;
+    root.querySelectorAll('[data-map-pill-row] .arch-btn').forEach(btn => {
+      const name = btn.dataset.name || '';
+      const matchesSearch = !q || name.includes(q);
+      const matchesCategory = !catList || catList.includes(name);
+      btn.style.display = (matchesSearch && matchesCategory) ? '' : 'none';
     });
+  };
+  if (mapFilterSearch) {
+    mapFilterSearch.addEventListener('input', applyMapPillFilters);
     // Clicking into the search box shouldn't re-trigger the <details>
     // toggle handler firing on unrelated re-renders — no-op needed here,
     // native <input> click already stops propagation to <summary>.
+  }
+  if (mapCategoryRow) {
+    mapCategoryRow.querySelectorAll('[data-map-cat]').forEach(catBtn => {
+      catBtn.addEventListener('click', () => {
+        const key = catBtn.dataset.mapCat;
+        const turningOn = activeMapCatFilter !== key;
+        activeMapCatFilter = turningOn ? key : null;
+        mapCategoryRow.querySelectorAll('[data-map-cat]').forEach(b => {
+          const on = b === catBtn && turningOn;
+          b.style.background = on ? 'var(--amberBg)' : 'var(--surf)';
+          b.style.borderColor = on ? 'var(--amber)' : 'var(--border)';
+          b.style.color = on ? 'var(--amberL)' : 'var(--text2)';
+        });
+        applyMapPillFilters();
+      });
+    });
   }
   const searchEl = root.querySelector('#player-search');
   const noteEl = root.querySelector('#player-request-note');
@@ -3134,6 +3181,15 @@ const MATCH_DATA_SOURCES = {}; // no groups are compiled anymore — everything'
    players are in the database. Genuinely async; everything downstream of
    this (render, getPlayerCivStats, etc.) stays synchronous and just reads
    whatever's already in _remotePlayerCache — see selectPlayer(). */
+/* Shared category pill row for the player-stats map filter — same markup
+   used in both the individual-player and group-overall map filter blocks. */
+function mapCategoryPillsHtml() {
+  return `<div class="arch-pill-row" data-map-category-row style="margin-top:6px">` +
+    Object.entries(PLAYER_MAP_CATEGORY_LABELS).map(([key, label]) =>
+      `<button type="button" data-map-cat="${key}" style="font-size:10px;padding:3px 9px;background:var(--surf);border:1px solid var(--border);border-radius:14px;color:var(--text2);cursor:pointer">${label}</button>`
+    ).join('') + `</div>`;
+}
+
 async function fetchRemotePlayerData(group, profileId) {
   if (_remotePlayerCache[profileId]) return _remotePlayerCache[profileId];
   try {
@@ -3433,6 +3489,7 @@ function renderPlayerGrid() {
     mapPillsHtml = `<details data-map-filter style="margin-top:8px"${mapFilterDetailsOpen ? ' open' : ''}>
       <summary style="cursor:pointer;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Filter to a map (${mapList.length})${activeFilterHint}</summary>
       <input type="text" id="map-filter-search" placeholder="Search maps…" style="height:26px;padding:0 8px;background:var(--surf);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:11px;outline:none;width:140px;margin-top:6px;display:block">
+      ${mapCategoryPillsHtml()}
       <div class="arch-pill-row" data-map-pill-row style="margin-top:4px">${inner}</div>
     </details>`;
   } else if (!isMatchSource) {
@@ -3697,6 +3754,7 @@ function renderGroupOverallGrid() {
   const mapPillsHtml = mapList.length ? `<details data-map-filter style="margin-top:8px"${mapFilterDetailsOpen ? ' open' : ''}>
     <summary style="cursor:pointer;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Filter to a map (${mapList.length})${activeFilterHint}</summary>
     <input type="text" id="map-filter-search" placeholder="Search maps…" style="height:26px;padding:0 8px;background:var(--surf);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:11px;outline:none;width:140px;margin-top:6px;display:block">
+    ${mapCategoryPillsHtml()}
     <div class="arch-pill-row" data-map-pill-row style="margin-top:4px">${inner}</div>
   </details>` : '';
 
@@ -3717,11 +3775,11 @@ function renderGroupOverallGrid() {
       return `${s.wr}% win rate (${s.games} games total${contribClause})`;
     },
     headerHtml: `${meta.emoji} ${meta.label} — pooled across ${playerCount} ${meta.groupLabel}${eloNote} · ${activeLadder}${filterNote}${currentPatchNote}${recentFormNote}`,
-    subHeaderHtml: `Each civ's win rate is total wins ÷ total games across ${
-      activeConsoleElo ? `the ${playerCount} ${CONSOLE_ELO_BRACKETS[activeConsoleElo].label}-ELO Console Players (${CONSOLE_ELO_BRACKETS[activeConsoleElo].max === Infinity ? CONSOLE_ELO_BRACKETS[activeConsoleElo].min + '+' : CONSOLE_ELO_BRACKETS[activeConsoleElo].min + '–' + CONSOLE_ELO_BRACKETS[activeConsoleElo].max} 1v1 Console rating)`
-      : activePcElo ? `the ${playerCount} ${PC_ELO_BRACKETS[activePcElo].label}-ELO PC Players (${PC_ELO_BRACKETS[activePcElo].max === Infinity ? PC_ELO_BRACKETS[activePcElo].min + '+' : PC_ELO_BRACKETS[activePcElo].min + '–' + PC_ELO_BRACKETS[activePcElo].max} 1v1 PC rating)`
-      : `every ${meta.groupLabel.slice(0,-1)}`
-    }'s real matches, pooled together — weighted by games played, so a player with 500 games on a civ counts proportionally more than one with 5. Showing civs with ${activeMinGames > 0 ? activeMinGames + '+' : 'any number of'} total pooled games.${missingData.length ? ` No qualifying data for: ${missingData.slice(0,15).join(', ')}${missingData.length>15?'…':''}.` : ''}${mapPillsHtml}`,
+    subHeaderHtml: `Averaged across ${
+      activeConsoleElo ? `${playerCount} ${CONSOLE_ELO_BRACKETS[activeConsoleElo].label}-ELO Console`
+      : activePcElo ? `${playerCount} ${PC_ELO_BRACKETS[activePcElo].label}-ELO PC`
+      : `${playerCount} ${meta.groupLabel}`
+    } players, weighted by games played. Showing civs with ${activeMinGames > 0 ? activeMinGames + '+' : 'any number of'} games.${missingData.length ? ` No data for: ${missingData.slice(0,15).join(', ')}${missingData.length>15?'…':''}.` : ''}${mapPillsHtml}`,
     clearLabel: `${meta.emoji} ${meta.label} tier list`,
   });
 }
