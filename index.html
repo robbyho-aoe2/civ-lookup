@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.42 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.43 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1750,6 +1750,7 @@ let activeConsoleElo = null;  // null | 'high' | 'himid' | 'lomid' | 'low' — E
 let activePcElo = null;       // same, for PC Overall
 let activeMinGames = 5;       // minimum games-played filter for Players view
 let activePlayerMapFilter = null; // map key filtering the currently active player, if any
+let activeMapCatFilter = null;    // map category (open/closed/land/etc) filtering the map pill list — persists across renders just like activePlayerMapFilter
 let mapFilterDetailsOpen = false; // persists across player/group switches — only auto-opens when a filter is freshly picked
 let activeLadder = '1v1 PC';      // which mode/platform combo to pull match-sourced player data from
 let activeRecencyMode = 'all'; // 'all' | 'patch' | 'form' — mutually exclusive
@@ -2607,7 +2608,7 @@ function selectItem(item) {
   // If a tier list or player is active, clear it so the tech result takes over
   if (activeArchetype !== null || activeMap !== null || activePlayer !== null || activeGroupOverall !== null || activeOverallTier) {
     activeArchetype = null; activeMap = null; activePlayer = null;
-    activeGroupOverall = null; activeOverallTier = false; activePlayerMapFilter = null; activeMapOverall = null;
+    activeGroupOverall = null; activeOverallTier = false; activePlayerMapFilter = null; activeMapCatFilter = null; activeMapOverall = null;
   }
   const ids = item.ids || [item.id];
   const civsWith = new Set(ALL_CIVS.filter(civ => {
@@ -2677,7 +2678,7 @@ function selectPlayer(idx) {
   const wasMapFilter = activePlayerMapFilter;
   const prevGroup = getCurrentEffectiveGroup();
   activeGroupOverall = null;
-  if (activePlayer === idx) { activePlayer = null; activePlayerMapFilter = null; }
+  if (activePlayer === idx) { activePlayer = null; activePlayerMapFilter = null; activeMapCatFilter = null; }
   else {
     activePlayer = idx; activeArchetype = null; activeMap = null; activeOverallTier = false; activeConsoleElo = null; activePcElo = null; activeMapOverall = null;
     const entry = PLAYER_LIST[idx];
@@ -2707,7 +2708,7 @@ function selectPlayer(idx) {
 function selectGroupOverall(group) {
   const prevGroup = getCurrentEffectiveGroup();
   if (activeGroupOverall === group) {
-    activeGroupOverall = null; activePlayerMapFilter = null;
+    activeGroupOverall = null; activePlayerMapFilter = null; activeMapCatFilter = null;
     activeConsoleElo = null; activePcElo = null;
   }
   else {
@@ -2737,7 +2738,7 @@ function selectMinGames(value) {
 
 function selectLadder(ladder) {
   activeLadder = ladder;
-  activePlayerMapFilter = null; // switching ladders invalidates any map filter (different match pool)
+  activePlayerMapFilter = null; activeMapCatFilter = null; // switching ladders invalidates any map filter (different match pool)
   render();
 }
 
@@ -2944,7 +2945,6 @@ function attachSelectorPillEvents(root) {
   }
   const mapFilterSearch = root.querySelector('#map-filter-search');
   const mapCategoryRow = root.querySelector('[data-map-category-row]');
-  let activeMapCatFilter = null; // local to this render — purely a live-browse aid, not persisted app state
   const applyMapPillFilters = () => {
     const q = mapFilterSearch ? mapFilterSearch.value.toLowerCase().trim() : '';
     const catList = activeMapCatFilter ? PLAYER_MAP_CATEGORIES[activeMapCatFilter] : null;
@@ -2963,12 +2963,15 @@ function attachSelectorPillEvents(root) {
   }
   if (mapCategoryRow) {
     mapCategoryRow.querySelectorAll('[data-map-cat]').forEach(catBtn => {
+      const isActive = catBtn.dataset.mapCat === activeMapCatFilter;
+      catBtn.style.background = isActive ? 'var(--amberBg)' : 'var(--surf)';
+      catBtn.style.borderColor = isActive ? 'var(--amber)' : 'var(--border)';
+      catBtn.style.color = isActive ? 'var(--amberL)' : 'var(--text2)';
       catBtn.addEventListener('click', () => {
         const key = catBtn.dataset.mapCat;
-        const turningOn = activeMapCatFilter !== key;
-        activeMapCatFilter = turningOn ? key : null;
+        activeMapCatFilter = activeMapCatFilter === key ? null : key;
         mapCategoryRow.querySelectorAll('[data-map-cat]').forEach(b => {
-          const on = b === catBtn && turningOn;
+          const on = b.dataset.mapCat === activeMapCatFilter;
           b.style.background = on ? 'var(--amberBg)' : 'var(--surf)';
           b.style.borderColor = on ? 'var(--amber)' : 'var(--border)';
           b.style.color = on ? 'var(--amberL)' : 'var(--text2)';
@@ -2977,6 +2980,10 @@ function attachSelectorPillEvents(root) {
       });
     });
   }
+  // Re-apply on every render (not just on click) so the category filter
+  // survives switching ELO bracket, player, or group — same persistence
+  // model as activePlayerMapFilter and mapFilterDetailsOpen.
+  if (mapCategoryRow) applyMapPillFilters();
   const searchEl = root.querySelector('#player-search');
   const noteEl = root.querySelector('#player-request-note');
   if (searchEl) {
