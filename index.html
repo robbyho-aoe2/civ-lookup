@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.39 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.40 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1732,6 +1732,7 @@ let activeMap = null;         // index into MAP_ARCHETYPES
 let activePlayer = null;      // index into PLAYER_LIST
 let activeGroupOverall = null; // null | 'pro' | 'console' — averaged tier list across a whole player group
 let activeConsoleElo = null;  // null | 'high' | 'himid' | 'lomid' | 'low' — ELO bracket filter for Console Overall
+let activePcElo = null;       // same, for PC Overall
 let activeMinGames = 5;       // minimum games-played filter for Players view
 let activePlayerMapFilter = null; // map key filtering the currently active player, if any
 let mapFilterDetailsOpen = false; // persists across player/group switches — only auto-opens when a filter is freshly picked
@@ -1780,8 +1781,9 @@ async function loadData() {
 /* Fallback emoji for auto-discovered remote players not in our hand-picked
    EMOJI_MAP below — keeps the roster usable the moment new players show up
    in aggregate.json, with zero tool code changes required. */
-const DEFAULT_PLAYER_EMOJI = '🎮';       // console / pc fallback
+const DEFAULT_PLAYER_EMOJI = '🎮';       // console fallback
 const STREAMER_DEFAULT_EMOJI = '📹';     // streamer fallback
+const PC_DEFAULT_EMOJI = '🖥️';           // pc fallback
 const EMOJI_MAP = {
   'Hera':'👑','TheViper':'🐍','Liereyy':'⚔️','TaToH':'🎯','JorDan_AoE':'🧭','MbL':'🔥',
   'BORJA GZ80':'🇪🇸','FriedericusR':'🏰','LastBoyScout466':'🏕️','MoneyManSage':'💵',
@@ -1853,7 +1855,7 @@ async function loadPlayerData() {
       const src = GROUP_SOURCES[p.group];
       if (!src || src.mode !== 'remote') return;
       if (PLAYER_LIST.some(e => e.key === p.name)) return; // don't duplicate
-      const groupDefault = p.group === 'streamer' ? STREAMER_DEFAULT_EMOJI : DEFAULT_PLAYER_EMOJI;
+      const groupDefault = p.group === 'streamer' ? STREAMER_DEFAULT_EMOJI : p.group === 'pc' ? PC_DEFAULT_EMOJI : DEFAULT_PLAYER_EMOJI;
       const emoji = p.group === 'pro' ? (proEmojis[p.name] || groupDefault) : (EMOJI_MAP[p.name] || groupDefault);
       PLAYER_LIST.push({
         emoji,
@@ -2662,7 +2664,7 @@ function selectPlayer(idx) {
   activeGroupOverall = null;
   if (activePlayer === idx) { activePlayer = null; activePlayerMapFilter = null; }
   else {
-    activePlayer = idx; activeArchetype = null; activeMap = null; activeOverallTier = false; activeConsoleElo = null; activeMapOverall = null;
+    activePlayer = idx; activeArchetype = null; activeMap = null; activeOverallTier = false; activeConsoleElo = null; activePcElo = null; activeMapOverall = null;
     const entry = PLAYER_LIST[idx];
     if (prevGroup !== entry.group) activeLadder = GROUP_DEFAULT_LADDER[entry.group] || activeLadder;
     // Remote players: kick off the lazy fetch if we don't have them cached
@@ -2806,7 +2808,11 @@ function renderSelectorPillsHtml() {
       return `<button class="arch-btn${on}" data-kind="consoleelo" data-elo="${key}" style="font-size:11px">${b.label}</button>`;
     }).join('');
   const pcOverallOn = activeGroupOverall === 'pc' ? ' on' : '';
-  const pcOverallPill = pcPlayers.length ? `<button class="arch-btn${pcOverallOn}" data-kind="groupoverall" data-group="pc" data-name="pc overall" style="font-weight:700">🖥️ PC Overall</button>` : '';
+  const pcOverallPill = pcPlayers.length ? (`<button class="arch-btn${pcOverallOn}" data-kind="groupoverall" data-group="pc" data-name="pc overall" style="font-weight:700">🖥️ PC Overall</button>` +
+    Object.entries(PC_ELO_BRACKETS).map(([key, b]) => {
+      const on = activePcElo === key ? ' on' : '';
+      return `<button class="arch-btn${on}" data-kind="pcelo" data-elo="${key}" style="font-size:11px">${b.label}</button>`;
+    }).join('')) : '';
   html += `<div id="player-pill-row">`;
   html += renderPlayerGroup('Pro Players', proPlayers, proOverallPill, 'pro');
   html += renderPlayerGroup('Streamers', streamerPlayers, null, 'streamer');
@@ -2870,6 +2876,19 @@ function attachSelectorPillEvents(root) {
           // data) — reset Form so clicking a bracket reliably shows
           // bracket-filtered results instead of Form silently winning
           // precedence and making the bracket click look like a no-op.
+          if (activeRecencyMode === 'form') activeRecencyMode = 'all';
+        }
+        render();
+      }
+      else if (kind === 'pcelo') {
+        const elo = btn.dataset.elo;
+        const prevGroup = getCurrentEffectiveGroup();
+        activePcElo = activePcElo === elo ? null : elo;
+        if (activePcElo) {
+          activeGroupOverall = 'pc';
+          activeArchetype = null; activeMap = null; activeOverallTier = false;
+          activePlayer = null; activeMapOverall = null;
+          if (prevGroup !== 'pc') activeLadder = GROUP_DEFAULT_LADDER.pc;
           if (activeRecencyMode === 'form') activeRecencyMode = 'all';
         }
         render();
@@ -3484,6 +3503,15 @@ const CONSOLE_ELO_BRACKETS = {
   lomid: { label:'Lo-Mid',  min:900,  max:1299 },
   low:   { label:'Low',     min:0,    max:899  },
 };
+/* PC ratings typically run higher than console — these thresholds are a
+   starting estimate, worth recalibrating once real PC player rating
+   distribution is visible in the aggregate. */
+const PC_ELO_BRACKETS = {
+  high:  { label:'High',    min:2000, max:Infinity },
+  himid: { label:'Hi-Mid',  min:1600, max:1999 },
+  lomid: { label:'Lo-Mid',  min:1200, max:1599 },
+  low:   { label:'Low',     min:0,    max:1199 },
+};
 
 function playerConsoleRating(p) {
   // Remote players (console/pc/streamer) carry their ratings straight from
@@ -3561,6 +3589,7 @@ function getGroupOverallCivStats(group, mapFilter, minGames) {
     let slice;
     if (activeRecencyMode === 'patch' && AGGREGATE.currentPatch && g.byPatch?.[AGGREGATE.currentPatch]) slice = g.byPatch[AGGREGATE.currentPatch];
     else if (group === 'console' && activeConsoleElo && g.byEloBracket?.[activeConsoleElo]) slice = g.byEloBracket[activeConsoleElo];
+    else if (group === 'pc' && activePcElo && g.byEloBracket?.[activePcElo]) slice = g.byEloBracket[activePcElo];
     else if (activeLadder && activeLadder !== 'All' && g.byLadder?.[activeLadder]) slice = g.byLadder[activeLadder];
     else slice = g.civWinRates;
     return aggregateSliceToStats(slice, minGames);
@@ -3631,12 +3660,18 @@ function renderGroupOverallGrid() {
   const stats = getGroupOverallCivStats(group, activePlayerMapFilter, activeMinGames);
   const grades = groupOverallGrades(group, activePlayerMapFilter, activeMinGames);
 
-  // If an ELO bracket is active for console, count only players in that bracket
+  // If an ELO bracket is active for console/PC, count only players in that bracket
   let groupPlayers = PLAYER_LIST.filter(p => p.group === group);
   if (group === 'console' && activeConsoleElo) {
     const bracket = CONSOLE_ELO_BRACKETS[activeConsoleElo];
     if (bracket) groupPlayers = groupPlayers.filter(p => {
       const r = playerConsoleRating(p);
+      return r !== null && r >= bracket.min && r <= bracket.max;
+    });
+  } else if (group === 'pc' && activePcElo) {
+    const bracket = PC_ELO_BRACKETS[activePcElo];
+    if (bracket) groupPlayers = groupPlayers.filter(p => {
+      const r = playerDisplayRating(p);
       return r !== null && r >= bracket.min && r <= bracket.max;
     });
   }
@@ -3645,6 +3680,10 @@ function renderGroupOverallGrid() {
   // Build ELO note for header/subheader
   const eloNote = (group === 'console' && activeConsoleElo) ? (() => {
     const b = CONSOLE_ELO_BRACKETS[activeConsoleElo];
+    const range = b.max === Infinity ? `${b.min}+` : `${b.min}–${b.max}`;
+    return ` · <b style="color:var(--amberL)">${b.label} ELO (${range})</b>`;
+  })() : (group === 'pc' && activePcElo) ? (() => {
+    const b = PC_ELO_BRACKETS[activePcElo];
     const range = b.max === Infinity ? `${b.min}+` : `${b.min}–${b.max}`;
     return ` · <b style="color:var(--amberL)">${b.label} ELO (${range})</b>`;
   })() : '';
@@ -3678,7 +3717,11 @@ function renderGroupOverallGrid() {
       return `${s.wr}% win rate (${s.games} games total${contribClause})`;
     },
     headerHtml: `${meta.emoji} ${meta.label} — pooled across ${playerCount} ${meta.groupLabel}${eloNote} · ${activeLadder}${filterNote}${currentPatchNote}${recentFormNote}`,
-    subHeaderHtml: `Each civ's win rate is total wins ÷ total games across ${activeConsoleElo ? `the ${playerCount} ${CONSOLE_ELO_BRACKETS[activeConsoleElo].label}-ELO Console Players (${CONSOLE_ELO_BRACKETS[activeConsoleElo].max === Infinity ? CONSOLE_ELO_BRACKETS[activeConsoleElo].min + '+' : CONSOLE_ELO_BRACKETS[activeConsoleElo].min + '–' + CONSOLE_ELO_BRACKETS[activeConsoleElo].max} 1v1 Console rating)` : `every ${meta.groupLabel.slice(0,-1)}`}'s real matches, pooled together — weighted by games played, so a player with 500 games on a civ counts proportionally more than one with 5. Showing civs with ${activeMinGames > 0 ? activeMinGames + '+' : 'any number of'} total pooled games.${missingData.length ? ` No qualifying data for: ${missingData.slice(0,15).join(', ')}${missingData.length>15?'…':''}.` : ''}${mapPillsHtml}`,
+    subHeaderHtml: `Each civ's win rate is total wins ÷ total games across ${
+      activeConsoleElo ? `the ${playerCount} ${CONSOLE_ELO_BRACKETS[activeConsoleElo].label}-ELO Console Players (${CONSOLE_ELO_BRACKETS[activeConsoleElo].max === Infinity ? CONSOLE_ELO_BRACKETS[activeConsoleElo].min + '+' : CONSOLE_ELO_BRACKETS[activeConsoleElo].min + '–' + CONSOLE_ELO_BRACKETS[activeConsoleElo].max} 1v1 Console rating)`
+      : activePcElo ? `the ${playerCount} ${PC_ELO_BRACKETS[activePcElo].label}-ELO PC Players (${PC_ELO_BRACKETS[activePcElo].max === Infinity ? PC_ELO_BRACKETS[activePcElo].min + '+' : PC_ELO_BRACKETS[activePcElo].min + '–' + PC_ELO_BRACKETS[activePcElo].max} 1v1 PC rating)`
+      : `every ${meta.groupLabel.slice(0,-1)}`
+    }'s real matches, pooled together — weighted by games played, so a player with 500 games on a civ counts proportionally more than one with 5. Showing civs with ${activeMinGames > 0 ? activeMinGames + '+' : 'any number of'} total pooled games.${missingData.length ? ` No qualifying data for: ${missingData.slice(0,15).join(', ')}${missingData.length>15?'…':''}.` : ''}${mapPillsHtml}`,
     clearLabel: `${meta.emoji} ${meta.label} tier list`,
   });
 }
