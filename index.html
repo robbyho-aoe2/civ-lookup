@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.41 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.42 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1530,13 +1530,13 @@ let activeMapCategory = 'all';
    A map can belong to multiple categories here (e.g. Arena is both closed
    and land), matching how these properties actually overlap in-game. */
 const PLAYER_MAP_CATEGORIES = {
-  closed:  ['arena','black forest','hideout','fortress','enclosed','amazon tunnel','michi'],
-  open:    ['arabia','glade','four lakes','gold rush','haboob','golden pit'],
-  land:    ['arena','arabia','hideout','fortress','glade','african clearing','land nomad','steppe','gold rush','amazon tunnel','haboob','michi','golden pit'],
-  water:   [],
-  hybrid:  ['coastal forest','four lakes'],
-  nomad:   ['nomad','african clearing','land nomad','steppe'],
-  chaotic: ['megarandom'],
+  closed:  ['arena','black forest','hideout','fortress','enclosed','amazon tunnel','michi','aftermath','fortified clearing','glacis','hill fort','ring fortress','team glaciers','team moats'],
+  open:    ['arabia','glade','four lakes','gold rush','haboob','golden pit','coastal forest','yucatan','oasis','lombardia','lowland','acropolis','atacama','acclivity','bogland','cenotes','crossroads','crownwood','eruption','ghost lake','golden stream','golden swamp','graupel','greenland','highland','isthmus','kawasan','kilimanjaro','karsts','land madness','mangroive jungle','marketplace','mediterranean','mired','mongolia','morass','mountain dunes','mountain pass','mountain range','mountain ridge','praire','qs runestones','rivers','runestones','sacred spring','scandanavia','serengeti','sherwood forest','shoals','shrubland','valley','vulpine','wade','graveyards','paradise island'],
+  land:    ['arabia','glade','gold rush','haboob','golden pit','arena','black forest','hideout','fortress','enclosed','amazon tunnel','michi','oasis','lombardia','lowland','acropolis','atacama','acclivity','aftermath','budapest','bogland','border dispute','cenotes','choas pit','cliffbound','capricious','crossroads','crownwood','african clearing','land nomad','steppe','eruption','fortified clearing','ghost lake','highland','hill fort','kawasan','kilimanjaro','karsts','land madness','marketplace','mired','mongolia','morass','mountain dunes','mountain pass','mountain ridge','praire','qs runestones','ring fortress','runestones','sacred spring','serengeti','sherwood forest','shrubland','socotra','valley','vulpine','wade','wolf hill','graveyards'],
+  water:   ['archipelago','islands','northern isles','pacific islands','team islands','the passage'],
+  hybrid:  ['four lakes','coastal forest','yucatan','baltic','bog islands','canals','city of lakes','crater lake','coastal','continental','nomad','dingos','dunesprings','frigid lake','glacis','golden stream','golden swamp','graupel','greenland','hamburger','isthmus','loch ness','mangroive jungle','mediterranean','migration','murkwood','nile delta','pilgrims','river divide','rivers','salt marsh','sandbank','scandanavia','seize the mountain','shipwreck','shoals','stranded','team glaciers','team moats','paradise island'],
+  nomad:   ['nomad','african clearing','land nomad','steppe','mired','mountain pass','murkwood','nile delta','pilgrims','shipwreck','stranded'],
+  chaotic: ['megarandom','budapest','border dispute','choas pit','cliffbound','capricious','seasons','socotra','wolf hill'],
 };
 const PLAYER_MAP_CATEGORY_LABELS = { closed:'Closed', open:'Open', land:'Land', water:'Water', hybrid:'Hybrid', nomad:'Nomad', chaotic:'Chaotic' };
 
