@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.49 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.50 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1757,6 +1757,7 @@ let activeRecencyMode = 'all'; // 'all' | 'patch' | 'form' — mutually exclusiv
 let activeOverallTier = false; // Overall replaced by Combined as default landing view
 let activeMapOverall = 'Combined'; // default landing view
 let playerGroupsExpanded = { pro: false, console: false }; // collapsed by default, expand on click
+let mapPillsExpanded = false; // same pattern, for the map filter's individual map list
 let isMobile = false;
 let dataLoaded = false;
 let pendingQ = null;
@@ -2934,7 +2935,9 @@ function attachSelectorPillEvents(root) {
         render();
       }
       else if (kind === 'togglegroup') { playerGroupsExpanded[btn.dataset.group] = !playerGroupsExpanded[btn.dataset.group]; render(); }
+      else if (kind === 'togglemaps') { mapPillsExpanded = !mapPillsExpanded; render(); }
       else if (kind === 'playermap') selectPlayerMapFilter(btn.dataset.map);
+      else if (kind === 'allmaps') { activePlayerMapFilter = null; activeMapCatFilter = null; render(); }
       else if (kind === 'mapoverall') {
         const map = btn.dataset.map;
         activeMapOverall = activeMapOverall === map ? null : map;
@@ -2964,6 +2967,7 @@ function attachSelectorPillEvents(root) {
     const q = mapFilterSearch ? mapFilterSearch.value.toLowerCase().trim() : '';
     const catList = activeMapCatFilter ? PLAYER_MAP_CATEGORIES[activeMapCatFilter] : null;
     root.querySelectorAll('[data-map-pill-row] .arch-btn').forEach(btn => {
+      if (btn.dataset.kind === 'allmaps') return; // always visible, it's the reset option
       const name = btn.dataset.name || '';
       const matchesSearch = !q || name.includes(q);
       const matchesCategory = !catList || catList.includes(name);
@@ -3209,6 +3213,20 @@ function mapCategoryPillsHtml() {
     Object.entries(PLAYER_MAP_CATEGORY_LABELS).map(([key, label]) =>
       `<button type="button" data-map-cat="${key}" style="font-size:10px;padding:3px 9px;background:var(--surf);border:1px solid var(--border);border-radius:14px;color:var(--text2);cursor:pointer">${label}</button>`
     ).join('') + `</div>`;
+}
+
+/* Collapsed-by-default map pill list — same pattern as the player group
+   rows above (collapsed ~1 row, expand up to ~4 rows, toggle button),
+   with an "All Maps" pill always shown first to clear any map/category
+   filter back to unfiltered. */
+function mapPillListHtml(individualPillsHtml, mapCount) {
+  const allOn = (!activePlayerMapFilter && !activeMapCatFilter) ? ' on' : '';
+  const allMapsPill = `<button class="arch-btn${allOn}" data-kind="allmaps" style="font-size:11px;font-weight:700">All Maps</button>`;
+  const rowH = mapPillsExpanded ? '140px' : '36px';
+  const rowOverflow = mapPillsExpanded ? 'auto' : 'hidden';
+  const toggleLbl = mapPillsExpanded ? '▲ collapse' : `▼ +${mapCount} maps`;
+  return `<div class="arch-pill-row" data-map-pill-row style="margin-top:4px;max-height:${rowH};overflow-y:${rowOverflow};overflow-x:hidden;padding-right:2px">${allMapsPill}${individualPillsHtml}</div>
+    <button data-kind="togglemaps" style="font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;padding:2px 4px;margin-top:1px">${toggleLbl}</button>`;
 }
 
 async function fetchRemotePlayerData(group, profileId) {
@@ -3517,7 +3535,7 @@ function renderPlayerGrid() {
       <summary style="cursor:pointer;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Filter to a map (${mapList.length})${activeFilterHint}</summary>
       <input type="text" id="map-filter-search" placeholder="Search maps…" style="height:26px;padding:0 8px;background:var(--surf);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:11px;outline:none;width:140px;margin-top:6px;display:block">
       ${mapCategoryPillsHtml()}
-      <div class="arch-pill-row" data-map-pill-row style="margin-top:4px">${inner}</div>
+      ${mapPillListHtml(inner, mapList.length)}
     </details>`;
   } else if (!isMatchSource) {
     const mapEntries = mapList.filter(m => m.games >= 3).slice(0, 8);
@@ -3828,7 +3846,7 @@ function renderGroupOverallGrid() {
     <summary style="cursor:pointer;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Filter to a map (${mapList.length})${activeFilterHint}</summary>
     <input type="text" id="map-filter-search" placeholder="Search maps…" style="height:26px;padding:0 8px;background:var(--surf);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:11px;outline:none;width:140px;margin-top:6px;display:block">
     ${mapCategoryPillsHtml()}
-    <div class="arch-pill-row" data-map-pill-row style="margin-top:4px">${inner}</div>
+    ${mapPillListHtml(inner, mapList.length)}
   </details>` : '';
 
   const missingData = ALL_CIVS.filter(c => !stats[c]);
