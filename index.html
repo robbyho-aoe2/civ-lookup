@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.51 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.52 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -3637,19 +3637,29 @@ const PC_ELO_BRACKETS = {
 function playerConsoleRating(p) {
   // Remote players (console/pc/streamer) carry their ratings straight from
   // aggregate.json — no per-player fetch needed just to bucket by ELO.
-  if (p.source === 'remote') return p.ratings?.['1v1 Console'] ?? null;
+  // Falls through every ladder (not just 1v1 Console) so a player whose
+  // games are mostly Team Console — or who's crossed over to PC — still
+  // shows a rating instead of blank, and still lands in an ELO bracket.
+  if (p.source === 'remote') {
+    return p.ratings?.['1v1 Console'] ?? p.ratings?.['Team Console'] ?? p.ratings?.['1v1 PC'] ?? p.ratings?.['Team PC'] ?? null;
+  }
   const ds = MATCH_DATA_SOURCES[p.matchDataSource];
-  return ds?.['1v1 Console']?.meta?.latestRating ?? null;
+  return ds?.['1v1 Console']?.meta?.latestRating ?? ds?.['Team Console']?.meta?.latestRating
+    ?? ds?.['1v1 PC']?.meta?.latestRating ?? ds?.['Team PC']?.meta?.latestRating ?? null;
 }
 
 /* Rating shown on the roster pill — console players show their console
    rating, everyone else (pro/pc/streamer, all PC-primary) shows PC rating
-   instead so the badge is actually meaningful for that group. */
+   instead so the badge is actually meaningful for that group. Same full
+   fallback through every ladder as playerConsoleRating above. */
 function playerDisplayRating(p) {
   if (p.group === 'console') return playerConsoleRating(p);
-  if (p.source === 'remote') return p.ratings?.['1v1 PC'] ?? p.ratings?.['1v1 Console'] ?? null;
+  if (p.source === 'remote') {
+    return p.ratings?.['1v1 PC'] ?? p.ratings?.['Team PC'] ?? p.ratings?.['1v1 Console'] ?? p.ratings?.['Team Console'] ?? null;
+  }
   const ds = MATCH_DATA_SOURCES[p.matchDataSource];
-  return ds?.['1v1 PC']?.meta?.latestRating ?? ds?.['1v1 Console']?.meta?.latestRating ?? null;
+  return ds?.['1v1 PC']?.meta?.latestRating ?? ds?.['Team PC']?.meta?.latestRating
+    ?? ds?.['1v1 Console']?.meta?.latestRating ?? ds?.['Team Console']?.meta?.latestRating ?? null;
 }
 
 /* Converts one of aggregate.json's pre-pooled {civ:{games,wins,pickRate}}
