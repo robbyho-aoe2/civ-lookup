@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.43 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.44 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -3639,6 +3639,30 @@ function aggregateByWeekToStats(byWeek, minGames) {
   return out;
 }
 
+/* byLadder only has the 4 raw keys (1v1 Console, Team Console, 1v1 PC,
+   Team PC) — the combined "Console" / "PC" ladder pills need those merged
+   client-side. Summing games/wins per civ across whichever raw ladders
+   belong to that combined pill, then recomputing pickRate from the total. */
+function combineLadderSlices(byLadder, ladderKeys) {
+  const combined = {};
+  ladderKeys.forEach(key => {
+    const slice = byLadder?.[key];
+    if (!slice) return;
+    Object.entries(slice).forEach(([civ, e]) => {
+      if (!combined[civ]) combined[civ] = { games: 0, wins: 0 };
+      combined[civ].games += e.games;
+      combined[civ].wins += e.wins;
+    });
+  });
+  const totalGames = Object.values(combined).reduce((s, e) => s + e.games, 0);
+  Object.values(combined).forEach(e => { e.pickRate = totalGames ? e.games / totalGames : 0; });
+  return combined;
+}
+const COMBINED_LADDER_KEYS = {
+  Console: ['1v1 Console', 'Team Console'],
+  PC: ['1v1 PC', 'Team PC'],
+};
+
 function getGroupOverallCivStats(group, mapFilter, minGames) {
   const src = GROUP_SOURCES[group];
 
@@ -3654,8 +3678,9 @@ function getGroupOverallCivStats(group, mapFilter, minGames) {
     if (activeRecencyMode === 'patch' && AGGREGATE.currentPatch && g.byPatch?.[AGGREGATE.currentPatch]) slice = g.byPatch[AGGREGATE.currentPatch];
     else if (group === 'console' && activeConsoleElo && g.byEloBracket?.[activeConsoleElo]) slice = g.byEloBracket[activeConsoleElo];
     else if (group === 'pc' && activePcElo && g.byEloBracket?.[activePcElo]) slice = g.byEloBracket[activePcElo];
+    else if (activeLadder === 'Console' || activeLadder === 'PC') slice = combineLadderSlices(g.byLadder, COMBINED_LADDER_KEYS[activeLadder]);
     else if (activeLadder && activeLadder !== 'All' && g.byLadder?.[activeLadder]) slice = g.byLadder[activeLadder];
-    else slice = g.civWinRates;
+    else slice = g.civWinRates; // 'All' (and true default) — genuinely the full pooled total, this one was already correct
     return aggregateSliceToStats(slice, minGames);
   }
 
