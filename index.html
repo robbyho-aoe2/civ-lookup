@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.44 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.45 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2831,10 +2831,16 @@ function renderSelectorPillsHtml() {
       return `<button class="arch-btn${on}" data-kind="consoleelo" data-elo="${key}" style="font-size:11px">${b.label}</button>`;
     }).join('');
   const pcOverallOn = activeGroupOverall === 'pc' ? ' on' : '';
+  const pcLadderValid = ['PC','1v1 PC','Team PC'].includes(activeLadder);
+  const pcEloHasData = Object.values(AGGREGATE?.pc?.byEloBracket || {}).some(b => Object.keys(b).length > 0);
+  const pcEloDisabled = !pcLadderValid || !pcEloHasData;
+  const pcEloDisabledAttrs = pcEloDisabled
+    ? ` disabled title="${!pcEloHasData ? 'No PC ELO bracket data yet' : 'Switch to a PC ladder (1v1 PC / Team PC / PC) to use ELO brackets'}" style="font-size:11px;opacity:.4;cursor:not-allowed"`
+    : ' style="font-size:11px"';
   const pcOverallPill = pcPlayers.length ? (`<button class="arch-btn${pcOverallOn}" data-kind="groupoverall" data-group="pc" data-name="pc overall" style="font-weight:700">🖥️ PC Overall</button>` +
     Object.entries(PC_ELO_BRACKETS).map(([key, b]) => {
       const on = activePcElo === key ? ' on' : '';
-      return `<button class="arch-btn${on}" data-kind="pcelo" data-elo="${key}" style="font-size:11px">${b.label}</button>`;
+      return `<button class="arch-btn${on}" data-kind="pcelo" data-elo="${key}"${pcEloDisabledAttrs}>${b.label}</button>`;
     }).join('')) : '';
   html += `<div id="player-pill-row">`;
   html += renderPlayerGroup('Pro Players', proPlayers, proOverallPill, 'pro');
