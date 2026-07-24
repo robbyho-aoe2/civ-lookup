@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.53 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.54 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2731,13 +2731,10 @@ function selectPlayerMapFilter(mapName) {
   if (activePlayerMapFilter) {
     mapFilterDetailsOpen = true;
     activeMapCatFilter = null;
-    // Group Overall can't combine a map filter with Patch/Form/ELO bracket
-    // (see the pill-disabling note above) — reset all three so nothing
-    // looks selected while actually being ignored by precedence.
-    if (activeGroupOverall !== null) {
-      if (activeRecencyMode !== 'all') activeRecencyMode = 'all';
-      activeConsoleElo = null; activePcElo = null;
-    }
+    // Map now genuinely combines with ELO bracket and Patch (byMap nests
+    // both per map) — only Form still can't combine (no byWeek nesting
+    // per map), so that's the only one that still needs resetting.
+    if (activeGroupOverall !== null && activeRecencyMode === 'form') activeRecencyMode = 'all';
   }
   render();
 }
@@ -2835,22 +2832,16 @@ function renderSelectorPillsHtml() {
   };
   const proOverallOn = activeGroupOverall === 'pro' ? ' on' : '';
   const proOverallPill = `<button class="arch-btn${proOverallOn}" data-kind="groupoverall" data-group="pro" data-name="pro overall" style="font-weight:700">🏆 Pro Overall</button>`;
-  // ELO brackets can't combine with a map/category filter (single-dimension
-  // slices in the aggregate) — grey out rather than let a click silently
-  // do nothing while a map filter is still active.
-  const mapFilterActive = !!(activePlayerMapFilter || activeMapCatFilter);
-  const eloMapConflictAttrs = ` disabled title="Clear the map filter first — ELO brackets can't combine with it yet" style="font-size:11px;opacity:.4;cursor:not-allowed"`;
   const consoleOverallOn = activeGroupOverall === 'console' ? ' on' : '';
   const consoleOverallPill = `<button class="arch-btn${consoleOverallOn}" data-kind="groupoverall" data-group="console" data-name="console overall" style="font-weight:700">🎮 Console Overall</button>` +
     Object.entries(CONSOLE_ELO_BRACKETS).map(([key, b]) => {
       const on = activeConsoleElo === key ? ' on' : '';
-      const attrs = mapFilterActive ? eloMapConflictAttrs : ' style="font-size:11px"';
-      return `<button class="arch-btn${on}" data-kind="consoleelo" data-elo="${key}"${attrs}>${b.label}</button>`;
+      return `<button class="arch-btn${on}" data-kind="consoleelo" data-elo="${key}" style="font-size:11px">${b.label}</button>`;
     }).join('');
   const pcOverallOn = activeGroupOverall === 'pc' ? ' on' : '';
   const pcEloHasData = Object.values(AGGREGATE?.pc?.byEloBracket || {}).some(b => Object.keys(b).length > 0);
-  const pcEloDisabledAttrs = mapFilterActive ? eloMapConflictAttrs
-    : !pcEloHasData ? ` disabled title="No PC ELO bracket data yet" style="font-size:11px;opacity:.4;cursor:not-allowed"`
+  const pcEloDisabledAttrs = !pcEloHasData
+    ? ` disabled title="No PC ELO bracket data yet" style="font-size:11px;opacity:.4;cursor:not-allowed"`
     : ' style="font-size:11px"';
   const pcOverallPill = pcPlayers.length ? (`<button class="arch-btn${pcOverallOn}" data-kind="groupoverall" data-group="pc" data-name="pc overall" style="font-weight:700">🖥️ PC Overall</button>` +
     Object.entries(PC_ELO_BRACKETS).map(([key, b]) => {
@@ -2888,18 +2879,17 @@ function renderSelectorPillsHtml() {
     const allOn = activeRecencyMode === 'all' ? ' on' : '';
     const patchOn = activeRecencyMode === 'patch' ? ' on' : '';
     const formOn = activeRecencyMode === 'form' ? ' on' : '';
-    // Group Overall's map filter comes from aggregate.byMap, which only
-    // stores a flat {civ:{games,wins}} total per map — no nested patch/date
-    // breakdown to further filter by. Individual players don't have this
-    // problem (they filter their own raw match list, which supports any
-    // combination), so this only restricts the pooled group view.
+    // byMap now nests byEloBracket and byPatch per map, so map + Patch (and
+    // map + ELO bracket) genuinely combine. Form still can't — no byWeek
+    // nesting per map — so that one alone stays disabled under a map filter.
+    // Individual players never had this limitation at all (raw match data).
     const mapFilterActiveForGroup = activeGroupOverall !== null && (activePlayerMapFilter || activeMapCatFilter);
-    const patchFormDisabledAttrs = mapFilterActiveForGroup
-      ? ` disabled title="Can't combine a map filter with Patch/Form on pooled stats yet — the aggregate only stores flat totals per map" style="font-size:11px;padding:3px 10px;opacity:.4;cursor:not-allowed"`
+    const formDisabledAttrs = mapFilterActiveForGroup
+      ? ` disabled title="Recent Form can't combine with a map filter on pooled stats yet — the aggregate has no per-map weekly breakdown" style="font-size:11px;padding:3px 10px;opacity:.4;cursor:not-allowed"`
       : ' style="font-size:11px;padding:3px 10px"';
     html += `<button class="arch-btn${allOn}" data-kind="recencymode" data-mode="all" style="font-size:11px;padding:3px 10px">🕰 All Time</button>`;
-    html += `<button class="arch-btn${patchOn}" data-kind="recencymode" data-mode="patch"${patchFormDisabledAttrs}>🩹 Current patch only</button>`;
-    html += `<button class="arch-btn${formOn}" data-kind="recencymode" data-mode="form"${patchFormDisabledAttrs}>📈 Recent games weighted more</button>`;
+    html += `<button class="arch-btn${patchOn}" data-kind="recencymode" data-mode="patch" style="font-size:11px;padding:3px 10px">🩹 Current patch only</button>`;
+    html += `<button class="arch-btn${formOn}" data-kind="recencymode" data-mode="form"${formDisabledAttrs}>📈 Recent games weighted more</button>`;
     html += `</div>`;
   }
   if (activePlayer !== null || activeGroupOverall !== null) {
@@ -2936,12 +2926,10 @@ function attachSelectorPillEvents(root) {
           activeArchetype = null; activeMap = null; activeOverallTier = false;
           activePlayer = null; activeMapOverall = null;
           if (prevGroup !== 'console') activeLadder = GROUP_DEFAULT_LADDER.console;
-          // Map filter (specific or category) and ELO bracket are separate
-          // single-dimension slices in the aggregate — whichever one isn't
-          // currently active must be fully cleared, or it silently wins
-          // precedence and makes this click look like a no-op. Same for
-          // Form (no combined "form-weighted, this bracket only" data).
-          activePlayerMapFilter = null; activeMapCatFilter = null;
+          // Map filter (specific or category) now genuinely combines with
+          // ELO bracket (byMap nests byEloBracket per map) — no need to
+          // clear it. Form still can't combine (byWeek has no per-bracket
+          // nesting), so that one still resets.
           if (activeRecencyMode === 'form') activeRecencyMode = 'all';
         }
         render();
@@ -2956,7 +2944,6 @@ function attachSelectorPillEvents(root) {
           activeArchetype = null; activeMap = null; activeOverallTier = false;
           activePlayer = null; activeMapOverall = null;
           if (prevGroup !== 'pc') activeLadder = GROUP_DEFAULT_LADDER.pc;
-          activePlayerMapFilter = null; activeMapCatFilter = null;
           if (activeRecencyMode === 'form') activeRecencyMode = 'all';
         }
         render();
@@ -3018,10 +3005,7 @@ function attachSelectorPillEvents(root) {
         activeMapCatFilter = activeMapCatFilter === key ? null : key;
         if (activeMapCatFilter) {
           activePlayerMapFilter = null; // specific map takes precedence over category — clear it so the category actually shows
-          if (activeGroupOverall !== null) {
-            if (activeRecencyMode !== 'all') activeRecencyMode = 'all';
-            activeConsoleElo = null; activePcElo = null;
-          }
+          if (activeGroupOverall !== null && activeRecencyMode === 'form') activeRecencyMode = 'all';
         }
         // A category is now a real stats filter (see filterMatches /
         // getGroupOverallCivStats), not just a pill-list narrow-down — it
@@ -3744,15 +3728,28 @@ const COMBINED_LADDER_KEYS = {
   PC: ['1v1 PC', 'Team PC'],
 };
 
+/* byMap[mapName] is now nested: {civWinRates, byEloBracket, byPatch} —
+   not a flat civ dict. subSlice picks which nested piece to read per map
+   (defaults to the flat civWinRates); pass ['byEloBracket','high'] or
+   ['byPatch','1800'] to combine a category with an ELO bracket or patch. */
+function getMapSubSlice(mapEntry, subSlice) {
+  if (!mapEntry) return null;
+  if (!subSlice) return mapEntry.civWinRates || null;
+  const [dim, key] = subSlice;
+  return mapEntry[dim]?.[key] || null;
+}
+
 /* Category filter (Open/Closed/Land/etc) derived entirely client-side from
    byMap — no aggregate.json change needed, since byMap already has every
    individual map's civ breakdown. Sums across whichever of that category's
    maps actually exist as keys in this group's byMap. */
-function combineMapCategorySlices(byMap, categoryKey) {
+function combineMapCategorySlices(byMap, categoryKey, subSlice) {
   const mapNames = PLAYER_MAP_CATEGORIES[categoryKey] || [];
   const combined = {};
-  Object.entries(byMap || {}).forEach(([mapName, civs]) => {
+  Object.entries(byMap || {}).forEach(([mapName, mapEntry]) => {
     if (!mapNames.includes(mapName.toLowerCase())) return;
+    const civs = getMapSubSlice(mapEntry, subSlice);
+    if (!civs) return;
     Object.entries(civs).forEach(([civ, e]) => {
       if (!combined[civ]) combined[civ] = { games: 0, wins: 0 };
       combined[civ].games += e.games;
@@ -3770,16 +3767,25 @@ function getGroupOverallCivStats(group, mapFilter, minGames) {
   if (src && src.mode === 'remote') {
     if (!AGGREGATE || !AGGREGATE[group]) return {};
     const g = AGGREGATE[group];
-    // Precedence when multiple filters are active at once (the aggregate
-    // only stores each dimension pre-pooled separately, not combined):
-    // specific map > map category > recent-form / current-patch > ELO bracket > ladder > default.
-    if (mapFilter && g.byMap?.[mapFilter]) return aggregateSliceToStats(g.byMap[mapFilter], minGames);
-    if (!mapFilter && activeMapCatFilter && g.byMap) return aggregateSliceToStats(combineMapCategorySlices(g.byMap, activeMapCatFilter), minGames);
+    const activeElo = group === 'console' ? activeConsoleElo : group === 'pc' ? activePcElo : null;
+    // byMap now nests byEloBracket / byPatch per map (map+Form still isn't
+    // possible — no byWeek nested per-map, that combo falls through to
+    // ordinary Form behavior below, unfiltered by map).
+    const mapSubSlice =
+      activeElo && g.byEloBracket ? ['byEloBracket', activeElo] :
+      activeRecencyMode === 'patch' && AGGREGATE.currentPatch ? ['byPatch', AGGREGATE.currentPatch] :
+      null;
+    if (mapFilter && g.byMap?.[mapFilter]) {
+      const civs = getMapSubSlice(g.byMap[mapFilter], mapSubSlice) || g.byMap[mapFilter].civWinRates;
+      return aggregateSliceToStats(civs, minGames);
+    }
+    if (!mapFilter && activeMapCatFilter && g.byMap) {
+      return aggregateSliceToStats(combineMapCategorySlices(g.byMap, activeMapCatFilter, mapSubSlice), minGames);
+    }
     if (activeRecencyMode === 'form' && g.byWeek) return aggregateByWeekToStats(g.byWeek, minGames);
     let slice;
     if (activeRecencyMode === 'patch' && AGGREGATE.currentPatch && g.byPatch?.[AGGREGATE.currentPatch]) slice = g.byPatch[AGGREGATE.currentPatch];
-    else if (group === 'console' && activeConsoleElo && g.byEloBracket?.[activeConsoleElo]) slice = g.byEloBracket[activeConsoleElo];
-    else if (group === 'pc' && activePcElo && g.byEloBracket?.[activePcElo]) slice = g.byEloBracket[activePcElo];
+    else if (activeElo && g.byEloBracket?.[activeElo]) slice = g.byEloBracket[activeElo];
     else if (activeLadder === 'Console' || activeLadder === 'PC') slice = combineLadderSlices(g.byLadder, COMBINED_LADDER_KEYS[activeLadder]);
     else if (activeLadder && activeLadder !== 'All' && g.byLadder?.[activeLadder]) slice = g.byLadder[activeLadder];
     else slice = g.civWinRates; // 'All' (and true default) — genuinely the full pooled total, this one was already correct
@@ -3815,9 +3821,9 @@ function getGroupOverallMapList(group) {
   const src = GROUP_SOURCES[group];
   if (src && src.mode === 'remote') {
     if (!AGGREGATE || !AGGREGATE[group]?.byMap) return [];
-    return Object.entries(AGGREGATE[group].byMap).map(([map, civs]) => ({
+    return Object.entries(AGGREGATE[group].byMap).map(([map, mapEntry]) => ({
       map,
-      games: Object.values(civs).reduce((sum, c) => sum + c.games, 0),
+      games: Object.values(mapEntry.civWinRates || {}).reduce((sum, c) => sum + c.games, 0),
     }));
   }
   const players = PLAYER_LIST.filter(p => p.group === group);
