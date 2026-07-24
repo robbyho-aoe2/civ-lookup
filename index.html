@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.50 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.51 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2728,7 +2728,14 @@ function selectGroupOverall(group) {
 
 function selectPlayerMapFilter(mapName) {
   activePlayerMapFilter = activePlayerMapFilter === mapName ? null : mapName;
-  if (activePlayerMapFilter) { mapFilterDetailsOpen = true; activeMapCatFilter = null; }
+  if (activePlayerMapFilter) {
+    mapFilterDetailsOpen = true;
+    activeMapCatFilter = null;
+    // Group Overall can't combine a map filter with Patch/Form (see the
+    // pill-disabling note above) — reset so nothing looks selected while
+    // actually being disabled and ignored.
+    if (activeGroupOverall !== null && activeRecencyMode !== 'all') activeRecencyMode = 'all';
+  }
   render();
 }
 
@@ -2872,9 +2879,18 @@ function renderSelectorPillsHtml() {
     const allOn = activeRecencyMode === 'all' ? ' on' : '';
     const patchOn = activeRecencyMode === 'patch' ? ' on' : '';
     const formOn = activeRecencyMode === 'form' ? ' on' : '';
+    // Group Overall's map filter comes from aggregate.byMap, which only
+    // stores a flat {civ:{games,wins}} total per map — no nested patch/date
+    // breakdown to further filter by. Individual players don't have this
+    // problem (they filter their own raw match list, which supports any
+    // combination), so this only restricts the pooled group view.
+    const mapFilterActiveForGroup = activeGroupOverall !== null && (activePlayerMapFilter || activeMapCatFilter);
+    const patchFormDisabledAttrs = mapFilterActiveForGroup
+      ? ` disabled title="Can't combine a map filter with Patch/Form on pooled stats yet — the aggregate only stores flat totals per map" style="font-size:11px;padding:3px 10px;opacity:.4;cursor:not-allowed"`
+      : ' style="font-size:11px;padding:3px 10px"';
     html += `<button class="arch-btn${allOn}" data-kind="recencymode" data-mode="all" style="font-size:11px;padding:3px 10px">🕰 All Time</button>`;
-    html += `<button class="arch-btn${patchOn}" data-kind="recencymode" data-mode="patch" style="font-size:11px;padding:3px 10px">🩹 Current patch only</button>`;
-    html += `<button class="arch-btn${formOn}" data-kind="recencymode" data-mode="form" style="font-size:11px;padding:3px 10px">📈 Recent games weighted more</button>`;
+    html += `<button class="arch-btn${patchOn}" data-kind="recencymode" data-mode="patch"${patchFormDisabledAttrs}>🩹 Current patch only</button>`;
+    html += `<button class="arch-btn${formOn}" data-kind="recencymode" data-mode="form"${patchFormDisabledAttrs}>📈 Recent games weighted more</button>`;
     html += `</div>`;
   }
   if (activePlayer !== null || activeGroupOverall !== null) {
@@ -2989,7 +3005,10 @@ function attachSelectorPillEvents(root) {
       catBtn.addEventListener('click', () => {
         const key = catBtn.dataset.mapCat;
         activeMapCatFilter = activeMapCatFilter === key ? null : key;
-        if (activeMapCatFilter) activePlayerMapFilter = null; // specific map takes precedence over category — clear it so the category actually shows
+        if (activeMapCatFilter) {
+          activePlayerMapFilter = null; // specific map takes precedence over category — clear it so the category actually shows
+          if (activeGroupOverall !== null && activeRecencyMode !== 'all') activeRecencyMode = 'all';
+        }
         // A category is now a real stats filter (see filterMatches /
         // getGroupOverallCivStats), not just a pill-list narrow-down — it
         // needs a full render so the civ table actually recomputes, the
