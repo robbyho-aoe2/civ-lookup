@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.45 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.48 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2831,11 +2831,9 @@ function renderSelectorPillsHtml() {
       return `<button class="arch-btn${on}" data-kind="consoleelo" data-elo="${key}" style="font-size:11px">${b.label}</button>`;
     }).join('');
   const pcOverallOn = activeGroupOverall === 'pc' ? ' on' : '';
-  const pcLadderValid = ['PC','1v1 PC','Team PC'].includes(activeLadder);
   const pcEloHasData = Object.values(AGGREGATE?.pc?.byEloBracket || {}).some(b => Object.keys(b).length > 0);
-  const pcEloDisabled = !pcLadderValid || !pcEloHasData;
-  const pcEloDisabledAttrs = pcEloDisabled
-    ? ` disabled title="${!pcEloHasData ? 'No PC ELO bracket data yet' : 'Switch to a PC ladder (1v1 PC / Team PC / PC) to use ELO brackets'}" style="font-size:11px;opacity:.4;cursor:not-allowed"`
+  const pcEloDisabledAttrs = !pcEloHasData
+    ? ` disabled title="No PC ELO bracket data yet" style="font-size:11px;opacity:.4;cursor:not-allowed"`
     : ' style="font-size:11px"';
   const pcOverallPill = pcPlayers.length ? (`<button class="arch-btn${pcOverallOn}" data-kind="groupoverall" data-group="pc" data-name="pc overall" style="font-weight:700">🖥️ PC Overall</button>` +
     Object.entries(PC_ELO_BRACKETS).map(([key, b]) => {
@@ -2853,9 +2851,20 @@ function renderSelectorPillsHtml() {
   if ((activePlayerEntry && (activePlayerEntry.source === 'match' || activePlayerEntry.source === 'remote')) || activeGroupOverall) {
     html += `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px">`;
     html += `<span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Ladder:</span>`;
+    // Constrain which ladders make sense for whatever's currently active —
+    // Console players play both console and PC, so leave every ladder
+    // available there. Pro/PC/streamer are PC-only groups — restrict those
+    // to PC ladders so you can't select a combination with no real data.
+    const effGroup = getCurrentEffectiveGroup();
+    const validLadders = (effGroup === 'pro' || effGroup === 'pc' || effGroup === 'streamer') ? ['1v1 PC', 'Team PC', 'PC']
+      : null; // console or no group context — everything valid
     LADDER_OPTIONS.forEach(l => {
       const on = activeLadder === l ? ' on' : '';
-      html += `<button class="arch-btn${on}" data-kind="ladder" data-ladder="${l}" style="font-size:11px;padding:3px 10px">${l}</button>`;
+      const disabled = validLadders && !validLadders.includes(l);
+      const attrs = disabled
+        ? ` disabled title="Not applicable while viewing PC data" style="font-size:11px;padding:3px 10px;opacity:.4;cursor:not-allowed"`
+        : ' style="font-size:11px;padding:3px 10px"';
+      html += `<button class="arch-btn${on}" data-kind="ladder" data-ladder="${l}"${attrs}>${l}</button>`;
     });
     html += `</div>`;
     html += `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px">`;
@@ -3373,7 +3382,13 @@ function aggregateMatchesToStats(matches, minGames) {
    consistently, wherever that list is headed next (one player's own
    stats, or pooled into Console Overall). */
 function filterMatches(matches, mapFilter) {
-  let out = mapFilter ? matches.filter(m => m.map === mapFilter) : matches;
+  let out = matches;
+  if (mapFilter) {
+    out = out.filter(m => m.map === mapFilter);
+  } else if (activeMapCatFilter) {
+    const catMaps = PLAYER_MAP_CATEGORIES[activeMapCatFilter] || [];
+    out = out.filter(m => catMaps.includes((m.map || '').toLowerCase()));
+  }
   if (activeRecencyMode === 'patch') {
     const patches = out.map(m => m.patch).filter(p => p != null);
     if (patches.length) {
@@ -3669,6 +3684,26 @@ const COMBINED_LADDER_KEYS = {
   PC: ['1v1 PC', 'Team PC'],
 };
 
+/* Category filter (Open/Closed/Land/etc) derived entirely client-side from
+   byMap — no aggregate.json change needed, since byMap already has every
+   individual map's civ breakdown. Sums across whichever of that category's
+   maps actually exist as keys in this group's byMap. */
+function combineMapCategorySlices(byMap, categoryKey) {
+  const mapNames = PLAYER_MAP_CATEGORIES[categoryKey] || [];
+  const combined = {};
+  Object.entries(byMap || {}).forEach(([mapName, civs]) => {
+    if (!mapNames.includes(mapName.toLowerCase())) return;
+    Object.entries(civs).forEach(([civ, e]) => {
+      if (!combined[civ]) combined[civ] = { games: 0, wins: 0 };
+      combined[civ].games += e.games;
+      combined[civ].wins += e.wins;
+    });
+  });
+  const totalGames = Object.values(combined).reduce((s, e) => s + e.games, 0);
+  Object.values(combined).forEach(e => { e.pickRate = totalGames ? e.games / totalGames : 0; });
+  return combined;
+}
+
 function getGroupOverallCivStats(group, mapFilter, minGames) {
   const src = GROUP_SOURCES[group];
 
@@ -3677,8 +3712,9 @@ function getGroupOverallCivStats(group, mapFilter, minGames) {
     const g = AGGREGATE[group];
     // Precedence when multiple filters are active at once (the aggregate
     // only stores each dimension pre-pooled separately, not combined):
-    // map filter > recent-form / current-patch > ELO bracket > ladder > default.
+    // specific map > map category > recent-form / current-patch > ELO bracket > ladder > default.
     if (mapFilter && g.byMap?.[mapFilter]) return aggregateSliceToStats(g.byMap[mapFilter], minGames);
+    if (!mapFilter && activeMapCatFilter && g.byMap) return aggregateSliceToStats(combineMapCategorySlices(g.byMap, activeMapCatFilter), minGames);
     if (activeRecencyMode === 'form' && g.byWeek) return aggregateByWeekToStats(g.byWeek, minGames);
     let slice;
     if (activeRecencyMode === 'patch' && AGGREGATE.currentPatch && g.byPatch?.[AGGREGATE.currentPatch]) slice = g.byPatch[AGGREGATE.currentPatch];
