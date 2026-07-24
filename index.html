@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.52 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.53 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2731,10 +2731,13 @@ function selectPlayerMapFilter(mapName) {
   if (activePlayerMapFilter) {
     mapFilterDetailsOpen = true;
     activeMapCatFilter = null;
-    // Group Overall can't combine a map filter with Patch/Form (see the
-    // pill-disabling note above) — reset so nothing looks selected while
-    // actually being disabled and ignored.
-    if (activeGroupOverall !== null && activeRecencyMode !== 'all') activeRecencyMode = 'all';
+    // Group Overall can't combine a map filter with Patch/Form/ELO bracket
+    // (see the pill-disabling note above) — reset all three so nothing
+    // looks selected while actually being ignored by precedence.
+    if (activeGroupOverall !== null) {
+      if (activeRecencyMode !== 'all') activeRecencyMode = 'all';
+      activeConsoleElo = null; activePcElo = null;
+    }
   }
   render();
 }
@@ -2832,16 +2835,22 @@ function renderSelectorPillsHtml() {
   };
   const proOverallOn = activeGroupOverall === 'pro' ? ' on' : '';
   const proOverallPill = `<button class="arch-btn${proOverallOn}" data-kind="groupoverall" data-group="pro" data-name="pro overall" style="font-weight:700">🏆 Pro Overall</button>`;
+  // ELO brackets can't combine with a map/category filter (single-dimension
+  // slices in the aggregate) — grey out rather than let a click silently
+  // do nothing while a map filter is still active.
+  const mapFilterActive = !!(activePlayerMapFilter || activeMapCatFilter);
+  const eloMapConflictAttrs = ` disabled title="Clear the map filter first — ELO brackets can't combine with it yet" style="font-size:11px;opacity:.4;cursor:not-allowed"`;
   const consoleOverallOn = activeGroupOverall === 'console' ? ' on' : '';
   const consoleOverallPill = `<button class="arch-btn${consoleOverallOn}" data-kind="groupoverall" data-group="console" data-name="console overall" style="font-weight:700">🎮 Console Overall</button>` +
     Object.entries(CONSOLE_ELO_BRACKETS).map(([key, b]) => {
       const on = activeConsoleElo === key ? ' on' : '';
-      return `<button class="arch-btn${on}" data-kind="consoleelo" data-elo="${key}" style="font-size:11px">${b.label}</button>`;
+      const attrs = mapFilterActive ? eloMapConflictAttrs : ' style="font-size:11px"';
+      return `<button class="arch-btn${on}" data-kind="consoleelo" data-elo="${key}"${attrs}>${b.label}</button>`;
     }).join('');
   const pcOverallOn = activeGroupOverall === 'pc' ? ' on' : '';
   const pcEloHasData = Object.values(AGGREGATE?.pc?.byEloBracket || {}).some(b => Object.keys(b).length > 0);
-  const pcEloDisabledAttrs = !pcEloHasData
-    ? ` disabled title="No PC ELO bracket data yet" style="font-size:11px;opacity:.4;cursor:not-allowed"`
+  const pcEloDisabledAttrs = mapFilterActive ? eloMapConflictAttrs
+    : !pcEloHasData ? ` disabled title="No PC ELO bracket data yet" style="font-size:11px;opacity:.4;cursor:not-allowed"`
     : ' style="font-size:11px"';
   const pcOverallPill = pcPlayers.length ? (`<button class="arch-btn${pcOverallOn}" data-kind="groupoverall" data-group="pc" data-name="pc overall" style="font-weight:700">🖥️ PC Overall</button>` +
     Object.entries(PC_ELO_BRACKETS).map(([key, b]) => {
@@ -2927,11 +2936,12 @@ function attachSelectorPillEvents(root) {
           activeArchetype = null; activeMap = null; activeOverallTier = false;
           activePlayer = null; activeMapOverall = null;
           if (prevGroup !== 'console') activeLadder = GROUP_DEFAULT_LADDER.console;
-          // Form/Patch and ELO bracket are separate single-dimension slices
-          // in the aggregate (no combined "form-weighted, this bracket only"
-          // data) — reset Form so clicking a bracket reliably shows
-          // bracket-filtered results instead of Form silently winning
-          // precedence and making the bracket click look like a no-op.
+          // Map filter (specific or category) and ELO bracket are separate
+          // single-dimension slices in the aggregate — whichever one isn't
+          // currently active must be fully cleared, or it silently wins
+          // precedence and makes this click look like a no-op. Same for
+          // Form (no combined "form-weighted, this bracket only" data).
+          activePlayerMapFilter = null; activeMapCatFilter = null;
           if (activeRecencyMode === 'form') activeRecencyMode = 'all';
         }
         render();
@@ -2946,6 +2956,7 @@ function attachSelectorPillEvents(root) {
           activeArchetype = null; activeMap = null; activeOverallTier = false;
           activePlayer = null; activeMapOverall = null;
           if (prevGroup !== 'pc') activeLadder = GROUP_DEFAULT_LADDER.pc;
+          activePlayerMapFilter = null; activeMapCatFilter = null;
           if (activeRecencyMode === 'form') activeRecencyMode = 'all';
         }
         render();
@@ -3007,7 +3018,10 @@ function attachSelectorPillEvents(root) {
         activeMapCatFilter = activeMapCatFilter === key ? null : key;
         if (activeMapCatFilter) {
           activePlayerMapFilter = null; // specific map takes precedence over category — clear it so the category actually shows
-          if (activeGroupOverall !== null && activeRecencyMode !== 'all') activeRecencyMode = 'all';
+          if (activeGroupOverall !== null) {
+            if (activeRecencyMode !== 'all') activeRecencyMode = 'all';
+            activeConsoleElo = null; activePcElo = null;
+          }
         }
         // A category is now a real stats filter (see filterMatches /
         // getGroupOverallCivStats), not just a pill-list narrow-down — it
