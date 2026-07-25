@@ -3727,7 +3727,7 @@ function combineLadderSlices(byLadder, ladderKeys, subSlice) {
   ladderKeys.forEach(key => {
     const entry = byLadder?.[key];
     if (!entry) return;
-    const civs = subSlice ? entry[subSlice[0]]?.[subSlice[1]] : entry.civWinRates;
+    const civs = subSlice ? entry[subSlice[0]]?.[subSlice[1]] : (entry.civWinRates ?? entry);
     if (!civs) return;
     Object.entries(civs).forEach(([civ, e]) => {
       if (!combined[civ]) combined[civ] = { games: 0, wins: 0 };
@@ -3870,7 +3870,7 @@ function getGroupOverallCivStats(group, mapFilter, minGames) {
       const ladderEntry = g.byLadder[activeLadder];
       if (isForm && ladderEntry.byWeek) return aggregateByWeekToStats(ladderEntry.byWeek, minGames);
       if (isPatch && AGGREGATE.currentPatch && ladderEntry.byPatch?.[AGGREGATE.currentPatch]) return aggregateSliceToStats(ladderEntry.byPatch[AGGREGATE.currentPatch], minGames);
-      return aggregateSliceToStats(ladderEntry.civWinRates, minGames);
+      return aggregateSliceToStats(ladderEntry.civWinRates ?? ladderEntry, minGames);
     }
     // Genuine 'All' — no map/bracket/ladder narrowing at all.
     if (isForm && g.byWeek) return aggregateByWeekToStats(g.byWeek, minGames);
