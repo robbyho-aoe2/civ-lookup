@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.56 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.58 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -3718,16 +3718,18 @@ function aggregateByWeekToStats(byWeek, minGames) {
   return out;
 }
 
-/* byLadder only has the 4 raw keys (1v1 Console, Team Console, 1v1 PC,
-   Team PC) — the combined "Console" / "PC" ladder pills need those merged
-   client-side. Summing games/wins per civ across whichever raw ladders
-   belong to that combined pill, then recomputing pickRate from the total. */
-function combineLadderSlices(byLadder, ladderKeys) {
+/* byLadder[ladderName] is now nested: {civWinRates, byPatch, byWeek} — not
+   a flat civ dict. The combined "Console" / "PC" ladder pills merge two
+   raw ladders' worth of whichever sub-slice is relevant (flat / a specific
+   patch), summing games/wins per civ then recomputing pickRate. */
+function combineLadderSlices(byLadder, ladderKeys, subSlice) {
   const combined = {};
   ladderKeys.forEach(key => {
-    const slice = byLadder?.[key];
-    if (!slice) return;
-    Object.entries(slice).forEach(([civ, e]) => {
+    const entry = byLadder?.[key];
+    if (!entry) return;
+    const civs = subSlice ? entry[subSlice[0]]?.[subSlice[1]] : entry.civWinRates;
+    if (!civs) return;
+    Object.entries(civs).forEach(([civ, e]) => {
       if (!combined[civ]) combined[civ] = { games: 0, wins: 0 };
       combined[civ].games += e.games;
       combined[civ].wins += e.wins;
@@ -3735,6 +3737,25 @@ function combineLadderSlices(byLadder, ladderKeys) {
   });
   const totalGames = Object.values(combined).reduce((s, e) => s + e.games, 0);
   Object.values(combined).forEach(e => { e.pickRate = totalGames ? e.games / totalGames : 0; });
+  return combined;
+}
+/* Same idea but for Form — merges the nested byWeek across the 2 raw
+   ladders belonging to a combined "Console"/"PC" pill, keeping the
+   week-bucket structure intact so it can go through decay-weighting after. */
+function combineLadderWeeklySlices(byLadder, ladderKeys) {
+  const combined = {};
+  ladderKeys.forEach(key => {
+    const weeks = byLadder?.[key]?.byWeek;
+    if (!weeks) return;
+    Object.entries(weeks).forEach(([week, civs]) => {
+      if (!combined[week]) combined[week] = {};
+      Object.entries(civs).forEach(([civ, e]) => {
+        if (!combined[week][civ]) combined[week][civ] = { games: 0, wins: 0 };
+        combined[week][civ].games += e.games;
+        combined[week][civ].wins += e.wins;
+      });
+    });
+  });
   return combined;
 }
 const COMBINED_LADDER_KEYS = {
@@ -3833,11 +3854,28 @@ function getGroupOverallCivStats(group, mapFilter, minGames) {
       if (isForm && bracketEntry.byWeek) return aggregateByWeekToStats(bracketEntry.byWeek, minGames);
       return aggregateSliceToStats(bracketEntry.civWinRates, minGames);
     }
+
+    // No map/category/bracket active. byLadder is now nested too
+    // ({civWinRates, byPatch, byWeek} per ladder) — Patch and Form both
+    // combine with a specific ladder selection now, the same way they
+    // already combine with a map or bracket. This only falls through to
+    // the ladder-agnostic top-level totals for genuine "All".
+    if (activeLadder === 'Console' || activeLadder === 'PC') {
+      const keys = COMBINED_LADDER_KEYS[activeLadder];
+      if (isForm) return aggregateByWeekToStats(combineLadderWeeklySlices(g.byLadder, keys), minGames);
+      if (isPatch && AGGREGATE.currentPatch) return aggregateSliceToStats(combineLadderSlices(g.byLadder, keys, ['byPatch', AGGREGATE.currentPatch]), minGames);
+      return aggregateSliceToStats(combineLadderSlices(g.byLadder, keys), minGames);
+    }
+    if (activeLadder && activeLadder !== 'All' && g.byLadder?.[activeLadder]) {
+      const ladderEntry = g.byLadder[activeLadder];
+      if (isForm && ladderEntry.byWeek) return aggregateByWeekToStats(ladderEntry.byWeek, minGames);
+      if (isPatch && AGGREGATE.currentPatch && ladderEntry.byPatch?.[AGGREGATE.currentPatch]) return aggregateSliceToStats(ladderEntry.byPatch[AGGREGATE.currentPatch], minGames);
+      return aggregateSliceToStats(ladderEntry.civWinRates, minGames);
+    }
+    // Genuine 'All' — no map/bracket/ladder narrowing at all.
     if (isForm && g.byWeek) return aggregateByWeekToStats(g.byWeek, minGames);
     if (isPatch && AGGREGATE.currentPatch && g.byPatch?.[AGGREGATE.currentPatch]) return aggregateSliceToStats(g.byPatch[AGGREGATE.currentPatch], minGames);
-    if (activeLadder === 'Console' || activeLadder === 'PC') return aggregateSliceToStats(combineLadderSlices(g.byLadder, COMBINED_LADDER_KEYS[activeLadder]), minGames);
-    if (activeLadder && activeLadder !== 'All' && g.byLadder?.[activeLadder]) return aggregateSliceToStats(g.byLadder[activeLadder], minGames);
-    return aggregateSliceToStats(g.civWinRates, minGames); // 'All' (and true default) — genuinely the full pooled total, this one was already correct
+    return aggregateSliceToStats(g.civWinRates, minGames);
   }
 
   // Compiled groups (pro) — unchanged from before: loop each player's
