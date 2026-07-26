@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.5 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.58 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2883,11 +2883,12 @@ function renderSelectorPillsHtml() {
     const allOn = activeRecencyMode === 'all' ? ' on' : '';
     const patchOn = activeRecencyMode === 'patch' ? ' on' : '';
     const formOn = activeRecencyMode === 'form' ? ' on' : '';
-    // byMap and byEloBracket both now nest a byWeek, so Form genuinely
-    // combines with EITHER a map/category filter OR an ELO bracket on its
-    // own. The one combination that's still not possible is all three at
-    // once (map + bracket + form) — there's no triple-nested data for
-    // that, so that specific combo alone stays disabled.
+    // byMap, byEloBracket, and byLadder all nest a byWeek/byPatch now, so
+    // Form/Patch genuinely combine with a map/category filter, an ELO
+    // bracket, OR a specific ladder on their own. The one combination
+    // that's still not possible is a map filter + an ELO bracket + Form
+    // all three at once — no triple-nested data for that, so that combo
+    // alone stays disabled.
     const mapActive = !!(activePlayerMapFilter || activeMapCatFilter);
     const eloActive = !!(activeConsoleElo || activePcElo);
     const formConflict = activeGroupOverall !== null && mapActive && eloActive;
@@ -3718,10 +3719,12 @@ function aggregateByWeekToStats(byWeek, minGames) {
   return out;
 }
 
-/* byLadder[ladderName] is now nested: {civWinRates, byPatch, byWeek} — not
-   a flat civ dict. The combined "Console" / "PC" ladder pills merge two
-   raw ladders' worth of whichever sub-slice is relevant (flat / a specific
-   patch), summing games/wins per civ then recomputing pickRate. */
+/* byLadder[ladderName] is now nested: {civWinRates, byPatch, byWeek} — same
+   upgrade byMap/byEloBracket already had, applied to the pipeline in
+   build_aggregate.py. The combined "Console"/"PC" ladder pills merge two
+   raw ladders' worth of whichever sub-slice is relevant (flat civWinRates,
+   or a specific patch's civs), summing games/wins per civ then
+   recomputing pickRate. */
 function combineLadderSlices(byLadder, ladderKeys, subSlice) {
   const combined = {};
   ladderKeys.forEach(key => {
@@ -3855,10 +3858,10 @@ function getGroupOverallCivStats(group, mapFilter, minGames) {
       return aggregateSliceToStats(bracketEntry.civWinRates, minGames);
     }
 
-    // No map/category/bracket active. byLadder is now nested too
-    // ({civWinRates, byPatch, byWeek} per ladder) — Patch and Form both
-    // combine with a specific ladder selection now, the same way they
-    // already combine with a map or bracket. This only falls through to
+    // No map/category/bracket active. byLadder is nested too now
+    // ({civWinRates, byPatch, byWeek} per ladder, matching byMap) — Patch
+    // and Form both combine with a specific ladder selection the same way
+    // they already combine with a map or bracket. Only falls through to
     // the ladder-agnostic top-level totals for genuine "All".
     if (activeLadder === 'Console' || activeLadder === 'PC') {
       const keys = COMBINED_LADDER_KEYS[activeLadder];
