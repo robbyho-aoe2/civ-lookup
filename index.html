@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.61 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.64 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2752,8 +2752,32 @@ function selectMinGames(value) {
 
 function selectLadder(ladder) {
   activeLadder = ladder;
-  activePlayerMapFilter = null; activeMapCatFilter = null; // switching ladders invalidates any map filter (different match pool)
+  // Map filter now stays selected across ladder switches — map/category
+  // filtering is ladder-aware (see ladderScopedByMap), so this is a
+  // meaningful combination rather than a stale, ignored pill. If the
+  // selected map genuinely has no games on the new ladder, the grid just
+  // shows an empty result rather than silently reverting to "All maps".
   render();
+}
+
+/* Called when the civ card's own ladder pills change — mirrors that
+   selection onto the main tier list's ladder state too. Stays on whatever
+   group (or individual player) is already active, EXCEPT switching to a
+   console ladder always pulls the tier list into the Console community
+   group specifically (console-flavored data belongs there, not viewed
+   through a PC/pro player's crossover games). If nothing is active yet,
+   defaults to whichever group naturally owns the picked ladder. */
+function syncTierListToCivCardLadder(ladder) {
+  activeLadder = ladder;
+  const isConsoleLadder = (ladder === '1v1 Console' || ladder === 'Team Console');
+  if (isConsoleLadder) {
+    if (activeGroupOverall !== 'console') {
+      activeGroupOverall = 'console'; activePlayer = null;
+      activeConsoleElo = null; activePcElo = null;
+    }
+  } else if (activeGroupOverall === null && activePlayer === null) {
+    activeGroupOverall = LADDER_TO_GROUP[ladder] || 'pc';
+  }
 }
 
 function selectRecencyMode(mode) {
@@ -3822,6 +3846,50 @@ function combineMapCategoryByWeek(byMap, categoryKey) {
   return combined;
 }
 
+/* Returns byMap scoped to one specific raw ladder, or — for the combined
+   "Console"/"PC" pills — the 2 underlying raw ladders' byMap merged
+   together map-by-map. This is what lets a map/category filter on Group
+   Overall genuinely narrow to the selected ladder instead of silently
+   falling back to the whole group's byMap (which pools every ladder that
+   group's players touch, console crossover PC games included and vice
+   versa) regardless of which ladder pill looked selected. Only covers
+   civWinRates + byWeek at this depth (that's all build_aggregate.py
+   tracks per ladder-per-map) — byEloBracket/byPatch aren't available
+   combined with both a map AND a specific ladder; callers should check
+   activeElo/isPatch BEFORE falling into this path, same as the existing
+   precedence (map+bracket already outranks ladder elsewhere in this file).
+   Returns null if there's simply no byLadder data for this group/ladder. */
+function ladderScopedByMap(group, ladder) {
+  const g = AGGREGATE?.[group];
+  if (!g) return null;
+  if (ladder === 'Console' || ladder === 'PC') {
+    const keys = COMBINED_LADDER_KEYS[ladder];
+    const combined = {};
+    keys.forEach(key => {
+      const byMap = g.byLadder?.[key]?.byMap;
+      if (!byMap) return;
+      Object.entries(byMap).forEach(([mapName, mapEntry]) => {
+        if (!combined[mapName]) combined[mapName] = { civWinRates: {}, byWeek: {} };
+        Object.entries(mapEntry.civWinRates || {}).forEach(([civ, e]) => {
+          if (!combined[mapName].civWinRates[civ]) combined[mapName].civWinRates[civ] = { games: 0, wins: 0 };
+          combined[mapName].civWinRates[civ].games += e.games;
+          combined[mapName].civWinRates[civ].wins += e.wins;
+        });
+        Object.entries(mapEntry.byWeek || {}).forEach(([week, civs]) => {
+          if (!combined[mapName].byWeek[week]) combined[mapName].byWeek[week] = {};
+          Object.entries(civs).forEach(([civ, e]) => {
+            if (!combined[mapName].byWeek[week][civ]) combined[mapName].byWeek[week][civ] = { games: 0, wins: 0 };
+            combined[mapName].byWeek[week][civ].games += e.games;
+            combined[mapName].byWeek[week][civ].wins += e.wins;
+          });
+        });
+      });
+    });
+    return combined;
+  }
+  return g.byLadder?.[ladder]?.byMap || null;
+}
+
 function getGroupOverallCivStats(group, mapFilter, minGames) {
   const src = GROUP_SOURCES[group];
 
@@ -3833,22 +3901,50 @@ function getGroupOverallCivStats(group, mapFilter, minGames) {
     const isPatch = activeRecencyMode === 'patch';
 
     // Map or category active — byMap nests byEloBracket / byPatch / byWeek
-    // per map now, so any ONE of {ELO bracket, patch, form} genuinely
-    // combines with it. If bracket AND form are both requested at once
-    // (map + bracket + form, a true triple-combo the data can't express),
-    // bracket wins — the UI disables Form in that specific state anyway.
-    if (mapFilter && g.byMap?.[mapFilter]) {
-      const mapEntry = g.byMap[mapFilter];
-      if (activeElo && mapEntry.byEloBracket?.[activeElo]) return aggregateSliceToStats(mapEntry.byEloBracket[activeElo], minGames);
-      if (isForm && mapEntry.byWeek) return aggregateByWeekToStats(mapEntry.byWeek, minGames);
-      if (isPatch && AGGREGATE.currentPatch && mapEntry.byPatch?.[AGGREGATE.currentPatch]) return aggregateSliceToStats(mapEntry.byPatch[AGGREGATE.currentPatch], minGames);
-      return aggregateSliceToStats(mapEntry.civWinRates, minGames);
+    // per map at the whole-group level, so ELO bracket genuinely combines
+    // with a map there. But a specific/combined LADDER pill needs its own
+    // ladder-scoped byMap (ladderScopedByMap) to actually narrow — the
+    // group-wide byMap pools every ladder that group's players touch, so
+    // using it here would silently ignore whichever ladder pill looks
+    // selected (this was the actual bug: ladder pill state visually
+    // updated but the map/category data never respected it). ELO bracket
+    // still outranks ladder when both are active, matching the existing
+    // map+bracket-beats-ladder precedence elsewhere in this function —
+    // per-ladder-per-map data doesn't carry a bracket breakdown anyway.
+    // Patch similarly isn't tracked at ladder+map depth yet, so a ladder
+    // selection with Patch active just narrows by ladder+map and quietly
+    // doesn't also narrow by patch (a real but minor gap, not a silent
+    // wrong-data fallback like before).
+    if (mapFilter) {
+      if (activeElo && g.byMap?.[mapFilter]?.byEloBracket?.[activeElo]) {
+        return aggregateSliceToStats(g.byMap[mapFilter].byEloBracket[activeElo], minGames);
+      }
+      if (activeLadder && activeLadder !== 'All') {
+        const byMap = ladderScopedByMap(group, activeLadder);
+        const mapEntry = byMap?.[mapFilter];
+        if (!mapEntry) return {};
+        if (isForm && mapEntry.byWeek) return aggregateByWeekToStats(mapEntry.byWeek, minGames);
+        return aggregateSliceToStats(mapEntry.civWinRates, minGames);
+      }
+      if (g.byMap?.[mapFilter]) {
+        const mapEntry = g.byMap[mapFilter];
+        if (isForm && mapEntry.byWeek) return aggregateByWeekToStats(mapEntry.byWeek, minGames);
+        if (isPatch && AGGREGATE.currentPatch && mapEntry.byPatch?.[AGGREGATE.currentPatch]) return aggregateSliceToStats(mapEntry.byPatch[AGGREGATE.currentPatch], minGames);
+        return aggregateSliceToStats(mapEntry.civWinRates, minGames);
+      }
     }
-    if (!mapFilter && activeMapCatFilter && g.byMap) {
-      if (activeElo) return aggregateSliceToStats(combineMapCategorySlices(g.byMap, activeMapCatFilter, ['byEloBracket', activeElo]), minGames);
-      if (isForm) return aggregateByWeekToStats(combineMapCategoryByWeek(g.byMap, activeMapCatFilter), minGames);
-      if (isPatch && AGGREGATE.currentPatch) return aggregateSliceToStats(combineMapCategorySlices(g.byMap, activeMapCatFilter, ['byPatch', AGGREGATE.currentPatch]), minGames);
-      return aggregateSliceToStats(combineMapCategorySlices(g.byMap, activeMapCatFilter, null), minGames);
+    if (!mapFilter && activeMapCatFilter) {
+      if (activeElo && g.byMap) return aggregateSliceToStats(combineMapCategorySlices(g.byMap, activeMapCatFilter, ['byEloBracket', activeElo]), minGames);
+      if (activeLadder && activeLadder !== 'All') {
+        const byMap = ladderScopedByMap(group, activeLadder);
+        if (isForm) return aggregateByWeekToStats(combineMapCategoryByWeek(byMap, activeMapCatFilter), minGames);
+        return aggregateSliceToStats(combineMapCategorySlices(byMap, activeMapCatFilter, null), minGames);
+      }
+      if (g.byMap) {
+        if (isForm) return aggregateByWeekToStats(combineMapCategoryByWeek(g.byMap, activeMapCatFilter), minGames);
+        if (isPatch && AGGREGATE.currentPatch) return aggregateSliceToStats(combineMapCategorySlices(g.byMap, activeMapCatFilter, ['byPatch', AGGREGATE.currentPatch]), minGames);
+        return aggregateSliceToStats(combineMapCategorySlices(g.byMap, activeMapCatFilter, null), minGames);
+      }
     }
 
     // No map/category active. byEloBracket is now nested too
@@ -4554,19 +4650,46 @@ function getMapOverallGrades(mapLabel) {
   return _mapOverallCache[mapLabel];
 }
 
+/* Turns a week-bucketed {week: {civ:{games,wins}}} slice into per-civ
+   scored entries using the same 90-day-half-life decay Recent Form uses
+   everywhere else in the tool (recentFormWeight / aggregateByWeekToStats)
+   — recent weeks count more, older ones fade out smoothly. minGames is
+   checked against RAW (unweighted) total games, same as
+   aggregateByWeekToStats, so a civ can't sneak past the confidence
+   threshold just because its few games happen to be recent. */
+function weeklySliceToScored(byWeekCombined, minGames) {
+  const totals = {};
+  Object.entries(byWeekCombined || {}).forEach(([weekStart, civs]) => {
+    const w = recentFormWeight(weekStart);
+    Object.entries(civs).forEach(([civ, e]) => {
+      if (!totals[civ]) totals[civ] = { games: 0, weightedGames: 0, weightedWins: 0 };
+      totals[civ].games += e.games;
+      totals[civ].weightedGames += e.games * w;
+      totals[civ].weightedWins += e.wins * w;
+    });
+  });
+  return Object.entries(totals)
+    .filter(([, t]) => t.games >= minGames)
+    .map(([civ, t]) => ({
+      c: civ,
+      score: t.weightedGames > 0 ? t.weightedWins / t.weightedGames : 0,
+      games: t.games,
+      wr: t.weightedGames > 0 ? t.weightedWins / t.weightedGames * 100 : 0,
+    }));
+}
+
 /* Real-match-data grading (as opposed to the correlation-weighted archetype
    system above) — buckets civs into a FIXED S–F six-tier scale by their
-   actual observed win rate on a map category, sourced from whichever raw
-   ladder is selected (AGGREGATE[group].byLadder[ladder].byMap, added to
-   build_aggregate.py alongside the existing byPatch/byWeek per-ladder
-   breakdowns). Always uses all 6 tiers (not tierRangeForPoolSize's
-   pool-size-scaled 4–6) since the civ-card visual is a fixed 6-box stack
-   regardless of how many civs qualify. Civs below MAP_CATEGORY_MIN_GAMES
-   are left out of the scored pool entirely — small samples here get
-   dominated by whichever one or two high-rated players happened to spam
-   that civ (see the concentration check that motivated this cutoff), so
-   an ungraded/no-data state is more honest than a tier built on 6 games.
-   This is All Time data only — no byPatch/byWeek recency filtering. */
+   Recent-Form-weighted win rate on a map category, sourced from whichever
+   raw ladder is selected (AGGREGATE[group].byLadder[ladder].byMap.byWeek,
+   added to build_aggregate.py). Always uses all 6 tiers (not
+   tierRangeForPoolSize's pool-size-scaled 4–6) since the civ-card visual
+   is a fixed 6-box stack regardless of how many civs qualify. Civs below
+   MAP_CATEGORY_MIN_GAMES total games are left out of the scored pool
+   entirely — small samples here get dominated by whichever one or two
+   high-rated players happened to spam that civ (see the concentration
+   check that motivated this cutoff), so an ungraded/no-data state is more
+   honest than a tier built on a handful of games. */
 const MAP_CATEGORY_MIN_GAMES = 15;
 let _mapCategoryGradeCache = {};
 function civMapCategoryGrades(categoryKey, ladder) {
@@ -4574,10 +4697,8 @@ function civMapCategoryGrades(categoryKey, ladder) {
   if (_mapCategoryGradeCache[cacheKey]) return _mapCategoryGradeCache[cacheKey];
   const group = LADDER_TO_GROUP[ladder];
   const byMap = AGGREGATE?.[group]?.byLadder?.[ladder]?.byMap;
-  const combined = byMap ? combineMapCategorySlices(byMap, categoryKey, null) : {};
-  const scored = Object.entries(combined)
-    .filter(([, e]) => e.games >= MAP_CATEGORY_MIN_GAMES)
-    .map(([civ, e]) => ({ c: civ, score: e.wins / e.games, games: e.games, wr: e.wins / e.games * 100 }));
+  const weekly = byMap ? combineMapCategoryByWeek(byMap, categoryKey) : {};
+  const scored = weeklySliceToScored(weekly, MAP_CATEGORY_MIN_GAMES);
   const grades = {};
   if (scored.length) {
     const g = computeGradesFromScored(scored, TIER_ORDER);
@@ -4587,21 +4708,19 @@ function civMapCategoryGrades(categoryKey, ladder) {
   return grades;
 }
 
-/* Same real-win-rate grading as civMapCategoryGrades, but pooled across
-   ALL maps instead of one category — sourced straight from
-   AGGREGATE.pc.byLadder['1v1 PC'].civWinRates (no map breakdown needed,
-   already present in aggregate.json today). This drives the civ card's
-   top-right "Overall" badge specifically; the site-wide Overall tier list
-   tab still uses the archetype-correlation system (overallCivGrade /
-   getOverallGrades) — deliberately left untouched, this is a separate,
-   narrower real-match-data view scoped to the card. */
+/* Same Recent-Form-weighted grading as civMapCategoryGrades, but pooled
+   across ALL maps instead of one category — sourced from
+   AGGREGATE.pc.byLadder['1v1 PC'].byWeek (ladder-level, already present,
+   no per-map breakdown needed here). This drives the civ card's top-right
+   "Overall" badge specifically; the site-wide Overall tier list tab still
+   uses the archetype-correlation system (overallCivGrade / getOverallGrades)
+   — deliberately left untouched, this is a separate, narrower real-match-
+   data view scoped to the card. */
 let _pc1v1OverallCache = null;
 function pc1v1OverallGrades() {
   if (_pc1v1OverallCache) return _pc1v1OverallCache;
-  const civWinRates = AGGREGATE?.pc?.byLadder?.['1v1 PC']?.civWinRates || {};
-  const scored = Object.entries(civWinRates)
-    .filter(([, e]) => e.games >= MAP_CATEGORY_MIN_GAMES)
-    .map(([civ, e]) => ({ c: civ, score: e.wins / e.games, games: e.games, wr: e.wins / e.games * 100 }));
+  const byWeek = AGGREGATE?.pc?.byLadder?.['1v1 PC']?.byWeek || {};
+  const scored = weeklySliceToScored(byWeek, MAP_CATEGORY_MIN_GAMES);
   const grades = {};
   if (scored.length) {
     const g = computeGradesFromScored(scored, TIER_ORDER);
@@ -4628,7 +4747,7 @@ function civPc1v1OverallGrade(civName) {
 const CIV_CARD_LADDER_OPTIONS = ['1v1 PC', 'Team PC', '1v1 Console', 'Team Console'];
 function mapCategoryTierBoxesHtml(civName, compact) {
   let h = '';
-  h += `<div class="info-sl">Win rate by map type · ${activeCivCardLadder} <span style="color:var(--amberL);font-weight:700;text-transform:none;letter-spacing:normal">— real match data, all time</span></div>`;
+  h += `<div class="info-sl">Win rate by map type · ${activeCivCardLadder} <span style="color:var(--amberL);font-weight:700;text-transform:none;letter-spacing:normal">— real match data, recent form</span></div>`;
   if (!compact) {
     h += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">`;
     CIV_CARD_LADDER_OPTIONS.forEach(ladder => {
@@ -4680,7 +4799,7 @@ function civInfoHtml(civName, compact) {
       <div class="info-name">${civName}</div>
       ${focus ? `<div class="info-focus">${focus}</div>` : ''}
     </div>
-    ${oGrade ? `<div style="flex-shrink:0;text-align:center;padding:4px 12px;background:${oColor}15;border:2px solid ${oColor};border-radius:10px;margin-right:4px" title="${oEntry.wr.toFixed(1)}% win rate across ${oEntry.games} PC 1v1 games, all maps — real match data">
+    ${oGrade ? `<div style="flex-shrink:0;text-align:center;padding:4px 12px;background:${oColor}15;border:2px solid ${oColor};border-radius:10px;margin-right:4px" title="${oEntry.wr.toFixed(1)}% recent-form win rate across ${oEntry.games} PC 1v1 games, all maps — real match data">
       <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Overall</div>
       <div style="font-size:26px;font-weight:800;color:${oColor};line-height:1.1">${oGrade}</div>
     </div>` : ''}
@@ -4972,6 +5091,8 @@ function showCivInfo(civ) {
   p.querySelectorAll('[data-kind="civcardladder"]').forEach(el => {
     el.addEventListener('click', () => {
       activeCivCardLadder = el.dataset.ladder;
+      syncTierListToCivCardLadder(activeCivCardLadder);
+      render();
       showCivInfo(civ);
     });
   });
