@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.60 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.61 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1753,6 +1753,8 @@ let activePlayerMapFilter = null; // map key filtering the currently active play
 let activeMapCatFilter = null;    // map category (open/closed/land/etc) filtering the map pill list — persists across renders just like activePlayerMapFilter
 let mapFilterDetailsOpen = false; // persists across player/group switches — only auto-opens when a filter is freshly picked
 let activeLadder = '1v1 PC';      // which mode/platform combo to pull match-sourced player data from
+let activeCivCardLadder = '1v1 PC'; // separate from activeLadder above — drives the civ card's own map-category tier boxes/badge, independent of whatever ladder Group Overall has selected
+const LADDER_TO_GROUP = { '1v1 PC': 'pc', 'Team PC': 'pc', '1v1 Console': 'console', 'Team Console': 'console' };
 let activeRecencyMode = 'all'; // 'all' | 'patch' | 'form' — mutually exclusive
 let activeOverallTier = false; // Overall replaced by Combined as default landing view
 let activeMapOverall = 'Combined'; // default landing view
@@ -4554,21 +4556,24 @@ function getMapOverallGrades(mapLabel) {
 
 /* Real-match-data grading (as opposed to the correlation-weighted archetype
    system above) — buckets civs into a FIXED S–F six-tier scale by their
-   actual observed win rate on a map category, sourced from PC 1v1 only
-   (AGGREGATE.pc.byLadder['1v1 PC'].byMap, added to build_aggregate.py
-   alongside the existing byPatch/byWeek per-ladder breakdowns). Always uses
-   all 6 tiers (not tierRangeForPoolSize's pool-size-scaled 4–6) since the
-   civ-card visual is a fixed 6-box stack regardless of how many civs
-   qualify. Civs below MAP_CATEGORY_MIN_GAMES are left out of the scored
-   pool entirely — small samples here get dominated by whichever one or two
-   high-rated players happened to spam that civ (see the concentration
-   check that motivated this cutoff), so an ungraded/no-data state is more
-   honest than a tier built on 6 games. */
+   actual observed win rate on a map category, sourced from whichever raw
+   ladder is selected (AGGREGATE[group].byLadder[ladder].byMap, added to
+   build_aggregate.py alongside the existing byPatch/byWeek per-ladder
+   breakdowns). Always uses all 6 tiers (not tierRangeForPoolSize's
+   pool-size-scaled 4–6) since the civ-card visual is a fixed 6-box stack
+   regardless of how many civs qualify. Civs below MAP_CATEGORY_MIN_GAMES
+   are left out of the scored pool entirely — small samples here get
+   dominated by whichever one or two high-rated players happened to spam
+   that civ (see the concentration check that motivated this cutoff), so
+   an ungraded/no-data state is more honest than a tier built on 6 games.
+   This is All Time data only — no byPatch/byWeek recency filtering. */
 const MAP_CATEGORY_MIN_GAMES = 15;
 let _mapCategoryGradeCache = {};
-function civMapCategoryGrades(categoryKey) {
-  if (_mapCategoryGradeCache[categoryKey]) return _mapCategoryGradeCache[categoryKey];
-  const byMap = AGGREGATE?.pc?.byLadder?.['1v1 PC']?.byMap;
+function civMapCategoryGrades(categoryKey, ladder) {
+  const cacheKey = ladder + '|' + categoryKey;
+  if (_mapCategoryGradeCache[cacheKey]) return _mapCategoryGradeCache[cacheKey];
+  const group = LADDER_TO_GROUP[ladder];
+  const byMap = AGGREGATE?.[group]?.byLadder?.[ladder]?.byMap;
   const combined = byMap ? combineMapCategorySlices(byMap, categoryKey, null) : {};
   const scored = Object.entries(combined)
     .filter(([, e]) => e.games >= MAP_CATEGORY_MIN_GAMES)
@@ -4578,7 +4583,7 @@ function civMapCategoryGrades(categoryKey) {
     const g = computeGradesFromScored(scored, TIER_ORDER);
     scored.forEach(s => { grades[s.c] = { grade: g[s.c], games: s.games, wr: s.wr }; });
   }
-  _mapCategoryGradeCache[categoryKey] = grades;
+  _mapCategoryGradeCache[cacheKey] = grades;
   return grades;
 }
 
@@ -4610,18 +4615,33 @@ function civPc1v1OverallGrade(civName) {
 }
 
 /* Renders the 7-map-category x 6-tier box grid for one civ, using real
-   PC 1v1 win-rate data. Each column is one map category (Closed/Open/
-   Land/Water/Hybrid/Nomad/Chaotic); each box in the column is one tier,
-   F at the bottom to S at the top — the civ's tier and every tier below
-   it are filled solid in that tier's color, tiers above stay outline-only.
-   Categories with too few PC 1v1 games for this civ show an empty/dashed
-   column instead of guessing. */
-function mapCategoryTierBoxesHtml(civName) {
+   win-rate data from whichever raw ladder is selected (1v1 PC/Team PC/
+   1v1 Console/Team Console — all Time, no patch/form recency). Each
+   column is one map category (Closed/Open/Land/Water/Hybrid/Nomad/
+   Chaotic); each box in the column is one tier, F at the bottom to S at
+   the top — the civ's tier and every tier below it are filled solid in
+   that tier's color, tiers above stay outline-only. Categories with too
+   few games for this civ on the selected ladder show an empty/dashed
+   column instead of guessing. The ladder-selector pills only render in
+   the full panel (compact=false) — the hover tooltip has no click
+   handlers attached, so it just shows whatever ladder is currently active. */
+const CIV_CARD_LADDER_OPTIONS = ['1v1 PC', 'Team PC', '1v1 Console', 'Team Console'];
+function mapCategoryTierBoxesHtml(civName, compact) {
+  let h = '';
+  h += `<div class="info-sl">Win rate by map type · ${activeCivCardLadder} <span style="color:var(--amberL);font-weight:700;text-transform:none;letter-spacing:normal">— real match data, all time</span></div>`;
+  if (!compact) {
+    h += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">`;
+    CIV_CARD_LADDER_OPTIONS.forEach(ladder => {
+      const on = activeCivCardLadder === ladder ? ' on' : '';
+      h += `<button class="arch-btn${on}" data-kind="civcardladder" data-ladder="${ladder}" style="font-size:11px;padding:3px 10px">${ladder}</button>`;
+    });
+    h += `</div>`;
+  }
   const categories = Object.keys(PLAYER_MAP_CATEGORY_LABELS);
-  let h = `<div style="display:flex;gap:10px;justify-content:space-between;overflow-x:auto;padding:4px 2px 2px">`;
+  h += `<div style="display:flex;gap:10px;justify-content:space-between;overflow-x:auto;padding:4px 2px 2px">`;
   categories.forEach(catKey => {
     const label = PLAYER_MAP_CATEGORY_LABELS[catKey];
-    const entry = civMapCategoryGrades(catKey)[civName];
+    const entry = civMapCategoryGrades(catKey, activeCivCardLadder)[civName];
     const grade = entry?.grade || null;
     const achievedIdx = grade ? TIER_ORDER.indexOf(grade) : -1; // 0=S ... 5=F
     h += `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;min-width:34px">`;
@@ -4666,8 +4686,7 @@ function civInfoHtml(civName, compact) {
     </div>` : ''}
   </div>`;
 
-  h += `<div class="info-sl">Win rate by map type · PC 1v1 <span style="color:var(--amberL);font-weight:700;text-transform:none;letter-spacing:normal">— real match data</span></div>`;
-  h += mapCategoryTierBoxesHtml(civName);
+  h += mapCategoryTierBoxesHtml(civName, compact);
 
   if (uu) {
     h += `<div class="info-sl">Unique units</div>`;
@@ -4947,6 +4966,12 @@ function showCivInfo(civ) {
   p.querySelectorAll('.arch-rank-ring').forEach(el => {
     el.addEventListener('click', () => {
       selectArchetype(+el.dataset.archI);
+      showCivInfo(civ);
+    });
+  });
+  p.querySelectorAll('[data-kind="civcardladder"]').forEach(el => {
+    el.addEventListener('click', () => {
+      activeCivCardLadder = el.dataset.ladder;
       showCivInfo(civ);
     });
   });
