@@ -4507,6 +4507,7 @@ function invalidateGradeCaches() {
   _tierGradeCache = {};
   _overallGradeCache = null;
   _mapOverallCache = {};
+  _mapCategoryGradeCache = {};
   invalidateSimCache();
 }
 
@@ -4550,13 +4551,77 @@ function getMapOverallGrades(mapLabel) {
   return _mapOverallCache[mapLabel];
 }
 
+/* Real-match-data grading (as opposed to the correlation-weighted archetype
+   system above) — buckets civs into a FIXED S–F six-tier scale by their
+   actual observed win rate on a map category, sourced from PC 1v1 only
+   (AGGREGATE.pc.byLadder['1v1 PC'].byMap, added to build_aggregate.py
+   alongside the existing byPatch/byWeek per-ladder breakdowns). Always uses
+   all 6 tiers (not tierRangeForPoolSize's pool-size-scaled 4–6) since the
+   civ-card visual is a fixed 6-box stack regardless of how many civs
+   qualify. Civs below MAP_CATEGORY_MIN_GAMES are left out of the scored
+   pool entirely — small samples here get dominated by whichever one or two
+   high-rated players happened to spam that civ (see the concentration
+   check that motivated this cutoff), so an ungraded/no-data state is more
+   honest than a tier built on 6 games. */
+const MAP_CATEGORY_MIN_GAMES = 15;
+let _mapCategoryGradeCache = {};
+function civMapCategoryGrades(categoryKey) {
+  if (_mapCategoryGradeCache[categoryKey]) return _mapCategoryGradeCache[categoryKey];
+  const byMap = AGGREGATE?.pc?.byLadder?.['1v1 PC']?.byMap;
+  const combined = byMap ? combineMapCategorySlices(byMap, categoryKey, null) : {};
+  const scored = Object.entries(combined)
+    .filter(([, e]) => e.games >= MAP_CATEGORY_MIN_GAMES)
+    .map(([civ, e]) => ({ c: civ, score: e.wins / e.games, games: e.games, wr: e.wins / e.games * 100 }));
+  const grades = {};
+  if (scored.length) {
+    const g = computeGradesFromScored(scored, TIER_ORDER);
+    scored.forEach(s => { grades[s.c] = { grade: g[s.c], games: s.games, wr: s.wr }; });
+  }
+  _mapCategoryGradeCache[categoryKey] = grades;
+  return grades;
+}
+
+/* Renders the 7-map-category x 6-tier box grid for one civ, using real
+   PC 1v1 win-rate data. Each column is one map category (Closed/Open/
+   Land/Water/Hybrid/Nomad/Chaotic); each box in the column is one tier,
+   F at the bottom to S at the top — the civ's tier and every tier below
+   it are filled solid in that tier's color, tiers above stay outline-only.
+   Categories with too few PC 1v1 games for this civ show an empty/dashed
+   column instead of guessing. */
+function mapCategoryTierBoxesHtml(civName) {
+  const categories = Object.keys(PLAYER_MAP_CATEGORY_LABELS);
+  let h = `<div style="display:flex;gap:10px;justify-content:space-between;overflow-x:auto;padding:4px 2px 2px">`;
+  categories.forEach(catKey => {
+    const label = PLAYER_MAP_CATEGORY_LABELS[catKey];
+    const entry = civMapCategoryGrades(catKey)[civName];
+    const grade = entry?.grade || null;
+    const achievedIdx = grade ? TIER_ORDER.indexOf(grade) : -1; // 0=S ... 5=F
+    h += `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;min-width:34px">`;
+    h += `<div style="display:flex;flex-direction:column;gap:2px">`;
+    // TIER_ORDER is S..F already, so iterating it directly (no reverse)
+    // naturally stacks S first/top, F last/bottom in a plain top-to-bottom column.
+    TIER_ORDER.forEach(tier => {
+      const idx = TIER_ORDER.indexOf(tier);
+      const color = GRADE_COLOR[tier];
+      const filled = achievedIdx >= 0 && idx >= achievedIdx; // this tier and everything below the achieved tier
+      h += `<div style="width:22px;height:12px;border-radius:3px;border:1.5px solid ${color};background:${filled ? color : 'transparent'};opacity:${grade ? 1 : 0.25}"></div>`;
+    });
+    h += `</div>`;
+    h += grade
+      ? `<span style="font-size:11px;font-weight:800;color:${GRADE_COLOR[grade]}">${grade}</span>`
+      : `<span style="font-size:9px;color:var(--text3)">—</span>`;
+    h += `<span style="font-size:9px;color:var(--text3);text-align:center;line-height:1.2">${label}</span>`;
+    h += `</div>`;
+  });
+  h += `</div>`;
+  return h;
+}
+
 function civInfoHtml(civName, compact) {
-  const wr = WR[civName] || [];
   const bonuses = CB[civName] || [];
   const focus = CIV_FOCUS[civName] || '';
   const uu = UNIQUE_UNITS[civName] || '';
   const ut = UNIQUE_TECHS[civName] || [];
-  const isNew = NEW_CIVS.has(civName);
   const ecoBuilding = ECO_BUILDING_NAME[civName];
 
   const oGrade = compact ? null : overallCivGrade(civName);
@@ -4572,18 +4637,8 @@ function civInfoHtml(civName, compact) {
     </div>` : ''}
   </div>`;
 
-  if (wr.length) {
-    const wrRank = ALL_CIVS.map(c => ({ c, o: (WR[c]||[0])[0] })).sort((a,b) => b.o - a.o);
-    const myRank = wrRank.findIndex(x => x.c === civName) + 1;
-    h += `<div class="info-sl">Win rates · 1v1 RM ${isNew ? '(est.)' : '(approx)'} <span style="color:var(--amberL);font-weight:700;text-transform:none;letter-spacing:normal">— overall rank #${myRank}/53</span></div>`;
-    h += `<div class="wr-grid">`;
-    WRL.forEach((lbl, i) => {
-      const r = wr[i];
-      const cls = r >= 52.5 ? 'g' : r <= 49.5 ? 'r' : 'y';
-      h += `<div><div class="wr-lbl">${lbl}</div><div class="wr-val ${cls}">${r}%</div></div>`;
-    });
-    h += `</div>`;
-  }
+  h += `<div class="info-sl">Win rate by map type · PC 1v1 <span style="color:var(--amberL);font-weight:700;text-transform:none;letter-spacing:normal">— real match data</span></div>`;
+  h += mapCategoryTierBoxesHtml(civName);
 
   if (uu) {
     h += `<div class="info-sl">Unique units</div>`;
