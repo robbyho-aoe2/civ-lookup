@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.58 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.60 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -4508,6 +4508,7 @@ function invalidateGradeCaches() {
   _overallGradeCache = null;
   _mapOverallCache = {};
   _mapCategoryGradeCache = {};
+  _pc1v1OverallCache = null;
   invalidateSimCache();
 }
 
@@ -4581,6 +4582,33 @@ function civMapCategoryGrades(categoryKey) {
   return grades;
 }
 
+/* Same real-win-rate grading as civMapCategoryGrades, but pooled across
+   ALL maps instead of one category — sourced straight from
+   AGGREGATE.pc.byLadder['1v1 PC'].civWinRates (no map breakdown needed,
+   already present in aggregate.json today). This drives the civ card's
+   top-right "Overall" badge specifically; the site-wide Overall tier list
+   tab still uses the archetype-correlation system (overallCivGrade /
+   getOverallGrades) — deliberately left untouched, this is a separate,
+   narrower real-match-data view scoped to the card. */
+let _pc1v1OverallCache = null;
+function pc1v1OverallGrades() {
+  if (_pc1v1OverallCache) return _pc1v1OverallCache;
+  const civWinRates = AGGREGATE?.pc?.byLadder?.['1v1 PC']?.civWinRates || {};
+  const scored = Object.entries(civWinRates)
+    .filter(([, e]) => e.games >= MAP_CATEGORY_MIN_GAMES)
+    .map(([civ, e]) => ({ c: civ, score: e.wins / e.games, games: e.games, wr: e.wins / e.games * 100 }));
+  const grades = {};
+  if (scored.length) {
+    const g = computeGradesFromScored(scored, TIER_ORDER);
+    scored.forEach(s => { grades[s.c] = { grade: g[s.c], games: s.games, wr: s.wr }; });
+  }
+  _pc1v1OverallCache = grades;
+  return grades;
+}
+function civPc1v1OverallGrade(civName) {
+  return pc1v1OverallGrades()[civName] || null;
+}
+
 /* Renders the 7-map-category x 6-tier box grid for one civ, using real
    PC 1v1 win-rate data. Each column is one map category (Closed/Open/
    Land/Water/Hybrid/Nomad/Chaotic); each box in the column is one tier,
@@ -4624,14 +4652,15 @@ function civInfoHtml(civName, compact) {
   const ut = UNIQUE_TECHS[civName] || [];
   const ecoBuilding = ECO_BUILDING_NAME[civName];
 
-  const oGrade = compact ? null : overallCivGrade(civName);
+  const oEntry = compact ? null : civPc1v1OverallGrade(civName);
+  const oGrade = oEntry?.grade || null;
   const oColor = oGrade ? GRADE_COLOR[oGrade] : 'var(--text3)';
   let h = `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-right:32px">
     <div>
       <div class="info-name">${civName}</div>
       ${focus ? `<div class="info-focus">${focus}</div>` : ''}
     </div>
-    ${oGrade ? `<div style="flex-shrink:0;text-align:center;padding:4px 12px;background:${oColor}15;border:2px solid ${oColor};border-radius:10px;margin-right:4px" title="Average grade across all archetype rankings, re-ranked against all civs">
+    ${oGrade ? `<div style="flex-shrink:0;text-align:center;padding:4px 12px;background:${oColor}15;border:2px solid ${oColor};border-radius:10px;margin-right:4px" title="${oEntry.wr.toFixed(1)}% win rate across ${oEntry.games} PC 1v1 games, all maps — real match data">
       <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Overall</div>
       <div style="font-size:26px;font-weight:800;color:${oColor};line-height:1.1">${oGrade}</div>
     </div>` : ''}
