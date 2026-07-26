@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.64 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.65 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -4606,7 +4606,7 @@ function invalidateGradeCaches() {
   _overallGradeCache = null;
   _mapOverallCache = {};
   _mapCategoryGradeCache = {};
-  _pc1v1OverallCache = null;
+  _civCardOverallCache = {};
   invalidateSimCache();
 }
 
@@ -4710,27 +4710,33 @@ function civMapCategoryGrades(categoryKey, ladder) {
 
 /* Same Recent-Form-weighted grading as civMapCategoryGrades, but pooled
    across ALL maps instead of one category — sourced from
-   AGGREGATE.pc.byLadder['1v1 PC'].byWeek (ladder-level, already present,
-   no per-map breakdown needed here). This drives the civ card's top-right
-   "Overall" badge specifically; the site-wide Overall tier list tab still
-   uses the archetype-correlation system (overallCivGrade / getOverallGrades)
-   — deliberately left untouched, this is a separate, narrower real-match-
-   data view scoped to the card. */
-let _pc1v1OverallCache = null;
-function pc1v1OverallGrades() {
-  if (_pc1v1OverallCache) return _pc1v1OverallCache;
-  const byWeek = AGGREGATE?.pc?.byLadder?.['1v1 PC']?.byWeek || {};
+   AGGREGATE[group].byLadder[ladder].byWeek (ladder-level, already
+   present, no per-map breakdown needed here). Follows activeCivCardLadder
+   just like the map-category boxes below it, via the same LADDER_TO_GROUP
+   mapping (PC players for PC ladders, console players for Console
+   ladders) — a civ can legitimately be S tier for the console meta and F
+   for the PC meta, so this deliberately does NOT pool the two together.
+   Drives the civ card's top-right "Overall" badge specifically; the
+   site-wide Overall tier list tab still uses the archetype-correlation
+   system (overallCivGrade / getOverallGrades) — deliberately left
+   untouched, this is a separate, narrower real-match-data view scoped to
+   the card. */
+let _civCardOverallCache = {};
+function civCardOverallGrades(ladder) {
+  if (_civCardOverallCache[ladder]) return _civCardOverallCache[ladder];
+  const group = LADDER_TO_GROUP[ladder];
+  const byWeek = AGGREGATE?.[group]?.byLadder?.[ladder]?.byWeek || {};
   const scored = weeklySliceToScored(byWeek, MAP_CATEGORY_MIN_GAMES);
   const grades = {};
   if (scored.length) {
     const g = computeGradesFromScored(scored, TIER_ORDER);
     scored.forEach(s => { grades[s.c] = { grade: g[s.c], games: s.games, wr: s.wr }; });
   }
-  _pc1v1OverallCache = grades;
+  _civCardOverallCache[ladder] = grades;
   return grades;
 }
-function civPc1v1OverallGrade(civName) {
-  return pc1v1OverallGrades()[civName] || null;
+function civCardOverallGrade(civName, ladder) {
+  return civCardOverallGrades(ladder)[civName] || null;
 }
 
 /* Renders the 7-map-category x 6-tier box grid for one civ, using real
@@ -4791,7 +4797,7 @@ function civInfoHtml(civName, compact) {
   const ut = UNIQUE_TECHS[civName] || [];
   const ecoBuilding = ECO_BUILDING_NAME[civName];
 
-  const oEntry = compact ? null : civPc1v1OverallGrade(civName);
+  const oEntry = compact ? null : civCardOverallGrade(civName, activeCivCardLadder);
   const oGrade = oEntry?.grade || null;
   const oColor = oGrade ? GRADE_COLOR[oGrade] : 'var(--text3)';
   let h = `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-right:32px">
@@ -4799,7 +4805,7 @@ function civInfoHtml(civName, compact) {
       <div class="info-name">${civName}</div>
       ${focus ? `<div class="info-focus">${focus}</div>` : ''}
     </div>
-    ${oGrade ? `<div style="flex-shrink:0;text-align:center;padding:4px 12px;background:${oColor}15;border:2px solid ${oColor};border-radius:10px;margin-right:4px" title="${oEntry.wr.toFixed(1)}% recent-form win rate across ${oEntry.games} PC 1v1 games, all maps — real match data">
+    ${oGrade ? `<div style="flex-shrink:0;text-align:center;padding:4px 12px;background:${oColor}15;border:2px solid ${oColor};border-radius:10px;margin-right:4px" title="${oEntry.wr.toFixed(1)}% recent-form win rate across ${oEntry.games} ${activeCivCardLadder} games, all maps — real match data">
       <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Overall</div>
       <div style="font-size:26px;font-weight:800;color:${oColor};line-height:1.1">${oGrade}</div>
     </div>` : ''}
