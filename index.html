@@ -233,7 +233,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.65 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.66 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1540,63 +1540,6 @@ const PLAYER_MAP_CATEGORIES = {
 };
 const PLAYER_MAP_CATEGORY_LABELS = { closed:'Closed', open:'Open', land:'Land', water:'Water', hybrid:'Hybrid', nomad:'Nomad', chaotic:'Chaotic' };
 
-/* Correlation weights per archetype per map.
-   Derived from Spearman r between archetype rank and map win rate.
-   Positive weight = specializing here helps WR on this map.
-   Negative weight = specializing here hurts WR. */
-const MAP_TECH_WEIGHTS = {
-  Arabia: {
-    Defensive:      -0.313,
-    Gunpowder:      -0.410,
-    Monk:           -0.297,
-    Eco:            +0.090,
-    Naval:          -0.005,
-    Siege:          -0.076,
-    Cavalry:        -0.022,
-    Infantry:       +0.216,
-    Archer:         +0.024,
-    'Cavalry Archer':+0.144,
-  },
-  Arena: {
-    Defensive:      -0.041,
-    Gunpowder:      +0.169,
-    Monk:           +0.119,
-    Eco:            +0.219,
-    Naval:          +0.069,
-    Siege:          +0.047,
-    Cavalry:        -0.200,
-    Infantry:       +0.116,
-    Archer:         -0.319,
-    'Cavalry Archer':-0.321,
-  },
-  /* Nomad weights are meta-estimated (679-game CO Team sample too small for stats).
-     Eco and mobility archetypes favored; infrastructure-dependent archetypes penalized. */
-  Nomad: {
-    Eco:             +0.250,
-    'Cavalry Archer':+0.150,
-    Cavalry:         +0.100,
-    Naval:           +0.100,
-    Archer:          +0.050,
-    Infantry:        -0.050,
-    Defensive:       -0.100,
-    Siege:           -0.100,
-    Monk:            -0.150,
-    Gunpowder:       -0.200,
-  },
-};
-/* Auto-compute combined weights as the average across all maps.
-   When a new map is added to MAP_TECH_WEIGHTS, this stays current. */
-MAP_TECH_WEIGHTS.Combined = (() => {
-  const maps = Object.keys(MAP_TECH_WEIGHTS);
-  const out = {};
-  maps.forEach(map => {
-    Object.entries(MAP_TECH_WEIGHTS[map]).forEach(([arch, w]) => {
-      out[arch] = (out[arch] || 0) + w;
-    });
-  });
-  Object.keys(out).forEach(arch => out[arch] /= maps.length);
-  return out;
-})();
 const MAP_ARCHETYPES = [
   {emoji:'🏜',label:'Arabia',key:'Arabia'},
   {emoji:'🏛',label:'Arena',key:'Arena'},
@@ -1756,8 +1699,8 @@ let activeLadder = '1v1 PC';      // which mode/platform combo to pull match-sou
 let activeCivCardLadder = '1v1 PC'; // separate from activeLadder above — drives the civ card's own map-category tier boxes/badge, independent of whatever ladder Group Overall has selected
 const LADDER_TO_GROUP = { '1v1 PC': 'pc', 'Team PC': 'pc', '1v1 Console': 'console', 'Team Console': 'console' };
 let activeRecencyMode = 'all'; // 'all' | 'patch' | 'form' — mutually exclusive
-let activeOverallTier = false; // Overall replaced by Combined as default landing view
-let activeMapOverall = 'Combined'; // default landing view
+let activeOverallTier = false; // page now lands on the blank "click a civ to browse" view by default
+let activeMapOverall = null; // archetype-correlation map rankings removed — page now lands blank, user picks a view
 let playerGroupsExpanded = { pro: false, console: false }; // collapsed by default, expand on click
 let mapPillsExpanded = false; // same pattern, for the map filter's individual map list
 let isMobile = false;
@@ -2807,10 +2750,6 @@ function clearArchetype() {
 function renderSelectorPillsHtml() {
   const overallOn = activeOverallTier ? ' on' : '';
   let html = `<div class="arch-group-label">Tech tree rankings</div><div class="arch-pill-row">`;
-  html += `<button class="arch-btn${activeMapOverall==="Combined"?" on":""}" data-kind="mapoverall" data-map="Combined">🌐 Combined</button>`;
-  html += `<button class="arch-btn${activeMapOverall==="Arabia"?" on":""}" data-kind="mapoverall" data-map="Arabia">🏜 Arabia</button>`;
-  html += `<button class="arch-btn${activeMapOverall==="Arena"?" on":""}" data-kind="mapoverall" data-map="Arena">🏛 Arena</button>`;
-  html += `<button class="arch-btn${activeMapOverall==="Nomad"?" on":""}" data-kind="mapoverall" data-map="Nomad">⛺ Nomad</button>`;
   CIV_ARCHETYPES.forEach((a, i) => {
     const on = activeArchetype === i ? ' on' : '';
     html += `<button class="arch-btn${on}" data-kind="archetype" data-i="${i}">${a.emoji} ${a.label}</button>`;
@@ -2991,13 +2930,6 @@ function attachSelectorPillEvents(root) {
       else if (kind === 'togglemaps') { mapPillsExpanded = !mapPillsExpanded; render(); }
       else if (kind === 'playermap') selectPlayerMapFilter(btn.dataset.map);
       else if (kind === 'allmaps') { activePlayerMapFilter = null; activeMapCatFilter = null; render(); }
-      else if (kind === 'mapoverall') {
-        const map = btn.dataset.map;
-        activeMapOverall = activeMapOverall === map ? null : map;
-        if (activeMapOverall) { activeArchetype = null; activeMap = null; activeOverallTier = false; activePlayer = null; activeGroupOverall = null; }
-        else activeOverallTier = true;
-        render();
-      }
       else selectOverallTier();
     });
   });
@@ -3187,24 +3119,6 @@ function renderArchetypeGrid() {
     headerHtml: `${arch.emoji} ${arch.label} — ranked by tech tree + civ bonuses (${max} tech items, +2 pts per qualifying bonus)`,
     subHeaderHtml: arch.restrictTo ? `Only civs with access to this archetype's core units are shown (${pool.length} of 53)` : null,
     clearLabel: `${arch.emoji} ${arch.label} ranking`,
-  });
-}
-
-function renderMapOverallGrid() {
-  const map = activeMapOverall;
-  const grades = getMapOverallGrades(map);
-  const emoji = map === 'Arabia' ? '🏜' : map === 'Arena' ? '🏛' : '🌐';
-  renderTierListShared({
-    pool: ALL_CIVS,
-    gradeOf: c => grades[c]?.grade || null,
-    valueOf: c => grades[c]?.score || 0,
-    valueLabel: c => {
-      const s = grades[c]?.score;
-      return s != null ? `weighted score: ${s >= 0 ? '+' : ''}${s.toFixed(3)}` : '';
-    },
-    headerHtml: `${emoji} ${map} — tech tree ranking weighted by map win rate correlations`,
-    subHeaderHtml: map === 'Combined' ? `Average of all map weights (${Object.keys(MAP_TECH_WEIGHTS).filter(k=>k!=='Combined').join(' + ')}). Higher = tech tree strengths align with winning across map types.` : `Higher = this civ's tech tree strengths align with what wins on ${map}. Based on aoestats.io Spearman r analysis.`,
-    clearLabel: `${emoji} ${map} tech ranking`,
   });
 }
 
@@ -4162,7 +4076,6 @@ function renderChips() {
 }
 
 function renderGrid() {
-  if (activeMapOverall !== null) { renderMapOverallGrid(); return; }
   if (activeArchetype !== null) { renderArchetypeGrid(); return; }
   if (activeMap !== null) { renderMapGrid(); return; }
   if (activePlayer !== null) { renderPlayerGrid(); return; }
@@ -4604,50 +4517,9 @@ function overallCivGrade(civName) {
 function invalidateGradeCaches() {
   _tierGradeCache = {};
   _overallGradeCache = null;
-  _mapOverallCache = {};
   _mapCategoryGradeCache = {};
   _civCardOverallCache = {};
   invalidateSimCache();
-}
-
-/* Map-correlation-weighted overall grades.
-   Each civ's score = sum over archetypes of (normalised rank × map weight).
-   Positive weight archetypes push the civ up; negative push it down.
-   All 53 civs re-ranked into S–F so the bell curve stays meaningful. */
-let _mapOverallCache = {};
-function computeMapWeightedGrades(mapLabel) {
-  if (!dataLoaded) return {};
-  const weights = MAP_TECH_WEIGHTS[mapLabel];
-  if (!weights) return {};
-  const rankLookup = buildOverallRankLookup();
-  const scores = {};
-  ALL_CIVS.forEach(civ => {
-    let sum = 0;
-    CIV_ARCHETYPES.forEach(arch => {
-      const w = weights[arch.label];
-      if (w === undefined) return;
-      const civNorm = rankLookup[arch.label];
-      if (!civNorm || !(civ in civNorm)) return;
-      sum += civNorm[civ] * w;
-    });
-    scores[civ] = sum;
-  });
-  const tiers = tierRangeForPoolSize(ALL_CIVS.length);
-  const m = tiers.length;
-  const uniqueScores = [...new Set(Object.values(scores))].sort((a, b) => b - a);
-  const k = uniqueScores.length;
-  const result = {};
-  ALL_CIVS.forEach(civ => {
-    const score = scores[civ];
-    const idx = uniqueScores.indexOf(score);
-    const tierIdx = k <= 1 ? 0 : Math.min(m - 1, Math.floor(idx * m / k));
-    result[civ] = { grade: tiers[tierIdx], score };
-  });
-  return result;
-}
-function getMapOverallGrades(mapLabel) {
-  if (!_mapOverallCache[mapLabel]) _mapOverallCache[mapLabel] = computeMapWeightedGrades(mapLabel);
-  return _mapOverallCache[mapLabel];
 }
 
 /* Turns a week-bucketed {week: {civ:{games,wins}}} slice into per-civ
