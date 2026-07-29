@@ -235,7 +235,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.67 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.68 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1624,6 +1624,7 @@ let activeCard = null;
 let activeArchetype = null;   // index into CIV_ARCHETYPES
 let activeMap = null;         // legacy — old aoestats per-map archetype system removed, this now stays permanently null (kept only so the scattered mutual-exclusivity resets elsewhere don't need hunting down)
 let activePlayer = null;      // index into PLAYER_LIST
+let playerViewHistory = [];   // most recent first, indices into PLAYER_LIST, excludes activePlayer — persists for the session (unlike civViewHistory, no natural "close" event to reset it on)
 let activeGroupOverall = null; // null | 'pro' | 'console' — averaged tier list across a whole player group
 let activeConsoleElo = null;  // null | 'high' | 'himid' | 'lomid' | 'low' — ELO bracket filter for Console Overall
 let activePcElo = null;       // same, for PC Overall
@@ -2597,11 +2598,16 @@ function getCurrentEffectiveGroup() {
 function selectPlayer(idx) {
   const wasMapFilter = activePlayerMapFilter;
   const prevGroup = getCurrentEffectiveGroup();
+  const prevPlayer = activePlayer;
   activeGroupOverall = null;
+  if (prevPlayer !== null && prevPlayer !== idx) {
+    playerViewHistory = [prevPlayer, ...playerViewHistory.filter(i => i !== prevPlayer && i !== idx)].slice(0, 6);
+  }
   if (activePlayer === idx) { activePlayer = null; activePlayerMapFilter = null; activeMapCatFilter = null; }
   else {
     activePlayer = idx; activeArchetype = null; activeMap = null; activeOverallTier = false; activeConsoleElo = null; activePcElo = null; activeMapOverall = null;
     activeRecencyMode = 'form'; // default to Recent Form on player selection, not All Time
+    playerViewHistory = playerViewHistory.filter(i => i !== idx); // currently-active player shouldn't also show up in "recent"
     const entry = PLAYER_LIST[idx];
     if (prevGroup !== entry.group) activeLadder = GROUP_DEFAULT_LADDER[entry.group] || activeLadder;
     // Remote players: kick off the lazy fetch if we don't have them cached
@@ -2742,6 +2748,26 @@ function renderSelectorPillsHtml() {
   html += `</div><div class="arch-group-label" style="margin-top:8px">Players <span style="font-weight:400;text-transform:none;letter-spacing:normal;opacity:.7">(Player Data updated ${formatPlayerDataDate()})</span></div>`;
   html += `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px">`;
   html += `<input type="text" id="player-search" placeholder="Search or request a player…" style="height:30px;padding:0 10px;background:var(--surf);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:12px;outline:none;width:200px">`;
+  // Selected player + recently-viewed pills live right next to the search
+  // box, not buried in whatever scroll position the long rating-sorted
+  // list happens to be at — re-selecting a player used to snap the list
+  // back to its top every render; this puts the thing you actually want
+  // (current + recent picks) somewhere that doesn't move.
+  if (activePlayer !== null && PLAYER_LIST[activePlayer]) {
+    const sp = PLAYER_LIST[activePlayer];
+    const spRating = playerDisplayRating(sp);
+    const spRatingTag = spRating != null ? ` <span style="opacity:.65">(${spRating})</span>` : '';
+    html += `<span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Selected</span>`;
+    html += `<button class="arch-btn on" data-kind="player" data-i="${activePlayer}">${sp.emoji} ${sp.label}${spRatingTag}</button>`;
+  }
+  if (playerViewHistory.length) {
+    html += `<span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-left:4px">Recent</span>`;
+    playerViewHistory.forEach(idx => {
+      const rp = PLAYER_LIST[idx];
+      if (!rp) return;
+      html += `<button class="arch-btn" data-kind="player" data-i="${idx}" style="font-size:11px;opacity:.8">${rp.emoji} ${rp.label}</button>`;
+    });
+  }
   html += `</div>`;
   // Grouped into Pro / Console, each capped at ~2 rows tall with a scroll
   // for overflow — with double-digit players in a group this keeps the
