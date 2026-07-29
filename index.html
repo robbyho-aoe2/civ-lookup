@@ -235,7 +235,7 @@ header{
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>
-    <div class="version">v1.68 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
+    <div class="version">v1.69 &nbsp;·&nbsp; <button id="export-ranks-btn" onclick="exportArchetypeRanks()" style="font-size:11px;padding:2px 8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;vertical-align:middle">📋 Export ranks</button></div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2746,29 +2746,6 @@ function renderSelectorPillsHtml() {
     html += `<button class="arch-btn${on}" data-kind="archetype" data-i="${i}">${a.emoji} ${a.label}</button>`;
   });
   html += `</div><div class="arch-group-label" style="margin-top:8px">Players <span style="font-weight:400;text-transform:none;letter-spacing:normal;opacity:.7">(Player Data updated ${formatPlayerDataDate()})</span></div>`;
-  html += `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px">`;
-  html += `<input type="text" id="player-search" placeholder="Search or request a player…" style="height:30px;padding:0 10px;background:var(--surf);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:12px;outline:none;width:200px">`;
-  // Selected player + recently-viewed pills live right next to the search
-  // box, not buried in whatever scroll position the long rating-sorted
-  // list happens to be at — re-selecting a player used to snap the list
-  // back to its top every render; this puts the thing you actually want
-  // (current + recent picks) somewhere that doesn't move.
-  if (activePlayer !== null && PLAYER_LIST[activePlayer]) {
-    const sp = PLAYER_LIST[activePlayer];
-    const spRating = playerDisplayRating(sp);
-    const spRatingTag = spRating != null ? ` <span style="opacity:.65">(${spRating})</span>` : '';
-    html += `<span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Selected</span>`;
-    html += `<button class="arch-btn on" data-kind="player" data-i="${activePlayer}">${sp.emoji} ${sp.label}${spRatingTag}</button>`;
-  }
-  if (playerViewHistory.length) {
-    html += `<span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-left:4px">Recent</span>`;
-    playerViewHistory.forEach(idx => {
-      const rp = PLAYER_LIST[idx];
-      if (!rp) return;
-      html += `<button class="arch-btn" data-kind="player" data-i="${idx}" style="font-size:11px;opacity:.8">${rp.emoji} ${rp.label}</button>`;
-    });
-  }
-  html += `</div>`;
   // Grouped into Pro / Console, each capped at ~2 rows tall with a scroll
   // for overflow — with double-digit players in a group this keeps the
   // selector from growing without bound as more players get added.
@@ -2794,10 +2771,37 @@ function renderSelectorPillsHtml() {
     const rowH = expanded ? '152px' : '40px';
     const rowOverflow = expanded ? 'auto' : 'hidden';
     const toggleLbl = expanded ? '▲ collapse' : `▼ +${entries.length} players`;
-    const searchBar = groupKey === 'console' ? `<input type="text" id="console-player-search" placeholder="Search console players…" style="height:26px;padding:0 8px;background:var(--surf);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:11px;outline:none;width:160px;margin-top:4px">` : '';
+    const hasSearch = groupKey === 'console' || groupKey === 'pc';
+    let searchRow = '';
+    if (hasSearch) {
+      searchRow = `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">`;
+      searchRow += `<input type="text" id="${groupKey}-player-search" placeholder="Search ${groupKey} players…" style="height:26px;padding:0 8px;background:var(--surf);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:11px;outline:none;width:160px">`;
+      // Selected + Recent pills scoped to this group specifically — the
+      // long rating-sorted list used to snap back to its top every time
+      // you picked someone; these stay put right next to the search box
+      // instead, one set per platform since PC and Console are now
+      // browsed independently.
+      if (activePlayer !== null && PLAYER_LIST[activePlayer]?.group === groupKey) {
+        const sp = PLAYER_LIST[activePlayer];
+        const spRating = playerDisplayRating(sp);
+        const spRatingTag = spRating != null ? ` <span style="opacity:.65">(${spRating})</span>` : '';
+        searchRow += `<span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Selected</span>`;
+        searchRow += `<button class="arch-btn on" data-kind="player" data-i="${activePlayer}" style="font-size:11px">${sp.emoji} ${sp.label}${spRatingTag}</button>`;
+      }
+      const groupHistory = playerViewHistory.filter(idx => PLAYER_LIST[idx]?.group === groupKey);
+      if (groupHistory.length) {
+        searchRow += `<span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-left:4px">Recent</span>`;
+        groupHistory.forEach(idx => {
+          const rp = PLAYER_LIST[idx];
+          searchRow += `<button class="arch-btn" data-kind="player" data-i="${idx}" style="font-size:11px;opacity:.8">${rp.emoji} ${rp.label}</button>`;
+        });
+      }
+      searchRow += `<span id="${groupKey}-player-request-pill"></span>`;
+      searchRow += `</div>`;
+    }
     // PC/Streamer sections stay visible even with 0 players — better to
     // show "no players yet" than silently disappear once they're added.
-    return `<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:6px">${label}</div>${searchBar}
+    return `<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:6px">${label}</div>${searchRow}
       <div class="arch-pill-row player-pill-scroll" style="max-height:${rowH};overflow-y:${rowOverflow};overflow-x:hidden;padding-right:2px">${extraFirstPill || ''}${pills}</div>
       <button data-kind="togglegroup" data-group="${groupKey}" style="font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;padding:2px 4px;margin-top:1px">${toggleLbl}</button>`;
   };
@@ -2825,7 +2829,6 @@ function renderSelectorPillsHtml() {
   html += renderPlayerGroup('PC Players', pcPlayers, pcOverallPill, 'pc');
   html += renderPlayerGroup('Console Players — sorted by 1v1 Console rating', consolePlayers, consoleOverallPill, 'console');
   html += `</div>`;
-  html += `<div id="player-request-note" style="display:none;margin:8px 0 8px;padding:10px 12px;background:var(--amberBg);border:1px solid var(--amber);border-radius:10px;font-size:12px;color:var(--text2)"></div>`;
   const activePlayerEntry = activePlayer !== null ? PLAYER_LIST[activePlayer] : null;
   if ((activePlayerEntry && (activePlayerEntry.source === 'match' || activePlayerEntry.source === 'remote')) || activeGroupOverall) {
     html += `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px">`;
@@ -2934,15 +2937,26 @@ function attachSelectorPillEvents(root) {
       else selectOverallTier();
     });
   });
-  const consolePSearch = root.querySelector('#console-player-search');
-  if (consolePSearch) {
-    consolePSearch.addEventListener('input', () => {
-      const q = consolePSearch.value.toLowerCase().trim();
-      root.querySelectorAll('.arch-btn[data-group="console"]').forEach(btn => {
-        btn.style.display = (!q || (btn.dataset.name || '').includes(q)) ? '' : 'none';
+  const DISCORD_INVITE = 'https://discord.gg/rYuTAhbc99';
+  ['pc', 'console'].forEach(groupKey => {
+    const searchEl = root.querySelector(`#${groupKey}-player-search`);
+    const pillEl = root.querySelector(`#${groupKey}-player-request-pill`);
+    if (!searchEl) return;
+    searchEl.addEventListener('input', () => {
+      const q = searchEl.value.toLowerCase().trim();
+      let anyVisible = false;
+      root.querySelectorAll(`.arch-btn[data-group="${groupKey}"]`).forEach(btn => {
+        const match = !q || (btn.dataset.name || '').includes(q);
+        btn.style.display = match ? '' : 'none';
+        if (match) anyVisible = true;
       });
+      if (pillEl) {
+        pillEl.innerHTML = (q && !anyVisible)
+          ? `<a href="${DISCORD_INVITE}" target="_blank" class="arch-btn" style="font-size:11px;text-decoration:none;display:inline-block;background:#5865F2;color:#fff;border-color:#5865F2">💬 Click to request "${searchEl.value.trim()}" in Discord</a>`
+          : '';
+      }
     });
-  }
+  });
   const mapFilterDetails = root.querySelector('[data-map-filter]');
   if (mapFilterDetails) {
     mapFilterDetails.addEventListener('toggle', () => { mapFilterDetailsOpen = mapFilterDetails.open; });
@@ -2993,52 +3007,6 @@ function attachSelectorPillEvents(root) {
   // survives switching ELO bracket, player, or group — same persistence
   // model as activePlayerMapFilter and mapFilterDetailsOpen.
   if (mapCategoryRow) applyMapPillFilters();
-  const searchEl = root.querySelector('#player-search');
-  const noteEl = root.querySelector('#player-request-note');
-  if (searchEl) {
-    searchEl.addEventListener('input', () => {
-      const q = searchEl.value.toLowerCase().trim();
-      let anyVisible = false;
-      root.querySelectorAll('#player-pill-row .arch-btn').forEach(btn => {
-        const match = !q || btn.dataset.name.includes(q);
-        btn.style.display = match ? '' : 'none';
-        if (match) anyVisible = true;
-      });
-      if (noteEl) {
-        if (q && !anyVisible) {
-          const DISCORD_INVITE = 'https://discord.gg/rYuTAhbc99';
-          const requestText = `Hey Robby — can you add "${searchEl.value.trim()}" to the civ tool's Players list? Their aoe2insights.com profile: [paste link here]`;
-          noteEl.style.display = 'block';
-          noteEl.innerHTML = `
-            <b style="color:var(--amberL)">"${searchEl.value.trim()}" isn't loaded yet.</b>
-            This tool can't search players live — but if you find their profile at
-            <a href="https://www.aoe2insights.com/" target="_blank" style="color:var(--amberL)">aoe2insights.com</a>
-            (search their name there, copy the profile URL), drop a request in the Discord and Robby can get them added — same real data as everyone else here, just a manual one-time pull.
-            <div style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-              <a href="${DISCORD_INVITE}" target="_blank" style="font-size:11px;padding:4px 10px;background:#5865F2;color:#fff;border-radius:20px;font-weight:700;text-decoration:none;display:inline-block">💬 Request in Discord</a>
-              <button id="copy-player-request" style="font-size:11px;padding:4px 10px;background:var(--amber);color:#1a0a00;border:none;border-radius:20px;font-weight:700;cursor:pointer">📋 Copy request message</button>
-              <span id="copy-player-request-status" style="font-size:11px;color:var(--text3)"></span>
-            </div>`;
-          const copyBtn = noteEl.querySelector('#copy-player-request');
-          if (copyBtn) {
-            copyBtn.addEventListener('click', () => {
-              const status = noteEl.querySelector('#copy-player-request-status');
-              if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(requestText)
-                  .then(() => { if (status) status.textContent = 'Copied! Paste it in Discord.'; })
-                  .catch(() => { if (status) status.textContent = requestText; });
-              } else if (status) {
-                status.textContent = requestText;
-              }
-            });
-          }
-        } else {
-          noteEl.style.display = 'none';
-          noteEl.innerHTML = '';
-        }
-      }
-    });
-  }
 }
 
 /* ================================================================
