@@ -1598,7 +1598,14 @@ function manualAdjustment(civName, archLabel) {
    ================================================================ */
 const DATA_URL = 'https://raw.githubusercontent.com/SiegeEngineers/aoe2techtree/master/data/data.json';
 const PLAYER_DATA_BASE = 'https://raw.githubusercontent.com/robbyho-aoe2/player-data/main/data';
-const AGGREGATE_URL = `${PLAYER_DATA_BASE}/aggregate.json`;
+/* aggregate.json got split into one file per group (plus a small meta
+   file) once it crossed GitHub's 50MB soft file-size limit — pc alone
+   accounts for ~2/3 of all tracked games. Splitting keeps each file well
+   under that limit and lets the small groups (pro/streamer) finish
+   loading fast instead of waiting on the whole blob. */
+const AGGREGATE_GROUPS = ['console', 'pro', 'pc', 'streamer'];
+const AGGREGATE_META_URL = `${PLAYER_DATA_BASE}/aggregate-meta.json`;
+const aggregateGroupUrl = (group) => `${PLAYER_DATA_BASE}/aggregate-${group}.json`;
 /* Which groups are served remotely from the player-data repo vs. still
    compiled directly into this file. Flipping a group from 'compiled' to
    'remote' here — once its aggregate + per-player data exists upstream —
@@ -1736,56 +1743,79 @@ function assignProEmojis(proEntries) {
   return out;
 }
 
+/* Fetches one JSON file with byte-progress reporting via onChunk(loaded,
+   total). Cache-bust: raw.githubusercontent.com caches aggressively at
+   both the browser and CDN level, and can serve a stale file for a while
+   after a fresh push — a unique query param forces a real fetch. */
+async function fetchJsonStreamed(url, onChunk) {
+  const res = await fetch(`${url}?t=${Date.now()}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('HTTP ' + res.status + ' for ' + url);
+  const totalBytes = +res.headers.get('content-length') || 0;
+  if (res.body && res.body.getReader) {
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    const chunks = [];
+    let loaded = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      loaded += value.length;
+      onChunk(loaded, totalBytes);
+    }
+    // Decode once at the end rather than per-chunk — TextDecoder's
+    // streaming mode handles multi-byte characters split across chunk
+    // boundaries correctly, but concatenating decoded strings per chunk
+    // risks subtly mangling a character that straddles a chunk edge.
+    // Simplest correct approach: join the raw bytes, decode once.
+    const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+    const merged = new Uint8Array(totalLen);
+    let offset = 0;
+    chunks.forEach(c => { merged.set(c, offset); offset += c.length; });
+    return JSON.parse(decoder.decode(merged));
+  } else {
+    // Fallback for browsers without streaming body support — no
+    // progress feedback, but still works.
+    onChunk(0, totalBytes);
+    const text = await res.text();
+    onChunk(text.length, totalBytes || text.length);
+    return JSON.parse(text);
+  }
+}
+
 async function loadPlayerData() {
   const progEl = document.getElementById('player-load-progress');
   try {
-    // Cache-bust: raw.githubusercontent.com caches aggressively at both the
-    // browser and CDN level, and can serve a stale aggregate.json for a
-    // while after a fresh push. A unique query param forces a real fetch.
-    const res = await fetch(`${AGGREGATE_URL}?t=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    // meta (players/patch/counts) + one file per group, fetched in
+    // parallel; progress is combined across all five by byte count.
+    const files = { meta: AGGREGATE_META_URL, ...Object.fromEntries(AGGREGATE_GROUPS.map(g => [g, aggregateGroupUrl(g)])) };
+    const keys = Object.keys(files);
+    const loadedBytes = {}, knownBytes = {};
 
-    // This file is tens of MB — stream it with a real byte-progress
-    // indicator rather than silently awaiting res.json(), which leaves
-    // the page looking stuck for several seconds on a typical connection.
-    const totalBytes = +res.headers.get('content-length') || 0;
-    let jsonText;
-    if (res.body && res.body.getReader) {
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      const chunks = [];
-      let loaded = 0;
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        loaded += value.length;
-        if (progEl) {
-          const pct = totalBytes ? Math.min(100, Math.round(loaded / totalBytes * 100)) : null;
-          const mb = (n) => (n / 1024 / 1024).toFixed(1);
-          progEl.textContent = totalBytes
-            ? `Loading player data… ${mb(loaded)} / ${mb(totalBytes)} MB (${pct}%)`
-            : `Loading player data… ${mb(loaded)} MB`;
-          progEl.style.display = 'block';
-        }
-      }
-      // Decode once at the end rather than per-chunk — TextDecoder's
-      // streaming mode handles multi-byte characters split across chunk
-      // boundaries correctly, but concatenating decoded strings per
-      // chunk risks subtly mangling a character that straddles a chunk
-      // edge. Simplest correct approach: join the raw bytes, decode once.
-      const totalLen = chunks.reduce((s, c) => s + c.length, 0);
-      const merged = new Uint8Array(totalLen);
-      let offset = 0;
-      chunks.forEach(c => { merged.set(c, offset); offset += c.length; });
-      jsonText = decoder.decode(merged);
-    } else {
-      // Fallback for browsers without streaming body support — no
-      // progress feedback, but still works.
-      if (progEl) { progEl.textContent = 'Loading player data…'; progEl.style.display = 'block'; }
-      jsonText = await res.text();
-    }
-    AGGREGATE = JSON.parse(jsonText);
+    const updateProgress = () => {
+      if (!progEl) return;
+      const loaded = Object.values(loadedBytes).reduce((a, b) => a + b, 0);
+      const known  = Object.values(knownBytes).reduce((a, b) => a + b, 0);
+      const mb = (n) => (n / 1024 / 1024).toFixed(1);
+      progEl.textContent = known
+        ? `Loading player data… ${mb(loaded)} / ${mb(known)} MB (${Math.min(100, Math.round(loaded / known * 100))}%)`
+        : `Loading player data… ${mb(loaded)} MB`;
+      progEl.style.display = 'block';
+    };
+
+    const fetched = await Promise.all(keys.map(async (k) => {
+      loadedBytes[k] = 0; knownBytes[k] = 0;
+      const data = await fetchJsonStreamed(files[k], (loaded, total) => {
+        loadedBytes[k] = loaded;
+        knownBytes[k]  = total;
+        updateProgress();
+      });
+      return [k, data];
+    }));
+
+    const byKey = Object.fromEntries(fetched);
+    AGGREGATE = { ...byKey.meta };
+    AGGREGATE_GROUPS.forEach(g => { AGGREGATE[g] = byKey[g]; });
     if (progEl) progEl.style.display = 'none';
 
     // Build roster entries for every group marked 'remote' — dynamic, so
