@@ -76,6 +76,8 @@ header{
 .arch-btn{font-size:12px;padding:5px 12px;background:var(--surf);border:1px solid var(--border);border-radius:20px;color:var(--text2);cursor:pointer;transition:.12s;}
 .arch-btn:hover{border-color:var(--amber);color:var(--amberL);}
 .arch-btn.on{background:var(--amber);color:#1a0a00;border-color:var(--amber);font-weight:700;}
+.arch-btn .rank-num{display:none;opacity:.55;font-size:10px;font-weight:600;margin-right:3px;}
+.arch-btn.show-rank .rank-num{display:inline;}
 /* Quick filters */
 #quick-filters-details{margin-bottom:14px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--surf);}
 #quick-filters-details[open]{padding-bottom:14px;}
@@ -2768,17 +2770,22 @@ function renderSelectorPillsHtml() {
   const streamerPlayers = PLAYER_LIST.map((p, i) => ({ p, i })).filter(x => x.p.group === 'streamer')
     .sort((a, b) => (playerDisplayRating(b.p) ?? -1) - (playerDisplayRating(a.p) ?? -1));
   const renderPlayerGroup = (label, entries, extraFirstPill, groupKey) => {
-    const pills = entries.map(({ p, i }) => {
+    // Rank only means something for lists actually sorted by rating
+    // (console/pc) — pro/streamer keep their curated order, no rank shown.
+    const hasSearch = groupKey === 'console' || groupKey === 'pc';
+    const pills = entries.map(({ p, i }, idx) => {
       const on = activePlayer === i ? ' on' : '';
       const rating = playerDisplayRating(p);
       const ratingTag = rating != null ? ` <span style="opacity:.65">(${rating})</span>` : '';
-      return `<button class="arch-btn${on}" data-kind="player" data-i="${i}" data-name="${p.label.toLowerCase()}" data-group="${groupKey}">${p.emoji} ${p.label}${ratingTag}</button>`;
+      const rank = idx + 1;
+      const rankAttr = hasSearch ? ` data-rank="${rank}"` : '';
+      const rankSpan = hasSearch ? `<span class="rank-num">#${rank}</span>` : '';
+      return `<button class="arch-btn${on}" data-kind="player" data-i="${i}" data-name="${p.label.toLowerCase()}" data-group="${groupKey}"${rankAttr}>${rankSpan}${p.emoji} ${p.label}${ratingTag}</button>`;
     }).join('');
     const expanded = playerGroupsExpanded[groupKey];
     const rowH = expanded ? '152px' : '40px';
     const rowOverflow = expanded ? 'auto' : 'hidden';
     const toggleLbl = expanded ? '▲ collapse' : `▼ +${entries.length} players`;
-    const hasSearch = groupKey === 'console' || groupKey === 'pc';
     let searchRow = '';
     if (hasSearch) {
       searchRow = `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">`;
@@ -2889,6 +2896,29 @@ function renderSelectorPillsHtml() {
   return html;
 }
 
+/* Rank badges for the console/pc player lists: rather than numbering
+   every pill (visual clutter), only the first pill of each wrapped row
+   shows "#N" while browsing — count along the row from there to place
+   anyone. Row breaks come from actual offsetTop, not an assumed column
+   count, since pill width varies with name length and wraps differently
+   per screen width. While a search is active, every visible (matching)
+   pill shows its rank instead, since the result set is small. */
+function updatePlayerRankBadges(root) {
+  ['console', 'pc'].forEach(groupKey => {
+    const searchEl = root.querySelector(`#${groupKey}-player-search`);
+    const searching = !!(searchEl && searchEl.value.trim());
+    const btns = Array.from(root.querySelectorAll(`.arch-btn[data-group="${groupKey}"][data-rank]`))
+      .filter(b => b.style.display !== 'none');
+    let lastTop = null;
+    btns.forEach(b => {
+      const top = b.offsetTop;
+      const startsRow = top !== lastTop;
+      lastTop = top;
+      b.classList.toggle('show-rank', searching || startsRow);
+    });
+  });
+}
+
 function attachSelectorPillEvents(root) {
   root.querySelectorAll('[data-kind]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2962,8 +2992,10 @@ function attachSelectorPillEvents(root) {
           ? `<a href="${DISCORD_INVITE}" target="_blank" class="arch-btn" style="font-size:11px;text-decoration:none;display:inline-block;background:#5865F2;color:#fff;border-color:#5865F2">💬 Click to request "${searchEl.value.trim()}" in Discord</a>`
           : '';
       }
+      updatePlayerRankBadges(root);
     });
   });
+  updatePlayerRankBadges(root);
   const mapFilterDetails = root.querySelector('[data-map-filter]');
   if (mapFilterDetails) {
     mapFilterDetails.addEventListener('toggle', () => { mapFilterDetailsOpen = mapFilterDetails.open; });
@@ -5147,8 +5179,17 @@ function renderSuggestions() {
    ================================================================ */
 function initEvents() {
   isMobile = !window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+  let rankBadgeResizeTimer = null;
   window.addEventListener('resize', () => {
     isMobile = !window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+    // Row-wrap points shift with viewport width — recompute which pills
+    // land at the start of a row, debounced so a drag-resize doesn't
+    // thrash layout reads on every pixel.
+    clearTimeout(rankBadgeResizeTimer);
+    rankBadgeResizeTimer = setTimeout(() => {
+      const root = document.getElementById('civ-section');
+      if (root) updatePlayerRankBadges(root);
+    }, 150);
   });
   const input = document.getElementById('search-input');
   input.addEventListener('input', e => updateDropdown(e.target.value));
