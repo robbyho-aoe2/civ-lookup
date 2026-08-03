@@ -241,7 +241,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.70</div>
+    <div class="version">v1.71</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -950,7 +950,7 @@ const UNIT_IDS = {
   'Missionary':775,'Monaspa':1803,'Mounted Trebuchet':1922,
   'Obuch':1701,'Organ Gun':1001,'Plumed Archer':763,
   'Ratha (Mounted Archer)':1759,'Rattan Archer':1129,'Samurai':291,
-  'Savar':558,'Serjeant':1658,'Shotel Warrior':1016,
+  'Savar':558,'Serjeant':1658,'Shotel Warrior':1016,'Slinger':185,
   'Tarkan':755,'Temple Guard':2586,'Teutonic Knight':25,
   'Thirisadai':1737,'Throwing Axeman':281,'Tiger Cavalry':1949,
   'Turtle Ship':829,'Urumi Swordsman':1735,'War Chariot':1961,
@@ -1526,6 +1526,9 @@ const MIN_GAMES_OPTIONS = [
    Slingers give Incas/Mapuche/Muisca/Tupi a cheap extra ranged option on top
    of their normal Archer line, rather than substituting for it. */
 const EXTRA_UU_BONUS = {
+  Archer: [
+    { ids:[SLINGER_ID], civs:['Incas','Mapuche','Muisca','Tupi'], note:'Slinger — cheap extra ranged option on top of the normal Archer line' },
+  ],
   Infantry: [
     { ids:[2582,2584], civs:['Tupi'], note:'Ibirapema Warrior — unique ranged-infantry hybrid' },
   ],
