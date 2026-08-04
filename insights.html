@@ -217,7 +217,7 @@ function render(content, binEntries, stats, bracketAgg) {
   const tooltip = document.getElementById('tooltip');
   const wrap = document.querySelector('.chart-wrap');
   const W = 820, H = 320;
-  const marginL = 40, marginR = 10, marginT = 10, marginB = 34;
+  const marginL = 40, marginR = 58, marginT = 10, marginB = 34;
   const plotW = W - marginL - marginR;
   const plotH = H - marginT - marginB;
   const DOMAIN_MIN = binEntries[0][0];
@@ -228,11 +228,22 @@ function render(content, binEntries, stats, bracketAgg) {
     const clamped = Math.min(Math.max(r, DOMAIN_MIN), DOMAIN_MAX);
     return marginL + (clamped - DOMAIN_MIN) / (DOMAIN_MAX - DOMAIN_MIN) * plotW;
   }
+  // Picks a "nice" tick step (1/2/5 x a power of ten) for a given max
+  // value and target tick count — same approach as D3's tick algorithm.
+  function niceStep(maxVal, targetSteps) {
+    const roughStep = maxVal / targetSteps;
+    const mag = Math.pow(10, Math.floor(Math.log10(roughStep || 1)));
+    const norm = roughStep / mag;
+    const niceNorm = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+    return niceNorm * mag;
+  }
   const maxCount = Math.max(...binEntries.map(([, p]) => p));
   const maxGames = Math.max(...binEntries.map(([, , g]) => g));
   const yMax = Math.ceil(maxCount / 50) * 50;
+  const gamesStep = niceStep(maxGames, 4);
+  const yGamesMax = Math.ceil(maxGames / gamesStep) * gamesStep;
   function y(v) { return marginT + plotH - (v / yMax) * plotH; }
-  function yGhost(v) { return marginT + plotH - (v / maxGames) * plotH; }
+  function yGhost(v) { return marginT + plotH - (v / yGamesMax) * plotH; }
 
   const ySteps = 4;
   for (let i = 0; i <= ySteps; i++) {
@@ -249,6 +260,26 @@ function render(content, binEntries, stats, bracketAgg) {
     label.textContent = val.toLocaleString();
     svg.appendChild(label);
   }
+
+  // Right axis — games played. No gridlines of its own (would conflict
+  // with the left axis's spacing); ticks sit at clean round numbers on
+  // the games scale, using the same complementary-color styling as the
+  // ghost bars so it's visually tied to what it's labeling.
+  for (let v = 0; v <= yGamesMax; v += gamesStep) {
+    const yy = yGhost(v);
+    const label = document.createElementNS(svgNS, 'text');
+    label.setAttribute('x', W - marginR + 8); label.setAttribute('y', yy + 3);
+    label.setAttribute('text-anchor', 'start'); label.setAttribute('class', 'tick-label');
+    label.textContent = v.toLocaleString();
+    svg.appendChild(label);
+  }
+  const rightAxisLabel = document.createElementNS(svgNS, 'text');
+  rightAxisLabel.setAttribute('x', W - 6);
+  rightAxisLabel.setAttribute('y', marginT - 2);
+  rightAxisLabel.setAttribute('text-anchor', 'end');
+  rightAxisLabel.setAttribute('class', 'axis-label');
+  rightAxisLabel.textContent = 'Games played';
+  svg.appendChild(rightAxisLabel);
 
   [900, 1300, 1700].forEach(r => {
     const gx = xForRating(r);
