@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Insights — AoE Auto Scout</title>
+<style>
+:root{
+  --bg:#0f0d0b;--surf:#1c1814;--surf2:#242018;--border:#332c24;--border2:#4a3f30;
+  --amber:#c8922a;--amberL:#f0b458;--amberBg:rgba(200,146,42,.1);
+  --text:#ede5d8;--text2:#a8967e;--text3:#6b5840;
+  --green:#4ade80;--greenBg:rgba(74,222,128,.07);--greenBd:rgba(74,222,128,.25);
+  --red:#f87171;--redBg:rgba(248,113,113,.07);--redBd:rgba(248,113,113,.25);
+  --radius:8px;
+  /* bracket palette — same coding as the rest of the site's console
+     breakdowns: Low/Lo-Mid/Hi-Mid/High, low-to-high rating */
+  --b-low:#c98500;--b-lomid:#199e70;--b-himid:#d95926;--b-high:#3987e5;
+  /* ghost/play-intensity bars use each bracket's complementary color,
+     not a tint of its own — see console_elo_distribution artifact */
+  --g-low:#9085e9;--g-lomid:#e66767;--g-himid:#3987e5;--g-high:#d95926;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;}
+.wrap{max-width:900px;margin:0 auto;padding:28px 20px 60px;}
+
+header{display:flex;align-items:center;gap:14px;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+header h1{font-size:20px;margin:0;}
+header .back{font-size:13px;color:var(--text2);text-decoration:none;}
+header .back:hover{color:var(--amberL);}
+.subtitle{font-size:13px;color:var(--text2);margin:2px 0 0;}
+
+.card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
+.card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
+.card .desc{font-size:12px;color:var(--text2);margin:0 0 18px;}
+
+.stat-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:20px;}
+.stat-tile{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;}
+.stat-tile .label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:4px;}
+.stat-tile .value{font-size:19px;font-weight:700;color:var(--text);}
+
+.chart-legend{display:flex;gap:16px;align-items:center;margin-bottom:10px;font-size:12px;color:var(--text2);flex-wrap:wrap;}
+.chart-legend-item{display:flex;align-items:center;gap:6px;}
+.legend-swatch-solid{width:12px;height:12px;border-radius:3px;background:var(--text2);flex-shrink:0;}
+.legend-swatch-ghost{width:12px;height:12px;border-radius:3px;background:var(--text2);opacity:.6;flex-shrink:0;}
+
+.chart-wrap{position:relative;}
+svg{display:block;width:100%;height:auto;overflow:visible;}
+.gridline{stroke:var(--border);stroke-width:1;}
+.baseline{stroke:var(--border2);stroke-width:1;}
+.bracket-guide{stroke:var(--text3);stroke-width:1;stroke-dasharray:2 3;opacity:.5;}
+.bar{cursor:pointer;}
+.bar:hover{opacity:.85;}
+.hit-area{fill:transparent;cursor:pointer;}
+.ghost-bar{pointer-events:none;opacity:.65;}
+.bar-low{fill:var(--b-low);background-color:var(--b-low);}
+.bar-lomid{fill:var(--b-lomid);background-color:var(--b-lomid);}
+.bar-himid{fill:var(--b-himid);background-color:var(--b-himid);}
+.bar-high{fill:var(--b-high);background-color:var(--b-high);}
+.ghost-low{fill:var(--g-low);background-color:var(--g-low);}
+.ghost-lomid{fill:var(--g-lomid);background-color:var(--g-lomid);}
+.ghost-himid{fill:var(--g-himid);background-color:var(--g-himid);}
+.ghost-high{fill:var(--g-high);background-color:var(--g-high);}
+.tick-label{fill:var(--text3);font-size:10px;}
+.axis-label{fill:var(--text2);font-size:11px;}
+.median-line{stroke:var(--text2);stroke-width:1.5;stroke-dasharray:3 3;}
+.median-label{fill:var(--text2);font-size:10px;font-weight:600;}
+
+.tooltip{position:absolute;pointer-events:none;background:var(--text);color:var(--bg);font-size:12px;padding:6px 10px;border-radius:6px;transform:translate(-50%,-100%);white-space:nowrap;opacity:0;transition:opacity .1s;z-index:5;}
+.tooltip.show{opacity:1;}
+.tooltip .row1{font-weight:700;}
+.tooltip .row2,.tooltip .row3{color:var(--text2);}
+
+.brackets{margin-top:22px;}
+.brackets-title{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:8px;}
+.bracket-track{display:flex;height:28px;border-radius:6px;overflow:hidden;gap:2px;}
+.bracket-seg{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;min-width:0;}
+.bracket-legend{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;}
+.bracket-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);}
+.bracket-swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+.swatch-pair{display:inline-flex;gap:2px;}
+
+.ratio-rows{display:flex;flex-direction:column;gap:14px;}
+.ratio-row{display:grid;grid-template-columns:120px 1fr 90px;align-items:center;gap:12px;}
+.ratio-name{font-size:13px;font-weight:600;}
+.ratio-sub{font-size:11px;color:var(--text3);font-weight:400;}
+.ratio-track{position:relative;height:22px;background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:visible;}
+.ratio-fill{position:absolute;top:0;bottom:0;left:0;border-radius:6px;display:flex;align-items:center;}
+.ratio-refline{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--text2);}
+.ratio-refline::after{content:'1.0x';position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--text3);white-space:nowrap;}
+.ratio-value{font-size:13px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;}
+
+details.table-toggle{margin-top:20px;}
+summary{cursor:pointer;font-size:12px;color:var(--text2);user-select:none;}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px;}
+th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;}
+th{color:var(--text3);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.04em;}
+td.num{text-align:right;}
+
+.loading,.error{font-size:13px;color:var(--text2);padding:20px;text-align:center;}
+.error{color:var(--red);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>📊 Insights</h1>
+      <p class="subtitle"><a class="back" href="index.html">← back to AoE Auto Scout</a></p>
+    </div>
+  </header>
+
+  <div id="content">
+    <div class="loading">Loading player data…</div>
+  </div>
+</div>
+
+<script>
+const PLAYER_DATA_BASE = 'https://raw.githubusercontent.com/robbyho-aoe2/player-data/main/data';
+const AGGREGATE_META_URL = `${PLAYER_DATA_BASE}/aggregate-meta.json`;
+const svgNS = 'http://www.w3.org/2000/svg';
+
+const brackets = [
+  { key: 'low',   name: 'Low',    range: '0–899',     lo: 0,    hi: 899,   cls: 'bar-low',   ghostCls: 'ghost-low' },
+  { key: 'lomid', name: 'Lo-Mid', range: '900–1299',  lo: 900,  hi: 1299,  cls: 'bar-lomid', ghostCls: 'ghost-lomid' },
+  { key: 'himid', name: 'Hi-Mid', range: '1300–1699', lo: 1300, hi: 1699,  cls: 'bar-himid', ghostCls: 'ghost-himid' },
+  { key: 'high',  name: 'High',   range: '1700+',     lo: 1700, hi: 99999, cls: 'bar-high',  ghostCls: 'ghost-high' },
+];
+function bracketFor(rating) { return brackets.find(b => rating >= b.lo && rating <= b.hi); }
+
+async function loadAndRender() {
+  const content = document.getElementById('content');
+  try {
+    const res = await fetch(`${AGGREGATE_META_URL}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const meta = await res.json();
+    const consolePlayers = (meta.players || []).filter(p => p.group === 'console');
+    const rated = consolePlayers.filter(p => p.ratings && p.ratings['1v1 Console'] != null);
+
+    const binSize = 100;
+    const bins = {};
+    rated.forEach(p => {
+      const r = p.ratings['1v1 Console'];
+      const b = Math.floor(r / binSize) * binSize;
+      if (!bins[b]) bins[b] = { players: 0, games: 0 };
+      bins[b].players += 1;
+      bins[b].games += (p.totalGames || 0);
+    });
+
+    const binEntries = Object.entries(bins).map(([k, v]) => [+k, v.players, v.games]).sort((a, b) => a[0] - b[0]);
+    const ratings = rated.map(p => p.ratings['1v1 Console']).sort((a, b) => a - b);
+    const pct = p => ratings[Math.min(ratings.length - 1, Math.floor(p * ratings.length))];
+    const totalGames = rated.reduce((s, p) => s + (p.totalGames || 0), 0);
+    const stats = {
+      total: consolePlayers.length, withRating: rated.length,
+      min: ratings[0], max: ratings[ratings.length - 1],
+      mean: Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length),
+      median: pct(0.5), p90: pct(0.9), totalGames,
+    };
+
+    const bracketAgg = {};
+    brackets.forEach(b => {
+      let players = 0, games = 0;
+      binEntries.forEach(([bin, p, g]) => { if (bin >= b.lo && bin <= b.hi) { players += p; games += g; } });
+      bracketAgg[b.key] = { players, games };
+    });
+
+    render(content, binEntries, stats, bracketAgg);
+  } catch (e) {
+    content.innerHTML = `<div class="error">Could not load player data: ${e.message}</div>`;
+  }
+}
+
+function render(content, binEntries, stats, bracketAgg) {
+  content.innerHTML = `
+    <div class="card">
+      <h2>Console Players — Rating Distribution</h2>
+      <p class="desc">${stats.withRating.toLocaleString()} rated players (of ${stats.total.toLocaleString()} tracked) · 1v1 Console rating, live from the latest backfill</p>
+      <div class="stat-row" id="stat-row"></div>
+      <div class="chart-legend">
+        <div class="chart-legend-item"><span class="legend-swatch-solid"></span>Players, bracket-colored (left axis)</div>
+        <div class="chart-legend-item"><span class="legend-swatch-ghost"></span>Total games played, in that bracket's complementary color — height indexed to its own max, exact values on hover</div>
+      </div>
+      <div class="chart-wrap">
+        <svg id="chart" viewBox="0 0 820 320" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="tooltip" id="tooltip"></div>
+      </div>
+      <div class="brackets">
+        <div class="brackets-title">By console skill bracket — same colors as the chart above</div>
+        <div class="bracket-track" id="bracket-track"></div>
+        <div class="bracket-legend" id="bracket-legend"></div>
+      </div>
+      <details class="table-toggle">
+        <summary>View as table</summary>
+        <table id="data-table"></table>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>Play Intensity by Bracket</h2>
+      <p class="desc">Share of total games played vs. share of players — how much more (or less) each bracket plays relative to its population size. 1.0x means proportional; higher means that bracket plays more than its numbers alone would suggest.</p>
+      <div class="ratio-rows" id="ratio-rows"></div>
+    </div>
+  `;
+
+  // ---- stat tiles ----
+  const statRow = document.getElementById('stat-row');
+  [['Median', stats.median], ['Mean', stats.mean], ['P90', stats.p90], ['Min', stats.min], ['Max', stats.max], ['Total games', stats.totalGames]]
+    .forEach(([label, value]) => {
+      const el = document.createElement('div');
+      el.className = 'stat-tile';
+      el.innerHTML = `<div class="label">${label}</div><div class="value">${value.toLocaleString()}</div>`;
+      statRow.appendChild(el);
+    });
+
+  // ---- histogram + ghost bars ----
+  const svg = document.getElementById('chart');
+  const tooltip = document.getElementById('tooltip');
+  const wrap = document.querySelector('.chart-wrap');
+  const W = 820, H = 320;
+  const marginL = 40, marginR = 10, marginT = 10, marginB = 34;
+  const plotW = W - marginL - marginR;
+  const plotH = H - marginT - marginB;
+  const DOMAIN_MIN = binEntries[0][0];
+  const DOMAIN_MAX = binEntries[binEntries.length - 1][0] + 100;
+  const binW = plotW / binEntries.length;
+
+  function xForRating(r) {
+    const clamped = Math.min(Math.max(r, DOMAIN_MIN), DOMAIN_MAX);
+    return marginL + (clamped - DOMAIN_MIN) / (DOMAIN_MAX - DOMAIN_MIN) * plotW;
+  }
+  const maxCount = Math.max(...binEntries.map(([, p]) => p));
+  const maxGames = Math.max(...binEntries.map(([, , g]) => g));
+  const yMax = Math.ceil(maxCount / 50) * 50;
+  function y(v) { return marginT + plotH - (v / yMax) * plotH; }
+  function yGhost(v) { return marginT + plotH - (v / maxGames) * plotH; }
+
+  const ySteps = 4;
+  for (let i = 0; i <= ySteps; i++) {
+    const val = Math.round((yMax / ySteps) * i);
+    const yy = y(val);
+    const line = document.createElementNS(svgNS, 'line');
+    line.setAttribute('x1', marginL); line.setAttribute('x2', W - marginR);
+    line.setAttribute('y1', yy); line.setAttribute('y2', yy);
+    line.setAttribute('class', i === 0 ? 'baseline' : 'gridline');
+    svg.appendChild(line);
+    const label = document.createElementNS(svgNS, 'text');
+    label.setAttribute('x', marginL - 8); label.setAttribute('y', yy + 3);
+    label.setAttribute('text-anchor', 'end'); label.setAttribute('class', 'tick-label');
+    label.textContent = val.toLocaleString();
+    svg.appendChild(label);
+  }
+
+  [900, 1300, 1700].forEach(r => {
+    const gx = xForRating(r);
+    const line = document.createElementNS(svgNS, 'line');
+    line.setAttribute('x1', gx); line.setAttribute('x2', gx);
+    line.setAttribute('y1', marginT); line.setAttribute('y2', marginT + plotH);
+    line.setAttribute('class', 'bracket-guide');
+    svg.appendChild(line);
+  });
+
+  const gap = 2;
+  binEntries.forEach(([bin, count, games]) => {
+    const i = (bin - DOMAIN_MIN) / 100;
+    const x = marginL + i * binW;
+    const bracket = bracketFor(bin);
+
+    const ghostW = binW - gap;
+    const ghost = document.createElementNS(svgNS, 'rect');
+    ghost.setAttribute('x', x);
+    ghost.setAttribute('y', yGhost(games));
+    ghost.setAttribute('width', Math.max(ghostW, 1));
+    ghost.setAttribute('height', Math.max((games / maxGames) * plotH, 0));
+    ghost.setAttribute('rx', 4);
+    ghost.setAttribute('class', `ghost-bar ${bracket.ghostCls}`);
+    svg.appendChild(ghost);
+
+    const barW = ghostW * 0.55;
+    const bar = document.createElementNS(svgNS, 'rect');
+    bar.setAttribute('x', x + (ghostW - barW) / 2);
+    bar.setAttribute('y', y(count));
+    bar.setAttribute('width', Math.max(barW, 1));
+    bar.setAttribute('height', Math.max((count / yMax) * plotH, 0));
+    bar.setAttribute('rx', 3);
+    bar.setAttribute('class', `bar ${bracket.cls}`);
+    svg.appendChild(bar);
+
+    const hit = document.createElementNS(svgNS, 'rect');
+    hit.setAttribute('x', x); hit.setAttribute('y', marginT);
+    hit.setAttribute('width', Math.max(ghostW, 1)); hit.setAttribute('height', plotH);
+    hit.setAttribute('class', 'hit-area');
+    hit.addEventListener('mousemove', (e) => {
+      const rectBox = wrap.getBoundingClientRect();
+      tooltip.style.left = (e.clientX - rectBox.left) + 'px';
+      tooltip.style.top = (e.clientY - rectBox.top - 10) + 'px';
+      const avgGames = count ? Math.round(games / count) : 0;
+      tooltip.innerHTML = `<div class="row1">${bin}–${bin + 99} rating</div><div class="row2">${count.toLocaleString()} player${count === 1 ? '' : 's'} · ${bracket.name}</div><div class="row3">${games.toLocaleString()} games played (~${avgGames.toLocaleString()}/player)</div>`;
+      tooltip.classList.add('show');
+    });
+    hit.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+    svg.appendChild(hit);
+
+    if (i % 2 === 0) {
+      const tick = document.createElementNS(svgNS, 'text');
+      tick.setAttribute('x', x + ghostW / 2);
+      tick.setAttribute('y', H - marginB + 16);
+      tick.setAttribute('text-anchor', 'middle');
+      tick.setAttribute('class', 'tick-label');
+      tick.textContent = bin;
+      svg.appendChild(tick);
+    }
+  });
+
+  const axisLabel = document.createElementNS(svgNS, 'text');
+  axisLabel.setAttribute('x', marginL + plotW / 2);
+  axisLabel.setAttribute('y', H - 2);
+  axisLabel.setAttribute('text-anchor', 'middle');
+  axisLabel.setAttribute('class', 'axis-label');
+  axisLabel.textContent = '1v1 Console rating';
+  svg.appendChild(axisLabel);
+
+  const mX = xForRating(stats.median);
+  const mLine = document.createElementNS(svgNS, 'line');
+  mLine.setAttribute('x1', mX); mLine.setAttribute('x2', mX);
+  mLine.setAttribute('y1', marginT); mLine.setAttribute('y2', marginT + plotH);
+  mLine.setAttribute('class', 'median-line');
+  svg.appendChild(mLine);
+  const mLabel = document.createElementNS(svgNS, 'text');
+  mLabel.setAttribute('x', mX + 6); mLabel.setAttribute('y', marginT + 12);
+  mLabel.setAttribute('class', 'median-label');
+  mLabel.textContent = `median ${stats.median}`;
+  svg.appendChild(mLabel);
+
+  // ---- bracket track ----
+  const trackEl = document.getElementById('bracket-track');
+  const legendEl = document.getElementById('bracket-legend');
+  const bracketTotal = Object.values(bracketAgg).reduce((a, b) => a + b.players, 0);
+  brackets.forEach(b => {
+    const { players, games } = bracketAgg[b.key];
+    const widthPct = (players / bracketTotal) * 100;
+    const seg = document.createElement('div');
+    seg.className = `bracket-seg ${b.cls}`;
+    seg.style.width = widthPct + '%';
+    seg.textContent = widthPct >= 8 ? `${Math.round(widthPct)}%` : '';
+    seg.title = `${b.name} (${b.range}): ${players.toLocaleString()} players`;
+    trackEl.appendChild(seg);
+
+    const item = document.createElement('div');
+    item.className = 'bracket-legend-item';
+    item.innerHTML = `<span class="swatch-pair"><span class="bracket-swatch ${b.cls}"></span><span class="bracket-swatch ${b.ghostCls}"></span></span>${b.name} (${b.range}) — ${players.toLocaleString()}`;
+    legendEl.appendChild(item);
+  });
+
+  // ---- table ----
+  const table = document.getElementById('data-table');
+  table.innerHTML = '<thead><tr><th>Rating range</th><th>Bracket</th><th class="num">Players</th><th class="num">Games played</th><th class="num">Avg/player</th></tr></thead>' +
+    '<tbody>' + binEntries.map(([bin, count, games]) => `<tr><td>${bin}–${bin + 99}</td><td>${bracketFor(bin).name}</td><td class="num">${count.toLocaleString()}</td><td class="num">${games.toLocaleString()}</td><td class="num">${(count ? Math.round(games / count) : 0).toLocaleString()}</td></tr>`).join('') + '</tbody>';
+
+  // ---- play intensity ----
+  const totalPlayers = Object.values(bracketAgg).reduce((a, b) => a + b.players, 0);
+  const totalGamesAll = Object.values(bracketAgg).reduce((a, b) => a + b.games, 0);
+  const ratios = brackets.map(b => {
+    const { players, games } = bracketAgg[b.key];
+    const playerShare = players / totalPlayers;
+    const gameShare = games / totalGamesAll;
+    return { ...b, players, games, playerShare, gameShare, ratio: gameShare / playerShare, avgPerPlayer: players ? Math.round(games / players) : 0 };
+  });
+  const maxRatio = Math.max(...ratios.map(r => r.ratio), 1);
+  const rowsEl = document.getElementById('ratio-rows');
+  ratios.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'ratio-row';
+    const fillPct = (r.ratio / maxRatio) * 100;
+    const refPct = (1 / maxRatio) * 100;
+    row.innerHTML = `
+      <div class="ratio-name">${r.name}<div class="ratio-sub">${(r.playerShare * 100).toFixed(1)}% of players</div></div>
+      <div class="ratio-track">
+        <div class="ratio-fill ${r.cls}" style="width:${fillPct}%"></div>
+        <div class="ratio-refline" style="left:${refPct}%"></div>
+      </div>
+      <div class="ratio-value">${r.ratio.toFixed(2)}x<div class="ratio-sub">${r.avgPerPlayer.toLocaleString()}/player</div></div>
+    `;
+    rowsEl.appendChild(row);
+  });
+}
+
+loadAndRender();
+</script>
+</body>
+</html>
