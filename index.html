@@ -242,7 +242,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.73</div>
+    <div class="version">v1.74</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1504,6 +1504,10 @@ const PLAYER_LIST = [
   // match data lives in the player-data repo and gets lazy-fetched on
   // click, exactly the same way regardless of group.
 ];
+// Mirrors PLAYER_LIST's keys for O(1) duplicate checks — the tracked
+// roster runs to tens of thousands of players now that PC is included,
+// and a .some() scan per player during the initial build was O(n²).
+const PLAYER_LIST_KEYS = new Set();
 
 /* Ladder filter — which mode/platform combo to pull a match-sourced
    player's data from. Only meaningful for players with ladderKeys (i.e.
@@ -1836,9 +1840,10 @@ async function loadPlayerData() {
     (AGGREGATE.players || []).forEach(p => {
       const src = GROUP_SOURCES[p.group];
       if (!src || src.mode !== 'remote') return;
-      if (PLAYER_LIST.some(e => e.key === p.name)) return; // don't duplicate
+      if (PLAYER_LIST_KEYS.has(p.name)) return; // don't duplicate
       const groupDefault = p.group === 'streamer' ? STREAMER_DEFAULT_EMOJI : p.group === 'pc' ? PC_DEFAULT_EMOJI : DEFAULT_PLAYER_EMOJI;
       const emoji = p.group === 'pro' ? (proEmojis[p.name] || groupDefault) : (EMOJI_MAP[p.name] || groupDefault);
+      PLAYER_LIST_KEYS.add(p.name);
       PLAYER_LIST.push({
         emoji,
         label: p.name,
