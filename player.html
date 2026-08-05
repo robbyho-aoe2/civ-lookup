@@ -27,18 +27,18 @@ header .back:hover{color:var(--amberL);}
 .card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
 .card .desc{font-size:12px;color:var(--text2);margin:0 0 18px;}
 
-.player-hero{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.player-hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;}
 .player-name{font-size:26px;font-weight:800;}
-.player-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+.player-badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px;}
 .badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--surf2);border:1px solid var(--border2);color:var(--text2);}
 .badge.rating{background:var(--amberBg);color:var(--amberL);border-color:var(--amber);}
 
-.ladder-toggle{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;width:fit-content;}
+.ladder-toggle{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin:0 auto 16px;width:fit-content;}
 .ladder-toggle button{background:none;border:none;padding:8px 16px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;white-space:nowrap;}
 .ladder-toggle button.on{background:var(--amber);color:#1a0a00;}
 
-.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;margin-bottom:6px;}
-.stat-tile{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;}
+.stat-row{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:6px;}
+.stat-tile{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;text-align:center;min-width:90px;flex:0 1 auto;}
 .stat-tile .label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:4px;}
 .stat-tile .value{font-size:19px;font-weight:700;color:var(--text);}
 .stat-tile .value.good{color:var(--green);}
@@ -157,14 +157,20 @@ function render(content, entry, player) {
 
     <div class="card">
       <h2>Civ Pool</h2>
-      <p class="desc">Every civ ${entry.name} has played on this ladder, sorted by games — click a column to re-sort.</p>
+      <p class="desc" id="civ-desc">Every civ ${entry.name} has played on this ladder, sorted by games — click a column to re-sort, scroll for the full list.</p>
       <div class="table-scroll"><table id="civ-table"></table></div>
     </div>
 
     <div class="card">
       <h2>Map Pool</h2>
-      <p class="desc">Performance by map.</p>
+      <p class="desc" id="map-desc">Performance by map — scroll for the full list.</p>
       <div class="table-scroll"><table id="map-table"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Top 10 Opponents</h2>
+      <p class="desc" id="opponents-desc">Head-to-head record vs. the most-played opponents.</p>
+      <table id="opponents-table"></table>
     </div>
   `;
 
@@ -213,6 +219,40 @@ function render(content, entry, player) {
     renderBreakdownTable('civ-table', matches, m => m.civ);
     // ---- map pool ----
     renderBreakdownTable('map-table', matches, m => m.map);
+    // ---- top opponents ----
+    renderOpponentsTable(matches);
+  }
+
+  function renderOpponentsTable(matches) {
+    const opponents = {};
+    let matchesWithData = 0;
+    matches.forEach(m => {
+      if (!m.opponents || !m.opponents.length) return;
+      matchesWithData++;
+      m.opponents.forEach(o => {
+        const key = o.profileId != null ? o.profileId : o.name;
+        if (key == null) return;
+        if (!opponents[key]) opponents[key] = { name: o.name || `#${o.profileId}`, games: 0, wins: 0 };
+        opponents[key].games++;
+        if (m.won) opponents[key].wins++;
+      });
+    });
+    const rows = Object.values(opponents).sort((a, b) => b.games - a.games).slice(0, 10);
+
+    const descEl = document.getElementById('opponents-desc');
+    descEl.textContent = matchesWithData
+      ? `Head-to-head record vs. the 10 most-played opponents, from ${matchesWithData.toLocaleString()} of ${matches.length.toLocaleString()} matches with opponent data captured.`
+      : `No opponent data captured yet for this ladder — tracking was added recently, so only new matches from here on will have it.`;
+
+    const tableEl = document.getElementById('opponents-table');
+    if (!rows.length) { tableEl.innerHTML = ''; return; }
+    const thead = '<thead><tr><th>Opponent</th><th class="num">Games</th><th class="num">Win Rate</th></tr></thead>';
+    const tbody = '<tbody>' + rows.map(r => {
+      const wr = r.wins / r.games;
+      const wrCls = wr >= 0.52 ? 'wr-good' : wr <= 0.48 ? 'wr-bad' : '';
+      return `<tr><td>${r.name}</td><td class="num">${r.games}</td><td class="num ${wrCls}">${(wr * 100).toFixed(1)}%</td></tr>`;
+    }).join('') + '</tbody>';
+    tableEl.innerHTML = thead + tbody;
   }
 
   function renderTrend(matches) {
@@ -315,6 +355,14 @@ function render(content, entry, player) {
     const rows = Object.entries(groups).map(([name, d]) => ({
       name, games: d.games, wins: d.wins, wr: d.wins / d.games, pickRate: d.games / total,
     }));
+
+    const descEl = document.getElementById(tableId === 'civ-table' ? 'civ-desc' : 'map-desc');
+    const noun = tableId === 'civ-table' ? 'civs' : 'maps';
+    if (descEl) {
+      const coveredGames = rows.reduce((s, r) => s + r.games, 0);
+      descEl.dataset.baseText = descEl.dataset.baseText || descEl.textContent;
+      descEl.textContent = `${descEl.dataset.baseText} (${rows.length} ${noun}, ${coveredGames.toLocaleString()} games)`;
+    }
 
     if (!sortState[tableId]) sortState[tableId] = { key: 'games', dir: 'desc' };
 
