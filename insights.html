@@ -116,9 +116,15 @@ td.num{text-align:right;}
 .pr-sub{color:var(--text3);font-size:10px;}
 .low-sample{opacity:.45;}
 .civ-controls{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+.civ-ladder-toggle{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.civ-ladder-toggle button{background:none;border:none;padding:7px 12px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;}
+.civ-ladder-toggle button.on{background:var(--amber);color:#1a0a00;}
 .civ-search{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-size:12px;outline:none;width:160px;}
 .civ-search:focus{border-color:var(--amber);}
 .civ-legend{font-size:11px;color:var(--text3);}
+.pr-toggle{background:none;border:1px solid var(--border2);border-radius:10px;color:var(--text3);font-size:9px;font-weight:700;padding:1px 5px;margin-left:5px;cursor:pointer;letter-spacing:.03em;}
+.pr-toggle:hover{color:var(--amberL);border-color:var(--amber);}
+.pr-toggle.on{background:var(--amberBg);color:var(--amberL);border-color:var(--amber);}
 </style>
 </head>
 <body>
@@ -238,8 +244,13 @@ function render(content, binEntries, stats, bracketAgg, civsData) {
       <h2>Civ Leaderboard by Bracket</h2>
       <p class="desc">Pick rate and win rate per civ, split by console skill bracket — spot the civs that dominate at Low but fade at High, or the ones that only work once you're good.</p>
       <div class="civ-controls">
+        <div class="civ-ladder-toggle" id="civ-ladder-toggle">
+          <button data-ladder="all" class="on">All Console</button>
+          <button data-ladder="1v1 Console">1v1</button>
+          <button data-ladder="Team Console">Team</button>
+        </div>
         <input type="text" class="civ-search" id="civ-search" placeholder="Search civs…">
-        <span class="civ-legend">Click a column to sort · dimmed = fewer than 20 games in that bracket</span>
+        <span class="civ-legend">Click a column to sort</span>
       </div>
       <div class="civ-table-wrap">
         <table class="civ-table" id="civ-table"></table>
@@ -462,22 +473,35 @@ function render(content, binEntries, stats, bracketAgg, civsData) {
   // ---- civ leaderboard by bracket ----
   const bracketKeys = ['low', 'lomid', 'himid', 'high'];
   const MIN_SAMPLE = 20; // below this, a bracket's win rate is noisy enough to flag rather than trust
-  const civRows = Object.keys(civsData.overall).sort().map(name => {
-    const row = { name, overall: civsData.overall[name] || { games: 0, wins: 0, pickRate: 0 } };
-    bracketKeys.forEach(k => {
-      const d = (civsData.brackets[k] || {})[name] || { games: 0, wins: 0, pickRate: 0 };
-      row[k] = { games: d.games, wins: d.wins, pickRate: d.pickRate, wr: d.games ? d.wins / d.games : null };
-    });
-    return row;
-  });
 
-  let civSort = { key: 'overall', dir: 'desc' };
+  function civSourceFor(ladder) {
+    if (ladder === 'all') return { overall: civsData.overall, brackets: civsData.brackets };
+    const d = civsData.ladders[ladder];
+    return { overall: d.overall, brackets: d.brackets };
+  }
+
+  function buildCivRows(ladder) {
+    const src = civSourceFor(ladder);
+    return Object.keys(civsData.overall).sort().map(name => {
+      const row = { name, overall: src.overall[name] || { games: 0, wins: 0, pickRate: 0 } };
+      bracketKeys.forEach(k => {
+        const d = (src.brackets[k] || {})[name] || { games: 0, wins: 0, pickRate: 0 };
+        row[k] = { games: d.games, wins: d.wins, pickRate: d.pickRate, wr: d.games ? d.wins / d.games : null };
+      });
+      return row;
+    });
+  }
+
+  let civLadder = 'all';
+  let civRows = buildCivRows(civLadder);
+  let civSort = { key: 'overall', mode: 'wr', dir: 'desc' };
   let civFilter = '';
 
-  function civSortValue(row, key) {
+  function civSortValue(row, key, mode) {
     if (key === 'name') return row.name;
     if (key === 'overall') return row.overall.games;
     const d = row[key];
+    if (mode === 'pr') return d.pickRate || 0;
     if (d.wr == null) return -1;
     // Sufficient-sample entries (>=MIN_SAMPLE) always rank above noisy ones,
     // regardless of a lucky/unlucky small-sample win rate — the +10 offset
@@ -492,7 +516,7 @@ function render(content, binEntries, stats, bracketAgg, civsData) {
       .filter(r => !civFilter || r.name.toLowerCase().includes(civFilter))
       .slice()
       .sort((a, b) => {
-        const av = civSortValue(a, civSort.key), bv = civSortValue(b, civSort.key);
+        const av = civSortValue(a, civSort.key, civSort.mode), bv = civSortValue(b, civSort.key, civSort.mode);
         const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
         return civSort.dir === 'asc' ? cmp : -cmp;
       });
@@ -506,10 +530,13 @@ function render(content, binEntries, stats, bracketAgg, civsData) {
       { key: 'overall', label: 'Games' },
     ];
     const thead = '<thead><tr>' + cols.map(c => {
-      const sorted = civSort.key === c.key;
+      const isBracket = bracketKeys.includes(c.key);
+      const sorted = civSort.key === c.key && (!isBracket || civSort.mode === 'wr');
       const cls = [c.key === 'name' ? 'civ-col' : '', c.key === 'overall' ? 'num' : '', sorted ? 'sorted' + (civSort.dir === 'asc' ? ' asc' : '') : '']
         .filter(Boolean).join(' ');
-      return `<th class="${cls}" data-key="${c.key}">${c.label}</th>`;
+      const prOn = isBracket && civSort.key === c.key && civSort.mode === 'pr';
+      const prBtn = isBracket ? `<button class="pr-toggle${prOn ? ' on' : ''}" data-pr-key="${c.key}">PR</button>` : '';
+      return `<th class="${cls}" data-key="${c.key}">${c.label}${prBtn}</th>`;
     }).join('') + '</tr></thead>';
 
     const tbody = '<tbody>' + rows.map(r => {
@@ -527,10 +554,20 @@ function render(content, binEntries, stats, bracketAgg, civsData) {
 
     tableEl.innerHTML = thead + tbody;
     tableEl.querySelectorAll('th[data-key]').forEach(th => {
-      th.addEventListener('click', () => {
+      th.addEventListener('click', (e) => {
+        if (e.target.closest('.pr-toggle')) return; // handled separately below
         const key = th.dataset.key;
-        if (civSort.key === key) civSort.dir = civSort.dir === 'asc' ? 'desc' : 'asc';
-        else civSort = { key, dir: key === 'name' ? 'asc' : 'desc' };
+        if (civSort.key === key && civSort.mode === 'wr') civSort.dir = civSort.dir === 'asc' ? 'desc' : 'asc';
+        else civSort = { key, mode: 'wr', dir: key === 'name' ? 'asc' : 'desc' };
+        renderCivTable();
+      });
+    });
+    tableEl.querySelectorAll('.pr-toggle').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const key = btn.dataset.prKey;
+        if (civSort.key === key && civSort.mode === 'pr') civSort.dir = civSort.dir === 'asc' ? 'desc' : 'asc';
+        else civSort = { key, mode: 'pr', dir: 'desc' };
         renderCivTable();
       });
     });
@@ -541,6 +578,15 @@ function render(content, binEntries, stats, bracketAgg, civsData) {
   civSearchEl.addEventListener('input', () => {
     civFilter = civSearchEl.value.toLowerCase().trim();
     renderCivTable();
+  });
+
+  document.querySelectorAll('#civ-ladder-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      civLadder = btn.dataset.ladder;
+      document.querySelectorAll('#civ-ladder-toggle button').forEach(b => b.classList.toggle('on', b === btn));
+      civRows = buildCivRows(civLadder);
+      renderCivTable();
+    });
   });
 }
 
