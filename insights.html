@@ -98,6 +98,27 @@ td.num{text-align:right;}
 
 .loading,.error{font-size:13px;color:var(--text2);padding:20px;text-align:center;}
 .error{color:var(--red);}
+
+.insights-nav{position:sticky;top:0;z-index:10;display:flex;gap:6px;flex-wrap:wrap;background:var(--bg);padding:10px 0 16px;margin-bottom:6px;border-bottom:1px solid var(--border);}
+.insights-nav a{font-size:12px;font-weight:600;color:var(--text2);text-decoration:none;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surf);white-space:nowrap;}
+.insights-nav a:hover{color:var(--amberL);border-color:var(--amber);}
+
+.civ-table-wrap{overflow-x:auto;}
+.civ-table{min-width:640px;}
+.civ-table th.civ-col,.civ-table td.civ-col{position:sticky;left:0;background:var(--surf);}
+.civ-table th{cursor:pointer;user-select:none;white-space:nowrap;}
+.civ-table th:hover{color:var(--amberL);}
+.civ-table th.sorted::after{content:' ▾';color:var(--amber);}
+.civ-table th.sorted.asc::after{content:' ▴';}
+.wr-cell{font-variant-numeric:tabular-nums;}
+.wr-good{color:var(--green);}
+.wr-bad{color:var(--red);}
+.pr-sub{color:var(--text3);font-size:10px;}
+.low-sample{opacity:.45;}
+.civ-controls{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+.civ-search{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-size:12px;outline:none;width:160px;}
+.civ-search:focus{border-color:var(--amber);}
+.civ-legend{font-size:11px;color:var(--text3);}
 </style>
 </head>
 <body>
@@ -109,6 +130,12 @@ td.num{text-align:right;}
     </div>
   </header>
 
+  <nav class="insights-nav">
+    <a href="#distribution">Rating Distribution</a>
+    <a href="#intensity">Play Intensity</a>
+    <a href="#civs">Civ Leaderboard</a>
+  </nav>
+
   <div id="content">
     <div class="loading">Loading player data…</div>
   </div>
@@ -117,6 +144,7 @@ td.num{text-align:right;}
 <script>
 const PLAYER_DATA_BASE = 'https://raw.githubusercontent.com/robbyho-aoe2/player-data/main/data';
 const AGGREGATE_META_URL = `${PLAYER_DATA_BASE}/aggregate-meta.json`;
+const CONSOLE_CIVS_URL = `${PLAYER_DATA_BASE}/insights-console-civs.json`;
 const svgNS = 'http://www.w3.org/2000/svg';
 
 const brackets = [
@@ -130,9 +158,14 @@ function bracketFor(rating) { return brackets.find(b => rating >= b.lo && rating
 async function loadAndRender() {
   const content = document.getElementById('content');
   try {
-    const res = await fetch(`${AGGREGATE_META_URL}?t=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const meta = await res.json();
+    const [metaRes, civsRes] = await Promise.all([
+      fetch(`${AGGREGATE_META_URL}?t=${Date.now()}`, { cache: 'no-store' }),
+      fetch(`${CONSOLE_CIVS_URL}?t=${Date.now()}`, { cache: 'no-store' }),
+    ]);
+    if (!metaRes.ok) throw new Error('HTTP ' + metaRes.status);
+    if (!civsRes.ok) throw new Error('HTTP ' + civsRes.status);
+    const meta = await metaRes.json();
+    const civsData = await civsRes.json();
     const consolePlayers = (meta.players || []).filter(p => p.group === 'console');
     const rated = consolePlayers.filter(p => p.ratings && p.ratings['1v1 Console'] != null);
 
@@ -164,15 +197,15 @@ async function loadAndRender() {
       bracketAgg[b.key] = { players, games };
     });
 
-    render(content, binEntries, stats, bracketAgg);
+    render(content, binEntries, stats, bracketAgg, civsData);
   } catch (e) {
     content.innerHTML = `<div class="error">Could not load player data: ${e.message}</div>`;
   }
 }
 
-function render(content, binEntries, stats, bracketAgg) {
+function render(content, binEntries, stats, bracketAgg, civsData) {
   content.innerHTML = `
-    <div class="card">
+    <section id="distribution" class="card">
       <h2>Console Players — Rating Distribution</h2>
       <p class="desc">${stats.withRating.toLocaleString()} rated players (of ${stats.total.toLocaleString()} tracked) · 1v1 Console rating, live from the latest backfill</p>
       <div class="stat-row" id="stat-row"></div>
@@ -193,13 +226,25 @@ function render(content, binEntries, stats, bracketAgg) {
         <summary>View as table</summary>
         <table id="data-table"></table>
       </details>
-    </div>
+    </section>
 
-    <div class="card">
+    <section id="intensity" class="card">
       <h2>Play Intensity by Bracket</h2>
       <p class="desc">Share of total games played vs. share of players — how much more (or less) each bracket plays relative to its population size. 1.0x means proportional; higher means that bracket plays more than its numbers alone would suggest.</p>
       <div class="ratio-rows" id="ratio-rows"></div>
-    </div>
+    </section>
+
+    <section id="civs" class="card">
+      <h2>Civ Leaderboard by Bracket</h2>
+      <p class="desc">Pick rate and win rate per civ, split by console skill bracket — spot the civs that dominate at Low but fade at High, or the ones that only work once you're good.</p>
+      <div class="civ-controls">
+        <input type="text" class="civ-search" id="civ-search" placeholder="Search civs…">
+        <span class="civ-legend">Click a column to sort · dimmed = fewer than 20 games in that bracket</span>
+      </div>
+      <div class="civ-table-wrap">
+        <table class="civ-table" id="civ-table"></table>
+      </div>
+    </section>
   `;
 
   // ---- stat tiles ----
@@ -412,6 +457,90 @@ function render(content, binEntries, stats, bracketAgg) {
       <div class="ratio-value">${r.ratio.toFixed(2)}x<div class="ratio-sub">${r.avgPerPlayer.toLocaleString()}/player</div></div>
     `;
     rowsEl.appendChild(row);
+  });
+
+  // ---- civ leaderboard by bracket ----
+  const bracketKeys = ['low', 'lomid', 'himid', 'high'];
+  const MIN_SAMPLE = 20; // below this, a bracket's win rate is noisy enough to flag rather than trust
+  const civRows = Object.keys(civsData.overall).sort().map(name => {
+    const row = { name, overall: civsData.overall[name] || { games: 0, wins: 0, pickRate: 0 } };
+    bracketKeys.forEach(k => {
+      const d = (civsData.brackets[k] || {})[name] || { games: 0, wins: 0, pickRate: 0 };
+      row[k] = { games: d.games, wins: d.wins, pickRate: d.pickRate, wr: d.games ? d.wins / d.games : null };
+    });
+    return row;
+  });
+
+  let civSort = { key: 'overall', dir: 'desc' };
+  let civFilter = '';
+
+  function civSortValue(row, key) {
+    if (key === 'name') return row.name;
+    if (key === 'overall') return row.overall.games;
+    const d = row[key];
+    if (d.wr == null) return -1;
+    // Sufficient-sample entries (>=MIN_SAMPLE) always rank above noisy ones,
+    // regardless of a lucky/unlucky small-sample win rate — the +10 offset
+    // guarantees that tier separation while still ordering correctly by
+    // win rate within each tier.
+    return (d.games >= MIN_SAMPLE ? 10 : 0) + d.wr;
+  }
+
+  function renderCivTable() {
+    const tableEl = document.getElementById('civ-table');
+    const rows = civRows
+      .filter(r => !civFilter || r.name.toLowerCase().includes(civFilter))
+      .slice()
+      .sort((a, b) => {
+        const av = civSortValue(a, civSort.key), bv = civSortValue(b, civSort.key);
+        const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
+        return civSort.dir === 'asc' ? cmp : -cmp;
+      });
+
+    const cols = [
+      { key: 'name', label: 'Civ' },
+      { key: 'low', label: 'Low' },
+      { key: 'lomid', label: 'Lo-Mid' },
+      { key: 'himid', label: 'Hi-Mid' },
+      { key: 'high', label: 'High' },
+      { key: 'overall', label: 'Games' },
+    ];
+    const thead = '<thead><tr>' + cols.map(c => {
+      const sorted = civSort.key === c.key;
+      const cls = [c.key === 'name' ? 'civ-col' : '', c.key === 'overall' ? 'num' : '', sorted ? 'sorted' + (civSort.dir === 'asc' ? ' asc' : '') : '']
+        .filter(Boolean).join(' ');
+      return `<th class="${cls}" data-key="${c.key}">${c.label}</th>`;
+    }).join('') + '</tr></thead>';
+
+    const tbody = '<tbody>' + rows.map(r => {
+      const cells = bracketKeys.map(k => {
+        const d = r[k];
+        if (!d.games) return `<td class="wr-cell low-sample">—</td>`;
+        const wrPct = (d.wr * 100).toFixed(1);
+        const prPct = (d.pickRate * 100).toFixed(1);
+        const wrCls = d.wr >= 0.52 ? 'wr-good' : d.wr <= 0.48 ? 'wr-bad' : '';
+        const lowSample = d.games < MIN_SAMPLE ? ' low-sample' : '';
+        return `<td class="wr-cell${lowSample}"><span class="${wrCls}">${wrPct}%</span><div class="pr-sub">${prPct}% pick · ${d.games.toLocaleString()}g</div></td>`;
+      }).join('');
+      return `<tr><td class="civ-col">${r.name}</td>${cells}<td class="num">${r.overall.games.toLocaleString()}</td></tr>`;
+    }).join('') + '</tbody>';
+
+    tableEl.innerHTML = thead + tbody;
+    tableEl.querySelectorAll('th[data-key]').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.key;
+        if (civSort.key === key) civSort.dir = civSort.dir === 'asc' ? 'desc' : 'asc';
+        else civSort = { key, dir: key === 'name' ? 'asc' : 'desc' };
+        renderCivTable();
+      });
+    });
+  }
+  renderCivTable();
+
+  const civSearchEl = document.getElementById('civ-search');
+  civSearchEl.addEventListener('input', () => {
+    civFilter = civSearchEl.value.toLowerCase().trim();
+    renderCivTable();
   });
 }
 
