@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Player Spotlight — AoE Auto Scout</title>
+<style>
+:root{
+  --bg:#0f0d0b;--surf:#1c1814;--surf2:#242018;--border:#332c24;--border2:#4a3f30;
+  --amber:#c8922a;--amberL:#f0b458;--amberBg:rgba(200,146,42,.1);
+  --text:#ede5d8;--text2:#a8967e;--text3:#6b5840;
+  --green:#4ade80;--greenBg:rgba(74,222,128,.07);--greenBd:rgba(74,222,128,.25);
+  --red:#f87171;--redBg:rgba(248,113,113,.07);--redBd:rgba(248,113,113,.25);
+  --radius:8px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;}
+.wrap{max-width:900px;margin:0 auto;padding:28px 20px 60px;}
+
+header{display:flex;align-items:center;gap:14px;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+header h1{font-size:20px;margin:0;}
+header .back{font-size:13px;color:var(--text2);text-decoration:none;}
+header .back:hover{color:var(--amberL);}
+.subtitle{font-size:13px;color:var(--text2);margin:2px 0 0;}
+
+.card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
+.card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
+.card .desc{font-size:12px;color:var(--text2);margin:0 0 18px;}
+
+.player-hero{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.player-name{font-size:26px;font-weight:800;}
+.player-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+.badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--surf2);border:1px solid var(--border2);color:var(--text2);}
+.badge.rating{background:var(--amberBg);color:var(--amberL);border-color:var(--amber);}
+
+.ladder-toggle{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;width:fit-content;}
+.ladder-toggle button{background:none;border:none;padding:8px 16px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;white-space:nowrap;}
+.ladder-toggle button.on{background:var(--amber);color:#1a0a00;}
+
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;margin-bottom:6px;}
+.stat-tile{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;}
+.stat-tile .label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:4px;}
+.stat-tile .value{font-size:19px;font-weight:700;color:var(--text);}
+.stat-tile .value.good{color:var(--green);}
+.stat-tile .value.bad{color:var(--red);}
+
+table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;}
+th{color:var(--text3);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.04em;cursor:pointer;user-select:none;white-space:nowrap;}
+th:hover{color:var(--amberL);}
+th.sorted::after{content:' ▾';color:var(--amber);}
+th.sorted.asc::after{content:' ▴';}
+td.num{text-align:right;}
+.wr-good{color:var(--green);}
+.wr-bad{color:var(--red);}
+.pr-sub{color:var(--text3);font-size:10px;}
+.table-scroll{max-height:340px;overflow-y:auto;}
+
+.chart-wrap{position:relative;}
+svg{display:block;width:100%;height:auto;overflow:visible;}
+.gridline{stroke:var(--border);stroke-width:1;}
+.baseline{stroke:var(--border2);stroke-width:1;}
+.refline{stroke:var(--text3);stroke-width:1;stroke-dasharray:2 3;opacity:.6;}
+.tick-label{fill:var(--text3);font-size:10px;}
+.axis-label{fill:var(--text2);font-size:11px;}
+.trend-bar{cursor:pointer;}
+.trend-bar.good{fill:var(--green);}
+.trend-bar.bad{fill:var(--red);}
+.trend-bar.neutral{fill:var(--text3);}
+.hit-area{fill:transparent;cursor:pointer;}
+.tooltip{position:absolute;pointer-events:none;background:var(--text);color:var(--bg);font-size:12px;padding:6px 10px;border-radius:6px;transform:translate(-50%,-100%);white-space:nowrap;opacity:0;transition:opacity .1s;z-index:5;}
+.tooltip.show{opacity:1;}
+.tooltip .row1{font-weight:700;}
+.tooltip .row2{color:var(--text2);}
+
+.loading,.error{font-size:13px;color:var(--text2);padding:20px;text-align:center;}
+.error{color:var(--red);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>🔎 Player Spotlight</h1>
+      <p class="subtitle"><a class="back" href="insights.html">← back to Insights</a></p>
+    </div>
+  </header>
+
+  <div id="content">
+    <div class="loading">Loading player data…</div>
+  </div>
+</div>
+
+<script>
+const PLAYER_DATA_BASE = 'https://raw.githubusercontent.com/robbyho-aoe2/player-data/main/data';
+const svgNS = 'http://www.w3.org/2000/svg';
+const params = new URLSearchParams(location.search);
+const profileId = params.get('id') || '197930'; // defaults to T90
+
+function fmtDur(seconds) {
+  const m = Math.floor(seconds / 60), s = Math.round(seconds % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+async function loadAndRender() {
+  const content = document.getElementById('content');
+  try {
+    const metaRes = await fetch(`${PLAYER_DATA_BASE}/aggregate-meta.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (!metaRes.ok) throw new Error('HTTP ' + metaRes.status);
+    const meta = await metaRes.json();
+    const entry = (meta.players || []).find(p => String(p.profileId) === String(profileId));
+    if (!entry) throw new Error(`Player ${profileId} not found in tracked roster`);
+
+    const dataRes = await fetch(`${PLAYER_DATA_BASE}/${entry.group}/${profileId}.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (!dataRes.ok) throw new Error('HTTP ' + dataRes.status);
+    const player = await dataRes.json();
+
+    render(content, entry, player);
+  } catch (e) {
+    content.innerHTML = `<div class="error">Could not load player: ${e.message}</div>`;
+  }
+}
+
+function render(content, entry, player) {
+  const ladders = Object.entries(player.ladders || {})
+    .filter(([, ld]) => (ld.matches || []).length > 0)
+    .map(([name]) => name);
+
+  if (!ladders.length) {
+    content.innerHTML = `<div class="error">${entry.name} has no match history pulled yet.</div>`;
+    return;
+  }
+
+  content.innerHTML = `
+    <div class="card">
+      <div class="player-hero">
+        <div>
+          <div class="player-name">${entry.name}</div>
+          <div class="player-badges" id="player-badges"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ladder-toggle" id="ladder-toggle"></div>
+      <div class="stat-row" id="stat-row"></div>
+    </div>
+
+    <div class="card">
+      <h2>Win Rate Over Time</h2>
+      <p class="desc">Monthly win rate for the last 24 months, bar height = games played that month.</p>
+      <div class="chart-wrap">
+        <svg id="trend-chart" viewBox="0 0 820 260" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="tooltip" id="trend-tooltip"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Civ Pool</h2>
+      <p class="desc">Every civ ${entry.name} has played on this ladder, sorted by games — click a column to re-sort.</p>
+      <div class="table-scroll"><table id="civ-table"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Map Pool</h2>
+      <p class="desc">Performance by map.</p>
+      <div class="table-scroll"><table id="map-table"></table></div>
+    </div>
+  `;
+
+  const badgesEl = document.getElementById('player-badges');
+  badgesEl.innerHTML = `<span class="badge">${entry.group}</span>` +
+    Object.entries(entry.ratings || {}).map(([l, r]) => `<span class="badge rating">${l}: ${r}</span>`).join('');
+
+  let activeLadder = ladders[0];
+  const toggleEl = document.getElementById('ladder-toggle');
+  toggleEl.innerHTML = ladders.map(l => `<button data-ladder="${l}" class="${l === activeLadder ? 'on' : ''}">${l}</button>`).join('');
+  toggleEl.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeLadder = btn.dataset.ladder;
+      toggleEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn));
+      renderLadder(activeLadder);
+    });
+  });
+
+  function renderLadder(ladderName) {
+    const matches = player.ladders[ladderName].matches || [];
+    const wins = matches.filter(m => m.won).length;
+    const durs = matches.map(m => m.dur).filter(d => d != null);
+    const avgDur = durs.length ? durs.reduce((a, b) => a + b, 0) / durs.length : 0;
+
+    // ---- stat tiles ----
+    const winPct = matches.length ? (wins / matches.length * 100) : 0;
+    const statRow = document.getElementById('stat-row');
+    statRow.innerHTML = '';
+    [
+      ['Games', matches.length.toLocaleString()],
+      ['Wins', wins.toLocaleString()],
+      ['Win Rate', winPct.toFixed(1) + '%', winPct >= 52 ? 'good' : winPct <= 48 ? 'bad' : ''],
+      ['Avg Length', durs.length ? fmtDur(avgDur) : '—'],
+      ['Longest', durs.length ? fmtDur(Math.max(...durs)) : '—'],
+    ].forEach(([label, value, cls]) => {
+      const el = document.createElement('div');
+      el.className = 'stat-tile';
+      el.innerHTML = `<div class="label">${label}</div><div class="value${cls ? ' ' + cls : ''}">${value}</div>`;
+      statRow.appendChild(el);
+    });
+
+    // ---- win rate over time (monthly, last 24 months) ----
+    renderTrend(matches);
+
+    // ---- civ pool ----
+    renderBreakdownTable('civ-table', matches, m => m.civ);
+    // ---- map pool ----
+    renderBreakdownTable('map-table', matches, m => m.map);
+  }
+
+  function renderTrend(matches) {
+    const svg = document.getElementById('trend-chart');
+    svg.innerHTML = '';
+    const tooltip = document.getElementById('trend-tooltip');
+    const wrap = svg.parentElement;
+
+    const months = {};
+    matches.forEach(m => {
+      if (!m.date) return;
+      const key = m.date.slice(0, 7); // YYYY-MM
+      if (!months[key]) months[key] = { games: 0, wins: 0 };
+      months[key].games++;
+      if (m.won) months[key].wins++;
+    });
+    const sortedKeys = Object.keys(months).sort();
+    const last24 = sortedKeys.slice(-24);
+    if (!last24.length) return;
+
+    const W = 820, H = 260;
+    const marginL = 36, marginR = 10, marginT = 14, marginB = 34;
+    const plotW = W - marginL - marginR, plotH = H - marginT - marginB;
+    const binW = plotW / last24.length;
+    const maxGames = Math.max(...last24.map(k => months[k].games));
+
+    const y = (v) => marginT + plotH - (v / maxGames) * plotH;
+    [0, 0.5, 1].forEach(f => {
+      const val = Math.round(maxGames * f);
+      const yy = y(val);
+      const line = document.createElementNS(svgNS, 'line');
+      line.setAttribute('x1', marginL); line.setAttribute('x2', W - marginR);
+      line.setAttribute('y1', yy); line.setAttribute('y2', yy);
+      line.setAttribute('class', f === 0 ? 'baseline' : 'gridline');
+      svg.appendChild(line);
+      const label = document.createElementNS(svgNS, 'text');
+      label.setAttribute('x', marginL - 6); label.setAttribute('y', yy + 3);
+      label.setAttribute('text-anchor', 'end'); label.setAttribute('class', 'tick-label');
+      label.textContent = val;
+      svg.appendChild(label);
+    });
+
+    const gap = 2;
+    last24.forEach((key, i) => {
+      const { games, wins } = months[key];
+      const wr = games ? wins / games : 0;
+      const x = marginL + i * binW;
+      const barW = binW - gap;
+      const barH = (games / maxGames) * plotH;
+      const cls = wr >= 0.52 ? 'good' : wr <= 0.48 ? 'bad' : 'neutral';
+
+      const bar = document.createElementNS(svgNS, 'rect');
+      bar.setAttribute('x', x); bar.setAttribute('y', y(games));
+      bar.setAttribute('width', Math.max(barW, 1)); bar.setAttribute('height', Math.max(barH, 0));
+      bar.setAttribute('rx', 2);
+      bar.setAttribute('class', `trend-bar ${cls}`);
+      svg.appendChild(bar);
+
+      const hit = document.createElementNS(svgNS, 'rect');
+      hit.setAttribute('x', x); hit.setAttribute('y', marginT);
+      hit.setAttribute('width', Math.max(barW, 1)); hit.setAttribute('height', plotH);
+      hit.setAttribute('class', 'hit-area');
+      hit.addEventListener('mousemove', (e) => {
+        const box = wrap.getBoundingClientRect();
+        tooltip.style.left = (e.clientX - box.left) + 'px';
+        tooltip.style.top = (e.clientY - box.top - 10) + 'px';
+        tooltip.innerHTML = `<div class="row1">${key}</div><div class="row2">${games} games · ${(wr * 100).toFixed(0)}% win rate</div>`;
+        tooltip.classList.add('show');
+      });
+      hit.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+      svg.appendChild(hit);
+
+      if (i % 3 === 0 || i === last24.length - 1) {
+        const tick = document.createElementNS(svgNS, 'text');
+        tick.setAttribute('x', x + barW / 2); tick.setAttribute('y', H - marginB + 14);
+        tick.setAttribute('text-anchor', 'middle'); tick.setAttribute('class', 'tick-label');
+        tick.textContent = key;
+        svg.appendChild(tick);
+      }
+    });
+
+    const axisLabel = document.createElementNS(svgNS, 'text');
+    axisLabel.setAttribute('x', marginL); axisLabel.setAttribute('y', 10);
+    axisLabel.setAttribute('class', 'axis-label');
+    axisLabel.textContent = 'Games/month (bar color = win rate that month)';
+    svg.appendChild(axisLabel);
+  }
+
+  const sortState = {};
+  function renderBreakdownTable(tableId, matches, keyFn) {
+    const groups = {};
+    matches.forEach(m => {
+      const key = keyFn(m);
+      if (!key) return;
+      if (!groups[key]) groups[key] = { games: 0, wins: 0 };
+      groups[key].games++;
+      if (m.won) groups[key].wins++;
+    });
+    const total = matches.length;
+    const rows = Object.entries(groups).map(([name, d]) => ({
+      name, games: d.games, wins: d.wins, wr: d.wins / d.games, pickRate: d.games / total,
+    }));
+
+    if (!sortState[tableId]) sortState[tableId] = { key: 'games', dir: 'desc' };
+
+    function draw() {
+      const sort = sortState[tableId];
+      const sorted = rows.slice().sort((a, b) => {
+        const av = sort.key === 'name' ? a.name : a[sort.key];
+        const bv = sort.key === 'name' ? b.name : b[sort.key];
+        const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
+        return sort.dir === 'asc' ? cmp : -cmp;
+      });
+      const cols = [
+        { key: 'name', label: tableId === 'civ-table' ? 'Civ' : 'Map' },
+        { key: 'games', label: 'Games', num: true },
+        { key: 'wr', label: 'Win Rate', num: true },
+        { key: 'pickRate', label: 'Pick Rate', num: true },
+      ];
+      const tableEl = document.getElementById(tableId);
+      const thead = '<thead><tr>' + cols.map(c => {
+        const sorted = sort.key === c.key;
+        const cls = [c.num ? 'num' : '', sorted ? 'sorted' + (sort.dir === 'asc' ? ' asc' : '') : ''].filter(Boolean).join(' ');
+        return `<th class="${cls}" data-key="${c.key}">${c.label}</th>`;
+      }).join('') + '</tr></thead>';
+      const tbody = '<tbody>' + sorted.map(r => {
+        const wrCls = r.wr >= 0.52 ? 'wr-good' : r.wr <= 0.48 ? 'wr-bad' : '';
+        return `<tr><td>${r.name}</td><td class="num">${r.games}</td><td class="num ${wrCls}">${(r.wr * 100).toFixed(1)}%</td><td class="num">${(r.pickRate * 100).toFixed(1)}%</td></tr>`;
+      }).join('') + '</tbody>';
+      tableEl.innerHTML = thead + tbody;
+      tableEl.querySelectorAll('th[data-key]').forEach(th => {
+        th.addEventListener('click', () => {
+          const key = th.dataset.key;
+          if (sort.key === key) sort.dir = sort.dir === 'asc' ? 'desc' : 'asc';
+          else sortState[tableId] = { key, dir: key === 'name' ? 'asc' : 'desc' };
+          draw();
+        });
+      });
+    }
+    draw();
+  }
+
+  renderLadder(activeLadder);
+}
+
+loadAndRender();
+</script>
+</body>
+</html>
