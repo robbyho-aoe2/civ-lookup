@@ -242,7 +242,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.82</div>
+    <div class="version">v1.83</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2763,7 +2763,7 @@ function renderSelectorPillsHtml() {
     const on = activeArchetype === i ? ' on' : '';
     html += `<button class="arch-btn${on}" data-kind="archetype" data-i="${i}">${a.emoji} ${a.label}</button>`;
   });
-  html += `</div><div class="arch-group-label" style="margin-top:8px">Players <span style="font-weight:400;text-transform:none;letter-spacing:normal;opacity:.7">(Player Data updated ${formatPlayerDataDate()})</span></div>`;
+  html += `</div><div class="arch-group-label" style="margin-top:8px">Players <span style="font-weight:400;text-transform:none;letter-spacing:normal;opacity:.7">(Player Data updated ${formatPlayerDataDate()})</span> <a href="insights.html#squads" style="font-weight:400;text-transform:none;letter-spacing:normal;color:var(--amberL);text-decoration:none">🤝 Who plays with who?</a></div>`;
   // Grouped into Pro / Console, each capped at ~2 rows tall with a scroll
   // for overflow — with double-digit players in a group this keeps the
   // selector from growing without bound as more players get added.
