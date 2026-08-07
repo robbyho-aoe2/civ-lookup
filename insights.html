@@ -631,12 +631,10 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows)
   const cpStatRow = document.getElementById('crossplay-stat-row');
   const cpTracked = crossplayRows.length;
   const cpTopPeak = cpTracked ? crossplayRows[0].peak : 0;
-  const cpMedianPeak = cpTracked ? crossplayRows[Math.floor(cpTracked / 2)].peak : 0;
   const cpStillClimbing = crossplayRows.filter(r => r.current >= r.peak - 10).length;
   [
     ['Console players tracked on PC 1v1', cpTracked],
     ['Highest peak', cpTopPeak],
-    ['Median peak (of those tracked)', cpMedianPeak],
     ['Still near their peak', cpStillClimbing],
   ].forEach(([label, value]) => {
     const el = document.createElement('div');
