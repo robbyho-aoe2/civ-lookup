@@ -242,7 +242,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.80</div>
+    <div class="version">v1.81</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -3851,6 +3851,7 @@ function getGroupOverallCivStats(group, mapFilter, minGames) {
     if (activeElo && g.byEloBracket?.[activeElo]) {
       const bracketEntry = g.byEloBracket[activeElo];
       if (isForm && bracketEntry.byWeek) return aggregateByWeekToStats(bracketEntry.byWeek, minGames);
+      if (isPatch && AGGREGATE.currentPatch && bracketEntry.byPatch?.[AGGREGATE.currentPatch]) return aggregateSliceToStats(bracketEntry.byPatch[AGGREGATE.currentPatch], minGames);
       return aggregateSliceToStats(bracketEntry.civWinRates, minGames);
     }
 
