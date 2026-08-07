@@ -154,6 +154,7 @@ td.num{text-align:right;}
     <a href="#intensity">Play Intensity</a>
     <a href="#civs">Civ Leaderboard</a>
     <a href="#crossplay">Crossplay Ceiling</a>
+    <a href="#squads">Top Squads</a>
     <a href="player.html">🔎 Player Spotlight: T90</a>
   </nav>
 
@@ -166,6 +167,7 @@ td.num{text-align:right;}
 const PLAYER_DATA_BASE = 'https://raw.githubusercontent.com/robbyho-aoe2/player-data/main/data';
 const AGGREGATE_META_URL = `${PLAYER_DATA_BASE}/aggregate-meta.json`;
 const CONSOLE_CIVS_URL = `${PLAYER_DATA_BASE}/insights-console-civs.json`;
+const CONSOLE_SQUADS_URL = `${PLAYER_DATA_BASE}/insights-console-squads.json`;
 const svgNS = 'http://www.w3.org/2000/svg';
 
 const brackets = [
@@ -179,14 +181,16 @@ function bracketFor(rating) { return brackets.find(b => rating >= b.lo && rating
 async function loadAndRender() {
   const content = document.getElementById('content');
   try {
-    const [metaRes, civsRes] = await Promise.all([
+    const [metaRes, civsRes, squadsRes] = await Promise.all([
       fetch(`${AGGREGATE_META_URL}?t=${Date.now()}`, { cache: 'no-store' }),
       fetch(`${CONSOLE_CIVS_URL}?t=${Date.now()}`, { cache: 'no-store' }),
+      fetch(`${CONSOLE_SQUADS_URL}?t=${Date.now()}`, { cache: 'no-store' }),
     ]);
     if (!metaRes.ok) throw new Error('HTTP ' + metaRes.status);
     if (!civsRes.ok) throw new Error('HTTP ' + civsRes.status);
     const meta = await metaRes.json();
     const civsData = await civsRes.json();
+    const squadsData = squadsRes.ok ? await squadsRes.json() : { duos: [], trios: [], quads: [] };
     const consolePlayers = (meta.players || []).filter(p => p.group === 'console');
     const rated = consolePlayers.filter(p => p.ratings && p.ratings['1v1 Console'] != null);
 
@@ -227,13 +231,24 @@ async function loadAndRender() {
       }))
       .sort((a, b) => b.peak - a.peak);
 
-    render(content, binEntries, stats, bracketAgg, civsData, crossplayRows);
+    const nameOf = {};
+    (meta.players || []).forEach(p => { nameOf[p.profileId] = p.name; });
+    const namesFor = ids => ids.map(id => nameOf[id] || `player_${id}`);
+    const squadRowsFor = list => (list || [])
+      .map(r => ({ names: namesFor(r.profileIds), games: r.games, wins: r.wins, winRate: r.games ? r.wins / r.games : 0 }));
+    const squads = {
+      duos: squadRowsFor(squadsData.duos),
+      trios: squadRowsFor(squadsData.trios),
+      quads: squadRowsFor(squadsData.quads),
+    };
+
+    render(content, binEntries, stats, bracketAgg, civsData, crossplayRows, squads);
   } catch (e) {
     content.innerHTML = `<div class="error">Could not load player data: ${e.message}</div>`;
   }
 }
 
-function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows) {
+function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows, squads) {
   content.innerHTML = `
     <section id="distribution" class="card">
       <h2>Console Players — Rating Distribution</h2>
@@ -294,6 +309,19 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows)
         <summary id="crossplay-toggle-summary">View full list as table</summary>
         <table id="crossplay-table"></table>
       </details>
+    </section>
+
+    <section id="squads" class="card">
+      <h2>Top Squads — Console Team Games</h2>
+      <p class="desc">Tracked console players who repeatedly queue together as teammates on Team ladder games. Detection only sees teammates we already track, so this fills in as more players get backfilled — a real duo where one side isn't tracked yet won't show up until they are.</p>
+      <div class="civ-controls">
+        <div class="civ-ladder-toggle" id="squad-size-toggle">
+          <button data-size="duos" class="on">Duos</button>
+          <button data-size="trios">Trios</button>
+          <button data-size="quads">Quads</button>
+        </div>
+      </div>
+      <div class="table-scroll"><table id="squad-table"></table></div>
     </section>
   `;
 
@@ -668,6 +696,31 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows)
   const cpTableEl = document.getElementById('crossplay-table');
   cpTableEl.innerHTML = '<thead><tr><th class="num">#</th><th>Player</th><th class="num">Peak</th><th class="num">Current</th></tr></thead>' +
     '<tbody>' + crossplayRows.map((r, i) => `<tr><td class="num">${i + 1}</td><td>${r.name}</td><td class="num">${r.peak.toLocaleString()}</td><td class="num">${r.current.toLocaleString()}</td></tr>`).join('') + '</tbody>';
+
+  // ---- top squads ----
+  let squadSize = 'duos';
+  function renderSquadTable() {
+    const rows = squads[squadSize] || [];
+    const tableEl = document.getElementById('squad-table');
+    if (!rows.length) {
+      tableEl.innerHTML = `<tbody><tr><td style="padding:16px 0;color:var(--text3);font-size:12px">No ${squadSize} with enough games together yet — teammate tracking is new, this fills in as more team games get pulled.</td></tr></tbody>`;
+      return;
+    }
+    tableEl.innerHTML = '<thead><tr><th class="num">#</th><th>Squad</th><th class="num">Games together</th><th class="num">Win rate</th></tr></thead>' +
+      '<tbody>' + rows.map((r, i) => {
+        const wrPct = (r.winRate * 100).toFixed(1);
+        const wrCls = r.winRate >= 0.52 ? 'wr-good' : r.winRate <= 0.48 ? 'wr-bad' : '';
+        return `<tr><td class="num">${i + 1}</td><td>${r.names.join(' & ')}</td><td class="num">${r.games.toLocaleString()}</td><td class="num"><span class="${wrCls}">${wrPct}%</span></td></tr>`;
+      }).join('') + '</tbody>';
+  }
+  renderSquadTable();
+  document.querySelectorAll('#squad-size-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      squadSize = btn.dataset.size;
+      document.querySelectorAll('#squad-size-toggle button').forEach(b => b.classList.toggle('on', b === btn));
+      renderSquadTable();
+    });
+  });
 }
 
 loadAndRender();
