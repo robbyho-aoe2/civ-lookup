@@ -242,7 +242,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.81</div>
+    <div class="version">v1.82</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1021,7 +1021,7 @@ const TECH_IDS = {
    Swordsman, Keep, Atonement, Fervor, Hoardings, Gillnets, Careening, and others). */
 const ITEM_AGES = {
   unit: {
-    5:3, 6:3, 24:2, 36:3, 38:2, 77:3, 125:1, 283:2, 329:2, 330:3, 331:3,
+    5:3, 6:2, 24:2, 36:3, 38:2, 77:3, 125:1, 283:2, 329:2, 330:3, 331:3,
     359:3, 420:3, 441:3, 473:3, 474:3, 492:3, 528:3, 539:3, 542:3, 548:3,
     550:3, 569:3, 588:3, 691:3, 1132:2, 1134:3, 1258:3, 1370:2, 1372:3,
     1707:3, 1813:3, 1901:2, 1903:3, 2628:3,
@@ -4900,7 +4900,7 @@ function itemInfoHtml(item) {
       pairs.forEach(([k,v]) => h += `<div class="stat-cell"><div class="stat-lbl">${k}</div><div class="stat-val">${typeof v === 'number' ? Math.round(v*100)/100 : v}</div></div>`);
       h += `</div>`;
     }
-    const atks = (d.Attacks || []).filter(b => b.Amount > 0 && b.Class > 4);
+    const atks = (d.Attacks || []).filter(b => b.Amount > 0 && b.Class !== 3 && b.Class !== 4);
     if (atks.length) {
       h += `<div>`;
       atks.forEach(b => { const cls = ARMOR_CLASSES[b.Class] || `class ${b.Class}`; h += `<span class="atk-bonus">+${b.Amount} vs ${cls}</span>`; });
