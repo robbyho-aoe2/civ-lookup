@@ -137,6 +137,7 @@ td.num{text-align:right;}
 .peak-value .peak-num{font-weight:700;color:var(--amberL);}
 .peak-value .cur-sub{font-size:10px;color:var(--text3);display:block;}
 .peak-legend{display:flex;gap:16px;align-items:center;margin-bottom:14px;font-size:12px;color:var(--text2);flex-wrap:wrap;}
+#crossplay-table th.num,#crossplay-table td.num{text-align:center;}
 </style>
 </head>
 <body>
@@ -665,8 +666,8 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows)
   document.getElementById('crossplay-toggle-summary').textContent =
     `View all ${cpTracked.toLocaleString()} as a table`;
   const cpTableEl = document.getElementById('crossplay-table');
-  cpTableEl.innerHTML = '<thead><tr><th>#</th><th>Player</th><th class="num">Peak</th><th class="num">Current</th><th class="num">Gap</th></tr></thead>' +
-    '<tbody>' + crossplayRows.map((r, i) => `<tr><td>${i + 1}</td><td>${r.name}</td><td class="num">${r.peak.toLocaleString()}</td><td class="num">${r.current.toLocaleString()}</td><td class="num">${(r.peak - r.current).toLocaleString()}</td></tr>`).join('') + '</tbody>';
+  cpTableEl.innerHTML = '<thead><tr><th class="num">#</th><th>Player</th><th class="num">Peak</th><th class="num">Current</th></tr></thead>' +
+    '<tbody>' + crossplayRows.map((r, i) => `<tr><td class="num">${i + 1}</td><td>${r.name}</td><td class="num">${r.peak.toLocaleString()}</td><td class="num">${r.current.toLocaleString()}</td></tr>`).join('') + '</tbody>';
 }
 
 loadAndRender();
