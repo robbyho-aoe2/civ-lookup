@@ -330,6 +330,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
           <button data-size="trios">Trios</button>
           <button data-size="quads">Quads</button>
         </div>
+        <input type="text" class="civ-search" id="squad-search" placeholder="Search player…">
       </div>
       <div class="civ-table-wrap"><table class="civ-table" id="squad-table"></table></div>
     </section>
@@ -713,6 +714,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
   const SQUAD_PLAYER_COUNT = { duos: 2, trios: 3, quads: 4 };
   const SQUAD_LADDER_LABEL = { all: 'team games', console: 'Console Team games', pc: 'PC Team games' };
   let squadSort = { key: 'games', dir: 'desc' };
+  let squadFilter = '';
 
   function squadSortValue(row, key) {
     if (key === 'games') return row.games;
@@ -722,10 +724,15 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
   }
 
   function renderSquadTable() {
-    const rows = ((squads[squadLadder] || {})[squadSize] || []).slice();
+    const allRows = (squads[squadLadder] || {})[squadSize] || [];
     const tableEl = document.getElementById('squad-table');
-    if (!rows.length) {
+    if (!allRows.length) {
       tableEl.innerHTML = `<tbody><tr><td style="padding:16px 0;color:var(--text3);font-size:12px">No ${squadSize} with enough ${SQUAD_LADDER_LABEL[squadLadder]} together yet — teammate tracking is new, this fills in as more team games get pulled.</td></tr></tbody>`;
+      return;
+    }
+    const rows = allRows.filter(r => !squadFilter || r.names.some(n => n.toLowerCase().includes(squadFilter)));
+    if (!rows.length) {
+      tableEl.innerHTML = `<tbody><tr><td style="padding:16px 0;color:var(--text3);font-size:12px">No ${squadSize} matching "${squadFilter}".</td></tr></tbody>`;
       return;
     }
     const playerCount = SQUAD_PLAYER_COUNT[squadSize];
@@ -780,6 +787,10 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       document.querySelectorAll('#squad-ladder-toggle button').forEach(b => b.classList.toggle('on', b === btn));
       renderSquadTable();
     });
+  });
+  document.getElementById('squad-search').addEventListener('input', (e) => {
+    squadFilter = e.target.value.toLowerCase().trim();
+    renderSquadTable();
   });
 }
 
