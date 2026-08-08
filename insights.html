@@ -321,7 +321,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
           <button data-size="quads">Quads</button>
         </div>
       </div>
-      <div class="table-scroll"><table id="squad-table"></table></div>
+      <div class="civ-table-wrap"><table class="civ-table" id="squad-table"></table></div>
     </section>
   `;
 
@@ -699,24 +699,64 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
 
   // ---- top squads ----
   let squadSize = 'duos';
+  const SQUAD_PLAYER_COUNT = { duos: 2, trios: 3, quads: 4 };
+  let squadSort = { key: 'games', dir: 'desc' };
+
+  function squadSortValue(row, key) {
+    if (key === 'games') return row.games;
+    if (key === 'winRate') return row.winRate;
+    const idx = +key.slice(1);
+    return (row.names[idx] || '').toLowerCase();
+  }
+
   function renderSquadTable() {
-    const rows = squads[squadSize] || [];
+    const rows = (squads[squadSize] || []).slice();
     const tableEl = document.getElementById('squad-table');
     if (!rows.length) {
       tableEl.innerHTML = `<tbody><tr><td style="padding:16px 0;color:var(--text3);font-size:12px">No ${squadSize} with enough games together yet — teammate tracking is new, this fills in as more team games get pulled.</td></tr></tbody>`;
       return;
     }
-    tableEl.innerHTML = '<thead><tr><th class="num">#</th><th>Squad</th><th class="num">Games together</th><th class="num">Win rate</th></tr></thead>' +
-      '<tbody>' + rows.map((r, i) => {
-        const wrPct = (r.winRate * 100).toFixed(1);
-        const wrCls = r.winRate >= 0.52 ? 'wr-good' : r.winRate <= 0.48 ? 'wr-bad' : '';
-        return `<tr><td class="num">${i + 1}</td><td>${r.names.join(' & ')}</td><td class="num">${r.games.toLocaleString()}</td><td class="num"><span class="${wrCls}">${wrPct}%</span></td></tr>`;
-      }).join('') + '</tbody>';
+    const playerCount = SQUAD_PLAYER_COUNT[squadSize];
+    rows.sort((a, b) => {
+      const av = squadSortValue(a, squadSort.key), bv = squadSortValue(b, squadSort.key);
+      const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
+      return squadSort.dir === 'asc' ? cmp : -cmp;
+    });
+
+    const cols = [];
+    for (let i = 0; i < playerCount; i++) cols.push({ key: `p${i}`, label: `Player ${i + 1}` });
+    cols.push({ key: 'games', label: 'Games together' });
+    cols.push({ key: 'winRate', label: 'Win rate' });
+
+    const thead = '<thead><tr>' + cols.map(c => {
+      const isNum = c.key === 'games' || c.key === 'winRate';
+      const isSorted = squadSort.key === c.key;
+      const cls = [isNum ? 'num' : '', isSorted ? 'sorted' + (squadSort.dir === 'asc' ? ' asc' : '') : ''].filter(Boolean).join(' ');
+      return `<th class="${cls}" data-key="${c.key}">${c.label}</th>`;
+    }).join('') + '</tr></thead>';
+
+    const tbody = '<tbody>' + rows.map(r => {
+      const playerCells = r.names.slice(0, playerCount).map(n => `<td>${n}</td>`).join('');
+      const wrPct = (r.winRate * 100).toFixed(1);
+      const wrCls = r.winRate >= 0.52 ? 'wr-good' : r.winRate <= 0.48 ? 'wr-bad' : '';
+      return `<tr>${playerCells}<td class="num">${r.games.toLocaleString()}</td><td class="num"><span class="${wrCls}">${wrPct}%</span></td></tr>`;
+    }).join('') + '</tbody>';
+
+    tableEl.innerHTML = thead + tbody;
+    tableEl.querySelectorAll('th[data-key]').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.key;
+        if (squadSort.key === key) squadSort.dir = squadSort.dir === 'asc' ? 'desc' : 'asc';
+        else squadSort = { key, dir: (key === 'games' || key === 'winRate') ? 'desc' : 'asc' };
+        renderSquadTable();
+      });
+    });
   }
   renderSquadTable();
   document.querySelectorAll('#squad-size-toggle button').forEach(btn => {
     btn.addEventListener('click', () => {
       squadSize = btn.dataset.size;
+      squadSort = { key: 'games', dir: 'desc' };
       document.querySelectorAll('#squad-size-toggle button').forEach(b => b.classList.toggle('on', b === btn));
       renderSquadTable();
     });
