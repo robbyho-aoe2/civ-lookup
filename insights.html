@@ -720,7 +720,20 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     if (key === 'games') return row.games;
     if (key === 'winRate') return row.winRate;
     const idx = +key.slice(1);
-    return (row.names[idx] || '').toLowerCase();
+    return (row.displayNames[idx] || '').toLowerCase();
+  }
+
+  // When a search is active, a matched player can land in any column
+  // depending on profileId (P1 is just "whoever has the lower id"), so
+  // scanning "how has X done with everyone" meant checking every column.
+  // Pin the matched name to the first slot instead, so it reads
+  // consistently as "searched player | their teammate(s)" and the
+  // remaining columns become directly comparable/sortable across rows.
+  function orderedNames(names) {
+    if (!squadFilter) return names;
+    const matched = [], rest = [];
+    names.forEach(n => (n.toLowerCase().includes(squadFilter) ? matched : rest).push(n));
+    return [...matched, ...rest];
   }
 
   function renderSquadTable() {
@@ -730,7 +743,9 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       tableEl.innerHTML = `<tbody><tr><td style="padding:16px 0;color:var(--text3);font-size:12px">No ${squadSize} with enough ${SQUAD_LADDER_LABEL[squadLadder]} together yet — teammate tracking is new, this fills in as more team games get pulled.</td></tr></tbody>`;
       return;
     }
-    const rows = allRows.filter(r => !squadFilter || r.names.some(n => n.toLowerCase().includes(squadFilter)));
+    const rows = allRows
+      .filter(r => !squadFilter || r.names.some(n => n.toLowerCase().includes(squadFilter)))
+      .map(r => ({ ...r, displayNames: orderedNames(r.names) }));
     if (!rows.length) {
       tableEl.innerHTML = `<tbody><tr><td style="padding:16px 0;color:var(--text3);font-size:12px">No ${squadSize} matching "${squadFilter}".</td></tr></tbody>`;
       return;
@@ -743,7 +758,10 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     });
 
     const cols = [];
-    for (let i = 0; i < playerCount; i++) cols.push({ key: `p${i}`, label: `Player ${i + 1}` });
+    for (let i = 0; i < playerCount; i++) {
+      const label = squadFilter ? (i === 0 ? 'Player' : (playerCount === 2 ? 'Teammate' : `Teammate ${i}`)) : `Player ${i + 1}`;
+      cols.push({ key: `p${i}`, label });
+    }
     cols.push({ key: 'games', label: 'Games together' });
     cols.push({ key: 'winRate', label: 'Win rate' });
 
@@ -755,7 +773,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     }).join('') + '</tr></thead>';
 
     const tbody = '<tbody>' + rows.map(r => {
-      const playerCells = r.names.slice(0, playerCount).map(n => `<td>${n}</td>`).join('');
+      const playerCells = r.displayNames.slice(0, playerCount).map(n => `<td>${n}</td>`).join('');
       const wrPct = (r.winRate * 100).toFixed(1);
       const wrCls = r.winRate >= 0.52 ? 'wr-good' : r.winRate <= 0.48 ? 'wr-bad' : '';
       return `<tr>${playerCells}<td class="num">${r.games.toLocaleString()}</td><td class="num"><span class="${wrCls}">${wrPct}%</span></td></tr>`;
