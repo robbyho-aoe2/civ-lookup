@@ -242,7 +242,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.83</div>
+    <div class="version">v1.84</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -3907,10 +3907,18 @@ function getGroupOverallMapList(group) {
   const src = GROUP_SOURCES[group];
   if (src && src.mode === 'remote') {
     if (!AGGREGATE || !AGGREGATE[group]?.byMap) return [];
-    return Object.entries(AGGREGATE[group].byMap).map(([map, mapEntry]) => ({
-      map,
-      games: Object.values(mapEntry.civWinRates || {}).reduce((sum, c) => sum + c.games, 0),
-    }));
+    // Delegate to getGroupOverallCivStats per map instead of reading
+    // byMap[map].civWinRates directly — that was always the group's whole
+    // unfiltered total for that map, so switching ELO bracket (or ladder,
+    // or patch) never changed the game count shown next to each map pill,
+    // even though the civ table underneath it was filtering correctly.
+    // Reusing the civ-stats function keeps this in sync with whatever
+    // precedence rules (bracket > ladder > plain map, etc.) it uses.
+    return Object.keys(AGGREGATE[group].byMap).map(map => {
+      const stats = getGroupOverallCivStats(group, map, 0);
+      const games = Object.values(stats).reduce((sum, c) => sum + c.games, 0);
+      return { map, games };
+    });
   }
   const players = PLAYER_LIST.filter(p => p.group === group);
   const perMap = {};
