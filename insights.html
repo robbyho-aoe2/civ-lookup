@@ -280,7 +280,12 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
 
     <section id="intensity" class="card">
       <h2>Play Intensity by Bracket</h2>
-      <p class="desc">Share of total games played vs. share of players — how much more (or less) each bracket plays relative to its population size. 1.0x means proportional; higher means that bracket plays more than its numbers alone would suggest.</p>
+      <p class="desc">Share of games played vs. share of players — how much more (or less) each bracket plays relative to its population size. 1.0x means proportional; higher means that bracket plays more than its numbers alone would suggest.</p>
+      <div class="civ-ladder-toggle" id="intensity-range-toggle">
+        <button data-range="all" class="on">All Time</button>
+        <button data-range="year">This Year</button>
+        <button data-range="90d">Last 90 Days</button>
+      </div>
       <div class="ratio-rows" id="ratio-rows"></div>
     </section>
 
@@ -523,29 +528,54 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
 
   // ---- play intensity ----
   const totalPlayers = Object.values(bracketAgg).reduce((a, b) => a + b.players, 0);
-  const totalGamesAll = Object.values(bracketAgg).reduce((a, b) => a + b.games, 0);
-  const ratios = brackets.map(b => {
-    const { players, games } = bracketAgg[b.key];
-    const playerShare = players / totalPlayers;
-    const gameShare = games / totalGamesAll;
-    return { ...b, players, games, playerShare, gameShare, ratio: gameShare / playerShare, avgPerPlayer: players ? Math.round(games / players) : 0 };
-  });
-  const maxRatio = Math.max(...ratios.map(r => r.ratio), 1);
-  const rowsEl = document.getElementById('ratio-rows');
-  ratios.forEach(r => {
-    const row = document.createElement('div');
-    row.className = 'ratio-row';
-    const fillPct = (r.ratio / maxRatio) * 100;
-    const refPct = (1 / maxRatio) * 100;
-    row.innerHTML = `
-      <div class="ratio-name">${r.name}<div class="ratio-sub">${(r.playerShare * 100).toFixed(1)}% of players</div></div>
-      <div class="ratio-track">
-        <div class="ratio-fill ${r.cls}" style="width:${fillPct}%"></div>
-        <div class="ratio-refline" style="left:${refPct}%"></div>
-      </div>
-      <div class="ratio-value">${r.ratio.toFixed(2)}x<div class="ratio-sub">${r.avgPerPlayer.toLocaleString()}/player</div></div>
-    `;
-    rowsEl.appendChild(row);
+  const weeklyGamesByBracket = civsData.weeklyGamesByBracket || {};
+
+  function gamesForRange(bracketKey, range) {
+    if (range === 'all') return bracketAgg[bracketKey].games;
+    const weeks = weeklyGamesByBracket[bracketKey] || {};
+    let cutoff;
+    if (range === 'year') cutoff = `${new Date().getFullYear()}-01-01`;
+    else cutoff = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+    return Object.entries(weeks).reduce((sum, [week, g]) => sum + (week >= cutoff ? g : 0), 0);
+  }
+
+  function renderIntensity(range) {
+    const gamesByBracket = {};
+    brackets.forEach(b => { gamesByBracket[b.key] = gamesForRange(b.key, range); });
+    const totalGamesRange = Object.values(gamesByBracket).reduce((a, b) => a + b, 0);
+
+    const ratios = brackets.map(b => {
+      const { players } = bracketAgg[b.key];
+      const games = gamesByBracket[b.key];
+      const playerShare = players / totalPlayers;
+      const gameShare = totalGamesRange ? games / totalGamesRange : 0;
+      return { ...b, players, games, playerShare, gameShare, ratio: playerShare ? gameShare / playerShare : 0, avgPerPlayer: players ? Math.round(games / players) : 0 };
+    });
+    const maxRatio = Math.max(...ratios.map(r => r.ratio), 1);
+    const rowsEl = document.getElementById('ratio-rows');
+    rowsEl.innerHTML = '';
+    ratios.forEach(r => {
+      const row = document.createElement('div');
+      row.className = 'ratio-row';
+      const fillPct = (r.ratio / maxRatio) * 100;
+      const refPct = (1 / maxRatio) * 100;
+      row.innerHTML = `
+        <div class="ratio-name">${r.name}<div class="ratio-sub">${(r.playerShare * 100).toFixed(1)}% of players</div></div>
+        <div class="ratio-track">
+          <div class="ratio-fill ${r.cls}" style="width:${fillPct}%"></div>
+          <div class="ratio-refline" style="left:${refPct}%"></div>
+        </div>
+        <div class="ratio-value">${r.ratio.toFixed(2)}x<div class="ratio-sub">${r.avgPerPlayer.toLocaleString()}/player</div></div>
+      `;
+      rowsEl.appendChild(row);
+    });
+  }
+  renderIntensity('all');
+  document.querySelectorAll('#intensity-range-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#intensity-range-toggle button').forEach(b => b.classList.toggle('on', b === btn));
+      renderIntensity(btn.dataset.range);
+    });
   });
 
   // ---- civ leaderboard by bracket ----
