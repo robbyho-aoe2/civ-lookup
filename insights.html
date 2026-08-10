@@ -950,7 +950,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     const tbody = '<tbody>' + rows.map(r => {
       const diffCls = r.diff >= 0.5 ? 'wr-good' : r.diff <= -0.5 ? 'wr-bad' : '';
       return `<tr>
-        <td class="num"><img src="${civIconUrl(r.civ)}" alt="${r.civ}" title="${r.civ}" style="height:22px;width:22px;object-fit:contain;vertical-align:middle" onerror="this.replaceWith(document.createTextNode('${r.civ.slice(0,3)}'))"></td>
+        <td style="display:flex;align-items:center;gap:6px;white-space:nowrap"><img src="${civIconUrl(r.civ)}" alt="" style="height:20px;width:20px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">${r.civ}</td>
         <td class="num">${r.consoleWr.toFixed(1)}%<div class="pr-sub">${abbrevGames(r.consoleGames)}g</div></td>
         <td class="num">${r.pcWr.toFixed(1)}%<div class="pr-sub">${abbrevGames(r.pcGames)}g</div></td>
         <td class="num"><span class="${diffCls}">${r.diff >= 0 ? '+' : ''}${r.diff.toFixed(1)}%</span></td>
