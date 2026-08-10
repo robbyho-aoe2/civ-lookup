@@ -242,7 +242,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.85</div>
+    <div class="version">v1.86</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2929,9 +2929,18 @@ function updatePlayerRankBadges(root) {
     const searching = !!(searchEl && searchEl.value.trim());
     const btns = Array.from(root.querySelectorAll(`.arch-btn[data-group="${groupKey}"][data-rank]`))
       .filter(b => b.style.display !== 'none');
+    // Read every offsetTop BEFORE writing any classList change. The
+    // original read-write-read-write loop forced the browser to
+    // recompute layout on every single element ("layout thrashing") —
+    // fine at a few hundred players, a multi-second freeze once the
+    // roster grew into the thousands. Batching reads first means the
+    // browser computes layout once (it's still valid for every read
+    // since nothing here writes in between), then all the writes happen
+    // afterward with no further reads to invalidate it.
+    const tops = btns.map(b => b.offsetTop);
     let lastTop = null;
-    btns.forEach(b => {
-      const top = b.offsetTop;
+    btns.forEach((b, i) => {
+      const top = tops[i];
       const startsRow = top !== lastTop;
       lastTop = top;
       b.classList.toggle('show-rank', searching || startsRow);
@@ -3768,7 +3777,7 @@ function combineMapCategoryByWeek(byMap, categoryKey) {
    activeElo/isPatch BEFORE falling into this path, same as the existing
    precedence (map+bracket already outranks ladder elsewhere in this file).
    Returns null if there's simply no byLadder data for this group/ladder. */
-function ladderScopedByMap(group, ladder) {
+function ladderScopedByMap(group, ladder, includeByWeek) {
   const g = AGGREGATE?.[group];
   if (!g) return null;
   if (ladder === 'Console' || ladder === 'PC') {
@@ -3784,14 +3793,20 @@ function ladderScopedByMap(group, ladder) {
           combined[mapName].civWinRates[civ].games += e.games;
           combined[mapName].civWinRates[civ].wins += e.wins;
         });
-        Object.entries(mapEntry.byWeek || {}).forEach(([week, civs]) => {
-          if (!combined[mapName].byWeek[week]) combined[mapName].byWeek[week] = {};
-          Object.entries(civs).forEach(([civ, e]) => {
-            if (!combined[mapName].byWeek[week][civ]) combined[mapName].byWeek[week][civ] = { games: 0, wins: 0 };
-            combined[mapName].byWeek[week][civ].games += e.games;
-            combined[mapName].byWeek[week][civ].wins += e.wins;
+        // byWeek merging is the expensive part (every map × every week ×
+        // every civ) and only Form mode ever reads it — skip it entirely
+        // otherwise. Calling this per-map instead of once used to make
+        // that cost multiply by map count too; see getGroupOverallMapList.
+        if (includeByWeek) {
+          Object.entries(mapEntry.byWeek || {}).forEach(([week, civs]) => {
+            if (!combined[mapName].byWeek[week]) combined[mapName].byWeek[week] = {};
+            Object.entries(civs).forEach(([civ, e]) => {
+              if (!combined[mapName].byWeek[week][civ]) combined[mapName].byWeek[week][civ] = { games: 0, wins: 0 };
+              combined[mapName].byWeek[week][civ].games += e.games;
+              combined[mapName].byWeek[week][civ].wins += e.wins;
+            });
           });
-        });
+        }
       });
     });
     return combined;
@@ -3829,7 +3844,7 @@ function getGroupOverallCivStats(group, mapFilter, minGames) {
         return aggregateSliceToStats(g.byMap[mapFilter].byEloBracket[activeElo], minGames);
       }
       if (activeLadder && activeLadder !== 'All') {
-        const byMap = ladderScopedByMap(group, activeLadder);
+        const byMap = ladderScopedByMap(group, activeLadder, isForm);
         const mapEntry = byMap?.[mapFilter];
         if (!mapEntry) return {};
         if (isForm && mapEntry.byWeek) return aggregateByWeekToStats(mapEntry.byWeek, minGames);
@@ -3845,7 +3860,7 @@ function getGroupOverallCivStats(group, mapFilter, minGames) {
     if (!mapFilter && activeMapCatFilter) {
       if (activeElo && g.byMap) return aggregateSliceToStats(combineMapCategorySlices(g.byMap, activeMapCatFilter, ['byEloBracket', activeElo]), minGames);
       if (activeLadder && activeLadder !== 'All') {
-        const byMap = ladderScopedByMap(group, activeLadder);
+        const byMap = ladderScopedByMap(group, activeLadder, isForm);
         if (isForm) return aggregateByWeekToStats(combineMapCategoryByWeek(byMap, activeMapCatFilter), minGames);
         return aggregateSliceToStats(combineMapCategorySlices(byMap, activeMapCatFilter, null), minGames);
       }
@@ -3914,20 +3929,48 @@ function getGroupOverallCivStats(group, mapFilter, minGames) {
 /* Union of every player-in-group's own map list, games summed across all
    of them — powers the same "filter to a map" pill row the per-player
    view uses, but scoped to the whole group rather than one person. */
+function sumGamesFromCivMap(civs) {
+  return civs ? Object.values(civs).reduce((s, c) => s + c.games, 0) : 0;
+}
+function sumGamesFromByWeek(byWeek) {
+  if (!byWeek) return 0;
+  return Object.values(byWeek).reduce((s, wk) => s + sumGamesFromCivMap(wk), 0);
+}
+
 function getGroupOverallMapList(group) {
   const src = GROUP_SOURCES[group];
   if (src && src.mode === 'remote') {
     if (!AGGREGATE || !AGGREGATE[group]?.byMap) return [];
-    // Delegate to getGroupOverallCivStats per map instead of reading
-    // byMap[map].civWinRates directly — that was always the group's whole
-    // unfiltered total for that map, so switching ELO bracket (or ladder,
-    // or patch) never changed the game count shown next to each map pill,
-    // even though the civ table underneath it was filtering correctly.
-    // Reusing the civ-stats function keeps this in sync with whatever
-    // precedence rules (bracket > ladder > plain map, etc.) it uses.
-    return Object.keys(AGGREGATE[group].byMap).map(map => {
-      const stats = getGroupOverallCivStats(group, map, 0);
-      const games = Object.values(stats).reduce((sum, c) => sum + c.games, 0);
+    const g = AGGREGATE[group];
+    const activeElo = group === 'console' ? activeConsoleElo : group === 'pc' ? activePcElo : null;
+    const isForm = activeRecencyMode === 'form';
+    const isPatch = activeRecencyMode === 'patch';
+    // Same precedence as getGroupOverallCivStats's map-filter branch
+    // (bracket > ladder > plain map), just computed for every map at once
+    // instead of re-deriving it per map — ladderScopedByMap in particular
+    // does a real merge over every map/week/civ for the combined
+    // Console/PC pills, so calling it once per map (111 calls) instead of
+    // once total was the actual multi-second freeze here.
+    const scopedByMap = (!activeElo && activeLadder && activeLadder !== 'All')
+      ? ladderScopedByMap(group, activeLadder, isForm) : null;
+
+    return Object.keys(g.byMap).map(map => {
+      const mapEntry = g.byMap[map];
+      let games;
+      if (activeElo && mapEntry.byEloBracket?.[activeElo]) {
+        games = sumGamesFromCivMap(mapEntry.byEloBracket[activeElo].civWinRates);
+      } else if (scopedByMap) {
+        const scopedEntry = scopedByMap[map];
+        games = (isForm && scopedEntry?.byWeek)
+          ? sumGamesFromByWeek(scopedEntry.byWeek)
+          : sumGamesFromCivMap(scopedEntry?.civWinRates);
+      } else if (isForm && mapEntry.byWeek) {
+        games = sumGamesFromByWeek(mapEntry.byWeek);
+      } else if (isPatch && AGGREGATE.currentPatch && mapEntry.byPatch?.[AGGREGATE.currentPatch]) {
+        games = sumGamesFromCivMap(mapEntry.byPatch[AGGREGATE.currentPatch]);
+      } else {
+        games = sumGamesFromCivMap(mapEntry.civWinRates);
+      }
       return { map, games };
     });
   }
