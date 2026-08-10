@@ -155,6 +155,7 @@ td.num{text-align:right;}
     <a href="#civs">Civ Leaderboard</a>
     <a href="#crossplay">Crossplay Ceiling</a>
     <a href="#squads">Top Squads</a>
+    <a href="#console-vs-pc">Console vs PC</a>
     <a href="player.html">🔎 Player Spotlight: T90</a>
   </nav>
 
@@ -177,6 +178,34 @@ const brackets = [
   { key: 'high',  name: 'High',   range: '1700+',     lo: 1700, hi: 99999, cls: 'bar-high',  ghostCls: 'ghost-high' },
 ];
 function bracketFor(rating) { return brackets.find(b => rating >= b.lo && rating <= b.hi); }
+
+// Same recency-weighting as index.html's Form mode: exponential decay,
+// 90-day half-life, computed against "today" so it stays live rather than
+// frozen as of the last data pull.
+const RECENT_FORM_HALF_LIFE_DAYS = 90;
+function recentFormWeight(weekStr) {
+  const gameDate = new Date(weekStr + 'T00:00:00Z');
+  const daysAgo = Math.max(0, (Date.now() - gameDate.getTime()) / 86400000);
+  return Math.pow(0.5, daysAgo / RECENT_FORM_HALF_LIFE_DAYS);
+}
+function weightedStatsFromByWeek(byWeek, minGames) {
+  const totals = {};
+  Object.entries(byWeek || {}).forEach(([week, civs]) => {
+    const w = recentFormWeight(week);
+    Object.entries(civs).forEach(([civ, e]) => {
+      if (!totals[civ]) totals[civ] = { games: 0, wg: 0, ww: 0 };
+      totals[civ].games += e.games;
+      totals[civ].wg += e.games * w;
+      totals[civ].ww += e.wins * w;
+    });
+  });
+  const out = {};
+  Object.entries(totals).forEach(([civ, t]) => {
+    if (t.games < minGames) return;
+    out[civ] = { wr: t.wg > 0 ? (t.ww / t.wg * 100) : 0, games: t.games };
+  });
+  return out;
+}
 
 async function loadAndRender() {
   const content = document.getElementById('content');
@@ -338,6 +367,12 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
         <input type="text" class="civ-search" id="squad-search" placeholder="Search player…">
       </div>
       <div class="civ-table-wrap"><table class="civ-table" id="squad-table"></table></div>
+    </section>
+
+    <section id="console-vs-pc" class="card">
+      <h2>Console Arabia vs. PC Overall — Biggest Discrepancies</h2>
+      <p class="desc">Recency-weighted (90-day half-life, same as Form mode elsewhere) win rate for 1v1 Console on Arabia specifically vs. 1v1 PC overall across all maps — civs that swing hardest between the two, sorted by |difference|. A large negative gap usually means a civ that rewards precise micro/APM; positive means a simpler, bonus-driven civ that holds up better without it.</p>
+      <div class="civ-table-wrap"><table class="civ-table" id="cvp-table"></table></div>
     </section>
   `;
 
@@ -840,6 +875,59 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     squadFilter = e.target.value.toLowerCase().trim();
     renderSquadTable();
   });
+
+  // ---- console arabia vs pc overall ----
+  const cvpConsole = weightedStatsFromByWeek(civsData.consoleArabia1v1ByWeek, 20);
+  const cvpPc = weightedStatsFromByWeek(civsData.pcOverall1v1ByWeek, 20);
+  const cvpRows = Object.keys(cvpConsole)
+    .filter(civ => cvpPc[civ])
+    .map(civ => {
+      const c = cvpConsole[civ], p = cvpPc[civ];
+      return { civ, consoleWr: c.wr, consoleGames: c.games, pcWr: p.wr, pcGames: p.games, diff: c.wr - p.wr };
+    });
+  let cvpSort = { key: 'absDiff', dir: 'desc' };
+  function cvpSortValue(row, key) {
+    if (key === 'civ') return row.civ.toLowerCase();
+    if (key === 'absDiff') return Math.abs(row.diff);
+    return row[key];
+  }
+  function renderCvpTable() {
+    const rows = cvpRows.slice();
+    rows.sort((a, b) => {
+      const av = cvpSortValue(a, cvpSort.key), bv = cvpSortValue(b, cvpSort.key);
+      const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
+      return cvpSort.dir === 'asc' ? cmp : -cmp;
+    });
+    const cols = [
+      { key: 'civ', label: 'Civ' },
+      { key: 'consoleWr', label: 'Console Arabia WR' },
+      { key: 'consoleGames', label: 'Games' },
+      { key: 'pcWr', label: 'PC Overall WR' },
+      { key: 'pcGames', label: 'Games' },
+      { key: 'absDiff', label: 'Diff' },
+    ];
+    const tableEl = document.getElementById('cvp-table');
+    const thead = '<thead><tr>' + cols.map(c => {
+      const isNum = c.key !== 'civ';
+      const isSorted = cvpSort.key === c.key;
+      const cls = [isNum ? 'num' : '', isSorted ? 'sorted' + (cvpSort.dir === 'asc' ? ' asc' : '') : ''].filter(Boolean).join(' ');
+      return `<th class="${cls}" data-key="${c.key}">${c.label}</th>`;
+    }).join('') + '</tr></thead>';
+    const tbody = '<tbody>' + rows.map(r => {
+      const diffCls = r.diff >= 0.5 ? 'wr-good' : r.diff <= -0.5 ? 'wr-bad' : '';
+      return `<tr><td>${r.civ}</td><td class="num">${r.consoleWr.toFixed(1)}%</td><td class="num">${r.consoleGames.toLocaleString()}</td><td class="num">${r.pcWr.toFixed(1)}%</td><td class="num">${r.pcGames.toLocaleString()}</td><td class="num"><span class="${diffCls}">${r.diff >= 0 ? '+' : ''}${r.diff.toFixed(1)}%</span></td></tr>`;
+    }).join('') + '</tbody>';
+    tableEl.innerHTML = thead + tbody;
+    tableEl.querySelectorAll('th[data-key]').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.key;
+        if (cvpSort.key === key) cvpSort.dir = cvpSort.dir === 'asc' ? 'desc' : 'asc';
+        else cvpSort = { key, dir: key === 'civ' ? 'asc' : 'desc' };
+        renderCvpTable();
+      });
+    });
+  }
+  renderCvpTable();
 }
 
 loadAndRender();
