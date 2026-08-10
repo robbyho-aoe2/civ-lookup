@@ -94,7 +94,7 @@ summary{cursor:pointer;font-size:12px;color:var(--text2);user-select:none;}
 table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px;}
 th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;}
 th{color:var(--text3);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.04em;}
-td.num{text-align:right;}
+th.num,td.num{text-align:center;}
 
 .loading,.error{font-size:13px;color:var(--text2);padding:20px;text-align:center;}
 .error{color:var(--red);}
@@ -105,6 +105,8 @@ td.num{text-align:right;}
 
 .civ-table-wrap{overflow-x:auto;}
 .civ-table{min-width:640px;}
+#cvp-table{min-width:unset;width:auto;margin:10px auto 0;}
+#cvp-table td,#cvp-table th{padding:5px 6px;}
 .civ-table th.civ-col,.civ-table td.civ-col{position:sticky;left:0;background:var(--surf);}
 .civ-table th{cursor:pointer;user-select:none;white-space:nowrap;}
 .civ-table th:hover{color:var(--amberL);}
@@ -137,7 +139,6 @@ td.num{text-align:right;}
 .peak-value .peak-num{font-weight:700;color:var(--amberL);}
 .peak-value .cur-sub{font-size:10px;color:var(--text3);display:block;}
 .peak-legend{display:flex;gap:16px;align-items:center;margin-bottom:14px;font-size:12px;color:var(--text2);flex-wrap:wrap;}
-#crossplay-table th.num,#crossplay-table td.num{text-align:center;}
 </style>
 </head>
 <body>
@@ -205,6 +206,19 @@ function weightedStatsFromByWeek(byWeek, minGames) {
     out[civ] = { wr: t.wg > 0 ? (t.ww / t.wg * 100) : 0, games: t.games };
   });
   return out;
+}
+
+// Same crest source as index.html — narrow icon instead of a text name
+// so per-civ tables stay compact enough to fit a mobile screen width.
+const CIV_ICON_BASE = 'https://raw.githubusercontent.com/SiegeEngineers/aoe2techtree/master/img/Civs';
+const CIV_ICON_FILE_OVERRIDES = { Maya: 'mayans' };
+function civIconUrl(civName) {
+  const file = CIV_ICON_FILE_OVERRIDES[civName] || civName.toLowerCase();
+  return `${CIV_ICON_BASE}/${file}.png`;
+}
+function abbrevGames(n) {
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return String(n);
 }
 
 async function loadAndRender() {
@@ -367,6 +381,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
         <input type="text" class="civ-search" id="squad-search" placeholder="Search player…">
       </div>
       <div class="civ-table-wrap"><table class="civ-table" id="squad-table"></table></div>
+      <div id="squad-expand-row" style="text-align:center;margin-top:10px"></div>
     </section>
 
     <section id="console-vs-pc" class="card">
@@ -780,6 +795,8 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
   const SQUAD_LADDER_LABEL = { all: 'team games', console: 'Console Team games', pc: 'PC Team games' };
   let squadSort = { key: 'games', dir: 'desc' };
   let squadFilter = '';
+  let squadExpanded = false;
+  const SQUAD_SHOWN = 25;
 
   function squadSortValue(row, key) {
     if (key === 'games') return row.games;
@@ -822,6 +839,19 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       return squadSort.dir === 'asc' ? cmp : -cmp;
     });
 
+    const totalRows = rows.length;
+    const shownRows = squadExpanded ? rows : rows.slice(0, SQUAD_SHOWN);
+    const expandEl = document.getElementById('squad-expand-row');
+    if (totalRows > SQUAD_SHOWN) {
+      expandEl.innerHTML = `<button class="pr-toggle" style="font-size:11px;padding:3px 10px" id="squad-expand-btn">${squadExpanded ? '▲ Show top 25' : `▼ Show all ${totalRows.toLocaleString()}`}</button>`;
+      document.getElementById('squad-expand-btn').addEventListener('click', () => {
+        squadExpanded = !squadExpanded;
+        renderSquadTable();
+      });
+    } else {
+      expandEl.innerHTML = '';
+    }
+
     const cols = [];
     for (let i = 0; i < playerCount; i++) {
       const label = squadFilter ? (i === 0 ? 'Player' : (playerCount === 2 ? 'Teammate' : `Teammate ${i}`)) : `Player ${i + 1}`;
@@ -837,7 +867,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       return `<th class="${cls}" data-key="${c.key}">${c.label}</th>`;
     }).join('') + '</tr></thead>';
 
-    const tbody = '<tbody>' + rows.map(r => {
+    const tbody = '<tbody>' + shownRows.map(r => {
       const playerCells = r.displayNames.slice(0, playerCount).map(n => `<td>${n}</td>`).join('');
       const wrPct = (r.winRate * 100).toFixed(1);
       const wrCls = r.winRate >= 0.52 ? 'wr-good' : r.winRate <= 0.48 ? 'wr-bad' : '';
@@ -859,6 +889,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     btn.addEventListener('click', () => {
       squadSize = btn.dataset.size;
       squadSort = { key: 'games', dir: 'desc' };
+      squadExpanded = false;
       document.querySelectorAll('#squad-size-toggle button').forEach(b => b.classList.toggle('on', b === btn));
       renderSquadTable();
     });
@@ -867,12 +898,14 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     btn.addEventListener('click', () => {
       squadLadder = btn.dataset.ladder;
       squadSort = { key: 'games', dir: 'desc' };
+      squadExpanded = false;
       document.querySelectorAll('#squad-ladder-toggle button').forEach(b => b.classList.toggle('on', b === btn));
       renderSquadTable();
     });
   });
   document.getElementById('squad-search').addEventListener('input', (e) => {
     squadFilter = e.target.value.toLowerCase().trim();
+    squadExpanded = false;
     renderSquadTable();
   });
 
@@ -898,12 +931,13 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
       return cvpSort.dir === 'asc' ? cmp : -cmp;
     });
+    // 4 narrow columns instead of 6 — civ icon (not name text) plus a
+    // stacked WR/games cell per side — so this fits a mobile screen
+    // width without horizontal scrolling, per the "one screenshot" ask.
     const cols = [
       { key: 'civ', label: 'Civ' },
-      { key: 'consoleWr', label: 'Console Arabia WR' },
-      { key: 'consoleGames', label: 'Games' },
-      { key: 'pcWr', label: 'PC Overall WR' },
-      { key: 'pcGames', label: 'Games' },
+      { key: 'consoleWr', label: 'Console' },
+      { key: 'pcWr', label: 'PC' },
       { key: 'absDiff', label: 'Diff' },
     ];
     const tableEl = document.getElementById('cvp-table');
@@ -915,7 +949,12 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     }).join('') + '</tr></thead>';
     const tbody = '<tbody>' + rows.map(r => {
       const diffCls = r.diff >= 0.5 ? 'wr-good' : r.diff <= -0.5 ? 'wr-bad' : '';
-      return `<tr><td>${r.civ}</td><td class="num">${r.consoleWr.toFixed(1)}%</td><td class="num">${r.consoleGames.toLocaleString()}</td><td class="num">${r.pcWr.toFixed(1)}%</td><td class="num">${r.pcGames.toLocaleString()}</td><td class="num"><span class="${diffCls}">${r.diff >= 0 ? '+' : ''}${r.diff.toFixed(1)}%</span></td></tr>`;
+      return `<tr>
+        <td class="num"><img src="${civIconUrl(r.civ)}" alt="${r.civ}" title="${r.civ}" style="height:22px;width:22px;object-fit:contain;vertical-align:middle" onerror="this.replaceWith(document.createTextNode('${r.civ.slice(0,3)}'))"></td>
+        <td class="num">${r.consoleWr.toFixed(1)}%<div class="pr-sub">${abbrevGames(r.consoleGames)}g</div></td>
+        <td class="num">${r.pcWr.toFixed(1)}%<div class="pr-sub">${abbrevGames(r.pcGames)}g</div></td>
+        <td class="num"><span class="${diffCls}">${r.diff >= 0 ? '+' : ''}${r.diff.toFixed(1)}%</span></td>
+      </tr>`;
     }).join('') + '</tbody>';
     tableEl.innerHTML = thead + tbody;
     tableEl.querySelectorAll('th[data-key]').forEach(th => {
