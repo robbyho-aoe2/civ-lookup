@@ -242,7 +242,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.84</div>
+    <div class="version">v1.85</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -259,6 +259,17 @@ const ALL_CIVS = [
   "Saracens","Shu","Sicilians","Slavs","Spanish","Tatars","Teutons","Tupi",
   "Turks","Vietnamese","Vikings","Wei","Wu"
 ];
+
+/* In-game civ crest/banner icons — same source repo as DATA_URL below
+   (SiegeEngineers/aoe2techtree), which also hosts the actual game-art
+   civ icons used on its own site. Filename is the civ name lowercased,
+   except Maya (file is "mayans.png" — the only mismatch across all 53). */
+const CIV_ICON_BASE = 'https://raw.githubusercontent.com/SiegeEngineers/aoe2techtree/master/img/Civs';
+const CIV_ICON_FILE_OVERRIDES = { Maya: 'mayans' };
+function civIconUrl(civName) {
+  const file = CIV_ICON_FILE_OVERRIDES[civName] || civName.toLowerCase();
+  return `${CIV_ICON_BASE}/${file}.png`;
+}
 
 const WR = {
   Armenians:[50.4,49.8,50.2,50.6,51.1], Aztecs:[52.3,51.2,52.1,53.0,53.8],
@@ -4666,7 +4677,10 @@ function civInfoHtml(civName, compact) {
   const oColor = oGrade ? GRADE_COLOR[oGrade] : 'var(--text3)';
   let h = `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-right:32px">
     <div>
-      <div class="info-name">${civName}</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="info-name">${civName}</div>
+        <img src="${civIconUrl(civName)}" alt="" style="height:40px;width:40px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">
+      </div>
       ${focus ? `<div class="info-focus">${focus}</div>` : ''}
     </div>
     ${oGrade ? `<div style="flex-shrink:0;text-align:center;padding:4px 12px;background:${oColor}15;border:2px solid ${oColor};border-radius:10px;margin-right:4px" title="${oEntry.wr.toFixed(1)}% recent-form win rate across ${oEntry.games} ${activeCivCardLadder} games, all maps — real match data">
