@@ -106,6 +106,7 @@ th.num,td.num{text-align:center;}
 .civ-table-wrap{overflow-x:auto;}
 .civ-table{min-width:640px;}
 #cvp-table{min-width:unset;width:100%;margin-top:10px;}
+#cvp-table th,#cvp-table td{padding:5px 2px;font-size:12px;}
 .civ-table th.civ-col,.civ-table td.civ-col{position:sticky;left:0;background:var(--surf);}
 .civ-table th{cursor:pointer;user-select:none;white-space:nowrap;}
 .civ-table th:hover{color:var(--amberL);}
@@ -930,13 +931,12 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
       return cvpSort.dir === 'asc' ? cmp : -cmp;
     });
-    // 4 narrow columns instead of 6 — civ icon (not name text) plus a
-    // stacked WR/games cell per side — so this fits a mobile screen
-    // width without horizontal scrolling, per the "one screenshot" ask.
     const cols = [
       { key: 'civ', label: 'Civ' },
       { key: 'consoleWr', label: 'Console' },
+      { key: 'consoleGames', label: 'Games' },
       { key: 'pcWr', label: 'PC' },
+      { key: 'pcGames', label: 'Games' },
       { key: 'absDiff', label: 'Diff' },
     ];
     const tableEl = document.getElementById('cvp-table');
@@ -949,9 +949,11 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     const tbody = '<tbody>' + rows.map(r => {
       const diffCls = r.diff >= 0.5 ? 'wr-good' : r.diff <= -0.5 ? 'wr-bad' : '';
       return `<tr>
-        <td style="display:flex;align-items:center;gap:6px;white-space:nowrap"><img src="${civIconUrl(r.civ)}" alt="" style="height:20px;width:20px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">${r.civ}</td>
-        <td class="num">${r.consoleWr.toFixed(1)}%<div class="pr-sub">${abbrevGames(r.consoleGames)}g</div></td>
-        <td class="num">${r.pcWr.toFixed(1)}%<div class="pr-sub">${abbrevGames(r.pcGames)}g</div></td>
+        <td style="white-space:nowrap"><div style="display:flex;align-items:center;gap:4px"><img src="${civIconUrl(r.civ)}" alt="" style="height:16px;width:16px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">${r.civ}</div></td>
+        <td class="num">${r.consoleWr.toFixed(1)}%</td>
+        <td class="num">${abbrevGames(r.consoleGames)}</td>
+        <td class="num">${r.pcWr.toFixed(1)}%</td>
+        <td class="num">${abbrevGames(r.pcGames)}</td>
         <td class="num"><span class="${diffCls}">${r.diff >= 0 ? '+' : ''}${r.diff.toFixed(1)}%</span></td>
       </tr>`;
     }).join('') + '</tbody>';
