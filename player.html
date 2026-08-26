@@ -98,6 +98,8 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
 .similar-players a span{font-size:11px;color:var(--text3);}
 
 .tracker-hint{font-size:11px;color:var(--text3);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-top:10px;}
+.tracker-hint a{color:var(--amberL);}
+.tracker-hint a:hover{text-decoration:none;}
 </style>
 </head>
 <body>
@@ -370,7 +372,7 @@ function render(content, entry, player) {
           <div class="player-badges" id="player-badges"></div>
         </div>
       </div>
-      ${entry.live ? `<div class="tracker-hint">Not part of the permanent AoE Auto Scout roster — this page was fetched live from AoE2Companion and won't be saved or refreshed automatically. To have ${entry.name} tracked permanently (so history builds up over time instead of being re-fetched from scratch each visit), add profileId ${entry.profileId} to players.json in the player-data repo.</div>` : ''}
+      ${entry.live ? `<div class="tracker-hint">Not part of the permanent AoE Auto Scout roster — this page was fetched live from AoE2Companion and won't be saved or refreshed automatically. Want ${entry.name} (profileId ${entry.profileId}) tracked permanently? Request it in the <a href="https://discord.gg/2uRZG6qSyy" target="_blank" rel="noopener">Discord</a> or in a comment on a <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank" rel="noopener">Fast Castle and Chill</a> video.</div>` : ''}
     </div>
 
     <div class="card">
