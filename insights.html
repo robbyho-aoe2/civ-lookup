@@ -273,7 +273,13 @@ async function loadAndRender() {
     // just this insight rather than reclassifying the accounts site-wide,
     // since that's a display-quality call for this one leaderboard, not a
     // group/tracking change.
-    const CROSSPLAY_EXCLUDE_IDS = new Set([13175835, 12868111]); // xXDeltaXFadesXx, MORIS0202
+    const CROSSPLAY_EXCLUDE_IDS = new Set([
+      13175835, // xXDeltaXFadesXx
+      12868111, // MORIS0202
+      106515,   // The Enfo4387 — reclassified console->pc in player-data;
+                // kept here too so this insight updates immediately
+                // instead of waiting on the next aggregate rebuild.
+    ]);
     const CROSSPLAY_DEDUP_PAIRS = [
       [20168942, 12798178], // Combi I Chow vs DS Chowde
       [20945272, 13379095], // Steve Irwin6443 vs ObelusCipher
