@@ -83,12 +83,17 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
 #player-search:focus{border-color:var(--amber);}
 #player-search-results{margin-top:10px;display:flex;flex-direction:column;gap:4px;}
 #player-search-results:empty{margin-top:0;}
-.search-result{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text);font-size:13px;}
+.search-result{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;}
 .search-result:hover{border-color:var(--amber);}
+.search-result a{text-decoration:none;color:var(--text);}
+.search-result .sr-link{display:flex;flex-direction:column;flex:1;min-width:0;}
 .search-result .sr-name{font-weight:700;}
 .search-result .sr-meta{font-size:11px;color:var(--text3);}
+.search-result .sr-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;}
 .search-result .sr-tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:20px;background:var(--surf2);border:1px solid var(--border2);color:var(--text2);flex-shrink:0;}
 .search-result .sr-tag.live{color:var(--amberL);border-color:var(--amber);}
+.search-result .sr-request{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:20px;background:transparent;border:1px solid var(--amber);color:var(--amberL);flex-shrink:0;}
+.search-result .sr-request:hover{background:var(--amber);color:var(--bg);}
 .search-hint{font-size:11px;color:var(--text3);padding:4px 2px;}
 
 .similar-players{display:flex;flex-wrap:wrap;gap:8px;}
@@ -146,6 +151,18 @@ function playerLinkOrName(name, id) {
 // runs straight from the browser.
 const LIVE_MATCHES_URL = 'https://data.aoe2companion.com/api/matches';
 const LIVE_PROFILE_URL = 'https://data.aoe2companion.com/api/profiles';
+
+// "Request this player be tracked" — a Google Form, pre-filled with the
+// player's name/profileId so the requester doesn't have to type it.
+const TRACKING_FORM_BASE = 'https://docs.google.com/forms/d/e/1FAIpQLSf1W55tEbIvrheo1FPsq9xOZSGoYJsbJ1bQTlGfpOOxbwRqiw/viewform';
+function requestTrackingUrl(name, id) {
+  const params = new URLSearchParams({
+    usp: 'pp_url',
+    'entry.729614305': name || '',
+    'entry.979581771': id != null ? String(id) : '',
+  });
+  return `${TRACKING_FORM_BASE}?${params.toString()}`;
+}
 const LIVE_PAGE_CAP = 25; // ~500 matches — bounded so an on-demand lookup stays fast
 const LADDER_MAP = {
   '1v1 Random Map (Console)':     '1v1 Console',
@@ -311,10 +328,15 @@ async function runPlayerSearch(query, resultsEl) {
 function renderSearchResults(local, live) {
   if (!local.length && !live.length) return '<div class="search-hint">No matches.</div>';
   const row = (p, isLive) => `
-    <a class="search-result" href="player.html?id=${p.profileId}">
-      <span><span class="sr-name">${p.name}</span>${p.games != null ? `<span class="sr-meta"> · ${Number(p.games).toLocaleString()} games</span>` : ''}</span>
-      <span class="sr-tag${isLive ? ' live' : ''}">${isLive ? 'live lookup' : 'tracked'}</span>
-    </a>`;
+    <div class="search-result">
+      <a class="sr-link" href="player.html?id=${p.profileId}">
+        <span class="sr-name">${p.name}</span>${p.games != null ? `<span class="sr-meta">${Number(p.games).toLocaleString()} games</span>` : ''}
+      </a>
+      <span class="sr-actions">
+        ${isLive ? `<a class="sr-request" href="${requestTrackingUrl(p.name, p.profileId)}" target="_blank" rel="noopener">request tracking</a>` : ''}
+        <span class="sr-tag${isLive ? ' live' : ''}">${isLive ? 'live lookup' : 'tracked'}</span>
+      </span>
+    </div>`;
   return local.map(p => row(p, false)).join('') + live.map(p => row(p, true)).join('');
 }
 
@@ -412,7 +434,7 @@ function render(content, entry, player) {
           <div class="player-badges" id="player-badges"></div>
         </div>
       </div>
-      ${entry.live ? `<div class="tracker-hint">Not part of the permanent AoE Auto Scout roster — this page was fetched live from AoE2Companion and won't be saved or refreshed automatically. Want ${entry.name} (profileId ${entry.profileId}) tracked permanently? Request it in the <a href="https://discord.gg/2uRZG6qSyy" target="_blank" rel="noopener">Discord</a> or in a comment on a <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank" rel="noopener">Fast Castle and Chill</a> video.</div>` : ''}
+      ${entry.live ? `<div class="tracker-hint">Not part of the permanent AoE Auto Scout roster — this page was fetched live from AoE2Companion and won't be saved or refreshed automatically. <a href="${requestTrackingUrl(entry.name, entry.profileId)}" target="_blank" rel="noopener">Request ${entry.name} be tracked permanently</a> (form pre-filled), or ask in the <a href="https://discord.gg/2uRZG6qSyy" target="_blank" rel="noopener">Discord</a> or a <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank" rel="noopener">Fast Castle and Chill</a> video comment.</div>` : ''}
     </div>
 
     <div class="card">
