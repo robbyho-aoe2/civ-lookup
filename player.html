@@ -173,6 +173,12 @@ function render(content, entry, player) {
       <p class="desc" id="opponents-desc">Head-to-head record vs. the most-played opponents.</p>
       <table id="opponents-table"></table>
     </div>
+
+    <div class="card" id="teammates-card">
+      <h2>Most Played Teammates</h2>
+      <p class="desc" id="teammates-desc">Win rate alongside the most-played teammates.</p>
+      <table id="teammates-table"></table>
+    </div>
   `;
 
   const badgesEl = document.getElementById('player-badges');
@@ -234,6 +240,8 @@ function render(content, entry, player) {
     renderBreakdownTable('map-table', matches, m => m.map);
     // ---- top opponents ----
     renderOpponentsTable(matches);
+    // ---- top teammates ----
+    renderTeammatesTable(matches, ladderName);
   }
 
   function renderOpponentsTable(matches) {
@@ -260,6 +268,43 @@ function render(content, entry, player) {
     const tableEl = document.getElementById('opponents-table');
     if (!rows.length) { tableEl.innerHTML = ''; return; }
     const thead = '<thead><tr><th>Opponent</th><th class="num">Games</th><th class="num">Win Rate</th></tr></thead>';
+    const tbody = '<tbody>' + rows.map(r => {
+      const wr = r.wins / r.games;
+      const wrCls = wr >= 0.52 ? 'wr-good' : wr <= 0.48 ? 'wr-bad' : '';
+      return `<tr><td>${r.name}</td><td class="num">${r.games}</td><td class="num ${wrCls}">${(wr * 100).toFixed(1)}%</td></tr>`;
+    }).join('') + '</tbody>';
+    tableEl.innerHTML = thead + tbody;
+  }
+
+  function renderTeammatesTable(matches, ladderName) {
+    const teammates = {};
+    let matchesWithTeammates = 0;
+    matches.forEach(m => {
+      if (!m.teammates || !m.teammates.length) return;
+      matchesWithTeammates++;
+      m.teammates.forEach(t => {
+        const key = t.profileId != null ? t.profileId : t.name;
+        if (key == null) return;
+        if (!teammates[key]) teammates[key] = { name: t.name || `#${t.profileId}`, games: 0, wins: 0 };
+        teammates[key].games++;
+        if (m.won) teammates[key].wins++;
+      });
+    });
+    const rows = Object.values(teammates).sort((a, b) => b.games - a.games).slice(0, 10);
+
+    const cardEl = document.getElementById('teammates-card');
+    const isTeamLadder = /team/i.test(ladderName);
+    if (!isTeamLadder) { cardEl.style.display = 'none'; return; }
+    cardEl.style.display = '';
+
+    const descEl = document.getElementById('teammates-desc');
+    descEl.textContent = matchesWithTeammates
+      ? `Win rate alongside the 10 most-played teammates, from ${matchesWithTeammates.toLocaleString()} of ${matches.length.toLocaleString()} matches with teammate data captured.`
+      : `No teammate data captured yet for this ladder — tracking was added recently, so only new matches from here on will have it.`;
+
+    const tableEl = document.getElementById('teammates-table');
+    if (!rows.length) { tableEl.innerHTML = ''; return; }
+    const thead = '<thead><tr><th>Teammate</th><th class="num">Games</th><th class="num">Win Rate</th></tr></thead>';
     const tbody = '<tbody>' + rows.map(r => {
       const wr = r.wins / r.games;
       const wrCls = wr >= 0.52 ? 'wr-good' : wr <= 0.48 ? 'wr-bad' : '';
