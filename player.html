@@ -359,16 +359,21 @@ function renderLandingPage(content) {
     .filter(p => p.ratings && p.ratings[ladder] != null)
     .sort((a, b) => b.ratings[ladder] - a.ratings[ladder])
     .slice(0, n);
-  // Pros/streamers don't share one fixed ladder, so show whatever rating
-  // they actually have (console players tracked as pro still show their
-  // console rating, etc.) instead of assuming 1v1 PC.
-  const primaryRatingLabel = p => {
+  // Pros/streamers don't share one fixed ladder, so sort/label by
+  // whichever of their ratings is highest (console players tracked as
+  // pro still show their console rating, etc.) instead of assuming 1v1 PC.
+  const bestRatingEntry = p => {
     const entries = Object.entries(p.ratings || {});
-    return entries.length ? `${entries[0][0]}: ${entries[0][1]}` : 'unrated';
+    return entries.length ? entries.reduce((best, cur) => cur[1] > best[1] ? cur : best) : null;
   };
+  const primaryRatingLabel = p => {
+    const best = bestRatingEntry(p);
+    return best ? `${best[0]}: ${best[1]}` : 'unrated';
+  };
+  const byBestRating = (a, b) => (bestRatingEntry(b)?.[1] ?? -1) - (bestRatingEntry(a)?.[1] ?? -1);
 
-  const pros = byGroup('pro').sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  const streamers = byGroup('streamer').sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const pros = byGroup('pro').sort(byBestRating);
+  const streamers = byGroup('streamer').sort(byBestRating);
   const topConsole = topByRating('console', '1v1 Console', 20);
   const topPc = topByRating('pc', '1v1 PC', 20);
 
