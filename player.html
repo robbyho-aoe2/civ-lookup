@@ -459,14 +459,26 @@ function render(content, entry, player) {
 
     <div class="card">
       <h2>Civ Pool</h2>
-      <p class="desc" id="civ-desc">Every civ ${entry.name} has played on this ladder, sorted by games — click a column to re-sort, scroll for the full list.</p>
+      <p class="desc" id="civ-desc">${entry.name}'s most-played civs on this ladder — click a column to re-sort.</p>
       <div class="table-scroll"><table id="civ-table"></table></div>
     </div>
 
     <div class="card">
       <h2>Map Pool</h2>
-      <p class="desc" id="map-desc">Performance by map — scroll for the full list.</p>
+      <p class="desc" id="map-desc">Performance by map.</p>
       <div class="table-scroll"><table id="map-table"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Top Civs on Arabia</h2>
+      <p class="desc" id="civ-arabia-desc">Civ picks and performance on Arabia specifically.</p>
+      <div class="table-scroll"><table id="civ-arabia-table"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Top Civs on Arena</h2>
+      <p class="desc" id="civ-arena-desc">Civ picks and performance on Arena specifically.</p>
+      <div class="table-scroll"><table id="civ-arena-table"></table></div>
     </div>
 
     <div class="card">
@@ -536,9 +548,12 @@ function render(content, entry, player) {
     renderTrend(matches);
 
     // ---- civ pool ----
-    renderBreakdownTable('civ-table', matches, m => m.civ);
+    renderBreakdownTable('civ-table', matches, m => m.civ, { limit: 10, descId: 'civ-desc', noun: 'civs', nameLabel: 'Civ' });
     // ---- map pool ----
-    renderBreakdownTable('map-table', matches, m => m.map);
+    renderBreakdownTable('map-table', matches, m => m.map, { limit: 10, descId: 'map-desc', noun: 'maps', nameLabel: 'Map' });
+    // ---- civ pool on Arabia / Arena specifically ----
+    renderBreakdownTable('civ-arabia-table', matches.filter(m => m.map === 'Arabia'), m => m.civ, { limit: 10, descId: 'civ-arabia-desc', noun: 'civs', nameLabel: 'Civ' });
+    renderBreakdownTable('civ-arena-table', matches.filter(m => m.map === 'Arena'), m => m.civ, { limit: 10, descId: 'civ-arena-desc', noun: 'civs', nameLabel: 'Civ' });
     // ---- top opponents ----
     renderOpponentsTable(matches);
     // ---- top teammates ----
@@ -723,7 +738,8 @@ function render(content, entry, player) {
   }
 
   const sortState = {};
-  function renderBreakdownTable(tableId, matches, keyFn) {
+  function renderBreakdownTable(tableId, matches, keyFn, opts = {}) {
+    const { limit = 10, descId, noun = 'items', nameLabel = 'Name' } = opts;
     const groups = {};
     matches.forEach(m => {
       const key = keyFn(m);
@@ -733,16 +749,18 @@ function render(content, entry, player) {
       if (m.won) groups[key].wins++;
     });
     const total = matches.length;
-    const rows = Object.entries(groups).map(([name, d]) => ({
+    const allRows = Object.entries(groups).map(([name, d]) => ({
       name, games: d.games, wins: d.wins, wr: d.wins / d.games, pickRate: d.games / total,
     }));
+    const rows = allRows.slice().sort((a, b) => b.games - a.games).slice(0, limit);
 
-    const descEl = document.getElementById(tableId === 'civ-table' ? 'civ-desc' : 'map-desc');
-    const noun = tableId === 'civ-table' ? 'civs' : 'maps';
+    const descEl = descId && document.getElementById(descId);
     if (descEl) {
       const coveredGames = rows.reduce((s, r) => s + r.games, 0);
       descEl.dataset.baseText = descEl.dataset.baseText || descEl.textContent;
-      descEl.textContent = `${descEl.dataset.baseText} (${rows.length} ${noun}, ${coveredGames.toLocaleString()} games)`;
+      descEl.textContent = allRows.length
+        ? `${descEl.dataset.baseText} (top ${rows.length} of ${allRows.length} ${noun}, ${coveredGames.toLocaleString()} games)`
+        : `${descEl.dataset.baseText} (no games)`;
     }
 
     if (!sortState[tableId]) sortState[tableId] = { key: 'games', dir: 'desc' };
@@ -756,7 +774,7 @@ function render(content, entry, player) {
         return sort.dir === 'asc' ? cmp : -cmp;
       });
       const cols = [
-        { key: 'name', label: tableId === 'civ-table' ? 'Civ' : 'Map' },
+        { key: 'name', label: nameLabel },
         { key: 'games', label: 'Games', num: true },
         { key: 'wr', label: 'Win Rate', num: true },
         { key: 'pickRate', label: 'Pick Rate', num: true },
