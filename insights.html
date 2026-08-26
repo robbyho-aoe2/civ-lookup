@@ -119,6 +119,14 @@ th.num,td.num{text-align:center;}
 .low-sample{opacity:.45;}
 .civ-controls{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
 .civ-ladder-toggle{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+#weekly-archive-select{background:var(--surf);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-size:12px;font-weight:600;margin-bottom:14px;font-family:inherit;}
+.weekly-section{margin-top:20px;}
+.weekly-section:first-child{margin-top:0;}
+.weekly-section h3{font-size:14px;margin:0 0 4px;color:var(--text);}
+.weekly-section .sub-desc{font-size:11px;color:var(--text3);margin:0 0 8px;}
+.weekly-empty{font-size:12px;color:var(--text3);font-style:italic;}
+.weekly-highlight{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;font-size:13px;}
+.weekly-highlight b{color:var(--amberL);}
 .civ-ladder-toggle button{background:none;border:none;padding:7px 12px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;}
 .civ-ladder-toggle button.on{background:var(--amber);color:#1a0a00;}
 .civ-search{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-size:12px;outline:none;width:160px;}
@@ -153,6 +161,7 @@ th.num,td.num{text-align:center;}
   </header>
 
   <nav class="insights-nav">
+    <a href="#weekly">📅 Weekly Recap</a>
     <a href="#distribution">Rating Distribution</a>
     <a href="#intensity">Play Intensity</a>
     <a href="#civs">Civ Leaderboard</a>
@@ -172,6 +181,8 @@ const PLAYER_DATA_BASE = 'https://raw.githubusercontent.com/robbyho-aoe2/player-
 const AGGREGATE_META_URL = `${PLAYER_DATA_BASE}/aggregate-meta.json`;
 const CONSOLE_CIVS_URL = `${PLAYER_DATA_BASE}/insights-console-civs.json`;
 const CONSOLE_SQUADS_URL = `${PLAYER_DATA_BASE}/insights-console-squads.json`;
+const WEEKLY_INDEX_URL = `${PLAYER_DATA_BASE}/weekly-reports/index.json`;
+const weeklyReportUrl = date => `${PLAYER_DATA_BASE}/weekly-reports/console-${date}.json`;
 const svgNS = 'http://www.w3.org/2000/svg';
 
 const brackets = [
@@ -329,6 +340,13 @@ async function loadAndRender() {
 
 function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows, squads) {
   content.innerHTML = `
+    <section id="weekly" class="card">
+      <h2>Weekly Recap</h2>
+      <p class="desc" id="weekly-desc">What happened in the console scene this week.</p>
+      <select id="weekly-archive-select" style="display:none"></select>
+      <div id="weekly-content"><div class="loading">Loading weekly recap…</div></div>
+    </section>
+
     <section id="distribution" class="card">
       <h2>Console Players — Rating Distribution</h2>
       <p class="desc">${stats.withRating.toLocaleString()} rated players (of ${stats.total.toLocaleString()} tracked) · 1v1 Console rating, live from the latest backfill</p>
@@ -1001,6 +1019,149 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     });
   }
   renderCvpTable();
+  loadAndRenderWeekly();
+}
+
+// ---- weekly recap ----
+function weeklyPct(x) { return x == null ? '—' : (x * 100).toFixed(1) + '%'; }
+function weeklyTable(headers, rows) {
+  if (!rows.length) return '<p class="weekly-empty">No data for this segment this week.</p>';
+  const thead = '<thead><tr>' + headers.map(h => `<th class="${h.num ? 'num' : ''}">${h.label}</th>`).join('') + '</tr></thead>';
+  const tbody = '<tbody>' + rows.map(cells => '<tr>' + cells.map((c, i) => `<td class="${headers[i].num ? 'num' : ''}">${c}</td>`).join('') + '</tr>').join('') + '</tbody>';
+  return `<table class="civ-table">${thead}${tbody}</table>`;
+}
+
+function renderWeeklyReport(report) {
+  const g = report.totalGames;
+  const headline = `
+    <div class="weekly-section">
+      <div class="stat-row">
+        <div class="stat-tile"><div class="label">All-Time 1v1</div><div class="value">${g.allTime1v1.toLocaleString()}</div></div>
+        <div class="stat-tile"><div class="label">All-Time Team</div><div class="value">${g.allTimeTeam.toLocaleString()}</div></div>
+        <div class="stat-tile"><div class="label">All-Time Combined</div><div class="value">${g.allTimeCombined.toLocaleString()}</div></div>
+        <div class="stat-tile"><div class="label">This Week (${report.windowStart} → ${report.windowEnd})</div><div class="value">${g.windowCombined.toLocaleString()}</div></div>
+      </div>
+      <p class="sub-desc">+${g.growth1v1.toLocaleString()} 1v1 / +${g.growthTeam.toLocaleString()} Team since last report · this week: ${g.window1v1.toLocaleString()} 1v1, ${g.windowTeam.toLocaleString()} Team${g.lowActivityCaveat ? ' — <b>note:</b> this looks low for the tracked pool, likely a data-refresh lag rather than an real activity drop' : ''}</p>
+    </div>`;
+
+  const mostGames = `
+    <div class="weekly-section">
+      <h3>Players With the Most Games This Week</h3>
+      ${weeklyTable(
+        [{ label: 'Player' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }],
+        report.mostGames.map(p => [p.name, p.games.toLocaleString(), weeklyPct(p.winRate)])
+      )}
+    </div>`;
+
+  const rivalryUpdates = `
+    <div class="weekly-section">
+      <h3>Rivalry Updates</h3>
+      <p class="sub-desc">The marquee all-time head-to-heads, and how much they grew this week.</p>
+      ${weeklyTable(
+        [{ label: 'Rivalry' }, { label: 'All-Time Games', num: true }, { label: 'Record', num: true }, { label: 'This Week', num: true }],
+        report.rivalryUpdates.map(r => [`${r.nameA} vs ${r.nameB}`, r.allTimeGames.toLocaleString(), r.record, r.gamesThisWindow ? `+${r.gamesThisWindow}` : 'quiet week'])
+      )}
+    </div>`;
+
+  const rivalryOfWeek = `
+    <div class="weekly-section">
+      <h3>Rivalry of the Week</h3>
+      ${report.rivalryOfWeek
+        ? `<div class="weekly-highlight"><b>${report.rivalryOfWeek.nameA}</b> vs <b>${report.rivalryOfWeek.nameB}</b> — ${report.rivalryOfWeek.gamesThisWindow} games this week, ${report.rivalryOfWeek.record}</div>`
+        : '<p class="weekly-empty">No pair played each other more than once this week.</p>'}
+    </div>`;
+
+  const upsets = `
+    <div class="weekly-section">
+      <h3>Biggest Upsets This Week</h3>
+      <p class="sub-desc">Based on each player's current rating, not their rating at the time of the match — an approximation.</p>
+      ${weeklyTable(
+        [{ label: 'Winner' }, { label: 'Loser' }, { label: 'Gap', num: true }, { label: 'Map' }, { label: 'Date' }],
+        report.biggestUpsets.map(u => [`${u.winnerName} (${u.winnerRating})`, `${u.loserName} (${u.loserRating})`, u.gap.toLocaleString(), u.map, u.date])
+      )}
+    </div>`;
+
+  const newPlayers = `
+    <div class="weekly-section">
+      <h3>New Players</h3>
+      ${weeklyTable(
+        [{ label: 'Player' }, { label: 'Games', num: true }, { label: 'Rating', num: true }, { label: 'First 10 WR', num: true }, { label: 'Day Span', num: true }],
+        report.newPlayers.map(p => [p.name, p.totalGames.toLocaleString(), p.rating ?? '—', weeklyPct(p.firstTenWinRate), p.daySpan == null ? '—' : p.daySpan.toLocaleString()])
+      )}
+    </div>`;
+
+  const cp = report.civPopularity;
+  const civPopularity = `
+    <div class="weekly-section">
+      <h3>Civ Popularity This Week</h3>
+      <p class="sub-desc">Most picked</p>
+      ${weeklyTable([{ label: 'Civ' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }], cp.topPicked.map(c => [c.civ, c.games.toLocaleString(), weeklyPct(c.winRate)]))}
+      <p class="sub-desc" style="margin-top:12px">Highest win rate</p>
+      ${weeklyTable([{ label: 'Civ' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }], cp.topWinRate.map(c => [c.civ, c.games.toLocaleString(), weeklyPct(c.winRate)]))}
+      <p class="sub-desc" style="margin-top:12px">Biggest movers vs. last week</p>
+      ${weeklyTable([{ label: 'Civ' }, { label: 'Change', num: true }, { label: 'Now' }, { label: 'Prior' }], cp.biggestMovers.map(c => [c.civ, `${c.pctPointChange >= 0 ? '+' : ''}${c.pctPointChange.toFixed(1)}pp`, weeklyPct(c.nowShare), weeklyPct(c.priorShare)]))}
+    </div>`;
+
+  const bm = report.biggestMovers;
+  const movers = `
+    <div class="weekly-section">
+      <h3>Biggest Movers (ELO)</h3>
+      <p class="sub-desc">Gainers</p>
+      ${weeklyTable([{ label: 'Player' }, { label: 'Change', num: true }, { label: 'Rating Now', num: true }], bm.gainers.map(p => [p.name, `+${p.delta}`, p.ratingNow.toLocaleString()]))}
+      <p class="sub-desc" style="margin-top:12px">Losers</p>
+      ${weeklyTable([{ label: 'Player' }, { label: 'Change', num: true }, { label: 'Rating Now', num: true }], bm.losers.map(p => [p.name, `${p.delta}`, p.ratingNow.toLocaleString()]))}
+      ${bm.newTop20.length ? `<p class="sub-desc" style="margin-top:12px">New to the top 20: ${bm.newTop20.map(p => `${p.name} (${p.ratingNow.toLocaleString()})`).join(', ')}</p>` : ''}
+    </div>`;
+
+  const sq = report.topSquads;
+  const squadTable = (label, rows) => `
+      <p class="sub-desc" style="margin-top:12px">${label}</p>
+      ${weeklyTable([{ label: 'Squad' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }], rows.map(r => [r.names.join(' + '), r.games.toLocaleString(), weeklyPct(r.winRate)]))}`;
+  const squads = `
+    <div class="weekly-section">
+      <h3>Top Duos / Trios / Quads This Week</h3>
+      ${squadTable('Duos', sq.duos)}
+      ${squadTable('Trios', sq.trios)}
+      ${squadTable('Quads', sq.quads)}
+    </div>`;
+
+  return headline + mostGames + rivalryUpdates + rivalryOfWeek + upsets + newPlayers + civPopularity + movers + squads;
+}
+
+async function loadAndRenderWeekly() {
+  const descEl = document.getElementById('weekly-desc');
+  const contentEl = document.getElementById('weekly-content');
+  const selectEl = document.getElementById('weekly-archive-select');
+  try {
+    const idxRes = await fetch(`${WEEKLY_INDEX_URL}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!idxRes.ok) throw new Error('no index yet');
+    const dates = await idxRes.json();
+    if (!dates.length) {
+      contentEl.innerHTML = '<p class="weekly-empty">First weekly recap is coming soon — check back after the next Monday update.</p>';
+      return;
+    }
+
+    selectEl.innerHTML = dates.map(d => `<option value="${d}">Week of ${d}</option>`).join('');
+    selectEl.style.display = '';
+
+    async function showWeek(date) {
+      contentEl.innerHTML = '<div class="loading">Loading weekly recap…</div>';
+      try {
+        const res = await fetch(`${weeklyReportUrl(date)}?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const report = await res.json();
+        descEl.textContent = `What happened in the console scene, ${report.windowStart} → ${report.windowEnd}.`;
+        contentEl.innerHTML = renderWeeklyReport(report);
+      } catch (e) {
+        contentEl.innerHTML = `<div class="error">Could not load this week's recap: ${e.message}</div>`;
+      }
+    }
+
+    selectEl.addEventListener('change', () => showWeek(selectEl.value));
+    showWeek(dates[0]);
+  } catch (e) {
+    contentEl.innerHTML = '<p class="weekly-empty">First weekly recap is coming soon — check back after the next Monday update.</p>';
+  }
 }
 
 loadAndRender();
