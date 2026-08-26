@@ -127,12 +127,8 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
 const PLAYER_DATA_BASE = 'https://raw.githubusercontent.com/robbyho-aoe2/player-data/main/data';
 const svgNS = 'http://www.w3.org/2000/svg';
 const params = new URLSearchParams(location.search);
-const profileId = params.get('id') || '197930'; // defaults to T90
-// Populated once meta loads — profileIds worth linking to their own
-// spotlight page. An opponent/teammate outside our tracked roster (most
-// of the matchmaking pool) just renders as plain text instead of a dead
-// link to a page that would 404 on "not found in tracked roster".
-let ALL_TRACKED = []; // meta.players, kept around for search + similar-players
+const profileId = params.get('id'); // null -> landing page instead of a specific player
+let ALL_TRACKED = []; // meta.players, kept around for search + similar-players + the landing page
 // Every opponent/teammate with a profileId gets linked now — player.html
 // handles untracked players via a live lookup (see fetchLivePlayer below),
 // so this no longer needs to gate on TRACKED_IDS to avoid a dead link.
@@ -336,6 +332,8 @@ async function loadAndRender() {
     ALL_TRACKED = meta.players || [];
     setupPlayerSearch();
 
+    if (!profileId) { renderLandingPage(content); return; }
+
     let entry = ALL_TRACKED.find(p => String(p.profileId) === String(profileId));
     let player;
     if (entry) {
@@ -353,6 +351,42 @@ async function loadAndRender() {
   } catch (e) {
     content.innerHTML = `<div class="error">Could not load player: ${e.message}</div>`;
   }
+}
+
+function renderLandingPage(content) {
+  const byGroup = g => ALL_TRACKED.filter(p => p.group === g);
+  const topByRating = (g, ladder, n) => byGroup(g)
+    .filter(p => p.ratings && p.ratings[ladder] != null)
+    .sort((a, b) => b.ratings[ladder] - a.ratings[ladder])
+    .slice(0, n);
+  // Pros/streamers don't share one fixed ladder, so show whatever rating
+  // they actually have (console players tracked as pro still show their
+  // console rating, etc.) instead of assuming 1v1 PC.
+  const primaryRatingLabel = p => {
+    const entries = Object.entries(p.ratings || {});
+    return entries.length ? `${entries[0][0]}: ${entries[0][1]}` : 'unrated';
+  };
+
+  const pros = byGroup('pro').sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const streamers = byGroup('streamer').sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const topConsole = topByRating('console', '1v1 Console', 20);
+  const topPc = topByRating('pc', '1v1 PC', 20);
+
+  const cards = (list, subtitleFn) => list.length
+    ? list.map(p => `<a href="player.html?id=${p.profileId}"><b>${p.name}</b><span>${subtitleFn(p)}</span></a>`).join('')
+    : '<p style="font-size:12px;color:var(--text3)">None tracked yet.</p>';
+  const section = (title, desc, html) => `
+    <div class="card">
+      <h2>${title}</h2>
+      <p class="desc">${desc}</p>
+      <div class="similar-players">${html}</div>
+    </div>`;
+
+  content.innerHTML =
+    section('Pro Players', 'Tournament-caliber players tracked on the site.', cards(pros, primaryRatingLabel)) +
+    section('Streamers', 'Content creators tracked on the site.', cards(streamers, primaryRatingLabel)) +
+    section('Top Console Players', 'Highest 1v1 Console ratings.', cards(topConsole, p => `${p.ratings['1v1 Console']} rating`)) +
+    section('Top PC Players', 'Highest 1v1 PC ratings.', cards(topPc, p => `${p.ratings['1v1 PC']} rating`));
 }
 
 function render(content, entry, player) {
