@@ -178,7 +178,8 @@ function render(content, entry, player) {
   badgesEl.innerHTML = `<span class="badge">${entry.group}</span>` +
     Object.entries(entry.ratings || {}).map(([l, r]) => `<span class="badge rating">${l}: ${r}</span>`).join('');
 
-  let activeLadder = ladders[0];
+  const requestedLadder = params.get('ladder');
+  let activeLadder = ladders.includes(requestedLadder) ? requestedLadder : ladders[0];
   const toggleEl = document.getElementById('ladder-toggle');
   toggleEl.innerHTML = ladders.map(l => `<button data-ladder="${l}" class="${l === activeLadder ? 'on' : ''}">${l}</button>`).join('');
   toggleEl.querySelectorAll('button').forEach(btn => {

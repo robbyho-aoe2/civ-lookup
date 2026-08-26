@@ -131,6 +131,8 @@ th.num,td.num{text-align:center;}
 .peak-rows{display:flex;flex-direction:column;gap:9px;}
 .peak-row{display:grid;grid-template-columns:150px 1fr 108px;align-items:center;gap:12px;}
 .peak-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.peak-name a,#crossplay-table td a{color:inherit;text-decoration:none;}
+.peak-name a:hover,#crossplay-table td a:hover{color:var(--amberL);text-decoration:underline;}
 .peak-rank{color:var(--text3);font-weight:400;margin-right:4px;}
 .peak-track{position:relative;height:18px;background:var(--bg);border:1px solid var(--border);border-radius:5px;overflow:hidden;}
 .peak-fill-ceiling{position:absolute;top:0;bottom:0;left:0;background:var(--border2);border-radius:5px;}
@@ -265,10 +267,33 @@ async function loadAndRender() {
       bracketAgg[b.key] = { players, games };
     });
 
+    // Curated cleanup for the Crossplay Ceiling insight specifically — a
+    // few tracked accounts turned out to be the same real person under a
+    // second profileId (smurf/alt), or otherwise didn't belong. Scoped to
+    // just this insight rather than reclassifying the accounts site-wide,
+    // since that's a display-quality call for this one leaderboard, not a
+    // group/tracking change.
+    const CROSSPLAY_EXCLUDE_IDS = new Set([13175835, 12868111]); // xXDeltaXFadesXx, MORIS0202
+    const CROSSPLAY_DEDUP_PAIRS = [
+      [20168942, 12798178], // Combi I Chow vs DS Chowde
+      [20945272, 13379095], // Steve Irwin6443 vs ObelusCipher
+      [23790720, 12760988], // Dolphinjack7648 vs Shadow8373
+    ];
+    const crossplayDropIds = new Set(CROSSPLAY_EXCLUDE_IDS);
+    CROSSPLAY_DEDUP_PAIRS.forEach(([idA, idB]) => {
+      const a = consolePlayers.find(p => p.profileId === idA);
+      const b = consolePlayers.find(p => p.profileId === idB);
+      const peakA = a?.peaks?.['1v1 PC']?.peak ?? -1;
+      const peakB = b?.peaks?.['1v1 PC']?.peak ?? -1;
+      crossplayDropIds.add(peakA >= peakB ? idB : idA);
+    });
+
     const crossplayRows = consolePlayers
       .filter(p => p.peaks && p.peaks['1v1 PC'] && p.peaks['1v1 PC'].peak != null)
+      .filter(p => !crossplayDropIds.has(p.profileId))
       .map(p => ({
         name: p.name,
+        profileId: p.profileId,
         peak: p.peaks['1v1 PC'].peak,
         current: p.peaks['1v1 PC'].current ?? p.peaks['1v1 PC'].peak,
       }))
@@ -763,6 +788,8 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     cpStatRow.appendChild(el);
   });
 
+  const cpPlayerLink = r => `player.html?id=${r.profileId}&ladder=${encodeURIComponent('1v1 PC')}`;
+
   const CP_SHOWN = 25;
   const cpMaxPeak = cpTracked ? crossplayRows[0].peak : 1;
   const cpRowsEl = document.getElementById('crossplay-rows');
@@ -772,7 +799,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     const row = document.createElement('div');
     row.className = 'peak-row';
     row.innerHTML = `
-      <div class="peak-name"><span class="peak-rank">#${i + 1}</span>${r.name}</div>
+      <div class="peak-name"><span class="peak-rank">#${i + 1}</span><a href="${cpPlayerLink(r)}">${r.name}</a></div>
       <div class="peak-track">
         <div class="peak-fill-ceiling" style="width:${ceilingPct}%"></div>
         <div class="peak-fill-current" style="width:${currentPct}%"></div>
@@ -786,7 +813,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     `View all ${cpTracked.toLocaleString()} as a table`;
   const cpTableEl = document.getElementById('crossplay-table');
   cpTableEl.innerHTML = '<thead><tr><th class="num">#</th><th>Player</th><th class="num">Peak</th><th class="num">Current</th></tr></thead>' +
-    '<tbody>' + crossplayRows.map((r, i) => `<tr><td class="num">${i + 1}</td><td>${r.name}</td><td class="num">${r.peak.toLocaleString()}</td><td class="num">${r.current.toLocaleString()}</td></tr>`).join('') + '</tbody>';
+    '<tbody>' + crossplayRows.map((r, i) => `<tr><td class="num">${i + 1}</td><td><a href="${cpPlayerLink(r)}">${r.name}</a></td><td class="num">${r.peak.toLocaleString()}</td><td class="num">${r.current.toLocaleString()}</td></tr>`).join('') + '</tbody>';
 
   // ---- top squads ----
   let squadLadder = 'all';
