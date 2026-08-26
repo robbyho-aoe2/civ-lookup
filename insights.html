@@ -140,8 +140,8 @@ th.num,td.num{text-align:center;}
 .peak-rows{display:flex;flex-direction:column;gap:9px;}
 .peak-row{display:grid;grid-template-columns:150px 1fr 108px;align-items:center;gap:12px;}
 .peak-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.peak-name a,#crossplay-table td a{color:inherit;text-decoration:none;}
-.peak-name a:hover,#crossplay-table td a:hover{color:var(--amberL);text-decoration:underline;}
+.peak-name a,#crossplay-table td a,#squad-table td a,.weekly-section td a,.weekly-highlight a{color:inherit;text-decoration:none;}
+.peak-name a:hover,#crossplay-table td a:hover,#squad-table td a:hover,.weekly-section td a:hover,.weekly-highlight a:hover{color:var(--amberL);text-decoration:underline;}
 .peak-rank{color:var(--text3);font-weight:400;margin-right:4px;}
 .peak-track{position:relative;height:18px;background:var(--bg);border:1px solid var(--border);border-radius:5px;overflow:hidden;}
 .peak-fill-ceiling{position:absolute;top:0;bottom:0;left:0;background:var(--border2);border-radius:5px;}
@@ -341,7 +341,7 @@ async function loadAndRender() {
     (meta.players || []).forEach(p => { nameOf[p.profileId] = p.name; });
     const namesFor = ids => ids.map(id => nameOf[id] || `player_${id}`);
     const squadRowsFor = list => (list || [])
-      .map(r => ({ names: namesFor(r.profileIds), games: r.games, wins: r.wins, winRate: r.games ? r.wins / r.games : 0 }));
+      .map(r => ({ names: namesFor(r.profileIds), profileIds: r.profileIds, games: r.games, wins: r.wins, winRate: r.games ? r.wins / r.games : 0 }));
     const squadScope = s => ({
       duos: squadRowsFor(s?.duos),
       trios: squadRowsFor(s?.trios),
@@ -874,7 +874,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     if (key === 'games') return row.games;
     if (key === 'winRate') return row.winRate;
     const idx = +key.slice(1);
-    return (row.displayNames[idx] || '').toLowerCase();
+    return (row.displayNames[idx]?.name || '').toLowerCase();
   }
 
   // When a search is active, a matched player can land in any column
@@ -883,10 +883,13 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
   // Pin the matched name to the first slot instead, so it reads
   // consistently as "searched player | their teammate(s)" and the
   // remaining columns become directly comparable/sortable across rows.
-  function orderedNames(names) {
-    if (!squadFilter) return names;
+  // Reorders {name, profileId} pairs together so a link never ends up
+  // paired with the wrong person's name after reordering.
+  function orderedNames(names, profileIds) {
+    const pairs = names.map((name, i) => ({ name, profileId: profileIds[i] }));
+    if (!squadFilter) return pairs;
     const matched = [], rest = [];
-    names.forEach(n => (n.toLowerCase().includes(squadFilter) ? matched : rest).push(n));
+    pairs.forEach(p => (p.name.toLowerCase().includes(squadFilter) ? matched : rest).push(p));
     return [...matched, ...rest];
   }
 
@@ -899,7 +902,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     }
     const rows = allRows
       .filter(r => !squadFilter || r.names.some(n => n.toLowerCase().includes(squadFilter)))
-      .map(r => ({ ...r, displayNames: orderedNames(r.names) }));
+      .map(r => ({ ...r, displayNames: orderedNames(r.names, r.profileIds) }));
     if (!rows.length) {
       tableEl.innerHTML = `<tbody><tr><td style="padding:16px 0;color:var(--text3);font-size:12px">No ${squadSize} matching "${squadFilter}".</td></tr></tbody>`;
       return;
@@ -940,7 +943,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     }).join('') + '</tr></thead>';
 
     const tbody = '<tbody>' + shownRows.map(r => {
-      const playerCells = r.displayNames.slice(0, playerCount).map(n => `<td>${n}</td>`).join('');
+      const playerCells = r.displayNames.slice(0, playerCount).map(p => `<td><a href="player.html?id=${p.profileId}">${p.name}</a></td>`).join('');
       const wrPct = (r.winRate * 100).toFixed(1);
       const wrCls = r.winRate >= 0.52 ? 'wr-good' : r.winRate <= 0.48 ? 'wr-bad' : '';
       return `<tr>${playerCells}<td class="num">${r.games.toLocaleString()}</td><td class="num"><span class="${wrCls}">${wrPct}%</span></td></tr>`;
@@ -1052,6 +1055,10 @@ function weeklyTable(headers, rows) {
   return `<table class="civ-table">${thead}${tbody}</table>`;
 }
 
+function wLink(name, id) {
+  return id != null ? `<a href="player.html?id=${id}">${name}</a>` : name;
+}
+
 function renderWeeklyReport(report) {
   const g = report.totalGames;
   const headline = `
@@ -1070,7 +1077,7 @@ function renderWeeklyReport(report) {
       <h3>Players With the Most Games This Week</h3>
       ${weeklyTable(
         [{ label: 'Player' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }],
-        report.mostGames.map(p => [p.name, p.games.toLocaleString(), weeklyPct(p.winRate)])
+        report.mostGames.map(p => [wLink(p.name, p.profileId), p.games.toLocaleString(), weeklyPct(p.winRate)])
       )}
     </div>`;
 
@@ -1080,7 +1087,7 @@ function renderWeeklyReport(report) {
       <p class="sub-desc">The marquee all-time head-to-heads, and how much they grew this week.</p>
       ${weeklyTable(
         [{ label: 'Rivalry' }, { label: 'All-Time Games', num: true }, { label: 'Record', num: true }, { label: 'This Week', num: true }],
-        report.rivalryUpdates.map(r => [`${r.nameA} vs ${r.nameB}`, r.allTimeGames.toLocaleString(), r.record, r.gamesThisWindow ? `+${r.gamesThisWindow}` : 'quiet week'])
+        report.rivalryUpdates.map(r => [`${wLink(r.nameA, r.idA)} vs ${wLink(r.nameB, r.idB)}`, r.allTimeGames.toLocaleString(), r.record, r.gamesThisWindow ? `+${r.gamesThisWindow}` : 'quiet week'])
       )}
     </div>`;
 
@@ -1088,7 +1095,7 @@ function renderWeeklyReport(report) {
     <div class="weekly-section">
       <h3>Rivalry of the Week</h3>
       ${report.rivalryOfWeek
-        ? `<div class="weekly-highlight"><b>${report.rivalryOfWeek.nameA}</b> vs <b>${report.rivalryOfWeek.nameB}</b> — ${report.rivalryOfWeek.gamesThisWindow} games this week, ${report.rivalryOfWeek.record}</div>`
+        ? `<div class="weekly-highlight"><b>${wLink(report.rivalryOfWeek.nameA, report.rivalryOfWeek.idA)}</b> vs <b>${wLink(report.rivalryOfWeek.nameB, report.rivalryOfWeek.idB)}</b> — ${report.rivalryOfWeek.gamesThisWindow} games this week, ${report.rivalryOfWeek.record}</div>`
         : '<p class="weekly-empty">No pair played each other more than once this week.</p>'}
     </div>`;
 
@@ -1098,7 +1105,7 @@ function renderWeeklyReport(report) {
       <p class="sub-desc">Based on each player's current rating, not their rating at the time of the match — an approximation.</p>
       ${weeklyTable(
         [{ label: 'Winner' }, { label: 'Loser' }, { label: 'Gap', num: true }, { label: 'Map' }, { label: 'Date' }],
-        report.biggestUpsets.map(u => [`${u.winnerName} (${u.winnerRating})`, `${u.loserName} (${u.loserRating})`, u.gap.toLocaleString(), u.map, u.date])
+        report.biggestUpsets.map(u => [`${wLink(u.winnerName, u.winnerId)} (${u.winnerRating})`, `${wLink(u.loserName, u.loserId)} (${u.loserRating})`, u.gap.toLocaleString(), u.map, u.date])
       )}
     </div>`;
 
@@ -1107,7 +1114,7 @@ function renderWeeklyReport(report) {
       <h3>New Players</h3>
       ${weeklyTable(
         [{ label: 'Player' }, { label: 'Games', num: true }, { label: 'Rating', num: true }, { label: 'First 10 WR', num: true }, { label: 'Day Span', num: true }],
-        report.newPlayers.map(p => [p.name, p.totalGames.toLocaleString(), p.rating ?? '—', weeklyPct(p.firstTenWinRate), p.daySpan == null ? '—' : p.daySpan.toLocaleString()])
+        report.newPlayers.map(p => [wLink(p.name, p.profileId), p.totalGames.toLocaleString(), p.rating ?? '—', weeklyPct(p.firstTenWinRate), p.daySpan == null ? '—' : p.daySpan.toLocaleString()])
       )}
     </div>`;
 
@@ -1128,16 +1135,16 @@ function renderWeeklyReport(report) {
     <div class="weekly-section">
       <h3>Biggest Movers (ELO)</h3>
       <p class="sub-desc">Gainers</p>
-      ${weeklyTable([{ label: 'Player' }, { label: 'Change', num: true }, { label: 'Rating Now', num: true }], bm.gainers.map(p => [p.name, `+${p.delta}`, p.ratingNow.toLocaleString()]))}
+      ${weeklyTable([{ label: 'Player' }, { label: 'Change', num: true }, { label: 'Rating Now', num: true }], bm.gainers.map(p => [wLink(p.name, p.profileId), `+${p.delta}`, p.ratingNow.toLocaleString()]))}
       <p class="sub-desc" style="margin-top:12px">Losers</p>
-      ${weeklyTable([{ label: 'Player' }, { label: 'Change', num: true }, { label: 'Rating Now', num: true }], bm.losers.map(p => [p.name, `${p.delta}`, p.ratingNow.toLocaleString()]))}
-      ${bm.newTop20.length ? `<p class="sub-desc" style="margin-top:12px">New to the top 20: ${bm.newTop20.map(p => `${p.name} (${p.ratingNow.toLocaleString()})`).join(', ')}</p>` : ''}
+      ${weeklyTable([{ label: 'Player' }, { label: 'Change', num: true }, { label: 'Rating Now', num: true }], bm.losers.map(p => [wLink(p.name, p.profileId), `${p.delta}`, p.ratingNow.toLocaleString()]))}
+      ${bm.newTop20.length ? `<p class="sub-desc" style="margin-top:12px">New to the top 20: ${bm.newTop20.map(p => `${wLink(p.name, p.profileId)} (${p.ratingNow.toLocaleString()})`).join(', ')}</p>` : ''}
     </div>`;
 
   const sq = report.topSquads;
   const squadTable = (label, rows) => `
       <p class="sub-desc" style="margin-top:12px">${label}</p>
-      ${weeklyTable([{ label: 'Squad' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }], rows.map(r => [r.names.join(' + '), r.games.toLocaleString(), weeklyPct(r.winRate)]))}`;
+      ${weeklyTable([{ label: 'Squad' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }], rows.map(r => [r.names.map((n, i) => wLink(n, r.profileIds?.[i])).join(' + '), r.games.toLocaleString(), weeklyPct(r.winRate)]))}`;
   const squads = `
     <div class="weekly-section">
       <h3>Top Duos / Trios / Quads This Week</h3>

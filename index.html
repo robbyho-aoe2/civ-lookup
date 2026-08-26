@@ -242,7 +242,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.88</div>
+    <div class="version">v1.89</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -3566,7 +3566,7 @@ function renderPlayerGrid() {
     gradeOf: c => grades[c] || null,
     valueOf: c => stats[c]?.wr || 0,
     valueLabel: c => `${stats[c].wr}% win rate (${stats[c].games} game${stats[c].games !== 1 ? 's' : ''})`,
-    headerHtml: `${p.emoji} ${p.label} — real personal civ win rates${ladderNote}${filterNote}${currentPatchNote}${recentFormNote}`,
+    headerHtml: `${p.emoji} ${p.label} — real personal civ win rates${ladderNote}${filterNote}${currentPatchNote}${recentFormNote} <a href="player.html?id=${p.profileId}" style="font-weight:400;text-transform:none;letter-spacing:normal;color:var(--amberL);text-decoration:none;font-size:11px">🔎 Full Spotlight →</a>`,
     subHeaderHtml: `<b style="color:var(--amberL)">${gamesLabel}</b> · Snapshot from ${meta.source}, pulled ${meta.pulledDate || 'recently'} — not live. Showing civs with ${activeMinGames > 0 ? activeMinGames + '+' : 'any number of'} games.${activeRecencyMode === 'form' ? ' Win rates below are recency-weighted, not flat averages.' : ''}${missingData.length ? ` No qualifying data for: ${missingData.slice(0,15).join(', ')}${missingData.length>15?'…':''}.` : ''}${mapPillsHtml}`,
     clearLabel: `${p.emoji} ${p.label} tier list`,
   });
