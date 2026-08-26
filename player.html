@@ -132,11 +132,13 @@ const profileId = params.get('id') || '197930'; // defaults to T90
 // spotlight page. An opponent/teammate outside our tracked roster (most
 // of the matchmaking pool) just renders as plain text instead of a dead
 // link to a page that would 404 on "not found in tracked roster".
-let TRACKED_IDS = new Set();
 let ALL_TRACKED = []; // meta.players, kept around for search + similar-players
+// Every opponent/teammate with a profileId gets linked now — player.html
+// handles untracked players via a live lookup (see fetchLivePlayer below),
+// so this no longer needs to gate on TRACKED_IDS to avoid a dead link.
 function playerLinkOrName(name, id) {
   const label = name || (id != null ? `#${id}` : 'Unknown');
-  if (id == null || !TRACKED_IDS.has(id)) return label;
+  if (id == null) return label;
   return `<a href="player.html?id=${id}">${label}</a>`;
 }
 
@@ -332,7 +334,6 @@ async function loadAndRender() {
     if (!metaRes.ok) throw new Error('HTTP ' + metaRes.status);
     const meta = await metaRes.json();
     ALL_TRACKED = meta.players || [];
-    TRACKED_IDS = new Set(ALL_TRACKED.map(p => p.profileId));
     setupPlayerSearch();
 
     let entry = ALL_TRACKED.find(p => String(p.profileId) === String(profileId));
