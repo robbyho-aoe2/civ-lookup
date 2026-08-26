@@ -242,7 +242,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.87</div>
+    <div class="version">v1.88</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2757,14 +2757,21 @@ function clearArchetype() {
    one place, rendered fresh (with correct 'on' state baked in) every time
    results redraw. Lives directly above the civ results, in the same spot
    the old S/A/B/C/D/F navigation pills used to occupy. */
-/* AGGREGATE.lastUpdated is 'YYYY-MM-DD' (set by build_aggregate.py each
-   pipeline run) — displayed next to the Players label so it's clear this
-   is real, dated data rather than a vague "snapshot". */
+/* AGGREGATE.lastUpdated is a full ISO 8601 UTC timestamp (set by
+   build_aggregate.py each pipeline run) — displayed next to the Players
+   label so it's clear this is real, dated data rather than a vague
+   "snapshot". Parsed via Date rather than string-split so it also
+   tolerates the older bare-date ('YYYY-MM-DD') format from before
+   timestamps were added. */
 function formatPlayerDataDate() {
   const iso = AGGREGATE?.lastUpdated;
   if (!iso) return '—';
-  const [y, m, d] = iso.split('-');
-  return `${m}/${d}/${y.slice(2)}`;
+  const d = new Date(iso);
+  if (isNaN(d)) return '—';
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const yy = String(d.getUTCFullYear()).slice(2);
+  return `${mm}/${dd}/${yy}`;
 }
 
 function renderSelectorPillsHtml() {

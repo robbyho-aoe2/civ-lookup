@@ -125,6 +125,7 @@ th.num,td.num{text-align:center;}
 .weekly-section h3{font-size:14px;margin:0 0 4px;color:var(--text);}
 .weekly-section .sub-desc{font-size:11px;color:var(--text3);margin:0 0 8px;}
 .weekly-empty{font-size:12px;color:var(--text3);font-style:italic;}
+.updated-label{display:block;font-size:10px;color:var(--text3);margin-top:2px;}
 .weekly-highlight{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;font-size:13px;}
 .weekly-highlight b{color:var(--amberL);}
 .civ-ladder-toggle button{background:none;border:none;padding:7px 12px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;}
@@ -234,6 +235,24 @@ function abbrevGames(n) {
   return String(n);
 }
 
+// build_aggregate.py writes lastUpdated as a full ISO 8601 UTC timestamp;
+// tolerate the older bare-date ('YYYY-MM-DD') format too since a page
+// load right after a rollout could still see it on a not-yet-rebuilt file.
+function formatUpdatedAt(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d)) return null;
+  const hasTime = iso.includes('T');
+  const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  if (!hasTime) return dateStr;
+  const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short' });
+  return `${dateStr}, ${timeStr}`;
+}
+function updatedLabel(iso) {
+  const formatted = formatUpdatedAt(iso);
+  return formatted ? `<span class="updated-label">Updated ${formatted}</span>` : '';
+}
+
 async function loadAndRender() {
   const content = document.getElementById('content');
   try {
@@ -332,13 +351,13 @@ async function loadAndRender() {
       pc: squadScope(squadsData.pc),
     };
 
-    render(content, binEntries, stats, bracketAgg, civsData, crossplayRows, squads);
+    render(content, binEntries, stats, bracketAgg, civsData, crossplayRows, squads, meta.lastUpdated, squadsData.lastUpdated);
   } catch (e) {
     content.innerHTML = `<div class="error">Could not load player data: ${e.message}</div>`;
   }
 }
 
-function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows, squads) {
+function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows, squads, metaLastUpdated, squadsLastUpdated) {
   content.innerHTML = `
     <section id="weekly" class="card">
       <h2>Weekly Recap</h2>
@@ -349,7 +368,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
 
     <section id="distribution" class="card">
       <h2>Console Players — Rating Distribution</h2>
-      <p class="desc">${stats.withRating.toLocaleString()} rated players (of ${stats.total.toLocaleString()} tracked) · 1v1 Console rating, live from the latest backfill</p>
+      <p class="desc">${stats.withRating.toLocaleString()} rated players (of ${stats.total.toLocaleString()} tracked) · 1v1 Console rating, live from the latest backfill${updatedLabel(metaLastUpdated)}</p>
       <div class="stat-row" id="stat-row"></div>
       <div class="chart-legend">
         <div class="chart-legend-item"><span class="legend-swatch-solid"></span>Players, bracket-colored (left axis)</div>
@@ -372,7 +391,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
 
     <section id="intensity" class="card">
       <h2>Play Intensity by Bracket</h2>
-      <p class="desc">Share of games played vs. share of players — how much more (or less) each bracket plays relative to its population size. 1.0x means proportional; higher means that bracket plays more than its numbers alone would suggest.</p>
+      <p class="desc">Share of games played vs. share of players — how much more (or less) each bracket plays relative to its population size. 1.0x means proportional; higher means that bracket plays more than its numbers alone would suggest.${updatedLabel(civsData.lastUpdated)}</p>
       <div class="civ-ladder-toggle" id="intensity-range-toggle">
         <button data-range="all" class="on">All Time</button>
         <button data-range="year">This Year</button>
@@ -383,7 +402,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
 
     <section id="civs" class="card">
       <h2>Civ Leaderboard by Bracket</h2>
-      <p class="desc">Pick rate and win rate per civ, split by console skill bracket.</p>
+      <p class="desc">Pick rate and win rate per civ, split by console skill bracket.${updatedLabel(civsData.lastUpdated)}</p>
       <div class="civ-controls">
         <div class="civ-ladder-toggle" id="civ-ladder-toggle">
           <button data-ladder="all" class="on">All Console</button>
@@ -400,7 +419,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
 
     <section id="crossplay" class="card">
       <h2>Crossplay Ceiling — Console Players on PC 1v1</h2>
-      <p class="desc">The highest PC 1v1 (crossplay) rating each console player has ever reached.</p>
+      <p class="desc">The highest PC 1v1 (crossplay) rating each console player has ever reached.${updatedLabel(metaLastUpdated)}</p>
       <div class="stat-row" id="crossplay-stat-row"></div>
       <div class="peak-legend">
         <div class="chart-legend-item"><span class="legend-swatch-solid" style="background:var(--border2)"></span>Peak</div>
@@ -415,7 +434,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
 
     <section id="squads" class="card">
       <h2>Top Squads — Console Team Games</h2>
-      <p class="desc">Tracked console players who repeatedly queue together as teammates on Team ladder games. Detection only sees teammates we already track, so this fills in as more players get backfilled — a real duo where one side isn't tracked yet won't show up until they are.</p>
+      <p class="desc">Tracked console players who repeatedly queue together as teammates on Team ladder games. Detection only sees teammates we already track, so this fills in as more players get backfilled — a real duo where one side isn't tracked yet won't show up until they are.${updatedLabel(squadsLastUpdated)}</p>
       <div class="civ-controls">
         <div class="civ-ladder-toggle" id="squad-ladder-toggle">
           <button data-ladder="all" class="on">All Team Games</button>
@@ -435,7 +454,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
 
     <section id="console-vs-pc" class="card">
       <h2>Console Arabia vs. PC Overall — Biggest Discrepancies</h2>
-      <p class="desc">Recency-weighted (90-day half-life, same as Form mode elsewhere) win rate for 1v1 Console on Arabia specifically vs. 1v1 PC overall across all maps — civs that swing hardest between the two, sorted by |difference|. A large negative gap usually means a civ that rewards precise micro/APM; positive means a simpler, bonus-driven civ that holds up better without it.</p>
+      <p class="desc">Recency-weighted (90-day half-life, same as Form mode elsewhere) win rate for 1v1 Console on Arabia specifically vs. 1v1 PC overall across all maps — civs that swing hardest between the two, sorted by |difference|. A large negative gap usually means a civ that rewards precise micro/APM; positive means a simpler, bonus-driven civ that holds up better without it.${updatedLabel(civsData.lastUpdated)}</p>
       <div class="civ-table-wrap"><table class="civ-table" id="cvp-table"></table></div>
     </section>
   `;
