@@ -78,6 +78,26 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
 
 .loading,.error{font-size:13px;color:var(--text2);padding:20px;text-align:center;}
 .error{color:var(--red);}
+
+#player-search{width:100%;height:36px;padding:0 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;outline:none;}
+#player-search:focus{border-color:var(--amber);}
+#player-search-results{margin-top:10px;display:flex;flex-direction:column;gap:4px;}
+#player-search-results:empty{margin-top:0;}
+.search-result{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text);font-size:13px;}
+.search-result:hover{border-color:var(--amber);}
+.search-result .sr-name{font-weight:700;}
+.search-result .sr-meta{font-size:11px;color:var(--text3);}
+.search-result .sr-tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:20px;background:var(--surf2);border:1px solid var(--border2);color:var(--text2);flex-shrink:0;}
+.search-result .sr-tag.live{color:var(--amberL);border-color:var(--amber);}
+.search-hint{font-size:11px;color:var(--text3);padding:4px 2px;}
+
+.similar-players{display:flex;flex-wrap:wrap;gap:8px;}
+.similar-players a{display:flex;flex-direction:column;gap:2px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text);font-size:12px;min-width:100px;}
+.similar-players a:hover{border-color:var(--amber);}
+.similar-players a b{font-size:13px;}
+.similar-players a span{font-size:11px;color:var(--text3);}
+
+.tracker-hint{font-size:11px;color:var(--text3);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-top:10px;}
 </style>
 </head>
 <body>
@@ -85,9 +105,16 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
   <header>
     <div>
       <h1>🔎 Player Spotlight</h1>
-      <p class="subtitle"><a class="back" href="insights.html">← back to Insights</a></p>
+      <p class="subtitle"><a class="back" href="index.html">← AoE Auto Scout</a> · <a class="back" href="insights.html">Insights</a></p>
     </div>
   </header>
+
+  <div class="card" id="lookup-card">
+    <h2>Look Up a Player</h2>
+    <p class="desc">Search anyone tracked on the site, or any AoE2 player by name/profileId — untracked players get fetched live.</p>
+    <input type="text" id="player-search" placeholder="Search by name or profileId…" autocomplete="off">
+    <div id="player-search-results"></div>
+  </div>
 
   <div id="content">
     <div class="loading">Loading player data…</div>
@@ -104,10 +131,191 @@ const profileId = params.get('id') || '197930'; // defaults to T90
 // of the matchmaking pool) just renders as plain text instead of a dead
 // link to a page that would 404 on "not found in tracked roster".
 let TRACKED_IDS = new Set();
+let ALL_TRACKED = []; // meta.players, kept around for search + similar-players
 function playerLinkOrName(name, id) {
   const label = name || (id != null ? `#${id}` : 'Unknown');
   if (id == null || !TRACKED_IDS.has(id)) return label;
   return `<a href="player.html?id=${id}">${label}</a>`;
+}
+
+// ---- live lookup for players outside the tracked roster ----
+// Ported from update_players.py's extract_match/get_opponents/
+// get_teammates so an untracked player's spotlight page computes
+// identically to a tracked one, just fetched fresh instead of from a
+// pre-backfilled file. CORS is open on this API (verified), so this
+// runs straight from the browser.
+const LIVE_MATCHES_URL = 'https://data.aoe2companion.com/api/matches';
+const LIVE_PROFILE_URL = 'https://data.aoe2companion.com/api/profiles';
+const LIVE_PAGE_CAP = 25; // ~500 matches — bounded so an on-demand lookup stays fast
+const LADDER_MAP = {
+  '1v1 Random Map (Console)':     '1v1 Console',
+  '1v1 Random Map (Controller)':  '1v1 Console',
+  'Team Random Map (Console)':    'Team Console',
+  'Team Random Map (Controller)': 'Team Console',
+  '1v1 Random Map':               '1v1 PC',
+  'Team Random Map':              'Team PC',
+};
+const PROFILE_LADDER_MAP = { rm_1v1_console: '1v1 Console', rm_team_console: 'Team Console', rm_1v1: '1v1 PC', rm_team: 'Team PC' };
+const CIV_NORM = { Mayans: 'Maya', Inca: 'Incas' };
+const MAX_DUR = 5 * 3600;
+
+function findOurPlayer(match, pid) {
+  for (const team of match.teams || []) {
+    for (const p of team.players || []) {
+      if (p.profileId === pid) return p;
+    }
+  }
+  return null;
+}
+function getOpponentsLive(match, pid) {
+  const teams = match.teams || [];
+  let ourIdx = -1;
+  teams.forEach((t, i) => { if (ourIdx === -1 && (t.players || []).some(p => p.profileId === pid)) ourIdx = i; });
+  if (ourIdx === -1) return [];
+  const out = [];
+  teams.forEach((t, i) => {
+    if (i === ourIdx) return;
+    (t.players || []).forEach(p => { if (p.profileId != null) out.push({ profileId: p.profileId, name: p.name }); });
+  });
+  return out;
+}
+function getTeammatesLive(match, pid) {
+  for (const t of match.teams || []) {
+    const players = t.players || [];
+    if (players.some(p => p.profileId === pid)) {
+      return players.filter(p => p.profileId != null && p.profileId !== pid).map(p => ({ profileId: p.profileId, name: p.name }));
+    }
+  }
+  return [];
+}
+function computeDurationLive(match) {
+  const start = match.started ? new Date(match.started) : null;
+  const end = match.finished ? new Date(match.finished) : null;
+  if (!start || !end || isNaN(start) || isNaN(end)) return null;
+  const dur = Math.round((end - start) / 1000);
+  return (dur > 0 && dur <= MAX_DUR) ? dur : null;
+}
+function coerceDateLive(ts) {
+  if (!ts) return null;
+  const d = new Date(ts);
+  return isNaN(d) ? null : d.toISOString().slice(0, 10);
+}
+function extractMatchLive(raw, pid) {
+  const ladder = LADDER_MAP[raw.leaderboardName || ''];
+  if (!ladder) return null;
+  if (raw.matchId == null) return null;
+  const ourPlayer = findOurPlayer(raw, pid);
+  const won = ourPlayer ? ourPlayer.won : null;
+  const civRaw = ourPlayer ? (ourPlayer.civName || ourPlayer.civilizationName || ourPlayer.civ) : null;
+  const civ = civRaw != null ? (CIV_NORM[civRaw] || civRaw) : null;
+  const map = raw.mapName || raw.map || null;
+  return {
+    ladder,
+    record: {
+      matchId: raw.matchId, civ, map, won,
+      date: coerceDateLive(raw.started || raw.finished),
+      dur: computeDurationLive(raw),
+      opponents: getOpponentsLive(raw, pid),
+      teammates: getTeammatesLive(raw, pid),
+    },
+  };
+}
+
+async function fetchLivePlayer(id) {
+  const numId = Number(id);
+  const profRes = await fetch(`${LIVE_PROFILE_URL}/${numId}`);
+  if (!profRes.ok) throw new Error(`Player ${id} not found (HTTP ${profRes.status})`);
+  const profile = await profRes.json();
+  if (!profile || !profile.name) throw new Error(`Player ${id} not found`);
+
+  const ladders = {
+    '1v1 Console': { meta: {}, matches: [] }, 'Team Console': { meta: {}, matches: [] },
+    '1v1 PC': { meta: {}, matches: [] }, 'Team PC': { meta: {}, matches: [] },
+  };
+  for (let page = 1; page <= LIVE_PAGE_CAP; page++) {
+    const res = await fetch(`${LIVE_MATCHES_URL}?profile_ids=${numId}&page=${page}`);
+    if (!res.ok) break;
+    const data = await res.json();
+    const raw = Array.isArray(data) ? data : (data.matches || []);
+    if (!raw.length) break;
+    for (const m of raw) {
+      const ex = extractMatchLive(m, numId);
+      if (ex) ladders[ex.ladder].matches.push(ex.record);
+    }
+    if (raw.length < 20) break; // short page — end of this player's history
+  }
+
+  const ratings = {}, peaks = {};
+  (profile.ratings || []).forEach(r => {
+    const ladderName = PROFILE_LADDER_MAP[r.leaderboardId];
+    if (!ladderName || !r.ratings || !r.ratings.length) return;
+    ratings[ladderName] = r.ratings[0].rating;
+    peaks[ladderName] = { peak: Math.max(...r.ratings.map(x => x.rating)), current: r.ratings[0].rating };
+  });
+
+  return {
+    entry: { name: profile.name, profileId: numId, group: null, ratings, peaks, live: true },
+    player: { name: profile.name, profileId: numId, group: null, ladders },
+  };
+}
+
+// ---- search: "See <name>'s Insights" ----
+let searchDebounce = null;
+function setupPlayerSearch() {
+  const input = document.getElementById('player-search');
+  const resultsEl = document.getElementById('player-search-results');
+  input.addEventListener('input', () => {
+    clearTimeout(searchDebounce);
+    const q = input.value.trim();
+    if (q.length < 2) { resultsEl.innerHTML = ''; return; }
+    searchDebounce = setTimeout(() => runPlayerSearch(q, resultsEl), 300);
+  });
+}
+
+async function runPlayerSearch(query, resultsEl) {
+  const qLower = query.toLowerCase();
+  const localMatches = ALL_TRACKED
+    .filter(p => p.name && p.name.toLowerCase().includes(qLower))
+    .slice(0, 8);
+  const foundIds = new Set(localMatches.map(p => p.profileId));
+
+  resultsEl.innerHTML = renderSearchResults(localMatches, []) + '<div class="search-hint">Searching AoE2Companion for more…</div>';
+
+  // Numeric query — could be a direct profileId even if not in our roster.
+  const isNumeric = /^\d+$/.test(query);
+  const liveResults = [];
+  try {
+    if (isNumeric && !foundIds.has(Number(query))) {
+      const res = await fetch(`${LIVE_PROFILE_URL}/${query}`);
+      if (res.ok) {
+        const p = await res.json();
+        if (p && p.name) liveResults.push({ profileId: Number(query), name: p.name });
+      }
+    } else if (!isNumeric && query.length >= 3) {
+      const res = await fetch(`${LIVE_PROFILE_URL}?search=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const data = await res.json();
+        (data.profiles || []).forEach(p => {
+          if (!foundIds.has(p.profileId) && liveResults.length < 8) {
+            foundIds.add(p.profileId);
+            liveResults.push({ profileId: p.profileId, name: p.name, games: p.games });
+          }
+        });
+      }
+    }
+  } catch (e) { /* live search is best-effort — local results still stand */ }
+
+  resultsEl.innerHTML = renderSearchResults(localMatches, liveResults);
+}
+
+function renderSearchResults(local, live) {
+  if (!local.length && !live.length) return '<div class="search-hint">No matches.</div>';
+  const row = (p, isLive) => `
+    <a class="search-result" href="player.html?id=${p.profileId}">
+      <span><span class="sr-name">${p.name}</span>${p.games != null ? `<span class="sr-meta"> · ${Number(p.games).toLocaleString()} games</span>` : ''}</span>
+      <span class="sr-tag${isLive ? ' live' : ''}">${isLive ? 'live lookup' : 'tracked'}</span>
+    </a>`;
+  return local.map(p => row(p, false)).join('') + live.map(p => row(p, true)).join('');
 }
 
 function fmtDur(seconds) {
@@ -121,13 +329,22 @@ async function loadAndRender() {
     const metaRes = await fetch(`${PLAYER_DATA_BASE}/aggregate-meta.json?t=${Date.now()}`, { cache: 'no-store' });
     if (!metaRes.ok) throw new Error('HTTP ' + metaRes.status);
     const meta = await metaRes.json();
-    TRACKED_IDS = new Set((meta.players || []).map(p => p.profileId));
-    const entry = (meta.players || []).find(p => String(p.profileId) === String(profileId));
-    if (!entry) throw new Error(`Player ${profileId} not found in tracked roster`);
+    ALL_TRACKED = meta.players || [];
+    TRACKED_IDS = new Set(ALL_TRACKED.map(p => p.profileId));
+    setupPlayerSearch();
 
-    const dataRes = await fetch(`${PLAYER_DATA_BASE}/${entry.group}/${profileId}.json?t=${Date.now()}`, { cache: 'no-store' });
-    if (!dataRes.ok) throw new Error('HTTP ' + dataRes.status);
-    const player = await dataRes.json();
+    let entry = ALL_TRACKED.find(p => String(p.profileId) === String(profileId));
+    let player;
+    if (entry) {
+      const dataRes = await fetch(`${PLAYER_DATA_BASE}/${entry.group}/${profileId}.json?t=${Date.now()}`, { cache: 'no-store' });
+      if (!dataRes.ok) throw new Error('HTTP ' + dataRes.status);
+      player = await dataRes.json();
+    } else {
+      content.innerHTML = '<div class="loading">Not in the tracked roster — fetching live from AoE2Companion…</div>';
+      const live = await fetchLivePlayer(profileId);
+      entry = live.entry;
+      player = live.player;
+    }
 
     render(content, entry, player);
   } catch (e) {
@@ -153,11 +370,18 @@ function render(content, entry, player) {
           <div class="player-badges" id="player-badges"></div>
         </div>
       </div>
+      ${entry.live ? `<div class="tracker-hint">Not part of the permanent AoE Auto Scout roster — this page was fetched live from AoE2Companion and won't be saved or refreshed automatically. To have ${entry.name} tracked permanently (so history builds up over time instead of being re-fetched from scratch each visit), add profileId ${entry.profileId} to players.json in the player-data repo.</div>` : ''}
     </div>
 
     <div class="card">
       <div class="ladder-toggle" id="ladder-toggle"></div>
       <div class="stat-row" id="stat-row"></div>
+    </div>
+
+    <div class="card" id="similar-card">
+      <h2>Similar Players</h2>
+      <p class="desc" id="similar-desc">Tracked players with a close rating on this ladder.</p>
+      <div class="similar-players" id="similar-players"></div>
     </div>
 
     <div class="card">
@@ -205,7 +429,7 @@ function render(content, entry, player) {
     .filter(([l, p]) => !shownLadders.has(l) && p && p.current != null)
     .map(([l, p]) => `<span class="badge rating crossplay">${l}: ${p.current}</span>`)
     .join('');
-  badgesEl.innerHTML = `<span class="badge">${entry.group}</span>` +
+  badgesEl.innerHTML = `<span class="badge">${entry.group || 'not tracked'}</span>` +
     Object.entries(entry.ratings || {}).map(([l, r]) => `<span class="badge rating">${l}: ${r}</span>`).join('') +
     crossplayBadges;
 
@@ -255,6 +479,28 @@ function render(content, entry, player) {
     renderOpponentsTable(matches);
     // ---- top teammates ----
     renderTeammatesTable(matches, ladderName);
+    // ---- similar players (by rating, this ladder) ----
+    renderSimilarPlayers(ladderName);
+  }
+
+  function renderSimilarPlayers(ladderName) {
+    const cardEl = document.getElementById('similar-card');
+    const descEl = document.getElementById('similar-desc');
+    const listEl = document.getElementById('similar-players');
+    const myRating = (entry.ratings || {})[ladderName];
+    if (myRating == null) {
+      descEl.textContent = `Not enough ${ladderName} games for a rating yet.`;
+      listEl.innerHTML = '';
+      return;
+    }
+    const pool = ALL_TRACKED
+      .filter(p => p.profileId !== entry.profileId && p.ratings && p.ratings[ladderName] != null)
+      .map(p => ({ name: p.name, profileId: p.profileId, rating: p.ratings[ladderName], diff: Math.abs(p.ratings[ladderName] - myRating) }))
+      .sort((a, b) => a.diff - b.diff)
+      .slice(0, 8);
+    descEl.textContent = `Tracked players closest to ${entry.name}'s ${ladderName} rating (${myRating}).`;
+    if (!pool.length) { listEl.innerHTML = '<p class="weekly-empty" style="font-size:12px;color:var(--text3)">No other tracked players on this ladder yet.</p>'; return; }
+    listEl.innerHTML = pool.map(p => `<a href="player.html?id=${p.profileId}"><b>${p.name}</b><span>${p.rating} rating</span></a>`).join('');
   }
 
   function renderOpponentsTable(matches) {
