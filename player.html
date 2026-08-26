@@ -32,6 +32,7 @@ header .back:hover{color:var(--amberL);}
 .player-badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px;}
 .badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--surf2);border:1px solid var(--border2);color:var(--text2);}
 .badge.rating{background:var(--amberBg);color:var(--amberL);border-color:var(--amber);}
+.badge.rating.crossplay{background:var(--surf2);color:var(--text2);border-color:var(--border2);}
 
 .ladder-toggle{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin:0 auto 16px;width:fit-content;}
 .ladder-toggle button{background:none;border:none;padding:8px 16px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;white-space:nowrap;}
@@ -175,8 +176,19 @@ function render(content, entry, player) {
   `;
 
   const badgesEl = document.getElementById('player-badges');
+  const shownLadders = new Set(Object.keys(entry.ratings || {}));
+  // entry.ratings is restricted to the player's own group's ladders (e.g.
+  // console players only get 1v1/Team Console here), but entry.peaks
+  // always carries every ladder regardless of group — so a console
+  // player's PC crossplay rating never shows up in ratings even when
+  // they have one. Fill those in from peaks as extra pills.
+  const crossplayBadges = Object.entries(entry.peaks || {})
+    .filter(([l, p]) => !shownLadders.has(l) && p && p.current != null)
+    .map(([l, p]) => `<span class="badge rating crossplay">${l}: ${p.current}</span>`)
+    .join('');
   badgesEl.innerHTML = `<span class="badge">${entry.group}</span>` +
-    Object.entries(entry.ratings || {}).map(([l, r]) => `<span class="badge rating">${l}: ${r}</span>`).join('');
+    Object.entries(entry.ratings || {}).map(([l, r]) => `<span class="badge rating">${l}: ${r}</span>`).join('') +
+    crossplayBadges;
 
   const requestedLadder = params.get('ladder');
   let activeLadder = ladders.includes(requestedLadder) ? requestedLadder : ladders[0];
