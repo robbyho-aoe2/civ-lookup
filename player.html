@@ -26,6 +26,7 @@ header .back:hover{color:var(--amberL);}
 .card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
 .card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
 .card .desc{font-size:12px;color:var(--text2);margin:0 0 18px;}
+.card-tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:0 0 8px;}
 
 .player-hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;}
 .player-name{font-size:26px;font-weight:800;}
@@ -493,6 +494,15 @@ function render(content, entry, player) {
       <table id="teammates-table"></table>
     </div>
   `;
+
+  // Stamp every card with the player's name so a screenshot of any single
+  // insight box (cropped out of context) still shows whose stats they are.
+  content.querySelectorAll('.card').forEach(card => {
+    const tag = document.createElement('div');
+    tag.className = 'card-tag';
+    tag.textContent = `${entry.name} · AoE Auto Scout`;
+    card.prepend(tag);
+  });
 
   const badgesEl = document.getElementById('player-badges');
   const shownLadders = new Set(Object.keys(entry.ratings || {}));
