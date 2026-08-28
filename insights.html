@@ -28,6 +28,10 @@ header h1{font-size:20px;margin:0;}
 header .back{font-size:13px;color:var(--text2);text-decoration:none;}
 header .back:hover{color:var(--amberL);}
 .subtitle{font-size:13px;color:var(--text2);margin:2px 0 0;}
+.page-tabs{display:flex;gap:6px;margin:0 0 22px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.page-tabs a{padding:10px 16px;font-size:13px;font-weight:600;color:var(--text2);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.page-tabs a:hover{color:var(--text);}
+.page-tabs a.on{color:var(--amberL);border-bottom-color:var(--amber);}
 
 .card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
 .card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
@@ -157,9 +161,14 @@ th.num,td.num{text-align:center;}
   <header>
     <div>
       <h1>📊 Insights</h1>
-      <p class="subtitle"><a class="back" href="index.html">← back to AoE Auto Scout</a></p>
     </div>
   </header>
+
+  <nav class="page-tabs">
+    <a href="index.html">🏠 Auto Scout</a>
+    <a href="insights.html" class="on">📊 Insights</a>
+    <a href="build-order.html">🛠️ Build Order</a>
+  </nav>
 
   <nav class="insights-nav">
     <a href="#weekly">📅 Weekly Recap</a>

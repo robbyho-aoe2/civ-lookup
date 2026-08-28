@@ -1,0 +1,2567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Build Order Builder — AoE Auto Scout</title>
+<style>
+:root{
+  --bg:#0f0d0b;--surf:#1c1814;--surf2:#242018;--border:#332c24;--border2:#4a3f30;
+  --amber:#c8922a;--amberL:#f0b458;--amberBg:rgba(200,146,42,.1);
+  --text:#ede5d8;--text2:#a8967e;--text3:#6b5840;
+  --green:#4ade80;--greenBg:rgba(74,222,128,.07);--greenBd:rgba(74,222,128,.25);
+  --red:#f87171;--redBg:rgba(248,113,113,.07);--redBd:rgba(248,113,113,.25);
+  --food:#8fd15a;--wood:#c8922a;--gold:#f0d458;--stone:#9aa5b1;
+  --radius:8px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;}
+.wrap{max-width:900px;margin:0 auto;padding:28px 20px 60px;}
+
+header{display:flex;align-items:center;gap:14px;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+header h1{font-size:20px;margin:0;}
+header .back{font-size:13px;color:var(--text2);text-decoration:none;}
+header .back:hover{color:var(--amberL);}
+.subtitle{font-size:13px;color:var(--text2);margin:2px 0 0;}
+.page-tabs{display:flex;gap:6px;margin:0 0 22px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.page-tabs a{padding:10px 16px;font-size:13px;font-weight:600;color:var(--text2);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.page-tabs a:hover{color:var(--text);}
+.page-tabs a.on{color:var(--amberL);border-bottom-color:var(--amber);}
+
+.card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
+.card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
+.card .desc{font-size:12px;color:var(--text2);margin:0 0 16px;}
+
+select,input[type=number]{background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-size:13px;padding:8px 10px;font-family:inherit;}
+select:focus,input:focus{outline:none;border-color:var(--amber);}
+label{font-size:12px;color:var(--text2);}
+
+.res-pill{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--surf2);border:1px solid var(--border2);white-space:nowrap;}
+.res-pill.food{color:var(--food);}
+.res-pill.wood{color:var(--wood);}
+.res-pill.gold{color:var(--gold);}
+.res-pill.stone{color:var(--stone);}
+.cost-pills{display:flex;gap:5px;flex-wrap:wrap;}
+
+.tech-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+@media (max-width:640px){.tech-grid{grid-template-columns:1fr;}}
+.tech-group h3{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin:0 0 8px;}
+.tech-row{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);}
+.tech-row:last-child{border-bottom:none;}
+.tech-row input[type=checkbox]{accent-color:var(--amber);width:15px;height:15px;flex-shrink:0;}
+.tech-row .tname{flex:1;}
+.tech-row .tage{font-size:10px;color:var(--text3);}
+.tech-row .tbonus{font-size:11px;color:var(--amberL);font-weight:700;}
+.tech-row.locked .tname{color:var(--text2);}
+.tech-row.locked .tbonus::after{content:' (free)';color:var(--text3);font-weight:400;}
+
+table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;vertical-align:middle;}
+th{color:var(--text3);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.04em;white-space:nowrap;}
+th.num,td.num{text-align:center;}
+.unit-group-row td{padding-top:16px;padding-bottom:4px;border-bottom:none;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:700;}
+tr.unique-row td{background:var(--amberBg);}
+tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
+.qty-input{width:52px;text-align:center;padding:5px 4px;}
+.tier-select{background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:11px;padding:4px 6px;max-width:150px;}
+.save-check{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2);white-space:nowrap;cursor:pointer;}
+.save-check input{accent-color:var(--amber);}
+.tech-row .save-check{margin-left:auto;}
+
+.pending-card{margin-top:18px;border-top:1px solid var(--border);padding-top:16px;}
+.pending-card h3{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin:0 0 8px;}
+.pending-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.pending-item:last-child{border-bottom:none;}
+.pending-item.total .save-time{font-weight:800;font-size:14px;}
+.save-time{font-weight:700;color:var(--amberL);}
+.save-time.blocked{color:var(--red);}
+
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:4px;}
+.stat-tile{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;}
+.stat-tile .label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:4px;}
+.stat-tile .value{font-size:19px;font-weight:800;}
+
+.alloc-row{display:flex;align-items:center;gap:12px;margin:10px 0;}
+.alloc-row .rname{width:64px;font-size:12px;font-weight:700;flex-shrink:0;}
+.alloc-bar-wrap{flex:1;background:var(--bg);border-radius:6px;overflow:hidden;height:22px;border:1px solid var(--border);}
+.alloc-bar{height:100%;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:11px;font-weight:700;color:#1a0a00;transition:width .25s;white-space:nowrap;min-width:2px;}
+.alloc-row .rvills{width:110px;text-align:right;font-size:12px;color:var(--text2);flex-shrink:0;}
+.alloc-row .rvills b{color:var(--text);}
+
+.empty-hint{font-size:12px;color:var(--text3);padding:14px 0;text-align:center;}
+.assumptions{font-size:11px;color:var(--text3);line-height:1.6;margin-top:4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>🛠️ Build Order Builder</h1>
+      <p class="subtitle"><a class="back" href="player.html">🔎 Player Spotlight</a></p>
+    </div>
+  </header>
+
+  <nav class="page-tabs">
+    <a href="index.html">🏠 Auto Scout</a>
+    <a href="insights.html">📊 Insights</a>
+    <a href="build-order.html" class="on">🛠️ Build Order</a>
+  </nav>
+
+  <div class="card">
+    <h2>What this does</h2>
+    <p class="desc" style="margin-bottom:0">Pick a civ, the economy upgrades you'll have, and the army you want to keep producing — this works out the resource income you need and tells you how many villagers to put on Wood/Food/Gold/Stone to sustain it.</p>
+    <p class="assumptions">Steady-state estimate, not a minute-by-minute timeline: it assumes you keep this mix in constant production forever (not a one-time batch) and food comes from farms (not hunting/berries). Villager counts are a target ratio to sustain that rotation, not "move vills at pop X" instructions.</p>
+  </div>
+
+  <div class="card">
+    <h2>Civilization</h2>
+    <p class="desc">Adds their unique unit(s) to the roster below and applies any economy bonus they have.</p>
+    <select id="civ-select"></select>
+  </div>
+
+  <div class="card">
+    <h2>Starting Point</h2>
+    <p class="desc">Where you are right now — caps which upgrade tiers are selectable below (can't have Long Swordsmen in Feudal Age) and sets the starting villager count for the savings simulation.</p>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-end;">
+      <div>
+        <label for="start-age" style="display:block;margin-bottom:6px;">Current Age</label>
+        <select id="start-age">
+          <option value="Dark">Dark Age</option>
+          <option value="Feudal" selected>Feudal Age</option>
+          <option value="Castle">Castle Age</option>
+          <option value="Imperial">Imperial Age</option>
+        </select>
+      </div>
+      <div>
+        <label for="start-vills" style="display:block;margin-bottom:6px;">Starting Villagers</label>
+        <input type="number" id="start-vills" value="20" min="0" style="width:80px;">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Economy Upgrades</h2>
+    <p class="desc">Check what you'll have researched by the time this composition is in full production.</p>
+    <div class="tech-grid" id="tech-grid"></div>
+  </div>
+
+  <div class="card">
+    <h2>Army Composition</h2>
+    <p class="desc">Set how many <b>production buildings</b> you'll keep queuing each unit — 2 Barracks on Long Swordsmen, 1 Archery Range on Crossbowmen, etc. Zero = not in production. Pick each line's current upgrade tier — training cost doesn't change, but train time does. The Town Center row's Villager count defaults to 1 (constant villager production) — set it to 0 for "all-in" (stop making villagers).</p>
+    <div style="max-height:460px;overflow-y:auto;">
+      <table id="unit-table"></table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Villager Allocation</h2>
+    <p class="desc" id="results-desc">Add units above to see the split.</p>
+    <div id="results-body"></div>
+  </div>
+</div>
+
+<script>
+// ─── Placeholder data — replaced with researched AoE2:DE numbers before ship ───
+const DATA = {
+  // Verified against current AoE2:DE game data (Update 177723) — see
+  // dataSourceNotes below for confidence levels and known gaps.
+  gatherRates: { wood: 0.32, food: 0.33, gold: 0.30, stone: 0.30 },
+  villager: { cost:{food:50,wood:0,gold:0,stone:0}, trainTime:25 },
+  dataSourceNotes: 'Wood/gold/stone base gather rates are widely-cited community figures, not independently re-verified. Full 53-civ roster with unique units and unavailableUnitLines pulled programmatically from game data; ecoBonuses cover 11 civs whose bonuses cleanly matched this calculator\'s bonus shapes (see aoe2_civs_data.json sourceNotes for real bonuses that were excluded for not fitting, e.g. Portuguese -20% gold cost, Byzantines\' line-scoped discount).',
+  ecoTechs: [
+    { id:'double-bit-axe', name:'Double-Bit Axe', age:'Feudal', resource:'wood', bonusPct:20, cost:{food:100,wood:50,gold:0,stone:0} },
+    { id:'bow-saw',        name:'Bow Saw',         age:'Castle', resource:'wood', bonusPct:20, cost:{food:150,wood:100,gold:0,stone:0} },
+    { id:'two-man-saw',    name:'Two-Man Saw',     age:'Imperial', resource:'wood', bonusPct:10, cost:{food:300,wood:200,gold:0,stone:0} },
+    { id:'gold-mining',       name:'Gold Mining',       age:'Feudal', resource:'gold', bonusPct:15, cost:{food:100,wood:75,gold:0,stone:0} },
+    { id:'gold-shaft-mining', name:'Gold Shaft Mining', age:'Castle', resource:'gold', bonusPct:15, cost:{food:175,wood:75,gold:0,stone:0} },
+    { id:'stone-mining',       name:'Stone Mining',       age:'Feudal', resource:'stone', bonusPct:15, cost:{food:100,wood:75,gold:0,stone:0} },
+    { id:'stone-shaft-mining', name:'Stone Shaft Mining', age:'Castle', resource:'stone', bonusPct:15, cost:{food:175,wood:75,gold:0,stone:0} },
+    // Mill farm line — each bonusPct is relative to the PRIOR tier's total
+    // (matches how these techs actually work: Horse Collar 175->250 food,
+    // Heavy Plow 250->375, Crop Rotation 375->550), so straight multiplicative
+    // stacking (what effectiveGatherRate already does) reproduces the real
+    // totals almost exactly.
+    { id:'horse-collar',  name:'Horse Collar',  age:'Feudal', resource:'food', bonusPct:42.9, cost:{food:75,wood:75,gold:0,stone:0}, group:'mill' },
+    { id:'heavy-plow',    name:'Heavy Plow',     age:'Castle', resource:'food', bonusPct:50.0, cost:{food:125,wood:125,gold:0,stone:0}, group:'mill' },
+    { id:'crop-rotation', name:'Crop Rotation',  age:'Imperial', resource:'food', bonusPct:46.7, cost:{food:250,wood:250,gold:0,stone:0}, group:'mill' },
+    // Town Center techs. Loom is cost-only (no gather effect, just here so it
+    // can be "saved for" like anything else). Wheelbarrow/Hand Cart boost
+    // carry capacity + movement speed — approximated as an all-resource rate
+    // bump since this tool has no distance/travel model; Hand Cart's 50% is
+    // a TOTAL that replaces Wheelbarrow's 25% rather than stacking on top of
+    // it (handled by `supersedes` in effectiveGatherRate).
+    { id:'loom', name:'Loom', age:'Dark', resource:null, bonusPct:0, cost:{food:0,wood:0,gold:50,stone:0}, group:'tc' },
+    { id:'wheelbarrow', name:'Wheelbarrow', age:'Feudal', resource:'all', bonusPct:25, cost:{food:175,wood:50,gold:0,stone:0}, group:'tc' },
+    { id:'hand-cart',    name:'Hand Cart',    age:'Castle', resource:'all', bonusPct:50, cost:{food:300,wood:200,gold:0,stone:0}, group:'tc', supersedes:'wheelbarrow' },
+  ],
+  unitLines: [
+    { id:'militia-line', name:'Militia', building:'Barracks', cost:{food:50,wood:0,gold:20,stone:0}, pop:1, tiers:[
+      { name:'Militia', age:'Dark', trainTime:21 },
+      { name:'Man-at-Arms', age:'Feudal', trainTime:21, upgradeCost:{food:100,wood:0,gold:40,stone:0}, upgradeResearchTime:40 },
+      { name:'Long Swordsman', age:'Castle', trainTime:21, upgradeCost:{food:150,wood:0,gold:65,stone:0}, upgradeResearchTime:40 },
+      { name:'Two-Handed Swordsman', age:'Imperial', trainTime:21, upgradeCost:{food:200,wood:0,gold:100,stone:0}, upgradeResearchTime:45 },
+      { name:'Champion', age:'Imperial', trainTime:21, upgradeCost:{food:650,wood:0,gold:350,stone:0}, upgradeResearchTime:70 },
+    ]},
+    { id:'spearman-line', name:'Spearman', building:'Barracks', cost:{food:35,wood:25,gold:0,stone:0}, pop:1, tiers:[
+      { name:'Spearman', age:'Feudal', trainTime:22 },
+      { name:'Pikeman', age:'Castle', trainTime:22, upgradeCost:{food:160,wood:0,gold:90,stone:0}, upgradeResearchTime:35 },
+      { name:'Halberdier', age:'Imperial', trainTime:22, upgradeCost:{food:300,wood:0,gold:600,stone:0}, upgradeResearchTime:50 },
+    ]},
+    { id:'eagle-line', name:'Eagle Scout', building:'Barracks', cost:{food:20,wood:0,gold:50,stone:0}, pop:1, civRestriction:'Aztecs, Mayans, Incas (and other Mesoamerican civs) only', tiers:[
+      { name:'Eagle Scout', age:'Feudal', trainTime:50 },
+      { name:'Eagle Warrior', age:'Castle', trainTime:35, upgradeCost:{food:200,wood:0,gold:200,stone:0}, upgradeResearchTime:50 },
+      { name:'Elite Eagle Warrior', age:'Imperial', trainTime:20, upgradeCost:{food:800,wood:0,gold:500,stone:0}, upgradeResearchTime:50 },
+    ]},
+    { id:'archer-line', name:'Archer', building:'Archery Range', cost:{food:0,wood:25,gold:45,stone:0}, pop:1, tiers:[
+      { name:'Archer', age:'Feudal', trainTime:35 },
+      { name:'Crossbowman', age:'Castle', trainTime:27, upgradeCost:{food:175,wood:0,gold:100,stone:0}, upgradeResearchTime:35 },
+      { name:'Arbalest', age:'Imperial', trainTime:27, upgradeCost:{food:450,wood:0,gold:350,stone:0}, upgradeResearchTime:50 },
+    ]},
+    { id:'skirmisher-line', name:'Skirmisher', building:'Archery Range', cost:{food:25,wood:35,gold:0,stone:0}, pop:1, tiers:[
+      { name:'Skirmisher', age:'Feudal', trainTime:22 },
+      { name:'Elite Skirmisher', age:'Castle', trainTime:22, upgradeCost:{food:0,wood:230,gold:130,stone:0}, upgradeResearchTime:50 },
+    ]},
+    { id:'cavalry-archer-line', name:'Cavalry Archer', building:'Archery Range', cost:{food:0,wood:40,gold:60,stone:0}, pop:1, tiers:[
+      { name:'Cavalry Archer', age:'Castle', trainTime:37 },
+      { name:'Heavy Cavalry Archer', age:'Imperial', trainTime:27, upgradeCost:{food:900,wood:0,gold:500,stone:0}, upgradeResearchTime:50 },
+    ]},
+    { id:'scout-cavalry-line', name:'Scout Cavalry', building:'Stable', cost:{food:80,wood:0,gold:0,stone:0}, pop:1, tiers:[
+      { name:'Scout Cavalry', age:'Feudal', trainTime:30 },
+      { name:'Light Cavalry', age:'Castle', trainTime:30, upgradeCost:{food:150,wood:0,gold:50,stone:0}, upgradeResearchTime:45 },
+      { name:'Hussar', age:'Imperial', trainTime:30, upgradeCost:{food:500,wood:0,gold:600,stone:0}, upgradeResearchTime:50 },
+    ]},
+    { id:'knight-line', name:'Knight', building:'Stable', cost:{food:60,wood:0,gold:75,stone:0}, pop:1, tiers:[
+      { name:'Knight', age:'Castle', trainTime:30 },
+      { name:'Cavalier', age:'Imperial', trainTime:30, upgradeCost:{food:300,wood:0,gold:300,stone:0}, upgradeResearchTime:80 },
+      { name:'Paladin', age:'Imperial', trainTime:30, upgradeCost:{food:1300,wood:0,gold:750,stone:0}, upgradeResearchTime:170 },
+    ]},
+    { id:'camel-line', name:'Camel Rider', building:'Stable', cost:{food:55,wood:0,gold:60,stone:0}, pop:1, civRestriction:'Camel Rider civs only; Imperial Camel Rider is Hindustanis-exclusive', tiers:[
+      { name:'Camel Rider', age:'Castle', trainTime:22 },
+      { name:'Heavy Camel Rider', age:'Imperial', trainTime:20, upgradeCost:{food:325,wood:0,gold:360,stone:0}, upgradeResearchTime:105 },
+      { name:'Imperial Camel Rider', age:'Imperial', trainTime:20, upgradeCost:{food:1000,wood:0,gold:500,stone:0}, upgradeResearchTime:125 },
+    ]},
+    { id:'mangonel-line', name:'Mangonel', building:'Siege Workshop', cost:{food:0,wood:160,gold:135,stone:0}, pop:1, tiers:[
+      { name:'Mangonel', age:'Castle', trainTime:46 },
+      { name:'Onager', age:'Imperial', trainTime:46, upgradeCost:{food:800,wood:0,gold:500,stone:0}, upgradeResearchTime:75 },
+      { name:'Siege Onager', age:'Imperial', trainTime:46, upgradeCost:{food:1450,wood:0,gold:1000,stone:0}, upgradeResearchTime:150 },
+    ]},
+    { id:'scorpion-line', name:'Scorpion', building:'Siege Workshop', cost:{food:0,wood:75,gold:75,stone:0}, pop:1, tiers:[
+      { name:'Scorpion', age:'Castle', trainTime:30 },
+      { name:'Heavy Scorpion', age:'Imperial', trainTime:30, upgradeCost:{food:800,wood:750,gold:0,stone:0}, upgradeResearchTime:50 },
+    ]},
+    { id:'ram-line', name:'Battering Ram', building:'Siege Workshop', cost:{food:0,wood:160,gold:75,stone:0}, pop:1, civNote:'Cumans can train it in Feudal Age instead of Castle', tiers:[
+      { name:'Battering Ram', age:'Castle', trainTime:36 },
+      { name:'Capped Ram', age:'Imperial', trainTime:36, upgradeCost:{food:300,wood:0,gold:0,stone:0}, upgradeResearchTime:50 },
+      { name:'Siege Ram', age:'Imperial', trainTime:36, upgradeCost:{food:1000,wood:0,gold:0,stone:0}, upgradeResearchTime:75 },
+    ]},
+    { id:'hand-cannoneer', name:'Hand Cannoneer', building:'Barracks', cost:{food:45,wood:0,gold:50,stone:0}, pop:1, tiers:[{ name:'Hand Cannoneer', age:'Imperial', trainTime:34 }] },
+    { id:'bombard-cannon', name:'Bombard Cannon', building:'Siege Workshop', cost:{food:0,wood:225,gold:225,stone:0}, pop:1, tiers:[{ name:'Bombard Cannon', age:'Imperial', trainTime:56 }] },
+    { id:'trebuchet', name:'Trebuchet', building:'Siege Workshop', cost:{food:0,wood:200,gold:200,stone:0}, pop:1, tiers:[{ name:'Trebuchet', age:'Imperial', trainTime:50 }] },
+    { id:'monk', name:'Monk', building:'Monastery', cost:{food:0,wood:0,gold:100,stone:0}, pop:1, tiers:[{ name:'Monk', age:'Castle', trainTime:51 }] },
+    { id:'petard', name:'Petard', building:'Siege Workshop', cost:{food:65,wood:0,gold:20,stone:0}, pop:1, tiers:[{ name:'Petard', age:'Castle', trainTime:25 }] },
+  ],
+  // Full civ roster (53 civs) — unique-unit stats and unavailableUnitLines
+  // pulled programmatically from SiegeEngineers/aoe2techtree data.json;
+  // ecoBonuses limited to items matching this calculator's 4 bonus shapes
+  // (most civs legitimately have none). See scratchpad/aoe2_civs_data.json
+  // sourceNotes for what was deliberately excluded and why.
+  civs: [
+    {
+      "id": "armenians",
+      "name": "Armenians",
+      "uniqueUnits": [
+        {
+          "name": "Composite Bowman",
+          "age": "Castle",
+          "building": "Archery Range",
+          "cost": {
+            "food": 0,
+            "wood": 35,
+            "gold": 45,
+            "stone": 0
+          },
+          "trainTime": 12,
+          "pop": 1
+        },
+        {
+          "name": "Warrior Priest",
+          "age": "Castle",
+          "building": "Monastery",
+          "cost": {
+            "food": 40,
+            "wood": 0,
+            "gold": 50,
+            "stone": 0
+          },
+          "trainTime": 30,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "aztecs",
+      "name": "Aztecs",
+      "uniqueUnits": [
+        {
+          "name": "Jaguar Warrior",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 60,
+            "wood": 0,
+            "gold": 30,
+            "stone": 0
+          },
+          "trainTime": 12,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "cavalry-archer-line",
+        "scout-cavalry-line",
+        "knight-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "bengalis",
+      "name": "Bengalis",
+      "uniqueUnits": [
+        {
+          "name": "Ratha",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 0,
+            "wood": 60,
+            "gold": 60,
+            "stone": 0
+          },
+          "trainTime": 20,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "cavalry-archer-line",
+        "knight-line",
+        "camel-line",
+        "ram-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "berbers",
+      "name": "Berbers",
+      "uniqueUnits": [
+        {
+          "name": "Camel Archer",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 0,
+            "wood": 50,
+            "gold": 60,
+            "stone": 0
+          },
+          "trainTime": 25,
+          "pop": 1
+        },
+        {
+          "name": "Genitour",
+          "age": "Castle",
+          "building": "Archery Range",
+          "cost": {
+            "food": 40,
+            "wood": 35,
+            "gold": 0,
+            "stone": 0
+          },
+          "trainTime": 25,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line"
+      ]
+    },
+    {
+      "id": "bohemians",
+      "name": "Bohemians",
+      "uniqueUnits": [
+        {
+          "name": "Hussite Wagon",
+          "age": "Castle",
+          "building": "Siege Workshop",
+          "cost": {
+            "food": 0,
+            "wood": 110,
+            "gold": 70,
+            "stone": 0
+          },
+          "trainTime": 30,
+          "pop": 1
+        },
+        {
+          "name": "Houfnice",
+          "age": "Imperial",
+          "building": "Siege Workshop",
+          "cost": {
+            "food": 0,
+            "wood": 225,
+            "gold": 225,
+            "stone": 0
+          },
+          "trainTime": 56,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [
+        {
+          "type": "free-tech",
+          "techId": "gold-mining",
+          "note": "Mining Camp technologies free"
+        },
+        {
+          "type": "free-tech",
+          "techId": "gold-shaft-mining",
+          "note": "Mining Camp technologies free"
+        },
+        {
+          "type": "free-tech",
+          "techId": "stone-mining",
+          "note": "Mining Camp technologies free"
+        },
+        {
+          "type": "free-tech",
+          "techId": "stone-shaft-mining",
+          "note": "Mining Camp technologies free"
+        }
+      ],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "cavalry-archer-line",
+        "camel-line"
+      ]
+    },
+    {
+      "id": "britons",
+      "name": "Britons",
+      "uniqueUnits": [
+        {
+          "name": "Longbowman",
+          "age": "Castle",
+          "building": "Archery Range",
+          "cost": {
+            "food": 0,
+            "wood": 35,
+            "gold": 40,
+            "stone": 0
+          },
+          "trainTime": 18,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "bulgarians",
+      "name": "Bulgarians",
+      "uniqueUnits": [
+        {
+          "name": "Konnik",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 60,
+            "wood": 0,
+            "gold": 70,
+            "stone": 0
+          },
+          "trainTime": 16,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "burgundians",
+      "name": "Burgundians",
+      "uniqueUnits": [
+        {
+          "name": "Coustillier",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 55,
+            "wood": 0,
+            "gold": 55,
+            "stone": 0
+          },
+          "trainTime": 15,
+          "pop": 1
+        },
+        {
+          "name": "Flemish Militia",
+          "age": "Feudal",
+          "building": "Barracks",
+          "cost": {
+            "food": 30,
+            "wood": 0,
+            "gold": 25,
+            "stone": 0
+          },
+          "trainTime": 14,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line"
+      ]
+    },
+    {
+      "id": "burmese",
+      "name": "Burmese",
+      "uniqueUnits": [
+        {
+          "name": "Arambai",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 0,
+            "wood": 75,
+            "gold": 60,
+            "stone": 0
+          },
+          "trainTime": 18,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [
+        {
+          "type": "free-tech",
+          "techId": "double-bit-axe",
+          "note": "Lumber Camp technologies free"
+        },
+        {
+          "type": "free-tech",
+          "techId": "bow-saw",
+          "note": "Lumber Camp technologies free"
+        },
+        {
+          "type": "free-tech",
+          "techId": "two-man-saw",
+          "note": "Lumber Camp technologies free"
+        }
+      ],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "hand-cannoneer"
+      ]
+    },
+    {
+      "id": "byzantines",
+      "name": "Byzantines",
+      "uniqueUnits": [
+        {
+          "name": "Cataphract",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 70,
+            "wood": 0,
+            "gold": 75,
+            "stone": 0
+          },
+          "trainTime": 20,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line"
+      ]
+    },
+    {
+      "id": "celts",
+      "name": "Celts",
+      "uniqueUnits": [
+        {
+          "name": "Woad Raider",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 70,
+            "wood": 0,
+            "gold": 25,
+            "stone": 0
+          },
+          "trainTime": 10,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [
+        {
+          "resource": "wood",
+          "type": "pct",
+          "value": 15,
+          "note": "Lumberjacks work 15% faster"
+        }
+      ],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "chinese",
+      "name": "Chinese",
+      "uniqueUnits": [
+        {
+          "name": "Chu Ko Nu",
+          "age": "Castle",
+          "building": "Archery Range",
+          "cost": {
+            "food": 0,
+            "wood": 40,
+            "gold": 35,
+            "stone": 0
+          },
+          "trainTime": 16,
+          "pop": 1
+        },
+        {
+          "name": "Dragon Ship",
+          "age": "Castle",
+          "building": "Dock",
+          "cost": {
+            "food": 0,
+            "wood": 75,
+            "gold": 45,
+            "stone": 0
+          },
+          "trainTime": 27,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "mangonel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "cumans",
+      "name": "Cumans",
+      "uniqueUnits": [
+        {
+          "name": "Kipchak",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 0,
+            "wood": 60,
+            "gold": 35,
+            "stone": 0
+          },
+          "trainTime": 20,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "dravidians",
+      "name": "Dravidians",
+      "uniqueUnits": [
+        {
+          "name": "Urumi Swordsman",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 65,
+            "wood": 0,
+            "gold": 20,
+            "stone": 0
+          },
+          "trainTime": 9,
+          "pop": 1
+        },
+        {
+          "name": "Thirisadai",
+          "age": "Imperial",
+          "building": "Dock",
+          "cost": {
+            "food": 0,
+            "wood": 180,
+            "gold": 60,
+            "stone": 0
+          },
+          "trainTime": 40,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "cavalry-archer-line",
+        "knight-line",
+        "camel-line",
+        "ram-line"
+      ]
+    },
+    {
+      "id": "ethiopians",
+      "name": "Ethiopians",
+      "uniqueUnits": [
+        {
+          "name": "Shotel Warrior",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 50,
+            "wood": 0,
+            "gold": 30,
+            "stone": 0
+          },
+          "trainTime": 8,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "hand-cannoneer"
+      ]
+    },
+    {
+      "id": "franks",
+      "name": "Franks",
+      "uniqueUnits": [
+        {
+          "name": "Throwing Axeman",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 55,
+            "wood": 0,
+            "gold": 25,
+            "stone": 0
+          },
+          "trainTime": 13,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [
+        {
+          "type": "free-tech",
+          "techId": "horse-collar",
+          "note": "Mill technologies free"
+        },
+        {
+          "type": "free-tech",
+          "techId": "heavy-plow",
+          "note": "Mill technologies free"
+        },
+        {
+          "type": "free-tech",
+          "techId": "crop-rotation",
+          "note": "Mill technologies free"
+        }
+      ],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line"
+      ]
+    },
+    {
+      "id": "georgians",
+      "name": "Georgians",
+      "uniqueUnits": [
+        {
+          "name": "Monaspa",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 60,
+            "wood": 0,
+            "gold": 45,
+            "stone": 0
+          },
+          "trainTime": 14,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "goths",
+      "name": "Goths",
+      "uniqueUnits": [
+        {
+          "name": "Huskarl",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 75,
+            "wood": 0,
+            "gold": 35,
+            "stone": 0
+          },
+          "trainTime": 13,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [
+        {
+          "type": "free-tech",
+          "techId": "loom",
+          "note": "Loom is researched instantly"
+        }
+      ],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line"
+      ]
+    },
+    {
+      "id": "gurjaras",
+      "name": "Gurjaras",
+      "uniqueUnits": [
+        {
+          "name": "Chakram Thrower",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 65,
+            "wood": 0,
+            "gold": 30,
+            "stone": 0
+          },
+          "trainTime": 15,
+          "pop": 1
+        },
+        {
+          "name": "Shrivamsha Rider",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 70,
+            "wood": 0,
+            "gold": 30,
+            "stone": 0
+          },
+          "trainTime": 20,
+          "pop": 1
+        },
+        {
+          "name": "Camel Scout",
+          "age": "Feudal",
+          "building": "Stable",
+          "cost": {
+            "food": 55,
+            "wood": 0,
+            "gold": 60,
+            "stone": 0
+          },
+          "trainTime": 22,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "cavalry-archer-line",
+        "knight-line",
+        "ram-line"
+      ]
+    },
+    {
+      "id": "hindustanis",
+      "name": "Hindustanis",
+      "uniqueUnits": [
+        {
+          "name": "Ghulam",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 30,
+            "wood": 0,
+            "gold": 45,
+            "stone": 0
+          },
+          "trainTime": 12,
+          "pop": 1
+        },
+        {
+          "name": "Imperial Camel Rider",
+          "age": "Imperial",
+          "building": "Stable",
+          "cost": {
+            "food": 55,
+            "wood": 0,
+            "gold": 60,
+            "stone": 0
+          },
+          "trainTime": 20,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "knight-line",
+        "ram-line"
+      ]
+    },
+    {
+      "id": "huns",
+      "name": "Huns",
+      "uniqueUnits": [
+        {
+          "name": "Tarkan",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 60,
+            "wood": 0,
+            "gold": 60,
+            "stone": 0
+          },
+          "trainTime": 14,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "incas",
+      "name": "Incas",
+      "uniqueUnits": [
+        {
+          "name": "Kamayuk",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 70,
+            "wood": 0,
+            "gold": 30,
+            "stone": 0
+          },
+          "trainTime": 10,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "militia-line",
+        "eagle-line",
+        "cavalry-archer-line",
+        "scout-cavalry-line",
+        "knight-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "italians",
+      "name": "Italians",
+      "uniqueUnits": [
+        {
+          "name": "Genoese Crossbowman",
+          "age": "Castle",
+          "building": "Archery Range",
+          "cost": {
+            "food": 0,
+            "wood": 45,
+            "gold": 40,
+            "stone": 0
+          },
+          "trainTime": 14,
+          "pop": 1
+        },
+        {
+          "name": "Condottiero",
+          "age": "Feudal",
+          "building": "Barracks",
+          "cost": {
+            "food": 50,
+            "wood": 0,
+            "gold": 35,
+            "stone": 0
+          },
+          "trainTime": 18,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line"
+      ]
+    },
+    {
+      "id": "japanese",
+      "name": "Japanese",
+      "uniqueUnits": [
+        {
+          "name": "Samurai",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 45,
+            "wood": 0,
+            "gold": 30,
+            "stone": 0
+          },
+          "trainTime": 9,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "jurchens",
+      "name": "Jurchens",
+      "uniqueUnits": [
+        {
+          "name": "Iron Pagoda",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 80,
+            "wood": 0,
+            "gold": 55,
+            "stone": 0
+          },
+          "trainTime": 14,
+          "pop": 1
+        },
+        {
+          "name": "Grenadier",
+          "age": "Imperial",
+          "building": "Archery Range",
+          "cost": {
+            "food": 35,
+            "wood": 0,
+            "gold": 65,
+            "stone": 0
+          },
+          "trainTime": 21,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "knight-line",
+        "camel-line",
+        "mangonel-line",
+        "hand-cannoneer"
+      ]
+    },
+    {
+      "id": "khitans",
+      "name": "Khitans",
+      "uniqueUnits": [
+        {
+          "name": "Liao Dao",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 40,
+            "wood": 0,
+            "gold": 40,
+            "stone": 0
+          },
+          "trainTime": 12,
+          "pop": 1
+        },
+        {
+          "name": "Mounted Trebuchet",
+          "age": "Imperial",
+          "building": "Siege Workshop",
+          "cost": {
+            "food": 175,
+            "wood": 0,
+            "gold": 175,
+            "stone": 0
+          },
+          "trainTime": 46,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "knight-line",
+        "mangonel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "khmer",
+      "name": "Khmer",
+      "uniqueUnits": [
+        {
+          "name": "Ballista Elephant",
+          "age": "Castle",
+          "building": "Siege Workshop",
+          "cost": {
+            "food": 100,
+            "wood": 0,
+            "gold": 80,
+            "stone": 0
+          },
+          "trainTime": 25,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "koreans",
+      "name": "Koreans",
+      "uniqueUnits": [
+        {
+          "name": "War Wagon",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 0,
+            "wood": 200,
+            "gold": 60,
+            "stone": 0
+          },
+          "trainTime": 21,
+          "pop": 1
+        },
+        {
+          "name": "Turtle Ship",
+          "age": "Castle",
+          "building": "Dock",
+          "cost": {
+            "food": 0,
+            "wood": 190,
+            "gold": 130,
+            "stone": 0
+          },
+          "trainTime": 50,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [
+        {
+          "resource": "stone",
+          "type": "pct",
+          "value": 20,
+          "note": "Stone miners work 20% faster"
+        }
+      ],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "mangonel-line"
+      ]
+    },
+    {
+      "id": "lithuanians",
+      "name": "Lithuanians",
+      "uniqueUnits": [
+        {
+          "name": "Leitis",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 70,
+            "wood": 0,
+            "gold": 50,
+            "stone": 0
+          },
+          "trainTime": 20,
+          "pop": 1
+        },
+        {
+          "name": "Winged Hussar",
+          "age": "Imperial",
+          "building": "Stable",
+          "cost": {
+            "food": 80,
+            "wood": 0,
+            "gold": 0,
+            "stone": 0
+          },
+          "trainTime": 30,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line"
+      ]
+    },
+    {
+      "id": "magyars",
+      "name": "Magyars",
+      "uniqueUnits": [
+        {
+          "name": "Magyar Huszar",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 35,
+            "wood": 0,
+            "gold": 45,
+            "stone": 0
+          },
+          "trainTime": 12,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "malay",
+      "name": "Malay",
+      "uniqueUnits": [
+        {
+          "name": "Karambit Warrior",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 25,
+            "wood": 0,
+            "gold": 15,
+            "stone": 0
+          },
+          "trainTime": 6,
+          "pop": 0.5
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "hand-cannoneer"
+      ]
+    },
+    {
+      "id": "malians",
+      "name": "Malians",
+      "uniqueUnits": [
+        {
+          "name": "Gbeto",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 50,
+            "wood": 0,
+            "gold": 40,
+            "stone": 0
+          },
+          "trainTime": 17,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [
+        {
+          "resource": "gold",
+          "type": "pct",
+          "value": 10,
+          "note": "Villagers drop off 10% more gold"
+        }
+      ],
+      "unavailableUnitLines": [
+        "eagle-line"
+      ]
+    },
+    {
+      "id": "mapuche",
+      "name": "Mapuche",
+      "uniqueUnits": [
+        {
+          "name": "Kona",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 65,
+            "wood": 0,
+            "gold": 40,
+            "stone": 0
+          },
+          "trainTime": 14,
+          "pop": 1
+        },
+        {
+          "name": "Bolas Rider",
+          "age": "Castle",
+          "building": "Archery Range",
+          "cost": {
+            "food": 0,
+            "wood": 45,
+            "gold": 50,
+            "stone": 0
+          },
+          "trainTime": 34,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "militia-line",
+        "eagle-line",
+        "cavalry-archer-line",
+        "scout-cavalry-line",
+        "knight-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "mayans",
+      "name": "Mayans",
+      "uniqueUnits": [
+        {
+          "name": "Plumed Archer",
+          "age": "Castle",
+          "building": "Archery Range",
+          "cost": {
+            "food": 0,
+            "wood": 55,
+            "gold": 55,
+            "stone": 0
+          },
+          "trainTime": 16,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "cavalry-archer-line",
+        "scout-cavalry-line",
+        "knight-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "mongols",
+      "name": "Mongols",
+      "uniqueUnits": [
+        {
+          "name": "Mangudai",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 0,
+            "wood": 55,
+            "gold": 65,
+            "stone": 0
+          },
+          "trainTime": 26,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "muisca",
+      "name": "Muisca",
+      "uniqueUnits": [
+        {
+          "name": "Guecha Warrior",
+          "age": "Castle",
+          "building": "Archery Range",
+          "cost": {
+            "food": 0,
+            "wood": 50,
+            "gold": 60,
+            "stone": 0
+          },
+          "trainTime": 17,
+          "pop": 1
+        },
+        {
+          "name": "Temple Guard",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 70,
+            "wood": 0,
+            "gold": 45,
+            "stone": 0
+          },
+          "trainTime": 28,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "militia-line",
+        "eagle-line",
+        "cavalry-archer-line",
+        "scout-cavalry-line",
+        "knight-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "persians",
+      "name": "Persians",
+      "uniqueUnits": [
+        {
+          "name": "War Elephant",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 170,
+            "wood": 0,
+            "gold": 85,
+            "stone": 0
+          },
+          "trainTime": 25,
+          "pop": 1
+        },
+        {
+          "name": "Savar",
+          "age": "Imperial",
+          "building": "Stable",
+          "cost": {
+            "food": 60,
+            "wood": 0,
+            "gold": 75,
+            "stone": 0
+          },
+          "trainTime": 30,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line"
+      ]
+    },
+    {
+      "id": "poles",
+      "name": "Poles",
+      "uniqueUnits": [
+        {
+          "name": "Obuch",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 55,
+            "wood": 0,
+            "gold": 20,
+            "stone": 0
+          },
+          "trainTime": 12,
+          "pop": 1
+        },
+        {
+          "name": "Winged Hussar",
+          "age": "Imperial",
+          "building": "Stable",
+          "cost": {
+            "food": 80,
+            "wood": 0,
+            "gold": 0,
+            "stone": 0
+          },
+          "trainTime": 30,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "hand-cannoneer"
+      ]
+    },
+    {
+      "id": "portuguese",
+      "name": "Portuguese",
+      "uniqueUnits": [
+        {
+          "name": "Organ Gun",
+          "age": "Castle",
+          "building": "Siege Workshop",
+          "cost": {
+            "food": 0,
+            "wood": 80,
+            "gold": 70,
+            "stone": 0
+          },
+          "trainTime": 25,
+          "pop": 1
+        },
+        {
+          "name": "Caravel",
+          "age": "Castle",
+          "building": "Dock",
+          "cost": {
+            "food": 0,
+            "wood": 90,
+            "gold": 43,
+            "stone": 0
+          },
+          "trainTime": 25,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line"
+      ]
+    },
+    {
+      "id": "romans",
+      "name": "Romans",
+      "uniqueUnits": [
+        {
+          "name": "Centurion",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 75,
+            "wood": 0,
+            "gold": 85,
+            "stone": 0
+          },
+          "trainTime": 24,
+          "pop": 1
+        },
+        {
+          "name": "Legionary",
+          "age": "Imperial",
+          "building": "Barracks",
+          "cost": {
+            "food": 50,
+            "wood": 0,
+            "gold": 20,
+            "stone": 0
+          },
+          "trainTime": 21,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [
+        {
+          "resource": "all",
+          "type": "pct",
+          "value": 5,
+          "note": "Villagers gather (and build/repair) 5% faster"
+        }
+      ],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "saracens",
+      "name": "Saracens",
+      "uniqueUnits": [
+        {
+          "name": "Mameluke",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 55,
+            "wood": 0,
+            "gold": 85,
+            "stone": 0
+          },
+          "trainTime": 23,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line"
+      ]
+    },
+    {
+      "id": "shu",
+      "name": "Shu",
+      "uniqueUnits": [
+        {
+          "name": "White Feather Guard",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 60,
+            "wood": 0,
+            "gold": 15,
+            "stone": 0
+          },
+          "trainTime": 11,
+          "pop": 1
+        },
+        {
+          "name": "War Chariot",
+          "age": "Castle",
+          "building": "Siege Workshop",
+          "cost": {
+            "food": 65,
+            "wood": 0,
+            "gold": 90,
+            "stone": 0
+          },
+          "trainTime": 28,
+          "pop": 1
+        },
+        {
+          "name": "Liu Bei",
+          "age": "Imperial",
+          "building": "Castle",
+          "cost": {
+            "food": 500,
+            "wood": 0,
+            "gold": 500,
+            "stone": 0
+          },
+          "trainTime": 60,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "knight-line",
+        "camel-line",
+        "scorpion-line",
+        "hand-cannoneer",
+        "bombard-cannon",
+        "trebuchet"
+      ]
+    },
+    {
+      "id": "sicilians",
+      "name": "Sicilians",
+      "uniqueUnits": [
+        {
+          "name": "Serjeant",
+          "age": "Feudal",
+          "building": "Barracks",
+          "cost": {
+            "food": 55,
+            "wood": 0,
+            "gold": 25,
+            "stone": 0
+          },
+          "trainTime": 12,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "slavs",
+      "name": "Slavs",
+      "uniqueUnits": [
+        {
+          "name": "Boyar",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 60,
+            "wood": 0,
+            "gold": 70,
+            "stone": 0
+          },
+          "trainTime": 15,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [
+        {
+          "resource": "food",
+          "type": "pct",
+          "value": 15,
+          "note": "Farmers work 15% faster"
+        }
+      ],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "spanish",
+      "name": "Spanish",
+      "uniqueUnits": [
+        {
+          "name": "Conquistador",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 70,
+            "wood": 0,
+            "gold": 60,
+            "stone": 0
+          },
+          "trainTime": 24,
+          "pop": 1
+        },
+        {
+          "name": "Missionary",
+          "age": "Castle",
+          "building": "Monastery",
+          "cost": {
+            "food": 0,
+            "wood": 0,
+            "gold": 100,
+            "stone": 0
+          },
+          "trainTime": 51,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line"
+      ]
+    },
+    {
+      "id": "tatars",
+      "name": "Tatars",
+      "uniqueUnits": [
+        {
+          "name": "Keshik",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 60,
+            "wood": 0,
+            "gold": 40,
+            "stone": 0
+          },
+          "trainTime": 17,
+          "pop": 1
+        },
+        {
+          "name": "Flaming Camel",
+          "age": "Castle",
+          "building": "Siege Workshop",
+          "cost": {
+            "food": 75,
+            "wood": 0,
+            "gold": 30,
+            "stone": 0
+          },
+          "trainTime": 30,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "teutons",
+      "name": "Teutons",
+      "uniqueUnits": [
+        {
+          "name": "Teutonic Knight",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 85,
+            "wood": 0,
+            "gold": 30,
+            "stone": 0
+          },
+          "trainTime": 12,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line"
+      ]
+    },
+    {
+      "id": "tupi",
+      "name": "Tupi",
+      "uniqueUnits": [
+        {
+          "name": "Blackwood Archer",
+          "age": "Castle",
+          "building": "Archery Range",
+          "cost": {
+            "food": 0,
+            "wood": 35,
+            "gold": 45,
+            "stone": 0
+          },
+          "trainTime": 18,
+          "pop": 0.5
+        },
+        {
+          "name": "Ibirapema Warrior",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 30,
+            "wood": 0,
+            "gold": 60,
+            "stone": 0
+          },
+          "trainTime": 24,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "militia-line",
+        "eagle-line",
+        "cavalry-archer-line",
+        "scout-cavalry-line",
+        "knight-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "turks",
+      "name": "Turks",
+      "uniqueUnits": [
+        {
+          "name": "Janissary",
+          "age": "Castle",
+          "building": "Archery Range",
+          "cost": {
+            "food": 60,
+            "wood": 0,
+            "gold": 55,
+            "stone": 0
+          },
+          "trainTime": 21,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [
+        {
+          "resource": "gold",
+          "type": "pct",
+          "value": 25,
+          "note": "Gold miners work 25% faster"
+        }
+      ],
+      "unavailableUnitLines": [
+        "eagle-line"
+      ]
+    },
+    {
+      "id": "vietnamese",
+      "name": "Vietnamese",
+      "uniqueUnits": [
+        {
+          "name": "Rattan Archer",
+          "age": "Castle",
+          "building": "Archery Range",
+          "cost": {
+            "food": 0,
+            "wood": 50,
+            "gold": 45,
+            "stone": 0
+          },
+          "trainTime": 16,
+          "pop": 1
+        },
+        {
+          "name": "Imperial Skirmisher",
+          "age": "Imperial",
+          "building": "Archery Range",
+          "cost": {
+            "food": 25,
+            "wood": 35,
+            "gold": 0,
+            "stone": 0
+          },
+          "trainTime": 22,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "hand-cannoneer"
+      ]
+    },
+    {
+      "id": "vikings",
+      "name": "Vikings",
+      "uniqueUnits": [
+        {
+          "name": "Berserk",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 65,
+            "wood": 0,
+            "gold": 20,
+            "stone": 0
+          },
+          "trainTime": 14,
+          "pop": 1
+        },
+        {
+          "name": "Longboat",
+          "age": "Castle",
+          "building": "Dock",
+          "cost": {
+            "food": 0,
+            "wood": 100,
+            "gold": 50,
+            "stone": 0
+          },
+          "trainTime": 25,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [
+        {
+          "type": "free-tech",
+          "techId": "wheelbarrow",
+          "note": "Wheelbarrow free"
+        },
+        {
+          "type": "free-tech",
+          "techId": "hand-cart",
+          "note": "Hand Cart free"
+        }
+      ],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon"
+      ]
+    },
+    {
+      "id": "wei",
+      "name": "Wei",
+      "uniqueUnits": [
+        {
+          "name": "Tiger Cavalry",
+          "age": "Castle",
+          "building": "Stable",
+          "cost": {
+            "food": 60,
+            "wood": 0,
+            "gold": 80,
+            "stone": 0
+          },
+          "trainTime": 18,
+          "pop": 1
+        },
+        {
+          "name": "Xianbei Raider",
+          "age": "Castle",
+          "building": "Archery Range",
+          "cost": {
+            "food": 0,
+            "wood": 65,
+            "gold": 25,
+            "stone": 0
+          },
+          "trainTime": 29,
+          "pop": 1
+        },
+        {
+          "name": "Cao Cao",
+          "age": "Imperial",
+          "building": "Castle",
+          "cost": {
+            "food": 500,
+            "wood": 0,
+            "gold": 500,
+            "stone": 0
+          },
+          "trainTime": 60,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "cavalry-archer-line",
+        "knight-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon",
+        "trebuchet"
+      ]
+    },
+    {
+      "id": "wu",
+      "name": "Wu",
+      "uniqueUnits": [
+        {
+          "name": "Fire Archer",
+          "age": "Castle",
+          "building": "Archery Range",
+          "cost": {
+            "food": 0,
+            "wood": 45,
+            "gold": 45,
+            "stone": 0
+          },
+          "trainTime": 17,
+          "pop": 1
+        },
+        {
+          "name": "Jian Swordsman",
+          "age": "Castle",
+          "building": "Barracks",
+          "cost": {
+            "food": 45,
+            "wood": 0,
+            "gold": 50,
+            "stone": 0
+          },
+          "trainTime": 35,
+          "pop": 1
+        },
+        {
+          "name": "Sun Jian",
+          "age": "Imperial",
+          "building": "Castle",
+          "cost": {
+            "food": 500,
+            "wood": 0,
+            "gold": 500,
+            "stone": 0
+          },
+          "trainTime": 60,
+          "pop": 1
+        }
+      ],
+      "ecoBonuses": [],
+      "unavailableUnitLines": [
+        "eagle-line",
+        "knight-line",
+        "camel-line",
+        "hand-cannoneer",
+        "bombard-cannon",
+        "trebuchet"
+      ]
+    }
+  ],
+};
+
+const RES = ['food','wood','gold','stone'];
+const RES_LABEL = { food:'Food', wood:'Wood', gold:'Gold', stone:'Stone' };
+const RES_ICON  = { food:'🌾', wood:'🪵', gold:'🪙', stone:'🪨' };
+const TECH_GROUP_LABEL = { mill:'🌾 Farm (Mill)', tc:'🏛️ Town Center' };
+
+function fmtSecs(s) {
+  if (!isFinite(s)) return '—';
+  const m = Math.floor(s / 60), sec = Math.round(s % 60);
+  return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+}
+function fmtClock(s) {
+  if (!isFinite(s)) return '—';
+  const m = Math.floor(s / 60), sec = Math.round(s % 60);
+  return `${m}:${String(sec).padStart(2, '0')}`;
+}
+
+const civSelect = document.getElementById('civ-select');
+civSelect.innerHTML = '<option value="">Generic (no civ bonus)</option>' +
+  DATA.civs.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+function selectedCiv() {
+  return DATA.civs.find(c => c.id === civSelect.value) || null;
+}
+
+function freeTechIds(civ) {
+  return new Set((civ?.ecoBonuses || []).filter(b => b.type === 'free-tech').map(b => b.techId));
+}
+
+// ─── Economy tech grid (have-it vs. saving-for-it) ─────────────────────────
+
+function renderTechGrid() {
+  const civ = selectedCiv();
+  const free = freeTechIds(civ);
+  const grid = document.getElementById('tech-grid');
+
+  // Group by resource, but pull out the 'mill' and 'carry' sub-groups (both
+  // otherwise resource:'food'/'all') into their own labeled blocks so they
+  // don't read as one undifferentiated list.
+  const groups = [];
+  RES.concat('all').forEach(r => {
+    const techs = DATA.ecoTechs.filter(t => t.resource === r && !t.group);
+    if (techs.length) groups.push({ label: `${RES_ICON[r] || ''} ${RES_LABEL[r] || 'All Resources'}`, techs });
+  });
+  ['mill', 'tc'].forEach(g => {
+    const techs = DATA.ecoTechs.filter(t => t.group === g);
+    if (techs.length) groups.push({ label: TECH_GROUP_LABEL[g], techs });
+  });
+
+  grid.innerHTML = groups.map(({ label, techs }) => `<div class="tech-group">
+      <h3>${label}</h3>
+      ${techs.map(t => {
+        const isFree = free.has(t.id);
+        return `<div class="tech-row${isFree ? ' locked' : ''}">
+          <input type="checkbox" data-tech="${t.id}" ${isFree ? 'checked disabled' : ''}>
+          <span class="tname">${t.name}</span>
+          <span class="tage">${t.age}</span>
+          <span class="tbonus">+${t.bonusPct}%</span>
+          ${isFree ? '' : `<label class="save-check"><input type="checkbox" data-tech-save="${t.id}"> Save</label>`}
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+
+  grid.querySelectorAll('[data-tech]').forEach(cb => cb.addEventListener('change', () => {
+    if (cb.checked) {
+      const save = grid.querySelector(`[data-tech-save="${cb.dataset.tech}"]`);
+      if (save) save.checked = false;
+    }
+    renderResults();
+  }));
+  grid.querySelectorAll('[data-tech-save]').forEach(cb => cb.addEventListener('change', () => {
+    if (cb.checked) {
+      const have = grid.querySelector(`[data-tech="${cb.dataset.techSave}"]`);
+      if (have) have.checked = false;
+    }
+    renderResults();
+  }));
+}
+
+function selectedTechIds() {
+  const ids = new Set();
+  document.querySelectorAll('#tech-grid input[data-tech]').forEach(cb => {
+    if (cb.checked) ids.add(cb.dataset.tech);
+  });
+  return ids;
+}
+
+const AGE_ORDER = ['Dark', 'Feudal', 'Castle', 'Imperial'];
+function ageIndex(age) { return AGE_ORDER.indexOf(age); }
+function currentAgeIndex() { return ageIndex(document.getElementById('start-age').value); }
+
+// ─── Unit lines (with upgrade tiers) ────────────────────────────────────────
+
+function allLinesForCiv(civ) {
+  const villagerLine = {
+    id: 'villager', name: 'Villager', building: 'Town Center', isVillager: true,
+    cost: DATA.villager.cost, pop: 1,
+    tiers: [{ name: 'Villager', age: 'Dark', trainTime: DATA.villager.trainTime }],
+  };
+  const unique = (civ?.uniqueUnits || []).map((u, i) => ({
+    id: `${civ.id}-unique-${i}`, name: u.name, building: u.building,
+    cost: u.cost, pop: u.pop, unique: true,
+    tiers: [{ name: u.name, age: u.age, trainTime: u.trainTime }],
+  }));
+  // When a specific civ is selected, drop unit lines it can't actually
+  // build (e.g. Eagle Warriors are Meso-only) instead of showing the full
+  // generic roster regardless of civ.
+  const unavailable = new Set(civ?.unavailableUnitLines || []);
+  const standardLines = DATA.unitLines.filter(l => !unavailable.has(l.id));
+  return [villagerLine, ...unique, ...standardLines];
+}
+
+let lineState = {}; // id -> { tierIdx, buildings, saving }
+
+function renderUnitTable() {
+  const civ = selectedCiv();
+  const lines = allLinesForCiv(civ);
+  const maxAgeIdx = currentAgeIndex();
+  lineState = {};
+  lines.forEach(l => {
+    // Default to the highest tier actually reachable at the current age,
+    // not always the base tier — a Castle Age player almost certainly has
+    // Long Swordsmen already, not Militia.
+    let defaultTier = 0;
+    for (let i = l.tiers.length - 1; i >= 0; i--) {
+      if (ageIndex(l.tiers[i].age) <= maxAgeIdx) { defaultTier = i; break; }
+    }
+    lineState[l.id] = { tierIdx: defaultTier, buildings: l.isVillager ? 1 : 0, saving: false };
+  });
+
+  const byBuilding = {};
+  lines.forEach(l => { (byBuilding[l.building] = byBuilding[l.building] || []).push(l); });
+  // Town Center first (Villager), then the rest in insertion order.
+  const buildingOrder = Object.keys(byBuilding).sort((a, b) => (a === 'Town Center' ? -1 : b === 'Town Center' ? 1 : 0));
+
+  const thead = `<thead><tr><th>Unit</th><th>Tier</th><th>Cost</th><th class="num">Train</th><th class="num">Buildings</th><th>Next Upgrade</th></tr></thead>`;
+  const body = buildingOrder.map(building => {
+    const list = byBuilding[building];
+    const rows = list.map(l => {
+      const defaultTier = lineState[l.id].tierIdx;
+      const tierCell = l.isVillager
+        ? '<span class="tage">—</span>'
+        : l.tiers.length > 1
+          ? `<select class="tier-select" data-tier="${l.id}">${l.tiers.map((t, i) => `<option value="${i}" ${i === defaultTier ? 'selected' : ''} ${ageIndex(t.age) > maxAgeIdx ? 'disabled' : ''}>${t.name} (${t.age})</option>`).join('')}</select>`
+          : `<span class="tage">${l.tiers[0].age}</span>`;
+      const buildingsTitle = l.isVillager ? 'title="0 = stop training villagers (all-in)"' : '';
+      return `<tr class="${l.unique ? 'unique-row' : ''}" data-line="${l.id}">
+        <td class="uname">${l.name}</td>
+        <td>${tierCell}</td>
+        <td><div class="cost-pills">${RES.filter(r => l.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${l.cost[r]}</span>`).join('')}</div></td>
+        <td class="num" data-traintime="${l.id}">${l.tiers[defaultTier].trainTime}s</td>
+        <td class="num"><input type="number" class="qty-input" min="0" value="${lineState[l.id].buildings}" data-line-qty="${l.id}" ${buildingsTitle}></td>
+        <td data-upgrade-cell="${l.id}"></td>
+      </tr>`;
+    }).join('');
+    return `<tr class="unit-group-row"><td colspan="6">${building}</td></tr>${rows}`;
+  }).join('');
+
+  const tableEl = document.getElementById('unit-table');
+  tableEl.innerHTML = thead + '<tbody>' + body + '</tbody>';
+
+  lines.forEach(l => updateUpgradeCell(l));
+
+  tableEl.querySelectorAll('[data-line-qty]').forEach(inp => inp.addEventListener('input', () => {
+    lineState[inp.dataset.lineQty].buildings = Number(inp.value) || 0;
+    renderResults();
+  }));
+  tableEl.querySelectorAll('[data-tier]').forEach(sel => sel.addEventListener('change', () => {
+    const line = lines.find(l => l.id === sel.dataset.tier);
+    const state = lineState[line.id];
+    state.tierIdx = Number(sel.value);
+    state.saving = false;
+    document.querySelector(`[data-traintime="${line.id}"]`).textContent = line.tiers[state.tierIdx].trainTime + 's';
+    updateUpgradeCell(line);
+    renderResults();
+  }));
+
+  return lines;
+}
+
+function updateUpgradeCell(line) {
+  const cell = document.querySelector(`[data-upgrade-cell="${line.id}"]`);
+  if (!cell) return;
+  const state = lineState[line.id];
+  const nextTier = line.tiers[state.tierIdx + 1];
+  if (!nextTier || !nextTier.upgradeCost) {
+    cell.innerHTML = '<span class="tage">—</span>';
+    return;
+  }
+  cell.innerHTML = `<label class="save-check"><input type="checkbox" data-save="${line.id}" ${state.saving ? 'checked' : ''}> Save for ${nextTier.name}</label>`;
+  cell.querySelector('[data-save]').addEventListener('change', e => {
+    lineState[line.id].saving = e.target.checked;
+    renderResults();
+  });
+}
+
+// ─── Cost / rate math ────────────────────────────────────────────────────────
+
+function costForCiv(cost, civ) {
+  const out = { ...cost };
+  (civ?.ecoBonuses || []).forEach(b => {
+    if (b.type === 'flat' && out[b.resource] != null) {
+      out[b.resource] = Math.max(0, out[b.resource] - b.value);
+    } else if (b.type === 'pct-cost') {
+      RES.forEach(r => { out[r] = out[r] * (1 - b.value / 100); });
+    }
+  });
+  return out;
+}
+
+function effectiveGatherRate(resource, civ, techIds) {
+  let rate = DATA.gatherRates[resource];
+  // A tech that `supersedes` another (Hand Cart replacing Wheelbarrow's
+  // bonus rather than stacking with it) suppresses the superseded tech's
+  // own contribution when both are checked.
+  const superseded = new Set(DATA.ecoTechs.filter(t => t.supersedes && techIds.has(t.id)).map(t => t.supersedes));
+  DATA.ecoTechs.filter(t => techIds.has(t.id) && !superseded.has(t.id) && (t.resource === resource || t.resource === 'all'))
+    .forEach(t => { rate *= 1 + t.bonusPct / 100; });
+  (civ?.ecoBonuses || []).filter(b => b.resource === resource && b.type === 'pct')
+    .forEach(b => { rate *= 1 + b.value / 100; });
+  return rate;
+}
+
+function pendingUpgrades(lines) {
+  const items = [];
+  document.querySelectorAll('[data-tech-save]:checked').forEach(cb => {
+    const t = DATA.ecoTechs.find(x => x.id === cb.dataset.techSave);
+    if (t) items.push({ name: t.name, cost: t.cost || {} });
+  });
+  lines.forEach(l => {
+    const state = lineState[l.id];
+    if (!state?.saving) return;
+    const next = l.tiers[state.tierIdx + 1];
+    if (next?.upgradeCost) items.push({ name: `${l.name} → ${next.name}`, cost: next.upgradeCost });
+  });
+  return items;
+}
+
+// Simulates constant villager production: new villagers are born at a fixed
+// interval (1 / villRate) starting from (startTime, startVills), and each
+// new "excess" villager is greedily assigned to whichever resource this item
+// still needs is furthest from being funded. Returns the (time, villager
+// count) at which the item's full cost has accumulated, or null if it would
+// take longer than the simulation cap.
+function simulateItemReady(item, rates, villRate, startTime, startVills) {
+  const need = RES.filter(r => item.cost[r] > 0);
+  if (!need.length) return { time: startTime, vills: startVills };
+  if (villRate <= 0) return null;
+
+  const saved = { food: 0, wood: 0, gold: 0, stone: 0 };
+  const assigned = { food: 0, wood: 0, gold: 0, stone: 0 };
+  let vills = startVills;
+  let t = startTime;
+  const dt = 0.5;
+  const capT = startTime + 3600; // 60 min simulation cap
+  let nextBirth = t + 1 / villRate;
+
+  while (t <= capT) {
+    while (t >= nextBirth - 1e-9) {
+      vills++;
+      let target = need[0], worstEta = -Infinity;
+      need.forEach(r => {
+        if (saved[r] >= item.cost[r]) return;
+        const remaining = item.cost[r] - saved[r];
+        const curRate = assigned[r] * rates[r];
+        const eta = curRate > 0 ? remaining / curRate : Infinity;
+        if (eta > worstEta) { worstEta = eta; target = r; }
+      });
+      assigned[target]++;
+      nextBirth += 1 / villRate;
+    }
+    RES.forEach(r => { if (assigned[r]) saved[r] += assigned[r] * rates[r] * dt; });
+    if (need.every(r => saved[r] >= item.cost[r])) return { time: t, vills };
+    t += dt;
+  }
+  return null;
+}
+
+// ─── Results ─────────────────────────────────────────────────────────────────
+
+function renderResults() {
+  const civ = selectedCiv();
+  const techIds = selectedTechIds();
+  const lines = allLinesForCiv(civ);
+
+  const rows = [];
+  lines.forEach(l => {
+    const state = lineState[l.id];
+    if (!state || state.buildings <= 0) return;
+    rows.push({ line: l, tier: l.tiers[state.tierIdx], buildings: state.buildings });
+  });
+
+  const descEl = document.getElementById('results-desc');
+  const bodyEl = document.getElementById('results-body');
+
+  const pending = pendingUpgrades(lines);
+  const rates = {};
+  RES.forEach(r => { rates[r] = effectiveGatherRate(r, civ, techIds); });
+
+  const villagerState = lineState['villager'];
+  const villRate = villagerState && villagerState.buildings > 0 ? villagerState.buildings / DATA.villager.trainTime : 0;
+
+  const startVills = Math.max(0, Number(document.getElementById('start-vills').value) || 0);
+
+  if (!rows.length) {
+    descEl.textContent = 'Add production buildings above to see the split.';
+    bodyEl.innerHTML = '<div class="empty-hint">No production set yet.</div>' + renderPendingCard(pending, rates, { food: 0, wood: 0, gold: 0, stone: 0 }, villRate, 0, startVills);
+    return;
+  }
+
+  const totalIncome = { food: 0, wood: 0, gold: 0, stone: 0 }; // per second
+  let popRate = 0; // pop/sec
+  rows.forEach(({ line, tier, buildings }) => {
+    const cost = costForCiv(line.cost, civ);
+    const unitRate = buildings / tier.trainTime; // units/sec
+    RES.forEach(r => totalIncome[r] += (cost[r] || 0) * unitRate);
+    popRate += line.pop * unitRate;
+  });
+
+  const villagers = {};
+  let totalVillagers = 0;
+  RES.forEach(r => {
+    const v = rates[r] > 0 ? totalIncome[r] / rates[r] : 0;
+    villagers[r] = v;
+    totalVillagers += v;
+  });
+  const totalVillCeil = Math.ceil(totalVillagers);
+
+  descEl.textContent = `Continuous production across ${rows.length} building type${rows.length === 1 ? '' : 's'} — population growing ~${(popRate * 60).toFixed(1)}/min.`;
+
+  const statRow = `<div class="stat-row">
+    <div class="stat-tile"><div class="label">Total Villagers</div><div class="value">${totalVillCeil}</div></div>
+    <div class="stat-tile"><div class="label">Pop Growth</div><div class="value">${(popRate * 60).toFixed(1)}/min</div></div>
+  </div>`;
+
+  const maxV = Math.max(1, ...RES.map(r => villagers[r]));
+  const bars = RES.filter(r => totalIncome[r] > 0).map(r => {
+    const pct = Math.max(4, (villagers[r] / maxV) * 100);
+    return `<div class="alloc-row">
+      <div class="rname">${RES_ICON[r]} ${RES_LABEL[r]}</div>
+      <div class="alloc-bar-wrap"><div class="alloc-bar" style="width:${pct}%;background:var(--${r})">${villagers[r] >= 0.5 ? Math.ceil(villagers[r]) : ''}</div></div>
+      <div class="rvills"><b>${Math.ceil(villagers[r])}</b> vills · ${rates[r].toFixed(2)}/s each</div>
+    </div>`;
+  }).join('');
+
+  bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>' + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, startVills);
+}
+
+function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, startVills) {
+  if (!pending.length) return '';
+
+  if (villRate > 0) {
+    let cursorTime = 0, cursorVills = startVills;
+    let catchUpNote = '';
+    // If you're starting below the sustain requirement, the first stretch of
+    // new villagers goes to catching the composition up — not to savings —
+    // before any excess exists to fund anything.
+    if (cursorVills < totalVillCeil) {
+      const deficit = totalVillCeil - cursorVills;
+      cursorTime += deficit / villRate;
+      catchUpNote = ` First ${fmtClock(cursorTime)} (${deficit} vills) goes to reaching your ${totalVillCeil}-villager sustain requirement before any savings begin.`;
+      cursorVills = totalVillCeil;
+    }
+    const results = pending.map(item => {
+      const r = simulateItemReady(item, rates, villRate, cursorTime, cursorVills);
+      if (r) { cursorTime = r.time; cursorVills = r.vills; }
+      return { item, result: r };
+    });
+    return `<div class="pending-card">
+      <h3>Saving For (constant villager production)</h3>
+      ${results.map(({ item, result }) => `<div class="pending-item">
+        <span>${item.name}</span>
+        <div class="cost-pills">${RES.filter(r => item.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${item.cost[r]}</span>`).join('')}</div>
+        <span class="save-time${result ? '' : ' blocked'}">${result ? `${result.vills} vills · ${fmtClock(result.time)}` : 'past 60 min — add TCs'}</span>
+      </div>`).join('')}
+      <p class="assumptions">Assumes you keep training new villagers and send each new one to whichever of these is furthest behind, in the order checked above.${catchUpNote}</p>
+    </div>`;
+  }
+
+  // All-in (Villager buildings = 0): no more villagers being born, so the
+  // only thing funding these is the spare income from rounding your current
+  // villager counts up to whole people.
+  const excessRate = {};
+  RES.forEach(r => { excessRate[r] = (Math.ceil(villagers[r] || 0) - (villagers[r] || 0)) * rates[r]; });
+  const pendingCost = { food: 0, wood: 0, gold: 0, stone: 0 };
+  pending.forEach(p => RES.forEach(r => pendingCost[r] += p.cost[r] || 0));
+  const perResourceEta = {};
+  RES.forEach(r => {
+    if (pendingCost[r] <= 0) { perResourceEta[r] = 0; return; }
+    perResourceEta[r] = excessRate[r] > 0.0005 ? pendingCost[r] / excessRate[r] : Infinity;
+  });
+  const readySeconds = Math.max(0, ...RES.map(r => perResourceEta[r]));
+  const blockedRes = RES.filter(r => pendingCost[r] > 0 && excessRate[r] <= 0.0005);
+
+  return `<div class="pending-card">
+    <h3>Saving For (all-in — no new villagers)</h3>
+    ${pending.map(p => `<div class="pending-item"><span>${p.name}</span><div class="cost-pills">${RES.filter(r => p.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${p.cost[r]}</span>`).join('')}</div></div>`).join('')}
+    <div class="pending-item total"><span>Ready in</span><span class="save-time${readySeconds === Infinity ? ' blocked' : ''}">${readySeconds === Infinity ? 'need spare villagers' : fmtSecs(readySeconds)}</span></div>
+    <p class="assumptions">Rounding villager counts up leaves a little spare income per resource — that surplus funds this without touching your sustain rate.${blockedRes.length ? ` No spare ${blockedRes.map(r => RES_LABEL[r]).join('/')} yet.` : ''} Set Villager buildings above 0 for constant production instead.</p>
+  </div>`;
+}
+
+civSelect.addEventListener('change', () => {
+  renderTechGrid();
+  renderUnitTable();
+  renderResults();
+});
+document.getElementById('start-age').addEventListener('change', () => {
+  renderUnitTable();
+  renderResults();
+});
+document.getElementById('start-vills').addEventListener('input', renderResults);
+
+renderTechGrid();
+renderUnitTable();
+renderResults();
+</script>
+</body>
+</html>
