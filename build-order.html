@@ -147,7 +147,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 
   <div class="card">
     <h2>Army Composition</h2>
-    <p class="desc">Set how many <b>production buildings</b> you'll keep queuing each unit — 2 Barracks on Long Swordsmen, 1 Archery Range on Crossbowmen, etc. Zero = not in production. Pick each line's current upgrade tier — training cost doesn't change, but train time does. The Town Center row's Villager count defaults to 1 (constant villager production) — set it to 0 for "all-in" (stop making villagers).</p>
+    <p class="desc">Set how many <b>production buildings</b> you'll keep queuing each unit — 2 Barracks on Long Swordsmen, 1 Archery Range on Crossbowmen, etc. Zero = not in production. Pick each line's current upgrade tier — training cost doesn't change, but train time does. The Town Center row's Villager count defaults to 1 (constant villager production) — set it to 0 for "all-in" (stop making villagers). <b>Goal Qty</b> is separate: a one-time batch (e.g. 10 Man-at-Arms) to add as a target in the goals panel below, on top of whatever's ongoing.</p>
     <div style="max-height:460px;overflow-y:auto;">
       <table id="unit-table"></table>
     </div>
@@ -2273,7 +2273,7 @@ function renderUnitTable() {
     for (let i = l.tiers.length - 1; i >= 0; i--) {
       if (ageIndex(l.tiers[i].age) <= maxAgeIdx) { defaultTier = i; break; }
     }
-    lineState[l.id] = { tierIdx: defaultTier, buildings: l.isVillager ? 1 : 0, saving: false };
+    lineState[l.id] = { tierIdx: defaultTier, buildings: l.isVillager ? 1 : 0, goalQty: 0, saving: false };
   });
 
   const byBuilding = {};
@@ -2281,7 +2281,7 @@ function renderUnitTable() {
   // Town Center first (Villager), then the rest in insertion order.
   const buildingOrder = Object.keys(byBuilding).sort((a, b) => (a === 'Town Center' ? -1 : b === 'Town Center' ? 1 : 0));
 
-  const thead = `<thead><tr><th>Unit</th><th>Tier</th><th>Cost</th><th class="num">Train</th><th class="num">Buildings</th><th>Next Upgrade</th></tr></thead>`;
+  const thead = `<thead><tr><th>Unit</th><th>Tier</th><th>Cost</th><th class="num">Train</th><th class="num">Buildings</th><th class="num">Goal Qty</th><th>Next Upgrade</th></tr></thead>`;
   const body = buildingOrder.map(building => {
     const list = byBuilding[building];
     const rows = list.map(l => {
@@ -2292,16 +2292,18 @@ function renderUnitTable() {
           ? `<select class="tier-select" data-tier="${l.id}">${l.tiers.map((t, i) => `<option value="${i}" ${i === defaultTier ? 'selected' : ''} ${ageIndex(t.age) > maxAgeIdx ? 'disabled' : ''}>${t.name} (${t.age})</option>`).join('')}</select>`
           : `<span class="tage">${l.tiers[0].age}</span>`;
       const buildingsTitle = l.isVillager ? 'title="0 = stop training villagers (all-in)"' : '';
+      const goalCell = l.isVillager ? '<span class="tage">—</span>' : `<input type="number" class="qty-input" min="0" value="0" data-goal-qty="${l.id}" title="One-time batch to reach as a goal, on top of any ongoing Buildings production">`;
       return `<tr class="${l.unique ? 'unique-row' : ''}" data-line="${l.id}">
         <td class="uname">${l.name}</td>
         <td>${tierCell}</td>
         <td><div class="cost-pills">${RES.filter(r => l.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${l.cost[r]}</span>`).join('')}</div></td>
         <td class="num" data-traintime="${l.id}">${l.tiers[defaultTier].trainTime}s</td>
         <td class="num"><input type="number" class="qty-input" min="0" value="${lineState[l.id].buildings}" data-line-qty="${l.id}" ${buildingsTitle}></td>
+        <td class="num">${goalCell}</td>
         <td data-upgrade-cell="${l.id}"></td>
       </tr>`;
     }).join('');
-    return `<tr class="unit-group-row"><td colspan="6">${building}</td></tr>${rows}`;
+    return `<tr class="unit-group-row"><td colspan="7">${building}</td></tr>${rows}`;
   }).join('');
 
   const tableEl = document.getElementById('unit-table');
@@ -2311,6 +2313,10 @@ function renderUnitTable() {
 
   tableEl.querySelectorAll('[data-line-qty]').forEach(inp => inp.addEventListener('input', () => {
     lineState[inp.dataset.lineQty].buildings = Number(inp.value) || 0;
+    renderResults();
+  }));
+  tableEl.querySelectorAll('[data-goal-qty]').forEach(inp => inp.addEventListener('input', () => {
+    lineState[inp.dataset.goalQty].goalQty = Number(inp.value) || 0;
     renderResults();
   }));
   tableEl.querySelectorAll('[data-tier]').forEach(sel => sel.addEventListener('change', () => {
@@ -2377,9 +2383,24 @@ function pendingUpgrades(lines) {
   });
   lines.forEach(l => {
     const state = lineState[l.id];
-    if (!state?.saving) return;
-    const next = l.tiers[state.tierIdx + 1];
-    if (next?.upgradeCost) items.push({ name: `${l.name} → ${next.name}`, cost: next.upgradeCost });
+    if (!state) return;
+    if (state.saving) {
+      const next = l.tiers[state.tierIdx + 1];
+      if (next?.upgradeCost) items.push({ name: `${l.name} → ${next.name}`, cost: next.upgradeCost });
+    }
+    // A one-time goal batch of this unit — needs both the resources banked
+    // AND enough queue time to actually train them (assumed serial on one
+    // production building, since goal allocation is automatic/idealized).
+    if (state.goalQty > 0) {
+      const tier = l.tiers[state.tierIdx];
+      const cost = {};
+      RES.forEach(r => { cost[r] = (l.cost[r] || 0) * state.goalQty; });
+      items.push({
+        name: `${state.goalQty}x ${tier.name}`,
+        cost,
+        queueSeconds: state.goalQty * tier.trainTime,
+      });
+    }
   });
   return items;
 }
@@ -2388,11 +2409,13 @@ function pendingUpgrades(lines) {
 // interval (1 / villRate) starting from (startTime, startVills), and each
 // new "excess" villager is greedily assigned to whichever resource this item
 // still needs is furthest from being funded. Returns the (time, villager
-// count) at which the item's full cost has accumulated, or null if it would
-// take longer than the simulation cap.
+// count) at which the item's full cost has accumulated AND, for a unit-batch
+// goal, enough queue time has passed to actually train it — or null if it
+// would take longer than the simulation cap.
 function simulateItemReady(item, rates, villRate, startTime, startVills) {
   const need = RES.filter(r => item.cost[r] > 0);
-  if (!need.length) return { time: startTime, vills: startVills };
+  const minTime = startTime + (item.queueSeconds || 0);
+  if (!need.length) return { time: Math.max(startTime, minTime), vills: startVills };
   if (villRate <= 0) return null;
 
   const saved = { food: 0, wood: 0, gold: 0, stone: 0 };
@@ -2418,7 +2441,7 @@ function simulateItemReady(item, rates, villRate, startTime, startVills) {
       nextBirth += 1 / villRate;
     }
     RES.forEach(r => { if (assigned[r]) saved[r] += assigned[r] * rates[r] * dt; });
-    if (need.every(r => saved[r] >= item.cost[r])) return { time: t, vills };
+    if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) return { time: t, vills };
     t += dt;
   }
   return null;
@@ -2515,13 +2538,13 @@ function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, s
       return { item, result: r };
     });
     return `<div class="pending-card">
-      <h3>Saving For (constant villager production)</h3>
+      <h3>Goals &amp; Savings (constant villager production)</h3>
       ${results.map(({ item, result }) => `<div class="pending-item">
         <span>${item.name}</span>
         <div class="cost-pills">${RES.filter(r => item.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${item.cost[r]}</span>`).join('')}</div>
         <span class="save-time${result ? '' : ' blocked'}">${result ? `${result.vills} vills · ${fmtClock(result.time)}` : 'past 60 min — add TCs'}</span>
       </div>`).join('')}
-      <p class="assumptions">Assumes you keep training new villagers and send each new one to whichever of these is furthest behind, in the order checked above.${catchUpNote}</p>
+      <p class="assumptions">Assumes you keep training new villagers and send each new one to whichever of these is furthest behind, in the order checked above; villager allocation is fully automatic. Unit-batch goals also need enough queue time (assumed 1 production building, serial) on top of the resources.${catchUpNote}</p>
     </div>`;
   }
 
