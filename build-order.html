@@ -68,6 +68,16 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 .save-check input{accent-color:var(--amber);}
 .tech-row .save-check{margin-left:auto;}
 
+.tech-line-row{display:flex;align-items:center;gap:10px;padding:8px 0;font-size:13px;border-bottom:1px solid var(--border);}
+.tech-line-row:last-child{border-bottom:none;}
+.tech-line-row .tname{flex-shrink:0;}
+.tier-dots{display:inline-flex;gap:7px;}
+.tier-dot{position:relative;width:15px;height:15px;border-radius:50%;border:2px solid var(--border2);cursor:pointer;flex-shrink:0;box-sizing:border-box;}
+.tier-dot.filled{background:var(--amber);border-color:var(--amber);}
+.tier-dot.saving{border-color:var(--amberL);box-shadow:0 0 0 3px var(--amberBg);}
+.tier-dot input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;width:100%;height:100%;}
+.tech-line-row .save-check{margin-left:auto;}
+
 .pending-card{margin-top:18px;border-top:1px solid var(--border);padding-top:16px;}
 .setup-card{margin-top:18px;border-top:1px solid var(--border);padding-top:16px;}
 .setup-card h3{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin:0 0 8px;}
@@ -203,18 +213,18 @@ const DATA = {
     // Purely-combat techs — zero gather-rate/cost effect (resource:null, so
     // effectiveGatherRate/costForCiv never touch them), included only so
     // they're saveable as goals like Loom already is.
-    { id:'forging', name:'Forging', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, group:'blacksmith' },
-    { id:'iron-casting', name:'Iron Casting', age:'Castle', resource:null, bonusPct:0, cost:{food:220,wood:0,gold:120,stone:0}, group:'blacksmith' },
-    { id:'blast-furnace', name:'Blast Furnace', age:'Imperial', resource:null, bonusPct:0, cost:{food:275,wood:0,gold:225,stone:0}, group:'blacksmith' },
-    { id:'fletching', name:'Fletching', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:50,stone:0}, group:'blacksmith' },
-    { id:'bodkin-arrow', name:'Bodkin Arrow', age:'Castle', resource:null, bonusPct:0, cost:{food:200,wood:0,gold:100,stone:0}, group:'blacksmith' },
-    { id:'bracer', name:'Bracer', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, group:'blacksmith' },
-    { id:'scale-mail-armor', name:'Scale Mail Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, group:'blacksmith' },
-    { id:'chain-mail-armor', name:'Chain Mail Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:200,wood:0,gold:100,stone:0}, group:'blacksmith' },
-    { id:'plate-mail-armor', name:'Plate Mail Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:150,stone:0}, group:'blacksmith' },
-    { id:'padded-archer-armor', name:'Padded Archer Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, group:'blacksmith' },
-    { id:'leather-archer-armor', name:'Leather Archer Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:150,stone:0}, group:'blacksmith' },
-    { id:'ring-archer-armor', name:'Ring Archer Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:250,wood:0,gold:250,stone:0}, group:'blacksmith' },
+    { id:'forging', name:'Forging', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, group:'blacksmith', line:'melee-attack', lineLabel:'Melee/Cavalry Attack' },
+    { id:'iron-casting', name:'Iron Casting', age:'Castle', resource:null, bonusPct:0, cost:{food:220,wood:0,gold:120,stone:0}, group:'blacksmith', line:'melee-attack', lineLabel:'Melee/Cavalry Attack' },
+    { id:'blast-furnace', name:'Blast Furnace', age:'Imperial', resource:null, bonusPct:0, cost:{food:275,wood:0,gold:225,stone:0}, group:'blacksmith', line:'melee-attack', lineLabel:'Melee/Cavalry Attack' },
+    { id:'fletching', name:'Fletching', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:50,stone:0}, group:'blacksmith', line:'archer-attack', lineLabel:'Archer Attack' },
+    { id:'bodkin-arrow', name:'Bodkin Arrow', age:'Castle', resource:null, bonusPct:0, cost:{food:200,wood:0,gold:100,stone:0}, group:'blacksmith', line:'archer-attack', lineLabel:'Archer Attack' },
+    { id:'bracer', name:'Bracer', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, group:'blacksmith', line:'archer-attack', lineLabel:'Archer Attack' },
+    { id:'scale-mail-armor', name:'Scale Mail Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, group:'blacksmith', line:'melee-armor', lineLabel:'Melee/Cavalry Armor' },
+    { id:'chain-mail-armor', name:'Chain Mail Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:200,wood:0,gold:100,stone:0}, group:'blacksmith', line:'melee-armor', lineLabel:'Melee/Cavalry Armor' },
+    { id:'plate-mail-armor', name:'Plate Mail Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:150,stone:0}, group:'blacksmith', line:'melee-armor', lineLabel:'Melee/Cavalry Armor' },
+    { id:'padded-archer-armor', name:'Padded Archer Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
+    { id:'leather-archer-armor', name:'Leather Archer Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:150,stone:0}, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
+    { id:'ring-archer-armor', name:'Ring Archer Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:250,wood:0,gold:250,stone:0}, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
     { id:'bloodlines', name:'Bloodlines', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:100,stone:0}, group:'stable' },
     { id:'husbandry', name:'Husbandry', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, group:'stable' },
     // Researched at the University in-game, but grouped here under Siege
@@ -2229,16 +2239,16 @@ function renderTechGrid() {
   const groups = [];
   RES.concat('all').forEach(r => {
     const techs = DATA.ecoTechs.filter(t => t.resource === r && !t.group);
-    if (techs.length) groups.push({ label: `${RES_ICON[r] || ''} ${RES_LABEL[r] || 'All Resources'}`, techs });
+    if (techs.length) groups.push({ label: `${RES_ICON[r] || ''} ${RES_LABEL[r] || 'All Resources'}`, techs, tiered: false });
   });
   ['mill', 'tc', 'blacksmith', 'stable', 'siege'].forEach(g => {
     const techs = DATA.ecoTechs.filter(t => t.group === g);
-    if (techs.length) groups.push({ label: TECH_GROUP_LABEL[g], techs });
+    if (techs.length) groups.push({ label: TECH_GROUP_LABEL[g], techs, tiered: g === 'blacksmith' });
   });
 
-  grid.innerHTML = groups.map(({ label, techs }) => `<div class="tech-group">
+  grid.innerHTML = groups.map(({ label, techs, tiered }) => `<div class="tech-group">
       <h3>${label}</h3>
-      ${techs.map(t => {
+      ${tiered ? renderTierLinesHtml(techs, free) : techs.map(t => {
         const isFree = free.has(t.id);
         return `<div class="tech-row${isFree ? ' locked' : ''}">
           <input type="checkbox" data-tech="${t.id}" ${isFree ? 'checked disabled' : ''}>
@@ -2264,6 +2274,77 @@ function renderTechGrid() {
     }
     renderResults();
   }));
+
+  wireTierLines(grid, free);
+}
+
+// Renders a group of same-line techs (e.g. Forging/Iron Casting/Blast
+// Furnace) as one row with a dot per tier instead of a full row each —
+// dots stay in the same footprint regardless of how many tiers a line has.
+// The checkbox behind each dot is hidden and not label-wrapped, so clicking
+// the dot never triggers the checkbox's own native click/activation
+// behavior — state is driven entirely by JS in wireTierLines, avoiding a
+// timing fight with the browser's pre-click-toggle/cancel-revert sequence.
+function renderTierLinesHtml(techs, free) {
+  const lines = {};
+  techs.forEach(t => { (lines[t.line] = lines[t.line] || []).push(t); });
+  return Object.values(lines).map(lineTechs => {
+    const dots = lineTechs.map(t => {
+      const isFree = free.has(t.id);
+      return `<span class="tier-dot${isFree ? ' filled locked' : ''}" title="${t.name} (${t.age})"></span><input type="checkbox" data-tech="${t.id}" ${isFree ? 'checked disabled' : ''} style="display:none">`;
+    }).join('');
+    return `<div class="tech-line-row">
+      <span class="tname">${lineTechs[0].lineLabel}</span>
+      <div class="tier-dots" data-tier-line="${lineTechs[0].line}">${dots}</div>
+      <span class="line-save-slot" data-line-save-slot="${lineTechs[0].line}"></span>
+    </div>`;
+  }).join('');
+}
+
+// Wires click-to-set-level on each tier-line's dots (clicking dot i sets
+// "have" up through tier i, cumulative — clicking the current max dot again
+// steps back down) and keeps the single "Save for next tier" slot in sync.
+function wireTierLines(grid, free) {
+  const lines = {};
+  DATA.ecoTechs.filter(t => t.line).forEach(t => { (lines[t.line] = lines[t.line] || []).push(t); });
+
+  Object.entries(lines).forEach(([lineId, lineTechs]) => {
+    const dotsWrap = grid.querySelector(`[data-tier-line="${lineId}"]`);
+    if (!dotsWrap) return;
+    const dotEls = [...dotsWrap.querySelectorAll('.tier-dot')];
+    const dotInputs = [...dotsWrap.querySelectorAll('input[data-tech]')];
+
+    let level = 0;
+    dotInputs.forEach((inp, i) => { if (inp.checked) level = i + 1; }); // seeds from free-tech checked attrs
+
+    function apply() {
+      dotInputs.forEach((inp, j) => { if (!inp.disabled) inp.checked = j < level; });
+      dotEls.forEach((el, j) => { if (!el.classList.contains('locked')) el.classList.toggle('filled', j < level); });
+
+      const saveSlot = grid.querySelector(`[data-line-save-slot="${lineId}"]`);
+      const nextTech = lineTechs[level];
+      if (!saveSlot) return;
+      if (!nextTech) { saveSlot.innerHTML = ''; return; }
+      saveSlot.innerHTML = `<label class="save-check"><input type="checkbox" data-tech-save="${nextTech.id}"> Save for ${nextTech.name}</label>`;
+      const saveCb = saveSlot.querySelector('input');
+      dotEls[level]?.classList.toggle('saving', saveCb.checked);
+      saveCb.addEventListener('change', () => {
+        dotEls[level]?.classList.toggle('saving', saveCb.checked);
+        renderResults();
+      });
+    }
+
+    dotEls.forEach((dot, i) => {
+      if (dot.classList.contains('locked')) return;
+      dot.addEventListener('click', () => {
+        level = level === i + 1 ? i : i + 1;
+        apply();
+        renderResults();
+      });
+    });
+
+    apply();
+  });
 }
 
 function selectedTechIds() {
