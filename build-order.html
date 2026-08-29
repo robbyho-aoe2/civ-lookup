@@ -69,6 +69,9 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 .tech-row .save-check{margin-left:auto;}
 
 .pending-card{margin-top:18px;border-top:1px solid var(--border);padding-top:16px;}
+.setup-card{margin-top:18px;border-top:1px solid var(--border);padding-top:16px;}
+.setup-card h3{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin:0 0 8px;}
+.setup-card .pending-item{font-size:12px;}
 .pending-card h3{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin:0 0 8px;}
 .pending-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;}
 .pending-item:last-child{border-bottom:none;}
@@ -85,7 +88,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 .alloc-row .rname{width:64px;font-size:12px;font-weight:700;flex-shrink:0;}
 .alloc-bar-wrap{flex:1;background:var(--bg);border-radius:6px;overflow:hidden;height:22px;border:1px solid var(--border);}
 .alloc-bar{height:100%;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:11px;font-weight:700;color:#1a0a00;transition:width .25s;white-space:nowrap;min-width:2px;}
-.alloc-row .rvills{width:110px;text-align:right;font-size:12px;color:var(--text2);flex-shrink:0;}
+.alloc-row .rvills{width:150px;text-align:right;font-size:12px;color:var(--text2);flex-shrink:0;}
 .alloc-row .rvills b{color:var(--text);}
 
 .empty-hint{font-size:12px;color:var(--text3);padding:14px 0;text-align:center;}
@@ -110,7 +113,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
   <div class="card">
     <h2>What this does</h2>
     <p class="desc" style="margin-bottom:0">Pick a civ, the economy upgrades you'll have, and the army you want to keep producing — this works out the resource income you need and tells you how many villagers to put on Wood/Food/Gold/Stone to sustain it.</p>
-    <p class="assumptions">Steady-state estimate, not a minute-by-minute timeline: it assumes you keep this mix in constant production forever (not a one-time batch) and food comes from farms (not hunting/berries). Villager counts are a target ratio to sustain that rotation, not "move vills at pop X" instructions.</p>
+    <p class="assumptions">Steady-state estimate, not a minute-by-minute timeline: it assumes you keep this mix in constant production forever (not a one-time batch) and food comes from farms (not hunting/berries). Villager counts are a target ratio to sustain that rotation, not "move vills at pop X" instructions. The Wood total includes farm upkeep (60 wood to rebuild a depleted farm) — food villagers need wood villagers behind them, not just their own gather rate.</p>
   </div>
 
   <div class="card">
@@ -167,6 +170,8 @@ const DATA = {
   // dataSourceNotes below for confidence levels and known gaps.
   gatherRates: { wood: 0.32, food: 0.33, gold: 0.30, stone: 0.30 },
   villager: { cost:{food:50,wood:0,gold:0,stone:0}, trainTime:25 },
+  farmBuildCost: 60, // wood — standard across editions, a farm needs rebuilding once its yield is used up
+  campCosts: { miningCamp: 100, lumberCamp: 100 }, // wood — one-time, pending verification for civ exceptions
   dataSourceNotes: 'Wood/gold/stone base gather rates are widely-cited community figures, not independently re-verified. Full 53-civ roster with unique units and unavailableUnitLines pulled programmatically from game data; ecoBonuses cover 11 civs whose bonuses cleanly matched this calculator\'s bonus shapes (see aoe2_civs_data.json sourceNotes for real bonuses that were excluded for not fitting, e.g. Portuguese -20% gold cost, Byzantines\' line-scoped discount).',
   ecoTechs: [
     { id:'double-bit-axe', name:'Double-Bit Axe', age:'Feudal', resource:'wood', bonusPct:20, cost:{food:100,wood:50,gold:0,stone:0} },
@@ -2488,6 +2493,19 @@ function renderResults() {
     popRate += line.pop * unitRate;
   });
 
+  // Food here means farm food (per the tool's stated assumption), and farms
+  // aren't free to sustain: each one holds a finite yield before it's used
+  // up and has to be rebuilt (60 wood). That's a real ongoing wood cost
+  // proportional to how much food you're pulling off farms — without it,
+  // the tool would show a food villager count that's uses that in practice
+  // starves for wood. Yield scales with the Mill farm-tech tier checked
+  // (175 base -> 250 -> 375 -> 550); civ/carry-capacity bonuses are treated
+  // as pure rate effects here, not yield, which slightly overstates upkeep
+  // for a civ whose food bonus is actually a yield increase (e.g. Franks).
+  const farmYield = techIds.has('crop-rotation') ? 550 : techIds.has('heavy-plow') ? 375 : techIds.has('horse-collar') ? 250 : 175;
+  const farmUpkeepWoodPerSec = totalIncome.food * DATA.farmBuildCost / farmYield;
+  totalIncome.wood += farmUpkeepWoodPerSec;
+
   const villagers = {};
   let totalVillagers = 0;
   RES.forEach(r => {
@@ -2504,17 +2522,39 @@ function renderResults() {
     <div class="stat-tile"><div class="label">Pop Growth</div><div class="value">${(popRate * 60).toFixed(1)}/min</div></div>
   </div>`;
 
+  const farmUpkeepVills = rates.wood > 0 ? farmUpkeepWoodPerSec / rates.wood : 0;
   const maxV = Math.max(1, ...RES.map(r => villagers[r]));
   const bars = RES.filter(r => totalIncome[r] > 0).map(r => {
     const pct = Math.max(4, (villagers[r] / maxV) * 100);
+    const upkeepNote = r === 'wood' && farmUpkeepVills >= 0.05 ? ` (${Math.ceil(farmUpkeepVills)} for farm upkeep)` : '';
     return `<div class="alloc-row">
       <div class="rname">${RES_ICON[r]} ${RES_LABEL[r]}</div>
       <div class="alloc-bar-wrap"><div class="alloc-bar" style="width:${pct}%;background:var(--${r})">${villagers[r] >= 0.5 ? Math.ceil(villagers[r]) : ''}</div></div>
-      <div class="rvills"><b>${Math.ceil(villagers[r])}</b> vills · ${rates[r].toFixed(2)}/s each</div>
+      <div class="rvills"><b>${Math.ceil(villagers[r])}</b> vills · ${rates[r].toFixed(2)}/s each${upkeepNote}</div>
     </div>`;
   }).join('');
 
-  bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>' + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, startVills);
+  bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>' + renderSetupCard(villagers) + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, startVills);
+}
+
+// One-time building costs implied by needing villagers on a resource at
+// all — a Mining Camp per gold/stone deposit, a Lumber Camp for wood. Not
+// folded into the per-second income figures above since this is capital
+// you pay once, not an ongoing rate (unlike farm upkeep, which recurs).
+// Doesn't model relocating to a new camp when a deposit runs out — how
+// often that happens depends on the map, not anything this tool tracks.
+function renderSetupCard(villagers) {
+  const items = [];
+  if (villagers.gold > 0) items.push({ name: 'Mining Camp (Gold)', wood: DATA.campCosts.miningCamp });
+  if (villagers.stone > 0) items.push({ name: 'Mining Camp (Stone)', wood: DATA.campCosts.miningCamp });
+  if (villagers.wood > 0) items.push({ name: 'Lumber Camp', wood: DATA.campCosts.lumberCamp });
+  if (!items.length) return '';
+  const totalWood = items.reduce((s, i) => s + i.wood, 0);
+  return `<div class="setup-card">
+    <h3>One-Time Setup</h3>
+    ${items.map(i => `<div class="pending-item"><span>${i.name}</span><span class="res-pill wood">${RES_ICON.wood}${i.wood}</span></div>`).join('')}
+    <p class="assumptions">${totalWood} wood total, once — not part of the ongoing income above. Assumes one camp per resource; a map with scattered deposits may need more.</p>
+  </div>`;
 }
 
 function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, startVills) {
