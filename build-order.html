@@ -245,9 +245,18 @@ const DATA = {
     // distance/travel model; Hand Cart's 50% is a TOTAL that replaces
     // Wheelbarrow's 25% rather than stacking on top of it (handled by
     // `supersedes` in effectiveGatherRate).
-    { id:'loom', name:'Loom', age:'Dark', resource:null, bonusPct:0, cost:{food:0,wood:0,gold:50,stone:0}, group:'tc', saveOnly:true, defaultSave:true },
-    { id:'wheelbarrow', name:'Wheelbarrow', age:'Feudal', resource:'all', bonusPct:25, cost:{food:175,wood:50,gold:0,stone:0}, group:'tc', line:'carry-capacity', lineLabel:'Carry Capacity' },
-    { id:'hand-cart',    name:'Hand Cart',    age:'Castle', resource:'all', bonusPct:50, cost:{food:300,wood:200,gold:0,stone:0}, group:'tc', supersedes:'wheelbarrow', line:'carry-capacity', lineLabel:'Carry Capacity' },
+    // tcQueue:true = researched at the Town Center, which can only do ONE
+    // thing at a time (train a villager OR research a tech) — so these
+    // PAUSE villager production for researchTime seconds, unlike every
+    // other tech here (researched at buildings that don't compete with the
+    // TC). deferToEnd on Loom: the standard opening delays it to the very
+    // end of Dark Age rather than researching it immediately, since every
+    // second spent on it early is a second not spent training villagers —
+    // Loom itself doesn't get more useful by waiting, so there's no reason
+    // to pay that villager-time cost before you have to.
+    { id:'loom', name:'Loom', age:'Dark', resource:null, bonusPct:0, cost:{food:0,wood:0,gold:50,stone:0}, group:'tc', saveOnly:true, defaultSave:true, tcQueue:true, researchTime:25, deferToEnd:true },
+    { id:'wheelbarrow', name:'Wheelbarrow', age:'Feudal', resource:'all', bonusPct:25, cost:{food:175,wood:50,gold:0,stone:0}, group:'tc', line:'carry-capacity', lineLabel:'Carry Capacity', tcQueue:true, researchTime:75 },
+    { id:'hand-cart',    name:'Hand Cart',    age:'Castle', resource:'all', bonusPct:50, cost:{food:300,wood:200,gold:0,stone:0}, group:'tc', supersedes:'wheelbarrow', line:'carry-capacity', lineLabel:'Carry Capacity', tcQueue:true, researchTime:55 },
     // Purely-combat techs — zero gather-rate/cost effect (resource:null, so
     // effectiveGatherRate/costForCiv never touch them), included only so
     // they're saveable as goals like Loom already is.
@@ -2687,7 +2696,7 @@ function pendingUpgrades(lines) {
   const items = [];
   document.querySelectorAll('[data-tech-save]:checked').forEach(cb => {
     const t = DATA.ecoTechs.find(x => x.id === cb.dataset.techSave);
-    if (t) items.push({ name: t.name, cost: t.cost || {} });
+    if (t) items.push({ name: t.name, cost: t.cost || {}, tcQueue: t.tcQueue, researchTime: t.researchTime, deferToEnd: t.deferToEnd });
   });
   lines.forEach(l => {
     const state = lineState[l.id];
@@ -2710,7 +2719,13 @@ function pendingUpgrades(lines) {
       });
     }
   });
-  return items;
+  // Items flagged deferToEnd (Loom) process last — the standard opening
+  // delays them rather than paying their TC-time cost before it matters,
+  // regardless of the order they happened to be checked in.
+  return items
+    .map((item, i) => ({ item, i }))
+    .sort((a, b) => (a.item.deferToEnd === b.item.deferToEnd ? a.i - b.i : a.item.deferToEnd ? 1 : -1))
+    .map(({ item }) => item);
 }
 
 // Simulates constant villager production: new villagers are born at a fixed
@@ -2723,6 +2738,13 @@ function pendingUpgrades(lines) {
 function simulateItemReady(item, rates, villRate, startTime, startVills, pool) {
   const need = RES.filter(r => item.cost[r] > 0);
   const minTime = startTime + (item.queueSeconds || 0);
+  // Town Center techs (tcQueue:true) block villager production for their
+  // own research duration — added AFTER resources/queue are satisfied,
+  // since that's genuinely dead time for new villagers no matter how the
+  // cost got paid. Villager count doesn't grow during it (see callers,
+  // which start the NEXT segment from this delayed time with vills
+  // unchanged — a fresh birth schedule naturally resumes after).
+  const tcDelay = item.tcQueue ? (item.researchTime || 0) : 0;
   pool = { food: 0, wood: 0, gold: 0, stone: 0, ...pool };
 
   // Credit whatever's left of the game's starting stockpile toward this
@@ -2735,7 +2757,7 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool) {
     pool[r] -= credit;
   });
   if (need.every(r => saved[r] >= item.cost[r])) {
-    return { time: Math.max(startTime, minTime), vills: startVills, pool, assigned: { food: 0, wood: 0, gold: 0, stone: 0 }, newVills: 0 };
+    return { time: Math.max(startTime, minTime) + tcDelay, vills: startVills, pool, assigned: { food: 0, wood: 0, gold: 0, stone: 0 }, newVills: 0 };
   }
 
   if (villRate <= 0) return null;
@@ -2762,7 +2784,7 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool) {
       nextBirth += 1 / villRate;
     }
     RES.forEach(r => { if (assigned[r]) saved[r] += assigned[r] * rates[r] * dt; });
-    if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) return { time: t, vills, pool, assigned, newVills: vills - startVills };
+    if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) return { time: t + tcDelay, vills, pool, assigned, newVills: vills - startVills };
     t += dt;
   }
   return null;
@@ -2773,11 +2795,11 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool) {
 // is proportionally furthest from its target share (not a lump cost like
 // simulateItemReady — a target RATIO). Returns null if already at/above
 // sustain, or if there's no villager production to ramp with.
-function simulateRampToSustain(rates, villRate, startVills, targetVillagers, totalVillCeil) {
+function simulateRampToSustain(rates, villRate, startVills, targetVillagers, totalVillCeil, startTime) {
   if (startVills >= totalVillCeil || villRate <= 0) return null;
   const assigned = { food: 0, wood: 0, gold: 0, stone: 0 };
   let vills = startVills;
-  let t = 0;
+  let t = startTime || 0;
   while (vills < totalVillCeil) {
     let target = 'food', worstRatio = Infinity;
     RES.forEach(r => {
@@ -2804,17 +2826,19 @@ function primeInstantGoals(pending, startingPool) {
   const pool = { ...startingPool };
   const resolved = [];
   const remaining = [];
+  let tcTime = 0; // cumulative TC-queue time used by instantly-resolved TC techs — they can't research back-to-back for free, so this stacks
   pending.forEach(item => {
     const need = RES.filter(r => item.cost[r] > 0);
     const covered = need.every(r => pool[r] >= item.cost[r]);
     if (covered) {
       need.forEach(r => { pool[r] -= item.cost[r]; });
-      resolved.push({ item, time: item.queueSeconds || 0 });
+      if (item.tcQueue) tcTime += item.researchTime || 0;
+      resolved.push({ item, time: item.tcQueue ? tcTime : (item.queueSeconds || 0) });
     } else {
       remaining.push(item);
     }
   });
-  return { resolved, remaining, pool };
+  return { resolved, remaining, pool, tcBusyUntil: tcTime };
 }
 
 // Builds the chronological checkpoint list for the Step-by-Step panel:
@@ -2835,10 +2859,10 @@ function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCe
 
   if (villRate <= 0) return checkpoints;
 
-  let cursorVills = startVills, cursorTime = 0, pool = primed.pool;
+  let cursorVills = startVills, cursorTime = primed.tcBusyUntil, pool = primed.pool;
 
   if (startVills < totalVillCeil) {
-    const ramp = simulateRampToSustain(rates, villRate, startVills, targetVillagers, totalVillCeil);
+    const ramp = simulateRampToSustain(rates, villRate, startVills, targetVillagers, totalVillCeil, cursorTime);
     if (ramp) {
       cursorTime = ramp.time; cursorVills = ramp.vills;
       checkpoints.push({
@@ -3075,7 +3099,7 @@ function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, c
     const resultByItem = new Map();
     primed.resolved.forEach(({ item, time }) => { resultByItem.set(item, { time, vills: startVills }); });
 
-    let cursorTime = 0, cursorVills = startVills, pool = primed.pool;
+    let cursorTime = primed.tcBusyUntil, cursorVills = startVills, pool = primed.pool;
     let catchUpNote = '';
     // If you're starting below the sustain requirement, the first stretch of
     // new villagers goes to catching the composition up — not to savings —
