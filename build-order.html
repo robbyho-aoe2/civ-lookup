@@ -77,7 +77,6 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 .tech-line-row .tname{flex-shrink:0;}
 .tier-dots{display:inline-flex;gap:7px;}
 .tier-dot{position:relative;width:15px;height:15px;border-radius:50%;border:2px solid var(--border2);cursor:pointer;flex-shrink:0;box-sizing:border-box;}
-.tier-dot.disabled{cursor:not-allowed;opacity:.4;}
 .tier-dot.filled{background:var(--amber);border-color:var(--amber);}
 .tier-dot.filled[data-age="Dark"]{background:var(--ageDark);border-color:var(--ageDark);}
 .tier-dot.filled[data-age="Feudal"]{background:var(--ageFeudal);border-color:var(--ageFeudal);}
@@ -140,26 +139,6 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc">Adds their unique unit(s) to the roster below and applies any economy bonus they have.</p>
     <select id="civ-select"></select>
     <div id="civ-bonus-list"></div>
-  </div>
-
-  <div class="card">
-    <h2>Starting Point</h2>
-    <p class="desc">Where you are right now — caps which upgrade tiers are selectable below (can't have Long Swordsmen in Feudal Age) and sets the starting villager count for the savings simulation.</p>
-    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-end;">
-      <div>
-        <label for="start-age" style="display:block;margin-bottom:6px;">Current Age</label>
-        <select id="start-age">
-          <option value="Dark">Dark Age</option>
-          <option value="Feudal" selected>Feudal Age</option>
-          <option value="Castle">Castle Age</option>
-          <option value="Imperial">Imperial Age</option>
-        </select>
-      </div>
-      <div>
-        <label for="start-vills" style="display:block;margin-bottom:6px;">Starting Villagers</label>
-        <input type="number" id="start-vills" value="20" min="0" style="width:80px;">
-      </div>
-    </div>
   </div>
 
   <div class="card">
@@ -2401,10 +2380,6 @@ function selectedTechIds() {
   return ids;
 }
 
-const AGE_ORDER = ['Dark', 'Feudal', 'Castle', 'Imperial'];
-function ageIndex(age) { return AGE_ORDER.indexOf(age); }
-function currentAgeIndex() { return ageIndex(document.getElementById('start-age').value); }
-
 // ─── Unit lines (with upgrade tiers) ────────────────────────────────────────
 
 function allLinesForCiv(civ) {
@@ -2431,17 +2406,9 @@ let lineState = {}; // id -> { tierIdx, buildings, saving }
 function renderUnitTable() {
   const civ = selectedCiv();
   const lines = allLinesForCiv(civ);
-  const maxAgeIdx = currentAgeIndex();
   lineState = {};
   lines.forEach(l => {
-    // Default to the highest tier actually reachable at the current age,
-    // not always the base tier — a Castle Age player almost certainly has
-    // Long Swordsmen already, not Militia.
-    let defaultTier = 0;
-    for (let i = l.tiers.length - 1; i >= 0; i--) {
-      if (ageIndex(l.tiers[i].age) <= maxAgeIdx) { defaultTier = i; break; }
-    }
-    lineState[l.id] = { tierIdx: defaultTier, buildings: l.isVillager ? 1 : 0, goalQty: 0, saving: false };
+    lineState[l.id] = { tierIdx: 0, buildings: l.isVillager ? 1 : 0, goalQty: 0, saving: false };
   });
 
   const byBuilding = {};
@@ -2457,7 +2424,7 @@ function renderUnitTable() {
       const tierCell = l.isVillager
         ? '<span class="tage">—</span>'
         : l.tiers.length > 1
-          ? `<div class="tier-dots" data-unit-tier-line="${l.id}">${l.tiers.map((t, i) => `<span class="tier-dot${i <= defaultTier ? ' filled' : ''}${ageIndex(t.age) > maxAgeIdx ? ' disabled' : ''}" data-age="${t.age}" data-idx="${i}" title="${t.name} (${t.age})"></span>`).join('')}</div>`
+          ? `<div class="tier-dots" data-unit-tier-line="${l.id}">${l.tiers.map((t, i) => `<span class="tier-dot${i <= defaultTier ? ' filled' : ''}" data-age="${t.age}" data-idx="${i}" title="${t.name} (${t.age})"></span>`).join('')}</div>`
           : `<span class="tage">${l.tiers[0].age}</span>`;
       const buildingsTitle = l.isVillager ? 'title="0 = stop training villagers (all-in)"' : '';
       const goalCell = l.isVillager ? '<span class="tage">—</span>' : `<input type="number" class="qty-input" min="0" value="0" data-goal-qty="${l.id}" title="One-time batch to reach as a goal, on top of any ongoing Buildings production">`;
@@ -2491,7 +2458,6 @@ function renderUnitTable() {
     const line = lines.find(l => l.id === dotsWrap.dataset.unitTierLine);
     const dots = [...dotsWrap.querySelectorAll('.tier-dot')];
     dots.forEach((dot, i) => {
-      if (dot.classList.contains('disabled')) return;
       dot.addEventListener('click', () => {
         const state = lineState[line.id];
         state.tierIdx = i;
@@ -2646,11 +2612,9 @@ function renderResults() {
   const villagerState = lineState['villager'];
   const villRate = villagerState && villagerState.buildings > 0 ? villagerState.buildings / DATA.villager.trainTime : 0;
 
-  const startVills = Math.max(0, Number(document.getElementById('start-vills').value) || 0);
-
   if (!rows.length) {
     descEl.textContent = 'Add production buildings above to see the split.';
-    bodyEl.innerHTML = '<div class="empty-hint">No production set yet.</div>' + renderPendingCard(pending, rates, { food: 0, wood: 0, gold: 0, stone: 0 }, villRate, 0, startVills);
+    bodyEl.innerHTML = '<div class="empty-hint">No production set yet.</div>' + renderPendingCard(pending, rates, { food: 0, wood: 0, gold: 0, stone: 0 }, villRate, 0);
     return;
   }
 
@@ -2724,7 +2688,7 @@ function renderResults() {
     </div>`;
   }).join('');
 
-  bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>' + renderSetupCard(villagers, civ) + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, startVills);
+  bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>' + renderSetupCard(villagers, civ) + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil);
 }
 
 // One-time building costs implied by needing villagers on a resource at
@@ -2768,21 +2732,11 @@ function renderSetupCard(villagers, civ) {
   </div>`;
 }
 
-function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, startVills) {
+function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil) {
   if (!pending.length) return '';
 
   if (villRate > 0) {
-    let cursorTime = 0, cursorVills = startVills;
-    let catchUpNote = '';
-    // If you're starting below the sustain requirement, the first stretch of
-    // new villagers goes to catching the composition up — not to savings —
-    // before any excess exists to fund anything.
-    if (cursorVills < totalVillCeil) {
-      const deficit = totalVillCeil - cursorVills;
-      cursorTime += deficit / villRate;
-      catchUpNote = ` First ${fmtClock(cursorTime)} (${deficit} vills) goes to reaching your ${totalVillCeil}-villager sustain requirement before any savings begin.`;
-      cursorVills = totalVillCeil;
-    }
+    let cursorTime = 0, cursorVills = totalVillCeil;
     const results = pending.map(item => {
       const r = simulateItemReady(item, rates, villRate, cursorTime, cursorVills);
       if (r) { cursorTime = r.time; cursorVills = r.vills; }
@@ -2795,7 +2749,7 @@ function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, s
         <div class="cost-pills">${RES.filter(r => item.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${item.cost[r]}</span>`).join('')}</div>
         <span class="save-time${result ? '' : ' blocked'}">${result ? `${result.vills} vills · ${fmtClock(result.time)}` : 'past 60 min — add TCs'}</span>
       </div>`).join('')}
-      <p class="assumptions">Assumes you keep training new villagers and send each new one to whichever of these is furthest behind, in the order checked above; villager allocation is fully automatic. Unit-batch goals also need enough queue time (assumed 1 production building, serial) on top of the resources.${catchUpNote}</p>
+      <p class="assumptions">Assumes you keep training new villagers and send each new one to whichever of these is furthest behind, in the order checked above; villager allocation is fully automatic. Unit-batch goals also need enough queue time (assumed 1 production building, serial) on top of the resources.</p>
     </div>`;
   }
 
@@ -2837,12 +2791,6 @@ civSelect.addEventListener('change', () => {
   renderCivBonusList();
   renderResults();
 });
-document.getElementById('start-age').addEventListener('change', () => {
-  renderUnitTable();
-  renderResults();
-});
-document.getElementById('start-vills').addEventListener('input', renderResults);
-
 renderTechGrid();
 renderUnitTable();
 renderCivBonusList();
