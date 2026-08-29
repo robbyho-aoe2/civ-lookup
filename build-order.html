@@ -172,6 +172,7 @@ const DATA = {
   farmBuildCost: 60, // wood — standard across editions, a farm needs rebuilding once its yield is used up
   campCosts: { mill: 100, miningCamp: 100, lumberCamp: 100 }, // wood — one-time; Japanese -50%, Incas' Settlement replaces all three (see civ ecoBonuses)
   houseCost: 25, // wood
+  startingResources: { food: 200, wood: 200, gold: 50, stone: 0 }, // standard random-map start
   housePopSpace: 5, // pop per house
   dataSourceNotes: 'Wood/gold/stone base gather rates are widely-cited community figures, not independently re-verified. Full 53-civ roster with unique units and unavailableUnitLines pulled programmatically from game data; ecoBonuses cover 11 civs whose bonuses cleanly matched this calculator\'s bonus shapes (see aoe2_civs_data.json sourceNotes for real bonuses that were excluded for not fitting, e.g. Portuguese -20% gold cost, Byzantines\' line-scoped discount).',
   ecoTechs: [
@@ -2589,13 +2590,26 @@ function pendingUpgrades(lines) {
 // count) at which the item's full cost has accumulated AND, for a unit-batch
 // goal, enough queue time has passed to actually train it — or null if it
 // would take longer than the simulation cap.
-function simulateItemReady(item, rates, villRate, startTime, startVills) {
+function simulateItemReady(item, rates, villRate, startTime, startVills, pool) {
   const need = RES.filter(r => item.cost[r] > 0);
   const minTime = startTime + (item.queueSeconds || 0);
-  if (!need.length) return { time: Math.max(startTime, minTime), vills: startVills };
+  pool = { food: 0, wood: 0, gold: 0, stone: 0, ...pool };
+
+  // Credit whatever's left of the game's starting stockpile toward this
+  // item's cost before any villager income is needed — a fresh game starts
+  // with real resources already banked, not zero.
+  const saved = { food: 0, wood: 0, gold: 0, stone: 0 };
+  need.forEach(r => {
+    const credit = Math.min(pool[r], item.cost[r]);
+    saved[r] = credit;
+    pool[r] -= credit;
+  });
+  if (need.every(r => saved[r] >= item.cost[r])) {
+    return { time: Math.max(startTime, minTime), vills: startVills, pool };
+  }
+
   if (villRate <= 0) return null;
 
-  const saved = { food: 0, wood: 0, gold: 0, stone: 0 };
   const assigned = { food: 0, wood: 0, gold: 0, stone: 0 };
   let vills = startVills;
   let t = startTime;
@@ -2618,7 +2632,7 @@ function simulateItemReady(item, rates, villRate, startTime, startVills) {
       nextBirth += 1 / villRate;
     }
     RES.forEach(r => { if (assigned[r]) saved[r] += assigned[r] * rates[r] * dt; });
-    if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) return { time: t, vills };
+    if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) return { time: t, vills, pool };
     t += dt;
   }
   return null;
@@ -2792,10 +2806,10 @@ function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil) {
   if (!pending.length) return '';
 
   if (villRate > 0) {
-    let cursorTime = 0, cursorVills = totalVillCeil;
+    let cursorTime = 0, cursorVills = totalVillCeil, pool = { ...DATA.startingResources };
     const results = pending.map(item => {
-      const r = simulateItemReady(item, rates, villRate, cursorTime, cursorVills);
-      if (r) { cursorTime = r.time; cursorVills = r.vills; }
+      const r = simulateItemReady(item, rates, villRate, cursorTime, cursorVills, pool);
+      if (r) { cursorTime = r.time; cursorVills = r.vills; pool = r.pool; }
       return { item, result: r };
     });
     return `<div class="pending-card">
@@ -2805,7 +2819,7 @@ function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil) {
         <div class="cost-pills">${RES.filter(r => item.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${item.cost[r]}</span>`).join('')}</div>
         <span class="save-time${result ? '' : ' blocked'}">${result ? `${result.vills} vills · ${fmtClock(result.time)}` : 'past 60 min — add TCs'}</span>
       </div>`).join('')}
-      <p class="assumptions">Assumes you keep training new villagers and send each new one to whichever of these is furthest behind, in the order checked above; villager allocation is fully automatic. Unit-batch goals also need enough queue time (assumed 1 production building, serial) on top of the resources.</p>
+      <p class="assumptions">Credits your starting stockpile (200 food/200 wood/50 gold) before any villager income, same as a real game start — doesn't yet account for civ-specific starting-resource bonuses (Persians, Mayans, Chinese, Cumans, etc.). Assumes you keep training new villagers and send each new one to whichever of these is furthest behind, in the order checked above; villager allocation is fully automatic. Unit-batch goals also need enough queue time (assumed 1 production building, serial) on top of the resources.</p>
     </div>`;
   }
 
@@ -2816,6 +2830,9 @@ function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil) {
   RES.forEach(r => { excessRate[r] = (Math.ceil(villagers[r] || 0) - (villagers[r] || 0)) * rates[r]; });
   const pendingCost = { food: 0, wood: 0, gold: 0, stone: 0 };
   pending.forEach(p => RES.forEach(r => pendingCost[r] += p.cost[r] || 0));
+  // Credit the starting stockpile here too, same as the constant-production
+  // path — a real game doesn't start at zero resources.
+  RES.forEach(r => { pendingCost[r] = Math.max(0, pendingCost[r] - DATA.startingResources[r]); });
   const perResourceEta = {};
   RES.forEach(r => {
     if (pendingCost[r] <= 0) { perResourceEta[r] = 0; return; }
@@ -2828,7 +2845,7 @@ function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil) {
     <h3>Saving For (all-in — no new villagers)</h3>
     ${pending.map(p => `<div class="pending-item"><span>${p.name}</span><div class="cost-pills">${RES.filter(r => p.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${p.cost[r]}</span>`).join('')}</div></div>`).join('')}
     <div class="pending-item total"><span>Ready in</span><span class="save-time${readySeconds === Infinity ? ' blocked' : ''}">${readySeconds === Infinity ? 'need spare villagers' : fmtSecs(readySeconds)}</span></div>
-    <p class="assumptions">Rounding villager counts up leaves a little spare income per resource — that surplus funds this without touching your sustain rate.${blockedRes.length ? ` No spare ${blockedRes.map(r => RES_LABEL[r]).join('/')} yet.` : ''} Set Villager buildings above 0 for constant production instead.</p>
+    <p class="assumptions">Credits your starting stockpile (200 food/200 wood/50 gold) against the total first. Rounding villager counts up leaves a little spare income per resource — that surplus funds the rest without touching your sustain rate.${blockedRes.length ? ` No spare ${blockedRes.map(r => RES_LABEL[r]).join('/')} yet.` : ''} Set Villager buildings above 0 for constant production instead.</p>
   </div>`;
 }
 
