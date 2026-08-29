@@ -331,7 +331,13 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "mule-cart",
+          "cost": { "food": 15, "wood": 60 },
+          "note": "Mule Cart replaces Mining Camp + Lumber Camp with one mobile dropsite, and costs 25% less (15 food/60 wood)"
+        }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -864,7 +870,14 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "mule-cart",
+          "cost": { "food": 20, "wood": 80 },
+          "freeStarting": true,
+          "note": "Mule Cart replaces Mining Camp + Lumber Camp with one mobile dropsite, and Georgians start with one already built"
+        }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -2721,36 +2734,56 @@ function renderResults() {
 // often that happens depends on the map, not anything this tool tracks.
 function renderSetupCard(villagers, civ) {
   const settlement = (civ?.ecoBonuses || []).find(b => b.type === 'settlement');
+  const muleCart = (civ?.ecoBonuses || []).find(b => b.type === 'mule-cart');
   const needsAny = villagers.food > 0 || villagers.gold > 0 || villagers.stone > 0 || villagers.wood > 0;
   if (!needsAny) return '';
 
-  // Incas' Settlement replaces Mill + both Mining Camps + Lumber Camp with
-  // one building — a single line item covers all four resource roles.
+  const pillsFor = cost => {
+    const parts = RES.filter(r => cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${cost[r]}</span>`);
+    return parts.length ? parts.join('') : '<span class="tage">Free</span>';
+  };
+
+  let items = [];
+  let note = '';
+
+  // Incas' (and other South American) Settlement replaces Mill + both
+  // Mining Camps + Lumber Camp with one building — a single line item
+  // covers all four resource roles.
   if (settlement) {
-    return `<div class="setup-card">
-      <h3>One-Time Setup</h3>
-      <div class="pending-item"><span>Settlement (replaces Mill/Mining Camp/Lumber Camp)</span><span class="res-pill wood">${RES_ICON.wood}${settlement.cost}</span></div>
-      <p class="assumptions">${settlement.cost} wood total, once — not part of the ongoing income above. One building covers food, wood, gold, and stone drop-off/tech access.</p>
-    </div>`;
+    items = [{ name: 'Settlement (replaces Mill/Mining Camp/Lumber Camp)', cost: { wood: settlement.cost } }];
+    note = 'One building covers food, wood, gold, and stone drop-off/tech access.';
+  } else {
+    const campDiscount = (civ?.ecoBonuses || []).find(b => b.type === 'camp-cost-pct');
+    const discountMult = campDiscount ? 1 - campDiscount.value / 100 : 1;
+    const mill = Math.round(DATA.campCosts.mill * discountMult);
+    const millName = civ?.millName || 'Mill';
+    if (villagers.food > 0) items.push({ name: millName, cost: { wood: mill } });
+
+    // Armenians/Georgians' Mule Cart replaces Mining Camp + Lumber Camp
+    // with one mobile dropsite (still separate from Mill/food).
+    const needsCampResource = villagers.gold > 0 || villagers.stone > 0 || villagers.wood > 0;
+    if (muleCart && needsCampResource) {
+      const cost = muleCart.freeStarting ? { food: 0, wood: 0 } : muleCart.cost;
+      const label = muleCart.freeStarting ? 'Mule Cart (already at start — covers wood/gold/stone)' : 'Mule Cart (covers wood/gold/stone)';
+      items.push({ name: label, cost });
+    } else {
+      const miningCamp = Math.round(DATA.campCosts.miningCamp * discountMult);
+      const lumberCamp = Math.round(DATA.campCosts.lumberCamp * discountMult);
+      if (villagers.gold > 0) items.push({ name: 'Mining Camp (Gold)', cost: { wood: miningCamp } });
+      if (villagers.stone > 0) items.push({ name: 'Mining Camp (Stone)', cost: { wood: miningCamp } });
+      if (villagers.wood > 0) items.push({ name: 'Lumber Camp', cost: { wood: lumberCamp } });
+    }
+    note = (campDiscount ? `${civ.name} buildings discounted ${campDiscount.value}%. ` : '') + 'Assumes one camp per resource; a map with scattered deposits may need more.';
   }
 
-  const campDiscount = (civ?.ecoBonuses || []).find(b => b.type === 'camp-cost-pct');
-  const discountMult = campDiscount ? 1 - campDiscount.value / 100 : 1;
-  const mill = Math.round(DATA.campCosts.mill * discountMult);
-  const miningCamp = Math.round(DATA.campCosts.miningCamp * discountMult);
-  const lumberCamp = Math.round(DATA.campCosts.lumberCamp * discountMult);
-  const millName = civ?.millName || 'Mill';
+  const totalFood = items.reduce((s, i) => s + (i.cost.food || 0), 0);
+  const totalWood = items.reduce((s, i) => s + (i.cost.wood || 0), 0);
+  const totalParts = [totalFood && `${totalFood} food`, totalWood && `${totalWood} wood`].filter(Boolean);
 
-  const items = [];
-  if (villagers.food > 0) items.push({ name: millName, wood: mill });
-  if (villagers.gold > 0) items.push({ name: 'Mining Camp (Gold)', wood: miningCamp });
-  if (villagers.stone > 0) items.push({ name: 'Mining Camp (Stone)', wood: miningCamp });
-  if (villagers.wood > 0) items.push({ name: 'Lumber Camp', wood: lumberCamp });
-  const totalWood = items.reduce((s, i) => s + i.wood, 0);
   return `<div class="setup-card">
     <h3>One-Time Setup</h3>
-    ${items.map(i => `<div class="pending-item"><span>${i.name}</span><span class="res-pill wood">${RES_ICON.wood}${i.wood}</span></div>`).join('')}
-    <p class="assumptions">${totalWood} wood total, once — not part of the ongoing income above.${campDiscount ? ` ${civ.name} buildings discounted ${campDiscount.value}%.` : ''} Assumes one camp per resource; a map with scattered deposits may need more.</p>
+    ${items.map(i => `<div class="pending-item"><span>${i.name}</span><div class="cost-pills">${pillsFor(i.cost)}</div></div>`).join('')}
+    <p class="assumptions">${totalParts.length ? totalParts.join(' + ') : 'Nothing'} total, once — not part of the ongoing income above. ${note}</p>
   </div>`;
 }
 
