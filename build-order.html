@@ -174,7 +174,17 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
         <label for="start-vills" style="display:block;margin-bottom:6px;">Starting Villagers</label>
         <input type="number" id="start-vills" value="0" min="0" style="width:80px;">
       </div>
+      <div>
+        <label style="display:block;margin-bottom:6px;">Goals — At</label>
+        <div class="tier-dots" id="target-age-dots">
+          <span class="tier-dot" data-age="Dark" data-idx="0" title="Dark Age"></span>
+          <span class="tier-dot" data-age="Feudal" data-idx="1" title="Feudal Age"></span>
+          <span class="tier-dot" data-age="Castle" data-idx="2" title="Castle Age"></span>
+          <span class="tier-dot" data-age="Imperial" data-idx="3" title="Imperial Age"></span>
+        </div>
+      </div>
     </div>
+    <p class="assumptions" id="target-age-desc" style="margin-top:10px;margin-bottom:0"></p>
   </div>
 
   <div class="card">
@@ -217,6 +227,16 @@ const DATA = {
   houseCost: 25, // wood
   startingResources: { food: 200, wood: 200, gold: 50, stone: 0 }, // standard random-map start
   housePopSpace: 5, // pop per house
+  // Standard Normal-speed 1v1 age-up cost/research time, researched at the
+  // Town Center like Loom/Wheelbarrow/Hand Cart (tcQueue-equivalent — blocks
+  // villager production for the full research time). `toAge` is the age it
+  // unlocks; civ modifiers (Byzantines/Italians/Malay/Muisca) are applied via
+  // costForAgeUp/researchTimeForAgeUp, not baked in here.
+  ageUps: [
+    { id: 'feudal', toAge: 'Feudal', cost: { food: 500, wood: 0, gold: 0, stone: 0 }, researchTime: 130 },
+    { id: 'castle', toAge: 'Castle', cost: { food: 800, wood: 0, gold: 200, stone: 0 }, researchTime: 160 },
+    { id: 'imperial', toAge: 'Imperial', cost: { food: 1000, wood: 0, gold: 800, stone: 0 }, researchTime: 190 },
+  ],
   dataSourceNotes: 'Wood/gold/stone base gather rates are widely-cited community figures, not independently re-verified. Full 53-civ roster with unique units and unavailableUnitLines pulled programmatically from game data; ecoBonuses cover 11 civs whose bonuses cleanly matched this calculator\'s bonus shapes (see aoe2_civs_data.json sourceNotes for real bonuses that were excluded for not fitting, e.g. Portuguese -20% gold cost, Byzantines\' line-scoped discount).',
   ecoTechs: [
     { id:'double-bit-axe', name:'Double-Bit Axe', age:'Feudal', resource:'wood', bonusPct:20, cost:{food:100,wood:50,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping' },
@@ -704,7 +724,9 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "age-cost-pct", "scope": "imperial", "value": 33, "note": "Imperial Age costs 33% less" }
+      ],
       "unavailableUnitLines": [
         "eagle-line"
       ]
@@ -1178,7 +1200,9 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "age-cost-pct", "scope": "all", "value": 15, "note": "Advancing to the next Age costs 15% less" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line"
@@ -1446,7 +1470,9 @@ const DATA = {
           "pop": 0.5
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "age-time-pct", "value": 66, "note": "Advances to the next Age 66% faster" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -1628,7 +1654,8 @@ const DATA = {
           "type": "settlement",
           "cost": 125,
           "note": "Settlement replaces Mill + Lumber Camp + Mining Camp with one 125-wood building covering all three"
-        }
+        },
+        { "type": "age-cost-pct", "scope": "all", "resource": "gold", "value": 50, "note": "Advancing to the next Age costs 50% less gold" }
       ],
       "unavailableUnitLines": [
         "militia-line",
@@ -2679,6 +2706,72 @@ function costForCiv(cost, civ) {
   return out;
 }
 
+// Age-up cost/time, adjusted for the handful of civs that discount it
+// (Byzantines: Imperial only; Italians: every age; Muisca: gold only, every
+// age) or research it faster (Malay). `scope` on an age-cost-pct bonus is
+// either an ageUps `id` (only that transition) or 'all' (every transition);
+// an optional `resource` narrows the discount to one resource (Muisca).
+function costForAgeUp(ageDef, civ) {
+  const out = { ...ageDef.cost };
+  (civ?.ecoBonuses || []).forEach(b => {
+    if (b.type !== 'age-cost-pct') return;
+    if (b.scope !== 'all' && b.scope !== ageDef.id) return;
+    const resources = b.resource ? [b.resource] : RES;
+    resources.forEach(r => { if (out[r]) out[r] = Math.round(out[r] * (1 - b.value / 100)); });
+  });
+  return out;
+}
+function researchTimeForAgeUp(ageDef, civ) {
+  let t = ageDef.researchTime;
+  (civ?.ecoBonuses || []).forEach(b => {
+    if (b.type === 'age-time-pct') t = t / (1 + b.value / 100);
+  });
+  return t;
+}
+
+// Age-up items for every transition between startAge (exclusive) and
+// targetAge (inclusive) — you can't skip an age, so reaching Castle from
+// Dark always means paying for Feudal AND Castle in sequence. Tagged
+// `isAgeUp`/`age` (the age it unlocks) so mergeWithAgeUps can slot each one
+// immediately before the goals that need that age, same TC-queue mechanics
+// (tcQueue/researchTime) as Loom/Wheelbarrow already use.
+function ageUpPending(startAge, targetAge, civ) {
+  const startIdx = ageIndex(startAge), targetIdx = ageIndex(targetAge);
+  const items = [];
+  for (let i = startIdx + 1; i <= targetIdx; i++) {
+    const toAge = AGE_ORDER[i];
+    const def = DATA.ageUps.find(a => a.toAge === toAge);
+    if (!def) continue;
+    items.push({
+      name: `Advance to ${toAge} Age`,
+      cost: costForAgeUp(def, civ),
+      tcQueue: true,
+      researchTime: researchTimeForAgeUp(def, civ),
+      isAgeUp: true,
+      age: toAge,
+    });
+  }
+  return items;
+}
+
+// Interleaves age-up items with the checked-off tech/unit goals so a
+// Feudal-tagged goal is always sequenced after "Advance to Feudal Age", not
+// alongside it — matching "in Feudal Age" meaning "as soon as Feudal is
+// reached". Dark-age goals (including deferToEnd Loom, already sorted last
+// within Dark by pendingUpgrades) stay before any age-up; goals in the same
+// age as an age-up keep their relative order via the stable secondary sort.
+function mergeWithAgeUps(goalItems, ageItems) {
+  const merged = [...goalItems, ...ageItems];
+  return merged
+    .map((item, i) => ({ item, i }))
+    .sort((a, b) => {
+      const ka = ageIndex(a.item.age || 'Dark') * 100 + (a.item.isAgeUp ? -1 : 0);
+      const kb = ageIndex(b.item.age || 'Dark') * 100 + (b.item.isAgeUp ? -1 : 0);
+      return ka !== kb ? ka - kb : a.i - b.i;
+    })
+    .map(({ item }) => item);
+}
+
 function effectiveGatherRate(resource, civ, techIds) {
   let rate = DATA.gatherRates[resource];
   // A tech that `supersedes` another (Hand Cart replacing Wheelbarrow's
@@ -2696,14 +2789,14 @@ function pendingUpgrades(lines) {
   const items = [];
   document.querySelectorAll('[data-tech-save]:checked').forEach(cb => {
     const t = DATA.ecoTechs.find(x => x.id === cb.dataset.techSave);
-    if (t) items.push({ name: t.name, cost: t.cost || {}, tcQueue: t.tcQueue, researchTime: t.researchTime, deferToEnd: t.deferToEnd });
+    if (t) items.push({ name: t.name, cost: t.cost || {}, tcQueue: t.tcQueue, researchTime: t.researchTime, deferToEnd: t.deferToEnd, age: t.age });
   });
   lines.forEach(l => {
     const state = lineState[l.id];
     if (!state) return;
     if (state.saving) {
       const next = l.tiers[state.tierIdx + 1];
-      if (next?.upgradeCost) items.push({ name: `${l.name} → ${next.name}`, cost: next.upgradeCost });
+      if (next?.upgradeCost) items.push({ name: `${l.name} → ${next.name}`, cost: next.upgradeCost, age: next.age });
     }
     // A one-time goal batch of this unit — needs both the resources banked
     // AND enough queue time to actually train them (assumed serial on one
@@ -2716,6 +2809,7 @@ function pendingUpgrades(lines) {
         name: `${state.goalQty}x ${tier.name}`,
         cost,
         queueSeconds: state.goalQty * tier.trainTime,
+        age: tier.age,
       });
     }
   });
@@ -2836,18 +2930,29 @@ function simulateRampToSustain(rates, villRate, startVills, targetVillagers, tot
 // 50 gold, same as the 50 starting gold) would incorrectly wait for the
 // whole villager ramp-up to finish before "unlocking". Items needing
 // training-queue time still wait that long even once resources are covered.
-function primeInstantGoals(pending, startingPool) {
+function primeInstantGoals(pending, startingPool, startAgeIdx) {
   const pool = { ...startingPool };
   const resolved = [];
   const remaining = [];
   let tcTime = 0; // cumulative TC-queue time used by instantly-resolved TC techs — they can't research back-to-back for free, so this stacks
+  // A Feudal-tagged item literally cannot be researched before Feudal Age is
+  // reached, no matter how affordable it is — this tracks the highest age
+  // actually reached so far in this pass (advanced only when an isAgeUp item
+  // itself resolves) and blocks anything past it into `remaining`, where the
+  // sequential simulateItemReady loop that runs after this will naturally
+  // process it in array order, i.e. after the age-up it depends on.
+  let reachedAgeIdx = startAgeIdx == null ? Infinity : startAgeIdx;
   pending.forEach(item => {
+    const itemAgeIdx = ageIndex(item.age || 'Dark');
+    const ageGateOk = item.isAgeUp ? itemAgeIdx === reachedAgeIdx + 1 : itemAgeIdx <= reachedAgeIdx;
+    if (!ageGateOk) { remaining.push(item); return; }
     const need = RES.filter(r => item.cost[r] > 0);
     const covered = need.every(r => pool[r] >= item.cost[r]);
     if (covered) {
       need.forEach(r => { pool[r] -= item.cost[r]; });
       if (item.tcQueue) tcTime += item.researchTime || 0;
       resolved.push({ item, time: item.tcQueue ? tcTime : (item.queueSeconds || 0) });
+      if (item.isAgeUp) reachedAgeIdx = itemAgeIdx;
     } else {
       remaining.push(item);
     }
@@ -2873,7 +2978,7 @@ function openingHousesInfo(startingPool, isDarkOpening, villRate, hasNoHouses) {
   return { applies, pool };
 }
 
-function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening) {
+function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening, startAgeIdx) {
   const checkpoints = [{ label: 'Start', time: 0, vills: startVills, split: null, houses: 0 }];
   let housesAlready = 0, houseBaseline = startVills;
 
@@ -2889,7 +2994,7 @@ function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCe
   }
   const housesFor = v => hasNoHouses ? 0 : housesAlready + Math.max(0, Math.ceil((v - houseBaseline) / housePopSpace));
 
-  const primed = primeInstantGoals(pending, opening.pool);
+  const primed = primeInstantGoals(pending, opening.pool, startAgeIdx);
   primed.resolved.forEach(({ item, time }) => {
     checkpoints.push({ label: `${item.name} ready`, time, vills: startVills, split: null, houses: 0 });
   });
@@ -2963,7 +3068,16 @@ function renderResults() {
   const descEl = document.getElementById('results-desc');
   const bodyEl = document.getElementById('results-body');
 
-  const pending = pendingUpgrades(lines);
+  const goalPending = pendingUpgrades(lines);
+  // In Build Order mode, any age-up needed to reach the Goals-At target
+  // (set via the Target Age dots) is inserted as its own real, costed,
+  // TC-queue-blocking checkpoint, sequenced so age-tagged goals always land
+  // after the age-up that unlocks them.
+  const startAgeId = document.getElementById('start-age')?.value || 'Dark';
+  const targetAgeId = AGE_ORDER[Math.max(targetAgeIdx, ageIndex(startAgeId))];
+  const pending = currentMode === 'buildorder'
+    ? mergeWithAgeUps(goalPending, ageUpPending(startAgeId, targetAgeId, civ))
+    : goalPending;
   const rates = {};
   RES.forEach(r => { rates[r] = effectiveGatherRate(r, civ, techIds); });
 
@@ -3053,7 +3167,7 @@ function renderResults() {
     const startingPool = startingPoolForCiv(civ);
     const isDarkOpening = document.getElementById('start-age')?.value === 'Dark';
     const checkpoints = pending.length
-      ? buildTimeline(rates, villRate, startVills, villagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening)
+      ? buildTimeline(rates, villRate, startVills, villagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening, ageIndex(startAgeId))
       : [];
     extras = renderSetupCard(villagers, civ)
       + renderTimelineCard(checkpoints, villRate)
@@ -3136,7 +3250,8 @@ function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, c
     // Goals fully covered by the starting stockpile resolve instantly,
     // independent of how long the villager ramp-up takes — see
     // primeInstantGoals for why this has to happen before the sustain catch-up.
-    const primed = primeInstantGoals(pending, startingPool);
+    const startAgeIdx = ageIndex(document.getElementById('start-age')?.value || 'Dark');
+    const primed = primeInstantGoals(pending, startingPool, startAgeIdx);
     const resultByItem = new Map();
     primed.resolved.forEach(({ item, time }) => { resultByItem.set(item, { time, vills: startVills }); });
 
@@ -3203,6 +3318,43 @@ function renderCivBonusList() {
   list.innerHTML = bonuses.map(b => `<div class="civ-bonus-item">${b.note || b.type}</div>`).join('');
 }
 
+// ─── Target Age ("Goals — At") dot selector ─────────────────────────────────
+// Clicking a dot sets the age Goals below should be evaluated against — "in
+// Feudal Age" means "ready by the moment Feudal is reached", which requires
+// actually modeling the Feudal age-up as a real cost/time checkpoint (see
+// ageUpPending) rather than treating Goals as available whenever affordable
+// regardless of age. Defaults to the Starting Point's Current Age (no forced
+// age-up), so existing behavior is unchanged until a higher dot is picked;
+// can never go below Current Age since you can't target an age already passed.
+let targetAgeIdx = 0;
+
+function targetAgeDesc() {
+  const startIdx = currentAgeIndex();
+  if (targetAgeIdx <= startIdx) return 'Goals are evaluated as soon as they\'re affordable — no age-up required.';
+  const target = AGE_ORDER[targetAgeIdx];
+  return `Goals are sequenced to become ready only after advancing to ${target} Age — the age-up itself (${AGE_ORDER.slice(startIdx + 1, targetAgeIdx + 1).join(' → ')}) is modeled as a real, costed step in the timeline below.`;
+}
+
+function renderTargetAgeDots() {
+  const startIdx = currentAgeIndex();
+  if (targetAgeIdx < startIdx) targetAgeIdx = startIdx;
+  document.querySelectorAll('#target-age-dots .tier-dot').forEach((dot, i) => {
+    dot.classList.toggle('filled', i <= targetAgeIdx);
+    dot.classList.toggle('disabled', i < startIdx);
+  });
+  const desc = document.getElementById('target-age-desc');
+  if (desc) desc.textContent = targetAgeDesc();
+}
+
+document.querySelectorAll('#target-age-dots .tier-dot').forEach((dot, i) => {
+  dot.addEventListener('click', () => {
+    if (i < currentAgeIndex()) return;
+    targetAgeIdx = i;
+    renderTargetAgeDots();
+    renderResults();
+  });
+});
+
 civSelect.addEventListener('change', () => {
   renderTechGrid();
   renderUnitTable();
@@ -3212,6 +3364,7 @@ civSelect.addEventListener('change', () => {
 document.getElementById('start-age').addEventListener('change', () => {
   updateArmyDesc();
   renderUnitTable();
+  renderTargetAgeDots();
   renderResults();
 });
 document.getElementById('start-vills').addEventListener('input', renderResults);
@@ -3261,6 +3414,7 @@ function setMode(mode) {
   updateArmyDesc();
   renderTechGrid();
   renderUnitTable();
+  renderTargetAgeDots();
   renderCivBonusList();
   renderResults();
 }
