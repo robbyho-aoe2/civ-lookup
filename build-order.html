@@ -2795,18 +2795,32 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool) {
 // is proportionally furthest from its target share (not a lump cost like
 // simulateItemReady — a target RATIO). Returns null if already at/above
 // sustain, or if there's no villager production to ramp with.
-function simulateRampToSustain(rates, villRate, startVills, targetVillagers, totalVillCeil, startTime) {
+// Standard Arabia-opening villager order: the first 6 (counting from
+// villager #1, including whichever of your starting villagers fall in this
+// range) go to food (sheep), the next 3 to wood (for houses/buildings),
+// then the rest follow the general proportional-fill toward your
+// composition's target ratio. Only applied when actually starting in Dark
+// Age — Feudal+ starts have no "opening" to model, just the target ratio.
+const OPENING_SEQUENCE = ['food', 'food', 'food', 'food', 'food', 'food', 'wood', 'wood', 'wood'];
+
+function simulateRampToSustain(rates, villRate, startVills, targetVillagers, totalVillCeil, startTime, openingSequence) {
   if (startVills >= totalVillCeil || villRate <= 0) return null;
   const assigned = { food: 0, wood: 0, gold: 0, stone: 0 };
   let vills = startVills;
   let t = startTime || 0;
   while (vills < totalVillCeil) {
-    let target = 'food', worstRatio = Infinity;
-    RES.forEach(r => {
-      if (!targetVillagers[r]) return;
-      const ratio = assigned[r] / targetVillagers[r];
-      if (ratio < worstRatio) { worstRatio = ratio; target = r; }
-    });
+    let target;
+    if (openingSequence && vills < openingSequence.length) {
+      target = openingSequence[vills];
+    } else {
+      target = 'food';
+      let worstRatio = Infinity;
+      RES.forEach(r => {
+        if (!targetVillagers[r]) return;
+        const ratio = assigned[r] / targetVillagers[r];
+        if (ratio < worstRatio) { worstRatio = ratio; target = r; }
+      });
+    }
     assigned[target]++;
     vills++;
     t += 1 / villRate;
@@ -2848,11 +2862,34 @@ function primeInstantGoals(pending, startingPool) {
 // stay consistent between the two panels. Houses are reported as a
 // cumulative count needed by each checkpoint rather than pinpointing each
 // individual House's exact birth-event timestamp — simpler and still useful.
-function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses) {
-  const checkpoints = [{ label: 'Start', time: 0, vills: startVills, split: null, houses: 0 }];
-  const housesFor = v => hasNoHouses ? 0 : Math.max(0, Math.ceil((v - startVills) / housePopSpace));
+// Whether the standard opening's 2 free-standing Houses apply, and the
+// resulting starting pool once their 50 wood is spent — shared by the
+// Timeline (which also shows it as a checkpoint) and Goals & Savings
+// (which just needs the adjusted pool) so they never disagree about how
+// much wood is actually available for goals.
+function openingHousesInfo(startingPool, isDarkOpening, villRate, hasNoHouses) {
+  const applies = isDarkOpening && villRate > 0 && !hasNoHouses && startingPool.wood >= DATA.houseCost * 2;
+  const pool = applies ? { ...startingPool, wood: startingPool.wood - DATA.houseCost * 2 } : startingPool;
+  return { applies, pool };
+}
 
-  const primed = primeInstantGoals(pending, startingPool);
+function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening) {
+  const checkpoints = [{ label: 'Start', time: 0, vills: startVills, split: null, houses: 0 }];
+  let housesAlready = 0, houseBaseline = startVills;
+
+  // Standard opening: 2 Houses go up immediately from starting wood, before
+  // anything else gets a claim on it — they don't cost TC time (villagers
+  // build them alongside whatever else is happening). Raises the pop-cap
+  // baseline so later checkpoints don't double-count these as "newly needed".
+  const opening = openingHousesInfo(startingPool, isDarkOpening, villRate, hasNoHouses);
+  if (opening.applies) {
+    checkpoints.push({ label: 'Build 2 Houses', time: 0, vills: startVills, split: null, houses: 2 });
+    housesAlready = 2;
+    houseBaseline = startVills + 2 * housePopSpace;
+  }
+  const housesFor = v => hasNoHouses ? 0 : housesAlready + Math.max(0, Math.ceil((v - houseBaseline) / housePopSpace));
+
+  const primed = primeInstantGoals(pending, opening.pool);
   primed.resolved.forEach(({ item, time }) => {
     checkpoints.push({ label: `${item.name} ready`, time, vills: startVills, split: null, houses: 0 });
   });
@@ -2862,7 +2899,8 @@ function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCe
   let cursorVills = startVills, cursorTime = primed.tcBusyUntil, pool = primed.pool;
 
   if (startVills < totalVillCeil) {
-    const ramp = simulateRampToSustain(rates, villRate, startVills, targetVillagers, totalVillCeil, cursorTime);
+    const openingSequence = isDarkOpening ? OPENING_SEQUENCE : null;
+    const ramp = simulateRampToSustain(rates, villRate, startVills, targetVillagers, totalVillCeil, cursorTime, openingSequence);
     if (ramp) {
       cursorTime = ramp.time; cursorVills = ramp.vills;
       checkpoints.push({
@@ -2931,10 +2969,11 @@ function renderResults() {
 
   const villagerState = lineState['villager'];
   const villRate = villagerState && villagerState.buildings > 0 ? villagerState.buildings / DATA.villager.trainTime : 0;
+  const hasNoHouses = (civ?.ecoBonuses || []).some(b => b.type === 'no-houses');
 
   if (!rows.length) {
     descEl.textContent = 'Add production buildings above to see the split.';
-    const emptyPending = currentMode === 'buildorder' ? renderPendingCard(pending, rates, { food: 0, wood: 0, gold: 0, stone: 0 }, villRate, 0, civ) : '';
+    const emptyPending = currentMode === 'buildorder' ? renderPendingCard(pending, rates, { food: 0, wood: 0, gold: 0, stone: 0 }, villRate, 0, civ, hasNoHouses) : '';
     bodyEl.innerHTML = '<div class="empty-hint">No production set yet.</div>' + emptyPending;
     return;
   }
@@ -2971,7 +3010,6 @@ function renderResults() {
   // and pop space isn't free — each House costs wood and covers a fixed
   // amount of pop. Growing pop at popRate therefore has its own ongoing
   // wood cost, same shape as farm upkeep.
-  const hasNoHouses = (civ?.ecoBonuses || []).some(b => b.type === 'no-houses');
   const popSpaceOverride = (civ?.ecoBonuses || []).find(b => b.type === 'house-pop-space');
   const housePopSpace = popSpaceOverride ? popSpaceOverride.value : DATA.housePopSpace;
   const houseWoodPerSec = hasNoHouses ? 0 : popRate * DATA.houseCost / housePopSpace;
@@ -3013,12 +3051,13 @@ function renderResults() {
   if (currentMode === 'buildorder') {
     const startVills = Math.max(0, Number(document.getElementById('start-vills')?.value) || 0);
     const startingPool = startingPoolForCiv(civ);
+    const isDarkOpening = document.getElementById('start-age')?.value === 'Dark';
     const checkpoints = pending.length
-      ? buildTimeline(rates, villRate, startVills, villagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses)
+      ? buildTimeline(rates, villRate, startVills, villagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening)
       : [];
     extras = renderSetupCard(villagers, civ)
       + renderTimelineCard(checkpoints, villRate)
-      + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ);
+      + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ, hasNoHouses);
   }
   bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>' + extras;
 }
@@ -3084,9 +3123,11 @@ function renderSetupCard(villagers, civ) {
   </div>`;
 }
 
-function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ) {
+function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ, hasNoHouses) {
   if (!pending.length) return '';
-  const startingPool = startingPoolForCiv(civ);
+  const isDarkOpening = document.getElementById('start-age')?.value === 'Dark';
+  const rawStartingPool = startingPoolForCiv(civ);
+  const startingPool = openingHousesInfo(rawStartingPool, isDarkOpening, villRate, hasNoHouses).pool;
   const civStartNote = (civ?.ecoBonuses || []).find(b => b.type === 'starting-resources')
     ? ` (${civ.name}${civ.name.endsWith('s') ? '’' : '’s'} starting-resource bonus applied)` : '';
 
