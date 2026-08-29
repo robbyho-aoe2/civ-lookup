@@ -175,30 +175,35 @@ const DATA = {
   housePopSpace: 5, // pop per house
   dataSourceNotes: 'Wood/gold/stone base gather rates are widely-cited community figures, not independently re-verified. Full 53-civ roster with unique units and unavailableUnitLines pulled programmatically from game data; ecoBonuses cover 11 civs whose bonuses cleanly matched this calculator\'s bonus shapes (see aoe2_civs_data.json sourceNotes for real bonuses that were excluded for not fitting, e.g. Portuguese -20% gold cost, Byzantines\' line-scoped discount).',
   ecoTechs: [
-    { id:'double-bit-axe', name:'Double-Bit Axe', age:'Feudal', resource:'wood', bonusPct:20, cost:{food:100,wood:50,gold:0,stone:0} },
-    { id:'bow-saw',        name:'Bow Saw',         age:'Castle', resource:'wood', bonusPct:20, cost:{food:150,wood:100,gold:0,stone:0} },
-    { id:'two-man-saw',    name:'Two-Man Saw',     age:'Imperial', resource:'wood', bonusPct:10, cost:{food:300,wood:200,gold:0,stone:0} },
-    { id:'gold-mining',       name:'Gold Mining',       age:'Feudal', resource:'gold', bonusPct:15, cost:{food:100,wood:75,gold:0,stone:0} },
-    { id:'gold-shaft-mining', name:'Gold Shaft Mining', age:'Castle', resource:'gold', bonusPct:15, cost:{food:175,wood:75,gold:0,stone:0} },
-    { id:'stone-mining',       name:'Stone Mining',       age:'Feudal', resource:'stone', bonusPct:15, cost:{food:100,wood:75,gold:0,stone:0} },
-    { id:'stone-shaft-mining', name:'Stone Shaft Mining', age:'Castle', resource:'stone', bonusPct:15, cost:{food:175,wood:75,gold:0,stone:0} },
+    { id:'double-bit-axe', name:'Double-Bit Axe', age:'Feudal', resource:'wood', bonusPct:20, cost:{food:100,wood:50,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping' },
+    { id:'bow-saw',        name:'Bow Saw',         age:'Castle', resource:'wood', bonusPct:20, cost:{food:150,wood:100,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping' },
+    { id:'two-man-saw',    name:'Two-Man Saw',     age:'Imperial', resource:'wood', bonusPct:10, cost:{food:300,wood:200,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping' },
+    { id:'gold-mining',       name:'Gold Mining',       age:'Feudal', resource:'gold', bonusPct:15, cost:{food:100,wood:75,gold:0,stone:0}, line:'gold-mine', lineLabel:'Gold Mining' },
+    { id:'gold-shaft-mining', name:'Gold Shaft Mining', age:'Castle', resource:'gold', bonusPct:15, cost:{food:175,wood:75,gold:0,stone:0}, line:'gold-mine', lineLabel:'Gold Mining' },
+    { id:'stone-mining',       name:'Stone Mining',       age:'Feudal', resource:'stone', bonusPct:15, cost:{food:100,wood:75,gold:0,stone:0}, line:'stone-mine', lineLabel:'Stone Mining' },
+    { id:'stone-shaft-mining', name:'Stone Shaft Mining', age:'Castle', resource:'stone', bonusPct:15, cost:{food:175,wood:75,gold:0,stone:0}, line:'stone-mine', lineLabel:'Stone Mining' },
     // Mill farm line — each bonusPct is relative to the PRIOR tier's total
     // (matches how these techs actually work: Horse Collar 175->250 food,
     // Heavy Plow 250->375, Crop Rotation 375->550), so straight multiplicative
     // stacking (what effectiveGatherRate already does) reproduces the real
     // totals almost exactly.
-    { id:'horse-collar',  name:'Horse Collar',  age:'Feudal', resource:'food', bonusPct:42.9, cost:{food:75,wood:75,gold:0,stone:0}, group:'mill' },
-    { id:'heavy-plow',    name:'Heavy Plow',     age:'Castle', resource:'food', bonusPct:50.0, cost:{food:125,wood:125,gold:0,stone:0}, group:'mill' },
-    { id:'crop-rotation', name:'Crop Rotation',  age:'Imperial', resource:'food', bonusPct:46.7, cost:{food:250,wood:250,gold:0,stone:0}, group:'mill' },
-    // Town Center techs. Loom is cost-only (no gather effect, just here so it
-    // can be "saved for" like anything else). Wheelbarrow/Hand Cart boost
-    // carry capacity + movement speed — approximated as an all-resource rate
-    // bump since this tool has no distance/travel model; Hand Cart's 50% is
-    // a TOTAL that replaces Wheelbarrow's 25% rather than stacking on top of
-    // it (handled by `supersedes` in effectiveGatherRate).
-    { id:'loom', name:'Loom', age:'Dark', resource:null, bonusPct:0, cost:{food:0,wood:0,gold:50,stone:0}, group:'tc' },
-    { id:'wheelbarrow', name:'Wheelbarrow', age:'Feudal', resource:'all', bonusPct:25, cost:{food:175,wood:50,gold:0,stone:0}, group:'tc' },
-    { id:'hand-cart',    name:'Hand Cart',    age:'Castle', resource:'all', bonusPct:50, cost:{food:300,wood:200,gold:0,stone:0}, group:'tc', supersedes:'wheelbarrow' },
+    { id:'horse-collar',  name:'Horse Collar',  age:'Feudal', resource:'food', bonusPct:42.9, cost:{food:75,wood:75,gold:0,stone:0}, group:'mill', line:'farm-yield', lineLabel:'Farm Yield' },
+    { id:'heavy-plow',    name:'Heavy Plow',     age:'Castle', resource:'food', bonusPct:50.0, cost:{food:125,wood:125,gold:0,stone:0}, group:'mill', line:'farm-yield', lineLabel:'Farm Yield' },
+    { id:'crop-rotation', name:'Crop Rotation',  age:'Imperial', resource:'food', bonusPct:46.7, cost:{food:250,wood:250,gold:0,stone:0}, group:'mill', line:'farm-yield', lineLabel:'Farm Yield' },
+    // Town Center techs. Loom is cost-only (no gather effect) and, unlike
+    // everything else here, is researched in the first few seconds of
+    // basically every game — tracking "do I currently have it" is never
+    // meaningful, so it skips the have/save pair and shows only a
+    // pre-checked "save for" (saveOnly + defaultSave), staying out of the
+    // Wheelbarrow/Hand Cart dot-line since it's not part of that tier chain.
+    // Wheelbarrow/Hand Cart boost carry capacity + movement speed —
+    // approximated as an all-resource rate bump since this tool has no
+    // distance/travel model; Hand Cart's 50% is a TOTAL that replaces
+    // Wheelbarrow's 25% rather than stacking on top of it (handled by
+    // `supersedes` in effectiveGatherRate).
+    { id:'loom', name:'Loom', age:'Dark', resource:null, bonusPct:0, cost:{food:0,wood:0,gold:50,stone:0}, group:'tc', saveOnly:true, defaultSave:true },
+    { id:'wheelbarrow', name:'Wheelbarrow', age:'Feudal', resource:'all', bonusPct:25, cost:{food:175,wood:50,gold:0,stone:0}, group:'tc', line:'carry-capacity', lineLabel:'Carry Capacity' },
+    { id:'hand-cart',    name:'Hand Cart',    age:'Castle', resource:'all', bonusPct:50, cost:{food:300,wood:200,gold:0,stone:0}, group:'tc', supersedes:'wheelbarrow', line:'carry-capacity', lineLabel:'Carry Capacity' },
     // Purely-combat techs — zero gather-rate/cost effect (resource:null, so
     // effectiveGatherRate/costForCiv never touch them), included only so
     // they're saveable as goals like Loom already is.
@@ -2260,29 +2265,22 @@ function renderTechGrid() {
 
   // Group by resource, but pull out the 'mill' and 'carry' sub-groups (both
   // otherwise resource:'food'/'all') into their own labeled blocks so they
-  // don't read as one undifferentiated list.
+  // don't read as one undifferentiated list. Every group here is rendered
+  // by renderTierLinesHtml, which handles both dot-lines (2+ tiers sharing
+  // a `.line`) and lone flat/saveOnly entries (like Loom) in one pass.
   const groups = [];
   RES.concat('all').forEach(r => {
     const techs = DATA.ecoTechs.filter(t => t.resource === r && !t.group);
-    if (techs.length) groups.push({ label: `${RES_ICON[r] || ''} ${RES_LABEL[r] || 'All Resources'}`, techs, tiered: false });
+    if (techs.length) groups.push({ label: `${RES_ICON[r] || ''} ${RES_LABEL[r] || 'All Resources'}`, techs });
   });
   ['mill', 'tc', 'blacksmith', 'stable', 'siege'].forEach(g => {
     const techs = DATA.ecoTechs.filter(t => t.group === g);
-    if (techs.length) groups.push({ label: TECH_GROUP_LABEL[g], techs, tiered: g === 'blacksmith' });
+    if (techs.length) groups.push({ label: TECH_GROUP_LABEL[g], techs });
   });
 
-  grid.innerHTML = groups.map(({ label, techs, tiered }) => `<div class="tech-group">
+  grid.innerHTML = groups.map(({ label, techs }) => `<div class="tech-group">
       <h3>${label}</h3>
-      ${tiered ? renderTierLinesHtml(techs, free) : techs.map(t => {
-        const isFree = free.has(t.id);
-        return `<div class="tech-row${isFree ? ' locked' : ''}">
-          <input type="checkbox" data-tech="${t.id}" ${isFree ? 'checked disabled' : ''}>
-          <span class="tname">${t.name}</span>
-          <span class="tage">${t.age}</span>
-          <span class="tbonus">+${t.bonusPct}%</span>
-          ${isFree ? '' : `<label class="save-check"><input type="checkbox" data-tech-save="${t.id}"> Save</label>`}
-        </div>`;
-      }).join('')}
+      ${renderTierLinesHtml(techs, free)}
     </div>`).join('');
 
   grid.querySelectorAll('[data-tech]').forEach(cb => cb.addEventListener('change', () => {
@@ -2311,9 +2309,12 @@ function renderTechGrid() {
 // behavior — state is driven entirely by JS in wireTierLines, avoiding a
 // timing fight with the browser's pre-click-toggle/cancel-revert sequence.
 function renderTierLinesHtml(techs, free) {
+  const lined = techs.filter(t => t.line);
+  const flat = techs.filter(t => !t.line);
+
   const lines = {};
-  techs.forEach(t => { (lines[t.line] = lines[t.line] || []).push(t); });
-  return Object.values(lines).map(lineTechs => {
+  lined.forEach(t => { (lines[t.line] = lines[t.line] || []).push(t); });
+  const lineRows = Object.values(lines).map(lineTechs => {
     const dots = lineTechs.map(t => {
       const isFree = free.has(t.id);
       return `<span class="tier-dot${isFree ? ' filled locked' : ''}" data-age="${t.age}" title="${t.name} (${t.age})"></span><input type="checkbox" data-tech="${t.id}" ${isFree ? 'checked disabled' : ''} style="display:none">`;
@@ -2324,6 +2325,27 @@ function renderTierLinesHtml(techs, free) {
       <span class="line-save-slot" data-line-save-slot="${lineTechs[0].line}"></span>
     </div>`;
   }).join('');
+
+  const flatRows = flat.map(t => renderFlatTechRow(t, free)).join('');
+  return lineRows + flatRows;
+}
+
+function renderFlatTechRow(t, free) {
+  if (t.saveOnly) {
+    return `<div class="tech-row">
+      <span class="tname">${t.name}</span>
+      <span class="tage">${t.age}</span>
+      <label class="save-check"><input type="checkbox" data-tech-save="${t.id}" ${t.defaultSave ? 'checked' : ''}> Save</label>
+    </div>`;
+  }
+  const isFree = free.has(t.id);
+  return `<div class="tech-row${isFree ? ' locked' : ''}">
+    <input type="checkbox" data-tech="${t.id}" ${isFree ? 'checked disabled' : ''}>
+    <span class="tname">${t.name}</span>
+    <span class="tage">${t.age}</span>
+    <span class="tbonus">+${t.bonusPct}%</span>
+    ${isFree ? '' : `<label class="save-check"><input type="checkbox" data-tech-save="${t.id}"> Save</label>`}
+  </div>`;
 }
 
 // Wires click-to-set-level on each tier-line's dots (clicking dot i sets
