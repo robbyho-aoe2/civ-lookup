@@ -198,6 +198,29 @@ const DATA = {
     { id:'loom', name:'Loom', age:'Dark', resource:null, bonusPct:0, cost:{food:0,wood:0,gold:50,stone:0}, group:'tc' },
     { id:'wheelbarrow', name:'Wheelbarrow', age:'Feudal', resource:'all', bonusPct:25, cost:{food:175,wood:50,gold:0,stone:0}, group:'tc' },
     { id:'hand-cart',    name:'Hand Cart',    age:'Castle', resource:'all', bonusPct:50, cost:{food:300,wood:200,gold:0,stone:0}, group:'tc', supersedes:'wheelbarrow' },
+    // Purely-combat techs — zero gather-rate/cost effect (resource:null, so
+    // effectiveGatherRate/costForCiv never touch them), included only so
+    // they're saveable as goals like Loom already is.
+    { id:'forging', name:'Forging', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, group:'blacksmith' },
+    { id:'iron-casting', name:'Iron Casting', age:'Castle', resource:null, bonusPct:0, cost:{food:220,wood:0,gold:120,stone:0}, group:'blacksmith' },
+    { id:'blast-furnace', name:'Blast Furnace', age:'Imperial', resource:null, bonusPct:0, cost:{food:275,wood:0,gold:225,stone:0}, group:'blacksmith' },
+    { id:'fletching', name:'Fletching', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:50,stone:0}, group:'blacksmith' },
+    { id:'bodkin-arrow', name:'Bodkin Arrow', age:'Castle', resource:null, bonusPct:0, cost:{food:200,wood:0,gold:100,stone:0}, group:'blacksmith' },
+    { id:'bracer', name:'Bracer', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, group:'blacksmith' },
+    { id:'scale-mail-armor', name:'Scale Mail Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, group:'blacksmith' },
+    { id:'chain-mail-armor', name:'Chain Mail Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:200,wood:0,gold:100,stone:0}, group:'blacksmith' },
+    { id:'plate-mail-armor', name:'Plate Mail Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:150,stone:0}, group:'blacksmith' },
+    { id:'padded-archer-armor', name:'Padded Archer Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, group:'blacksmith' },
+    { id:'leather-archer-armor', name:'Leather Archer Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:150,stone:0}, group:'blacksmith' },
+    { id:'ring-archer-armor', name:'Ring Archer Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:250,wood:0,gold:250,stone:0}, group:'blacksmith' },
+    { id:'bloodlines', name:'Bloodlines', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:100,stone:0}, group:'stable' },
+    { id:'husbandry', name:'Husbandry', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, group:'stable' },
+    // Researched at the University in-game, but grouped here under Siege
+    // Workshop since that's the production building they buff and this
+    // tool organizes by building, not literal research location.
+    { id:'ballistics', name:'Ballistics', age:'Castle', resource:null, bonusPct:0, cost:{food:0,wood:300,gold:175,stone:0}, group:'siege' },
+    { id:'siege-engineers', name:'Siege Engineers', age:'Imperial', resource:null, bonusPct:0, cost:{food:500,wood:600,gold:0,stone:0}, group:'siege' },
+    { id:'chemistry', name:'Chemistry', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, group:'siege' },
   ],
   unitLines: [
     { id:'militia-line', name:'Militia', building:'Barracks', cost:{food:50,wood:0,gold:20,stone:0}, pop:1, tiers:[
@@ -1073,7 +1096,13 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "camp-cost-pct",
+          "value": 50,
+          "note": "Mills, Lumber Camps, and Mining Camps cost 50% less wood"
+        }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -2155,7 +2184,7 @@ const DATA = {
 const RES = ['food','wood','gold','stone'];
 const RES_LABEL = { food:'Food', wood:'Wood', gold:'Gold', stone:'Stone' };
 const RES_ICON  = { food:'🌾', wood:'🪵', gold:'🪙', stone:'🪨' };
-const TECH_GROUP_LABEL = { mill:'🌾 Farm (Mill)', tc:'🏛️ Town Center' };
+const TECH_GROUP_LABEL = { mill:'🌾 Farm (Mill)', tc:'🏛️ Town Center', blacksmith:'⚔️ Blacksmith', stable:'🐴 Stable', siege:'🎯 Siege Workshop' };
 
 function fmtSecs(s) {
   if (!isFinite(s)) return '—';
@@ -2195,7 +2224,7 @@ function renderTechGrid() {
     const techs = DATA.ecoTechs.filter(t => t.resource === r && !t.group);
     if (techs.length) groups.push({ label: `${RES_ICON[r] || ''} ${RES_LABEL[r] || 'All Resources'}`, techs });
   });
-  ['mill', 'tc'].forEach(g => {
+  ['mill', 'tc', 'blacksmith', 'stable', 'siege'].forEach(g => {
     const techs = DATA.ecoTechs.filter(t => t.group === g);
     if (techs.length) groups.push({ label: TECH_GROUP_LABEL[g], techs });
   });
@@ -2534,7 +2563,7 @@ function renderResults() {
     </div>`;
   }).join('');
 
-  bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>' + renderSetupCard(villagers) + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, startVills);
+  bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>' + renderSetupCard(villagers, civ) + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, startVills);
 }
 
 // One-time building costs implied by needing villagers on a resource at
@@ -2543,17 +2572,22 @@ function renderResults() {
 // you pay once, not an ongoing rate (unlike farm upkeep, which recurs).
 // Doesn't model relocating to a new camp when a deposit runs out — how
 // often that happens depends on the map, not anything this tool tracks.
-function renderSetupCard(villagers) {
+function renderSetupCard(villagers, civ) {
+  const campDiscount = (civ?.ecoBonuses || []).find(b => b.type === 'camp-cost-pct');
+  const discountMult = campDiscount ? 1 - campDiscount.value / 100 : 1;
+  const miningCamp = Math.round(DATA.campCosts.miningCamp * discountMult);
+  const lumberCamp = Math.round(DATA.campCosts.lumberCamp * discountMult);
+
   const items = [];
-  if (villagers.gold > 0) items.push({ name: 'Mining Camp (Gold)', wood: DATA.campCosts.miningCamp });
-  if (villagers.stone > 0) items.push({ name: 'Mining Camp (Stone)', wood: DATA.campCosts.miningCamp });
-  if (villagers.wood > 0) items.push({ name: 'Lumber Camp', wood: DATA.campCosts.lumberCamp });
+  if (villagers.gold > 0) items.push({ name: 'Mining Camp (Gold)', wood: miningCamp });
+  if (villagers.stone > 0) items.push({ name: 'Mining Camp (Stone)', wood: miningCamp });
+  if (villagers.wood > 0) items.push({ name: 'Lumber Camp', wood: lumberCamp });
   if (!items.length) return '';
   const totalWood = items.reduce((s, i) => s + i.wood, 0);
   return `<div class="setup-card">
     <h3>One-Time Setup</h3>
     ${items.map(i => `<div class="pending-item"><span>${i.name}</span><span class="res-pill wood">${RES_ICON.wood}${i.wood}</span></div>`).join('')}
-    <p class="assumptions">${totalWood} wood total, once — not part of the ongoing income above. Assumes one camp per resource; a map with scattered deposits may need more.</p>
+    <p class="assumptions">${totalWood} wood total, once — not part of the ongoing income above.${campDiscount ? ` ${civ.name} camps discounted ${campDiscount.value}%.` : ''} Assumes one camp per resource; a map with scattered deposits may need more.</p>
   </div>`;
 }
 
