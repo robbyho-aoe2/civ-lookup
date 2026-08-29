@@ -78,6 +78,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 .tier-dots{display:inline-flex;gap:7px;}
 .tier-dot{position:relative;width:15px;height:15px;border-radius:50%;border:2px solid var(--border2);cursor:pointer;flex-shrink:0;box-sizing:border-box;}
 .tier-dot.filled{background:var(--amber);border-color:var(--amber);}
+.tier-dot.disabled{cursor:not-allowed;opacity:.4;}
 .tier-dot.filled[data-age="Dark"]{background:var(--ageDark);border-color:var(--ageDark);}
 .tier-dot.filled[data-age="Feudal"]{background:var(--ageFeudal);border-color:var(--ageFeudal);}
 .tier-dot.filled[data-age="Castle"]{background:var(--ageCastle);border-color:var(--ageCastle);}
@@ -111,6 +112,13 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 
 .empty-hint{font-size:12px;color:var(--text3);padding:14px 0;text-align:center;}
 .assumptions{font-size:11px;color:var(--text3);line-height:1.6;margin-top:4px;}
+
+.mode-toggle{display:flex;gap:10px;flex-wrap:wrap;}
+.mode-btn{flex:1;min-width:200px;text-align:left;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 14px;cursor:pointer;color:var(--text2);font-family:inherit;}
+.mode-btn b{display:block;font-size:14px;color:var(--text);margin-bottom:3px;}
+.mode-btn span{font-size:11px;line-height:1.4;}
+.mode-btn.on{border-color:var(--amber);background:var(--amberBg);}
+.mode-btn.on b{color:var(--amberL);}
 </style>
 </head>
 <body>
@@ -129,9 +137,37 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
   </nav>
 
   <div class="card">
-    <h2>What this does</h2>
-    <p class="desc" style="margin-bottom:0">Pick a civ, the economy upgrades you'll have, and the army you want to keep producing — this works out the resource income you need and tells you how many villagers to put on Wood/Food/Gold/Stone to sustain it.</p>
-    <p class="assumptions">Steady-state estimate, not a minute-by-minute timeline: it assumes you keep this mix in constant production forever (not a one-time batch) and food comes from farms (not hunting/berries). Villager counts are a target ratio to sustain that rotation, not "move vills at pop X" instructions. The Wood total includes farm upkeep (60 wood to rebuild a depleted farm) and house upkeep (25 wood per House, 5 pop each) — food and population both need wood villagers behind them, not just their own gather rate.</p>
+    <h2>Choose a Tool</h2>
+    <div class="mode-toggle">
+      <button class="mode-btn" data-mode="production" type="button"><b>⚙️ Constant Production</b><span>Check off what you have and what you want to keep producing — see the ideal villager split.</span></button>
+      <button class="mode-btn" data-mode="buildorder" type="button"><b>📋 Build Order Builder</b><span>Set your starting point and what you want to make — see how to get there fastest.</span></button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 id="intro-heading">What this does</h2>
+    <p class="desc" id="intro-desc" style="margin-bottom:0"></p>
+    <p class="assumptions" id="intro-assumptions"></p>
+  </div>
+
+  <div class="card" data-mode-only="buildorder">
+    <h2>Starting Point</h2>
+    <p class="desc">Where you're starting from — caps which upgrade tiers are selectable below and seeds the Goals &amp; Savings simulation.</p>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-end;">
+      <div>
+        <label for="start-age" style="display:block;margin-bottom:6px;">Current Age</label>
+        <select id="start-age">
+          <option value="Dark">Dark Age</option>
+          <option value="Feudal" selected>Feudal Age</option>
+          <option value="Castle">Castle Age</option>
+          <option value="Imperial">Imperial Age</option>
+        </select>
+      </div>
+      <div>
+        <label for="start-vills" style="display:block;margin-bottom:6px;">Starting Villagers</label>
+        <input type="number" id="start-vills" value="20" min="0" style="width:80px;">
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -143,13 +179,13 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 
   <div class="card">
     <h2>Economy Upgrades</h2>
-    <p class="desc">Check what you'll have researched by the time this composition is in full production.</p>
+    <p class="desc" id="eco-desc"></p>
     <div class="tech-grid" id="tech-grid"></div>
   </div>
 
   <div class="card">
-    <h2>Army Composition</h2>
-    <p class="desc">Set how many <b>production buildings</b> you'll keep queuing each unit — 2 Barracks on Long Swordsmen, 1 Archery Range on Crossbowmen, etc. Zero = not in production. Pick each line's current upgrade tier — training cost doesn't change, but train time does. The Town Center row's Villager count defaults to 1 (constant villager production) — set it to 0 for "all-in" (stop making villagers). <b>Goal Qty</b> is separate: a one-time batch (e.g. 10 Man-at-Arms) to add as a target in the goals panel below, on top of whatever's ongoing.</p>
+    <h2 id="army-heading">Army Composition</h2>
+    <p class="desc" id="army-desc"></p>
     <div style="max-height:460px;overflow-y:auto;">
       <table id="unit-table"></table>
     </div>
@@ -188,9 +224,9 @@ const DATA = {
     // Heavy Plow 250->375, Crop Rotation 375->550), so straight multiplicative
     // stacking (what effectiveGatherRate already does) reproduces the real
     // totals almost exactly.
-    { id:'horse-collar',  name:'Horse Collar',  age:'Feudal', resource:'food', bonusPct:42.9, cost:{food:75,wood:75,gold:0,stone:0}, group:'mill', line:'farm-yield', lineLabel:'Farm Yield' },
-    { id:'heavy-plow',    name:'Heavy Plow',     age:'Castle', resource:'food', bonusPct:50.0, cost:{food:125,wood:125,gold:0,stone:0}, group:'mill', line:'farm-yield', lineLabel:'Farm Yield' },
-    { id:'crop-rotation', name:'Crop Rotation',  age:'Imperial', resource:'food', bonusPct:46.7, cost:{food:250,wood:250,gold:0,stone:0}, group:'mill', line:'farm-yield', lineLabel:'Farm Yield' },
+    { id:'horse-collar',  name:'Horse Collar',  age:'Feudal', resource:'food', bonusPct:42.9, cost:{food:75,wood:75,gold:0,stone:0}, group:'mill', line:'farm-yield', lineLabel:'Farm Capacity' },
+    { id:'heavy-plow',    name:'Heavy Plow',     age:'Castle', resource:'food', bonusPct:50.0, cost:{food:125,wood:125,gold:0,stone:0}, group:'mill', line:'farm-yield', lineLabel:'Farm Capacity' },
+    { id:'crop-rotation', name:'Crop Rotation',  age:'Imperial', resource:'food', bonusPct:46.7, cost:{food:250,wood:250,gold:0,stone:0}, group:'mill', line:'farm-yield', lineLabel:'Farm Capacity' },
     // Town Center techs. Loom is cost-only (no gather effect) and, unlike
     // everything else here, is researched in the first few seconds of
     // basically every game — tracking "do I currently have it" is never
@@ -2329,7 +2365,14 @@ function renderTechGrid() {
     const techs = DATA.ecoTechs.filter(t => t.resource === r && !t.group);
     if (techs.length) groups.push({ label: `${RES_ICON[r] || ''} ${RES_LABEL[r] || 'All Resources'}`, techs });
   });
-  ['mill', 'tc', 'blacksmith', 'stable', 'siege'].forEach(g => {
+  // Blacksmith/Stable/Siege techs have zero gather-rate effect — they're
+  // goals (things to save toward), not economy inputs, so Constant
+  // Production (which only cares about steady-state villager placement)
+  // doesn't show them at all.
+  const structuralGroups = currentMode === 'buildorder'
+    ? ['mill', 'tc', 'blacksmith', 'stable', 'siege']
+    : ['mill', 'tc'];
+  structuralGroups.forEach(g => {
     const techs = DATA.ecoTechs.filter(t => t.group === g);
     if (techs.length) groups.push({ label: TECH_GROUP_LABEL[g], techs });
   });
@@ -2460,6 +2503,10 @@ function selectedTechIds() {
 
 // ─── Unit lines (with upgrade tiers) ────────────────────────────────────────
 
+const AGE_ORDER = ['Dark', 'Feudal', 'Castle', 'Imperial'];
+function ageIndex(age) { return AGE_ORDER.indexOf(age); }
+function currentAgeIndex() { return ageIndex(document.getElementById('start-age')?.value || 'Imperial'); }
+
 function allLinesForCiv(civ) {
   const villagerLine = {
     id: 'villager', name: 'Villager', building: 'Town Center', isVillager: true,
@@ -2484,17 +2531,32 @@ let lineState = {}; // id -> { tierIdx, buildings, saving }
 function renderUnitTable() {
   const civ = selectedCiv();
   const lines = allLinesForCiv(civ);
+  const showGoals = currentMode === 'buildorder';
+  // Age-capping which tiers are pre-selected/selectable only makes sense
+  // once there's a Starting Point to cap against (Build Order mode) —
+  // Constant Production has no "current age" concept, so tiers there stay
+  // freely selectable and always default to the base tier.
+  const useAgeCap = currentMode === 'buildorder';
+  const maxAgeIdx = useAgeCap ? currentAgeIndex() : null;
+
   lineState = {};
   lines.forEach(l => {
-    lineState[l.id] = { tierIdx: 0, buildings: l.isVillager ? 1 : 0, goalQty: 0, saving: false };
+    let defaultTier = 0;
+    if (useAgeCap) {
+      for (let i = l.tiers.length - 1; i >= 0; i--) {
+        if (ageIndex(l.tiers[i].age) <= maxAgeIdx) { defaultTier = i; break; }
+      }
+    }
+    lineState[l.id] = { tierIdx: defaultTier, buildings: l.isVillager ? 1 : 0, goalQty: 0, saving: false };
   });
 
   const byBuilding = {};
   lines.forEach(l => { (byBuilding[l.building] = byBuilding[l.building] || []).push(l); });
   // Town Center first (Villager), then the rest in insertion order.
   const buildingOrder = Object.keys(byBuilding).sort((a, b) => (a === 'Town Center' ? -1 : b === 'Town Center' ? 1 : 0));
+  const colCount = showGoals ? 7 : 6;
 
-  const thead = `<thead><tr><th>Unit</th><th>Tier</th><th>Cost</th><th class="num">Train</th><th class="num">Buildings</th><th class="num">Goal Qty</th><th>Next Upgrade</th></tr></thead>`;
+  const thead = `<thead><tr><th>Unit</th><th>Tier</th><th>Cost</th><th class="num">Train</th><th class="num">Buildings</th>${showGoals ? '<th class="num">Goal Qty</th>' : ''}<th>Next Upgrade</th></tr></thead>`;
   const body = buildingOrder.map(building => {
     const list = byBuilding[building];
     const rows = list.map(l => {
@@ -2502,7 +2564,7 @@ function renderUnitTable() {
       const tierCell = l.isVillager
         ? '<span class="tage">—</span>'
         : l.tiers.length > 1
-          ? `<div class="tier-dots" data-unit-tier-line="${l.id}">${l.tiers.map((t, i) => `<span class="tier-dot${i <= defaultTier ? ' filled' : ''}" data-age="${t.age}" data-idx="${i}" title="${t.name} (${t.age})"></span>`).join('')}</div>`
+          ? `<div class="tier-dots" data-unit-tier-line="${l.id}">${l.tiers.map((t, i) => `<span class="tier-dot${i <= defaultTier ? ' filled' : ''}${useAgeCap && ageIndex(t.age) > maxAgeIdx ? ' disabled' : ''}" data-age="${t.age}" data-idx="${i}" title="${t.name} (${t.age})"></span>`).join('')}</div>`
           : `<span class="tage">${l.tiers[0].age}</span>`;
       const buildingsTitle = l.isVillager ? 'title="0 = stop training villagers (all-in)"' : '';
       const goalCell = l.isVillager ? '<span class="tage">—</span>' : `<input type="number" class="qty-input" min="0" value="0" data-goal-qty="${l.id}" title="One-time batch to reach as a goal, on top of any ongoing Buildings production">`;
@@ -2512,11 +2574,11 @@ function renderUnitTable() {
         <td><div class="cost-pills">${RES.filter(r => l.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${l.cost[r]}</span>`).join('')}</div></td>
         <td class="num" data-traintime="${l.id}">${l.tiers[defaultTier].trainTime}s</td>
         <td class="num"><input type="number" class="qty-input" min="0" value="${lineState[l.id].buildings}" data-line-qty="${l.id}" ${buildingsTitle}></td>
-        <td class="num">${goalCell}</td>
+        ${showGoals ? `<td class="num">${goalCell}</td>` : ''}
         <td data-upgrade-cell="${l.id}"></td>
       </tr>`;
     }).join('');
-    return `<tr class="unit-group-row"><td colspan="7">${building}</td></tr>${rows}`;
+    return `<tr class="unit-group-row"><td colspan="${colCount}">${building}</td></tr>${rows}`;
   }).join('');
 
   const tableEl = document.getElementById('unit-table');
@@ -2536,6 +2598,7 @@ function renderUnitTable() {
     const line = lines.find(l => l.id === dotsWrap.dataset.unitTierLine);
     const dots = [...dotsWrap.querySelectorAll('.tier-dot')];
     dots.forEach((dot, i) => {
+      if (dot.classList.contains('disabled')) return;
       dot.addEventListener('click', () => {
         const state = lineState[line.id];
         state.tierIdx = i;
@@ -2718,7 +2781,8 @@ function renderResults() {
 
   if (!rows.length) {
     descEl.textContent = 'Add production buildings above to see the split.';
-    bodyEl.innerHTML = '<div class="empty-hint">No production set yet.</div>' + renderPendingCard(pending, rates, { food: 0, wood: 0, gold: 0, stone: 0 }, villRate, 0, civ);
+    const emptyPending = currentMode === 'buildorder' ? renderPendingCard(pending, rates, { food: 0, wood: 0, gold: 0, stone: 0 }, villRate, 0, civ) : '';
+    bodyEl.innerHTML = '<div class="empty-hint">No production set yet.</div>' + emptyPending;
     return;
   }
 
@@ -2792,7 +2856,10 @@ function renderResults() {
     </div>`;
   }).join('');
 
-  bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>' + renderSetupCard(villagers, civ) + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ);
+  const extras = currentMode === 'buildorder'
+    ? renderSetupCard(villagers, civ) + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ)
+    : '';
+  bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>' + extras;
 }
 
 // One-time building costs implied by needing villagers on a resource at
@@ -2863,7 +2930,18 @@ function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, c
     ? ` (${civ.name}${civ.name.endsWith('s') ? '’' : '’s'} starting-resource bonus applied)` : '';
 
   if (villRate > 0) {
-    let cursorTime = 0, cursorVills = totalVillCeil, pool = { ...startingPool };
+    const startVills = Math.max(0, Number(document.getElementById('start-vills')?.value) || 0);
+    let cursorTime = 0, cursorVills = startVills, pool = { ...startingPool };
+    let catchUpNote = '';
+    // If you're starting below the sustain requirement, the first stretch of
+    // new villagers goes to catching the composition up — not to savings —
+    // before any excess exists to fund anything.
+    if (cursorVills < totalVillCeil) {
+      const deficit = totalVillCeil - cursorVills;
+      cursorTime += deficit / villRate;
+      catchUpNote = ` First ${fmtClock(cursorTime)} (${deficit} vills) goes to reaching your ${totalVillCeil}-villager sustain requirement before any savings begin.`;
+      cursorVills = totalVillCeil;
+    }
     const results = pending.map(item => {
       const r = simulateItemReady(item, rates, villRate, cursorTime, cursorVills, pool);
       if (r) { cursorTime = r.time; cursorVills = r.vills; pool = r.pool; }
@@ -2876,7 +2954,7 @@ function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, c
         <div class="cost-pills">${RES.filter(r => item.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${item.cost[r]}</span>`).join('')}</div>
         <span class="save-time${result ? '' : ' blocked'}">${result ? `${result.vills} vills · ${fmtClock(result.time)}` : 'past 60 min — add TCs'}</span>
       </div>`).join('')}
-      <p class="assumptions">Credits your starting stockpile (200 food/200 wood/50 gold baseline) before any villager income, same as a real game start${civStartNote}. Doesn't yet account for extra/fewer starting villagers (e.g. Chinese +3, Mayans +1) — no current-villager-count tracking to plug that into. Assumes you keep training new villagers and send each new one to whichever of these is furthest behind, in the order checked above; villager allocation is fully automatic. Unit-batch goals also need enough queue time (assumed 1 production building, serial) on top of the resources.</p>
+      <p class="assumptions">Credits your starting stockpile (200 food/200 wood/50 gold baseline) before any villager income, same as a real game start${civStartNote}. Civs with extra/fewer starting villagers (Chinese +3, Mayans +1) aren't auto-added to Starting Villagers above — adjust that yourself if it matters. Assumes you keep training new villagers and send each new one to whichever of these is furthest behind, in the order checked above; villager allocation is fully automatic. Unit-batch goals also need enough queue time (assumed 1 production building, serial) on top of the resources.${catchUpNote}</p>
     </div>`;
   }
 
@@ -2921,10 +2999,51 @@ civSelect.addEventListener('change', () => {
   renderCivBonusList();
   renderResults();
 });
-renderTechGrid();
-renderUnitTable();
-renderCivBonusList();
-renderResults();
+document.getElementById('start-age').addEventListener('change', () => {
+  renderUnitTable();
+  renderResults();
+});
+document.getElementById('start-vills').addEventListener('input', renderResults);
+
+// ─── Mode: Constant Production vs. Build Order Builder ─────────────────────
+
+let currentMode = 'production'; // 'production' | 'buildorder'
+
+const MODE_COPY = {
+  production: {
+    introDesc: "Check off the economy upgrades you'll have and the army you want to keep producing — this works out the resource income you need and tells you how many villagers to put on Wood/Food/Gold/Stone to sustain it.",
+    introAssumptions: 'Steady-state estimate, not a minute-by-minute timeline: it assumes you keep this mix in constant production forever (not a one-time batch) and food comes from farms (not hunting/berries). Villager counts are a target ratio to sustain that rotation, not "move vills at pop X" instructions. The Wood total includes farm upkeep (60 wood to rebuild a depleted farm) and house upkeep (25 wood per House, 5 pop each) — food and population both need wood villagers behind them, not just their own gather rate.',
+    ecoDesc: "Check what you'll have researched by the time this composition is in full production.",
+    armyDesc: 'Set how many <b>production buildings</b> you\'ll keep queuing each unit — 2 Barracks on Long Swordsmen, 1 Archery Range on Crossbowmen, etc. Zero = not in production. Pick each line\'s tier freely — training cost doesn\'t change, but train time does. The Town Center row\'s Villager count defaults to 1 (constant villager production) — set it to 0 for "all-in" (stop making villagers).',
+  },
+  buildorder: {
+    introDesc: 'Set your starting age, villagers, and what you already have running, then say what you want to build — this works out the fastest way to get there, crediting your starting stockpile and routing new villagers to whichever goal is furthest behind.',
+    introAssumptions: 'Same steady-state economics as Constant Production underneath, plus a time-based savings simulation for one-time goals (techs, unit batches). Villager allocation toward goals is fully automatic. This estimates when you can afford something, not a literal minute-by-minute script of which building to click first.',
+    ecoDesc: "Check what you already have. Blacksmith/Stable/Siege upgrades below are goals only (no \"have\" toggle) since you only ever research them once — check \"Save\" to track one.",
+    armyDesc: '<b>Buildings</b> = what you already have running (ongoing production). <b>Goal Qty</b> = a one-time batch you want to add as a target, e.g. 10 Man-at-Arms. Pick each line\'s current upgrade tier, capped by your Starting Point age above — training cost doesn\'t change, but train time does.',
+  },
+};
+
+function setMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+  document.querySelectorAll('[data-mode-only]').forEach(el => {
+    el.style.display = el.dataset.modeOnly === mode ? '' : 'none';
+  });
+  const copy = MODE_COPY[mode];
+  document.getElementById('intro-desc').textContent = copy.introDesc;
+  document.getElementById('intro-assumptions').textContent = copy.introAssumptions;
+  document.getElementById('eco-desc').textContent = copy.ecoDesc;
+  document.getElementById('army-desc').innerHTML = copy.armyDesc;
+  renderTechGrid();
+  renderUnitTable();
+  renderCivBonusList();
+  renderResults();
+}
+
+document.querySelectorAll('.mode-btn').forEach(btn => btn.addEventListener('click', () => setMode(btn.dataset.mode)));
+
+setMode('production');
 </script>
 </body>
 </html>
