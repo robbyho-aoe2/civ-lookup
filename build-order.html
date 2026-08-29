@@ -181,7 +181,7 @@ const DATA = {
   gatherRates: { wood: 0.32, food: 0.33, gold: 0.30, stone: 0.30 },
   villager: { cost:{food:50,wood:0,gold:0,stone:0}, trainTime:25 },
   farmBuildCost: 60, // wood — standard across editions, a farm needs rebuilding once its yield is used up
-  campCosts: { miningCamp: 100, lumberCamp: 100 }, // wood — one-time, pending verification for civ exceptions
+  campCosts: { mill: 100, miningCamp: 100, lumberCamp: 100 }, // wood — one-time; Japanese -50%, Incas' Settlement replaces all three (see civ ecoBonuses)
   houseCost: 25, // wood
   housePopSpace: 5, // pop per house
   dataSourceNotes: 'Wood/gold/stone base gather rates are widely-cited community figures, not independently re-verified. Full 53-civ roster with unique units and unavailableUnitLines pulled programmatically from game data; ecoBonuses cover 11 civs whose bonuses cleanly matched this calculator\'s bonus shapes (see aoe2_civs_data.json sourceNotes for real bonuses that were excluded for not fitting, e.g. Portuguese -20% gold cost, Byzantines\' line-scoped discount).',
@@ -1046,7 +1046,18 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "settlement",
+          "cost": 125,
+          "note": "Settlement replaces Mill + Lumber Camp + Mining Camp with one 125-wood building covering all three"
+        },
+        {
+          "type": "house-pop-space",
+          "value": 10,
+          "note": "Houses and Settlements provide +10 population space instead of the usual +5"
+        }
+      ],
       "unavailableUnitLines": [
         "militia-line",
         "eagle-line",
@@ -1600,7 +1611,14 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "folwark-yield-bonus",
+          "value": 10,
+          "note": "Folwark (replaces Mill) instantly deposits 10% of a farm's food on seed/reseed — same wood cost, more net food per farm cycle"
+        }
+      ],
+      "millName": "Folwark",
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -2620,7 +2638,13 @@ function renderResults() {
   // as pure rate effects here, not yield, which slightly overstates upkeep
   // for a civ whose food bonus is actually a yield increase (e.g. Franks).
   const farmYield = techIds.has('crop-rotation') ? 550 : techIds.has('heavy-plow') ? 375 : techIds.has('horse-collar') ? 250 : 175;
-  const farmUpkeepWoodPerSec = totalIncome.food * DATA.farmBuildCost / farmYield;
+  // Poles' Folwark (replaces Mill) instantly deposits a % of a farm's food
+  // on every seed/reseed at no extra wood cost — same wood-per-farm-cycle,
+  // more net food per cycle, so it lowers the effective wood-per-food ratio
+  // exactly as if farms yielded that much more (rate itself is unaffected).
+  const folwarkBonus = (civ?.ecoBonuses || []).find(b => b.type === 'folwark-yield-bonus');
+  const effectiveFarmYield = farmYield * (folwarkBonus ? 1 + folwarkBonus.value / 100 : 1);
+  const farmUpkeepWoodPerSec = totalIncome.food * DATA.farmBuildCost / effectiveFarmYield;
   totalIncome.wood += farmUpkeepWoodPerSec;
 
   // Every villager and unit you train also eats into your population cap,
@@ -2628,7 +2652,9 @@ function renderResults() {
   // amount of pop. Growing pop at popRate therefore has its own ongoing
   // wood cost, same shape as farm upkeep.
   const hasNoHouses = (civ?.ecoBonuses || []).some(b => b.type === 'no-houses');
-  const houseWoodPerSec = hasNoHouses ? 0 : popRate * DATA.houseCost / DATA.housePopSpace;
+  const popSpaceOverride = (civ?.ecoBonuses || []).find(b => b.type === 'house-pop-space');
+  const housePopSpace = popSpaceOverride ? popSpaceOverride.value : DATA.housePopSpace;
+  const houseWoodPerSec = hasNoHouses ? 0 : popRate * DATA.houseCost / housePopSpace;
   totalIncome.wood += houseWoodPerSec;
 
   const villagers = {};
@@ -2673,21 +2699,37 @@ function renderResults() {
 // Doesn't model relocating to a new camp when a deposit runs out — how
 // often that happens depends on the map, not anything this tool tracks.
 function renderSetupCard(villagers, civ) {
+  const settlement = (civ?.ecoBonuses || []).find(b => b.type === 'settlement');
+  const needsAny = villagers.food > 0 || villagers.gold > 0 || villagers.stone > 0 || villagers.wood > 0;
+  if (!needsAny) return '';
+
+  // Incas' Settlement replaces Mill + both Mining Camps + Lumber Camp with
+  // one building — a single line item covers all four resource roles.
+  if (settlement) {
+    return `<div class="setup-card">
+      <h3>One-Time Setup</h3>
+      <div class="pending-item"><span>Settlement (replaces Mill/Mining Camp/Lumber Camp)</span><span class="res-pill wood">${RES_ICON.wood}${settlement.cost}</span></div>
+      <p class="assumptions">${settlement.cost} wood total, once — not part of the ongoing income above. One building covers food, wood, gold, and stone drop-off/tech access.</p>
+    </div>`;
+  }
+
   const campDiscount = (civ?.ecoBonuses || []).find(b => b.type === 'camp-cost-pct');
   const discountMult = campDiscount ? 1 - campDiscount.value / 100 : 1;
+  const mill = Math.round(DATA.campCosts.mill * discountMult);
   const miningCamp = Math.round(DATA.campCosts.miningCamp * discountMult);
   const lumberCamp = Math.round(DATA.campCosts.lumberCamp * discountMult);
+  const millName = civ?.millName || 'Mill';
 
   const items = [];
+  if (villagers.food > 0) items.push({ name: millName, wood: mill });
   if (villagers.gold > 0) items.push({ name: 'Mining Camp (Gold)', wood: miningCamp });
   if (villagers.stone > 0) items.push({ name: 'Mining Camp (Stone)', wood: miningCamp });
   if (villagers.wood > 0) items.push({ name: 'Lumber Camp', wood: lumberCamp });
-  if (!items.length) return '';
   const totalWood = items.reduce((s, i) => s + i.wood, 0);
   return `<div class="setup-card">
     <h3>One-Time Setup</h3>
     ${items.map(i => `<div class="pending-item"><span>${i.name}</span><span class="res-pill wood">${RES_ICON.wood}${i.wood}</span></div>`).join('')}
-    <p class="assumptions">${totalWood} wood total, once — not part of the ongoing income above.${campDiscount ? ` ${civ.name} camps discounted ${campDiscount.value}%.` : ''} Assumes one camp per resource; a map with scattered deposits may need more.</p>
+    <p class="assumptions">${totalWood} wood total, once — not part of the ongoing income above.${campDiscount ? ` ${civ.name} buildings discounted ${campDiscount.value}%.` : ''} Assumes one camp per resource; a map with scattered deposits may need more.</p>
   </div>`;
 }
 
