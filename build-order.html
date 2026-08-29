@@ -98,12 +98,13 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 .save-time{font-weight:700;color:var(--amberL);}
 .save-time.blocked{color:var(--red);}
 
-.timeline-row{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;}
-.timeline-row:last-child{border-bottom:none;}
-.timeline-row .tl-time{width:52px;flex-shrink:0;font-weight:700;color:var(--amberL);font-variant-numeric:tabular-nums;}
-.timeline-row .tl-body b{color:var(--text);}
-.timeline-row .tl-detail{color:var(--text2);margin-top:2px;}
-.timeline-row.blocked .tl-body b{color:var(--red);}
+.timeline-table td:first-child{font-weight:700;color:var(--amberL);}
+.timeline-table th.res-food,.timeline-table td.res-food{color:var(--food);}
+.timeline-table th.res-wood,.timeline-table td.res-wood{color:var(--wood);}
+.timeline-table th.res-gold,.timeline-table td.res-gold{color:var(--gold);}
+.timeline-table th.res-stone,.timeline-table td.res-stone{color:var(--stone);}
+.timeline-table tr.blocked td{color:var(--red);}
+.tl-build{color:var(--text3);font-weight:400;}
 
 .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:4px;}
 .stat-tile{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;}
@@ -2978,8 +2979,30 @@ function openingHousesInfo(startingPool, isDarkOpening, villRate, hasNoHouses) {
   return { applies, pool };
 }
 
+// Tags a pending item's checkpoint with what kind of action it represents —
+// age-up, a one-time unit-batch goal ("Nx Unit"), or a tech/upgrade — so the
+// Step-by-Step table can phrase it as an instruction ("Advance to X Age" /
+// "Train Nx Unit" / "Research X") instead of the flatter "X ready" label.
+function checkpointKindFor(item) {
+  if (item.isAgeUp) return { kind: 'age', itemName: item.name, ageName: item.age };
+  if (/^\d+x /.test(item.name)) return { kind: 'unit', itemName: item.name, ageName: null };
+  return { kind: 'tech', itemName: item.name, ageName: null };
+}
+
 function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening, startAgeIdx) {
-  const checkpoints = [{ label: 'Start', time: 0, vills: startVills, split: null, houses: 0 }];
+  // Cumulative villagers assigned to each resource so far — every checkpoint
+  // gets a snapshot of this (not just its own newly-assigned split) so the
+  // chart can show a running Food/Wood/Gold/Stone column. Starting villagers
+  // aren't a "new villager" event the simulator generates a split for, but
+  // the standard opening still puts them to work in the same sheep-then-wood
+  // order as newly-born ones, so they're retroactively credited here using
+  // the same OPENING_SEQUENCE — Dark Age starts only; a Feudal+ start has no
+  // defined opening to infer this from, so those villagers stay unallocated.
+  const cumAlloc = { food: 0, wood: 0, gold: 0, stone: 0 };
+  if (isDarkOpening) {
+    for (let i = 0; i < startVills; i++) cumAlloc[OPENING_SEQUENCE[i] || 'food']++;
+  }
+  const checkpoints = [{ label: 'Start', time: 0, vills: startVills, split: null, houses: 0, alloc: { ...cumAlloc }, kind: 'start' }];
   let housesAlready = 0, houseBaseline = startVills;
 
   // Standard opening: 2 Houses go up immediately from starting wood, before
@@ -2988,7 +3011,7 @@ function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCe
   // baseline so later checkpoints don't double-count these as "newly needed".
   const opening = openingHousesInfo(startingPool, isDarkOpening, villRate, hasNoHouses);
   if (opening.applies) {
-    checkpoints.push({ label: 'Build 2 Houses', time: 0, vills: startVills, split: null, houses: 2 });
+    checkpoints.push({ label: 'Build 2 Houses', time: 0, vills: startVills, split: null, houses: 2, alloc: { ...cumAlloc }, kind: 'house' });
     housesAlready = 2;
     houseBaseline = startVills + 2 * housePopSpace;
   }
@@ -2996,7 +3019,10 @@ function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCe
 
   const primed = primeInstantGoals(pending, opening.pool, startAgeIdx);
   primed.resolved.forEach(({ item, time }) => {
-    checkpoints.push({ label: `${item.name} ready`, time, vills: startVills, split: null, houses: 0 });
+    checkpoints.push({
+      label: `${item.name} ready`, time, vills: startVills, split: null,
+      houses: housesFor(startVills), alloc: { ...cumAlloc }, ...checkpointKindFor(item),
+    });
   });
 
   if (villRate <= 0) return checkpoints;
@@ -3008,10 +3034,11 @@ function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCe
     const ramp = simulateRampToSustain(rates, villRate, startVills, targetVillagers, totalVillCeil, cursorTime, openingSequence);
     if (ramp) {
       cursorTime = ramp.time; cursorVills = ramp.vills;
+      RES.forEach(r => { cumAlloc[r] += ramp.assigned[r] || 0; });
       checkpoints.push({
         label: `Reach sustain (${totalVillCeil} villagers for your composition)`,
         time: cursorTime, vills: cursorVills,
-        split: ramp.assigned, houses: housesFor(cursorVills),
+        split: ramp.assigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, kind: 'sustain',
       });
     }
   }
@@ -3020,34 +3047,107 @@ function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCe
     const r = simulateItemReady(item, rates, villRate, cursorTime, cursorVills, pool);
     if (!r) { checkpoints.push({ label: `${item.name} — past 60 min, add more TCs`, blocked: true }); return; }
     cursorTime = r.time; cursorVills = r.vills; pool = r.pool;
+    RES.forEach(res => { cumAlloc[res] += r.assigned[res] || 0; });
     checkpoints.push({
       label: `${item.name} ready`,
       time: cursorTime, vills: cursorVills,
-      split: r.assigned, houses: housesFor(cursorVills),
+      split: r.assigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, ...checkpointKindFor(item),
     });
   });
 
   return checkpoints;
 }
 
-function renderTimelineCard(checkpoints, villRate) {
+// Which drop-off building a resource's FIRST assigned villager implies —
+// mirrors renderSetupCard's civ handling (Settlement/Mule Cart consolidate
+// multiple resources into one building) so the two panels never disagree,
+// but here it's used to annotate the Event column with a "+ Building" note
+// the moment that resource's running total leaves zero, instead of showing
+// it as a separate disconnected card.
+function timelineBuildAnnotator(civ) {
+  const settlement = (civ?.ecoBonuses || []).find(b => b.type === 'settlement');
+  const muleCart = (civ?.ecoBonuses || []).find(b => b.type === 'mule-cart');
+  const millName = civ?.millName || 'Mill';
+  const built = { food: false, wood: false, gold: false, stone: false };
+  if (muleCart?.freeStarting) { built.wood = built.gold = built.stone = true; } // already on the map at t=0
+  return alloc => {
+    const notes = new Set();
+    RES.forEach(r => {
+      if ((alloc[r] || 0) <= 0 || built[r]) return;
+      built[r] = true;
+      if (settlement) { notes.add('Settlement'); RES.forEach(r2 => { built[r2] = true; }); }
+      else if (muleCart && r !== 'food') { notes.add('Mule Cart'); built.wood = built.gold = built.stone = true; }
+      else if (r === 'food') notes.add(millName);
+      else if (r === 'wood') notes.add('Lumber Camp');
+      else notes.add(`Mining Camp (${RES_LABEL[r]})`);
+    });
+    return [...notes];
+  };
+}
+
+// Turns a checkpoint into the imperative instruction(s) a player would
+// actually act on — "Build 2 Houses", "Send new vills: 3 → Food, 3 → Wood",
+// "Research Loom", "Advance to Feudal Age" — rather than just the
+// descriptive label. houseDelta catches houses that become newly required
+// at a step OTHER than the dedicated "Build 2 Houses" checkpoint (e.g. pop
+// crossing the next house-baseline while ramping to sustain). Only ever
+// routes newly-BORN villagers, same as the rest of this tool's model — it
+// doesn't reassign villagers already working a resource.
+function actionParts(c, prevHouses) {
+  const parts = [];
+  if (c.kind === 'age') parts.push(`Advance to ${c.ageName} Age`);
+  else if (c.kind === 'tech') parts.push(`Research ${c.itemName}`);
+  else if (c.kind === 'unit') parts.push(`Train ${c.itemName}`);
+  if (c.kind === 'house') {
+    parts.push(`Build ${c.houses} House${c.houses === 1 ? '' : 's'}`);
+  } else {
+    const houseDelta = (c.houses || 0) - prevHouses;
+    if (houseDelta > 0) parts.push(`Build ${houseDelta} House${houseDelta === 1 ? '' : 's'}`);
+  }
+  if (c.split) {
+    const bits = RES.filter(r => c.split[r] > 0).map(r => `${c.split[r]} → ${RES_LABEL[r]}`);
+    if (bits.length) parts.push(`Send new vills: ${bits.join(', ')}`);
+  }
+  return parts;
+}
+
+function renderTimelineCard(checkpoints, villRate, civ) {
   if (checkpoints.length <= 1) return '';
+  const annotate = timelineBuildAnnotator(civ);
+  let prevHouses = 0;
   const rows = checkpoints.map((c, i) => {
-    if (c.blocked) return `<div class="timeline-row blocked"><div class="tl-time">—</div><div class="tl-body"><b>${c.label}</b></div></div>`;
-    const splitText = c.split ? RES.filter(r => c.split[r] > 0).map(r => `${c.split[r]} ${RES_LABEL[r].toLowerCase()}`).join(', ') : '';
-    const houseText = c.houses > 0 ? ` · ${c.houses} House${c.houses === 1 ? '' : 's'} built by now` : '';
-    return `<div class="timeline-row">
-      <div class="tl-time">${i === 0 ? '0:00' : fmtClock(c.time)}</div>
-      <div class="tl-body">
-        <b>${c.label}</b>
-        <div class="tl-detail">${c.vills} total villagers${splitText ? ` (${splitText} newly assigned)` : ''}${houseText}</div>
-      </div>
-    </div>`;
+    if (c.blocked) return `<tr class="blocked"><td>—</td><td colspan="8"><b>${c.label}</b></td></tr>`;
+    const alloc = c.alloc || { food: 0, wood: 0, gold: 0, stone: 0 };
+    const newBuildings = annotate(alloc);
+    const buildNote = newBuildings.length ? ` <span class="tl-build">+ ${newBuildings.join(', + ')}</span>` : '';
+    const action = actionParts(c, prevHouses);
+    prevHouses = c.houses || 0;
+    return `<tr>
+      <td>${i === 0 ? '0:00' : fmtClock(c.time)}</td>
+      <td class="num">${c.vills}</td>
+      <td class="num res-food">${alloc.food}</td>
+      <td class="num res-wood">${alloc.wood}</td>
+      <td class="num res-gold">${alloc.gold}</td>
+      <td class="num res-stone">${alloc.stone}</td>
+      <td class="num">${c.houses || 0}</td>
+      <td><b>${c.label}</b>${buildNote}</td>
+      <td>${action.length ? action.join(' · ') : '—'}</td>
+    </tr>`;
   }).join('');
   return `<div class="pending-card">
     <h3>Step-by-Step</h3>
-    ${rows}
-    <p class="assumptions">Assumes ${villRate > 0 ? 'constant villager production' : 'no ongoing villager production'} and fully automatic allocation — this is a planning estimate (when things become affordable and how population grows), not a literal script of which building to click first. House counts are cumulative totals needed by that point, not individually timed.</p>
+    <div style="overflow-x:auto;">
+    <table class="timeline-table">
+      <thead><tr>
+        <th>Time</th><th class="num">Vills</th>
+        <th class="num res-food">${RES_ICON.food}</th><th class="num res-wood">${RES_ICON.wood}</th>
+        <th class="num res-gold">${RES_ICON.gold}</th><th class="num res-stone">${RES_ICON.stone}</th>
+        <th class="num">🏠</th><th>Event</th><th>Action</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+    <p class="assumptions">Food/Wood/Gold/Stone columns are cumulative villagers on that resource so far, not just this step's change (starting villagers are only pre-assigned this way for a Dark Age start, per the standard sheep-then-wood opening). "+ Building" in Event marks the first time a resource needs its drop-off building. Action only ever routes newly-trained villagers to a resource — it doesn't model reassigning villagers already working one. Assumes ${villRate > 0 ? 'constant villager production' : 'no ongoing villager production'} and fully automatic allocation — a planning estimate, not a literal script of which building to click first.</p>
   </div>`;
 }
 
@@ -3170,7 +3270,7 @@ function renderResults() {
       ? buildTimeline(rates, villRate, startVills, villagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening, ageIndex(startAgeId))
       : [];
     extras = renderSetupCard(villagers, civ)
-      + renderTimelineCard(checkpoints, villRate)
+      + renderTimelineCard(checkpoints, villRate, civ)
       + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ, hasNoHouses);
   }
   bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>' + extras;
