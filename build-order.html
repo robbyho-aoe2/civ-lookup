@@ -12,6 +12,7 @@
   --green:#4ade80;--greenBg:rgba(74,222,128,.07);--greenBd:rgba(74,222,128,.25);
   --red:#f87171;--redBg:rgba(248,113,113,.07);--redBd:rgba(248,113,113,.25);
   --food:#8fd15a;--wood:#c8922a;--gold:#f0d458;--stone:#9aa5b1;
+  --ageDark:#8a7a68;--ageFeudal:#c08552;--ageCastle:#b8bec9;--ageImperial:#f0b458;
   --radius:8px;
 }
 *{box-sizing:border-box;}
@@ -63,7 +64,6 @@ th.num,td.num{text-align:center;}
 tr.unique-row td{background:var(--amberBg);}
 tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 .qty-input{width:52px;text-align:center;padding:5px 4px;}
-.tier-select{background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:11px;padding:4px 6px;max-width:150px;}
 .save-check{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2);white-space:nowrap;cursor:pointer;}
 .save-check input{accent-color:var(--amber);}
 .tech-row .save-check{margin-left:auto;}
@@ -73,7 +73,12 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 .tech-line-row .tname{flex-shrink:0;}
 .tier-dots{display:inline-flex;gap:7px;}
 .tier-dot{position:relative;width:15px;height:15px;border-radius:50%;border:2px solid var(--border2);cursor:pointer;flex-shrink:0;box-sizing:border-box;}
+.tier-dot.disabled{cursor:not-allowed;opacity:.4;}
 .tier-dot.filled{background:var(--amber);border-color:var(--amber);}
+.tier-dot.filled[data-age="Dark"]{background:var(--ageDark);border-color:var(--ageDark);}
+.tier-dot.filled[data-age="Feudal"]{background:var(--ageFeudal);border-color:var(--ageFeudal);}
+.tier-dot.filled[data-age="Castle"]{background:var(--ageCastle);border-color:var(--ageCastle);}
+.tier-dot.filled[data-age="Imperial"]{background:var(--ageImperial);border-color:var(--ageImperial);}
 .tier-dot.saving{border-color:var(--amberL);box-shadow:0 0 0 3px var(--amberBg);}
 .tier-dot input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;width:100%;height:100%;}
 .tech-line-row .save-check{margin-left:auto;}
@@ -1436,7 +1441,13 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "settlement",
+          "cost": 125,
+          "note": "Settlement replaces Mill + Lumber Camp + Mining Camp with one 125-wood building covering all three"
+        }
+      ],
       "unavailableUnitLines": [
         "militia-line",
         "eagle-line",
@@ -1532,7 +1543,13 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "settlement",
+          "cost": 125,
+          "note": "Settlement replaces Mill + Lumber Camp + Mining Camp with one 125-wood building covering all three"
+        }
+      ],
       "unavailableUnitLines": [
         "militia-line",
         "eagle-line",
@@ -1974,7 +1991,13 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "settlement",
+          "cost": 125,
+          "note": "Settlement replaces Mill + Lumber Camp + Mining Camp with one 125-wood building covering all three"
+        }
+      ],
       "unavailableUnitLines": [
         "militia-line",
         "eagle-line",
@@ -2309,7 +2332,7 @@ function renderTierLinesHtml(techs, free) {
   return Object.values(lines).map(lineTechs => {
     const dots = lineTechs.map(t => {
       const isFree = free.has(t.id);
-      return `<span class="tier-dot${isFree ? ' filled locked' : ''}" title="${t.name} (${t.age})"></span><input type="checkbox" data-tech="${t.id}" ${isFree ? 'checked disabled' : ''} style="display:none">`;
+      return `<span class="tier-dot${isFree ? ' filled locked' : ''}" data-age="${t.age}" title="${t.name} (${t.age})"></span><input type="checkbox" data-tech="${t.id}" ${isFree ? 'checked disabled' : ''} style="display:none">`;
     }).join('');
     return `<div class="tech-line-row">
       <span class="tname">${lineTechs[0].lineLabel}</span>
@@ -2429,7 +2452,7 @@ function renderUnitTable() {
       const tierCell = l.isVillager
         ? '<span class="tage">—</span>'
         : l.tiers.length > 1
-          ? `<select class="tier-select" data-tier="${l.id}">${l.tiers.map((t, i) => `<option value="${i}" ${i === defaultTier ? 'selected' : ''} ${ageIndex(t.age) > maxAgeIdx ? 'disabled' : ''}>${t.name} (${t.age})</option>`).join('')}</select>`
+          ? `<div class="tier-dots" data-unit-tier-line="${l.id}">${l.tiers.map((t, i) => `<span class="tier-dot${i <= defaultTier ? ' filled' : ''}${ageIndex(t.age) > maxAgeIdx ? ' disabled' : ''}" data-age="${t.age}" data-idx="${i}" title="${t.name} (${t.age})"></span>`).join('')}</div>`
           : `<span class="tage">${l.tiers[0].age}</span>`;
       const buildingsTitle = l.isVillager ? 'title="0 = stop training villagers (all-in)"' : '';
       const goalCell = l.isVillager ? '<span class="tage">—</span>' : `<input type="number" class="qty-input" min="0" value="0" data-goal-qty="${l.id}" title="One-time batch to reach as a goal, on top of any ongoing Buildings production">`;
@@ -2459,15 +2482,22 @@ function renderUnitTable() {
     lineState[inp.dataset.goalQty].goalQty = Number(inp.value) || 0;
     renderResults();
   }));
-  tableEl.querySelectorAll('[data-tier]').forEach(sel => sel.addEventListener('change', () => {
-    const line = lines.find(l => l.id === sel.dataset.tier);
-    const state = lineState[line.id];
-    state.tierIdx = Number(sel.value);
-    state.saving = false;
-    document.querySelector(`[data-traintime="${line.id}"]`).textContent = line.tiers[state.tierIdx].trainTime + 's';
-    updateUpgradeCell(line);
-    renderResults();
-  }));
+  tableEl.querySelectorAll('[data-unit-tier-line]').forEach(dotsWrap => {
+    const line = lines.find(l => l.id === dotsWrap.dataset.unitTierLine);
+    const dots = [...dotsWrap.querySelectorAll('.tier-dot')];
+    dots.forEach((dot, i) => {
+      if (dot.classList.contains('disabled')) return;
+      dot.addEventListener('click', () => {
+        const state = lineState[line.id];
+        state.tierIdx = i;
+        state.saving = false;
+        dots.forEach((d, j) => d.classList.toggle('filled', j <= i));
+        document.querySelector(`[data-traintime="${line.id}"]`).textContent = line.tiers[i].trainTime + 's';
+        updateUpgradeCell(line);
+        renderResults();
+      });
+    });
+  });
 
   return lines;
 }
