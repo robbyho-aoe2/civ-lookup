@@ -225,6 +225,12 @@ const DATA = {
   villager: { cost:{food:50,wood:0,gold:0,stone:0}, trainTime:25 },
   farmBuildCost: 60, // wood — standard across editions, a farm needs rebuilding once its yield is used up
   campCosts: { mill: 100, miningCamp: 100, lumberCamp: 100 }, // wood — one-time; Japanese -50%, Incas' Settlement replaces all three (see civ ecoBonuses)
+  // Every civ's PRIMARY (Castle-Age) unique unit actually trains at the
+  // Castle, not the "thematic" building (Archery Range/Stable/Barracks/Siege
+  // Workshop) the roster below used to say — see each unique unit's
+  // `building` field, corrected this session against real game data.
+  // 650 stone only (no food/wood/gold), 200s build time, Castle Age minimum.
+  castle: { cost: { food: 0, wood: 0, gold: 0, stone: 650 }, buildTimeSeconds: 200, minAge: 'Castle' },
   houseCost: 25, // wood
   startingResources: { food: 200, wood: 200, gold: 50, stone: 0 }, // standard random-map start
   housePopSpace: 5, // pop per house
@@ -381,7 +387,7 @@ const DATA = {
         {
           "name": "Composite Bowman",
           "age": "Castle",
-          "building": "Archery Range",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 35,
@@ -426,7 +432,7 @@ const DATA = {
         {
           "name": "Jaguar Warrior",
           "age": "Castle",
-          "building": "Barracks",
+          "building": "Castle",
           "cost": {
             "food": 60,
             "wood": 0,
@@ -460,7 +466,7 @@ const DATA = {
         {
           "name": "Ratha",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 60,
@@ -489,7 +495,7 @@ const DATA = {
         {
           "name": "Camel Archer",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 50,
@@ -525,7 +531,7 @@ const DATA = {
         {
           "name": "Hussite Wagon",
           "age": "Castle",
-          "building": "Siege Workshop",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 110,
@@ -584,7 +590,7 @@ const DATA = {
         {
           "name": "Longbowman",
           "age": "Castle",
-          "building": "Archery Range",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 35,
@@ -610,7 +616,7 @@ const DATA = {
         {
           "name": "Konnik",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 60,
             "wood": 0,
@@ -636,7 +642,7 @@ const DATA = {
         {
           "name": "Coustillier",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 55,
             "wood": 0,
@@ -673,7 +679,7 @@ const DATA = {
         {
           "name": "Arambai",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 75,
@@ -714,7 +720,7 @@ const DATA = {
         {
           "name": "Cataphract",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 70,
             "wood": 0,
@@ -739,7 +745,7 @@ const DATA = {
         {
           "name": "Woad Raider",
           "age": "Castle",
-          "building": "Barracks",
+          "building": "Castle",
           "cost": {
             "food": 70,
             "wood": 0,
@@ -772,7 +778,7 @@ const DATA = {
         {
           "name": "Chu Ko Nu",
           "age": "Castle",
-          "building": "Archery Range",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 40,
@@ -819,7 +825,7 @@ const DATA = {
         {
           "name": "Kipchak",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 60,
@@ -844,7 +850,7 @@ const DATA = {
         {
           "name": "Urumi Swordsman",
           "age": "Castle",
-          "building": "Barracks",
+          "building": "Castle",
           "cost": {
             "food": 65,
             "wood": 0,
@@ -884,7 +890,7 @@ const DATA = {
         {
           "name": "Shotel Warrior",
           "age": "Castle",
-          "building": "Barracks",
+          "building": "Castle",
           "cost": {
             "food": 50,
             "wood": 0,
@@ -908,7 +914,7 @@ const DATA = {
         {
           "name": "Throwing Axeman",
           "age": "Castle",
-          "building": "Barracks",
+          "building": "Castle",
           "cost": {
             "food": 55,
             "wood": 0,
@@ -948,7 +954,7 @@ const DATA = {
         {
           "name": "Monaspa",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 60,
             "wood": 0,
@@ -1010,7 +1016,7 @@ const DATA = {
         {
           "name": "Chakram Thrower",
           "age": "Castle",
-          "building": "Barracks",
+          "building": "Castle",
           "cost": {
             "food": 65,
             "wood": 0,
@@ -1062,7 +1068,7 @@ const DATA = {
         {
           "name": "Ghulam",
           "age": "Castle",
-          "building": "Barracks",
+          "building": "Castle",
           "cost": {
             "food": 30,
             "wood": 0,
@@ -1136,7 +1142,7 @@ const DATA = {
         {
           "name": "Kamayuk",
           "age": "Castle",
-          "building": "Barracks",
+          "building": "Castle",
           "cost": {
             "food": 70,
             "wood": 0,
@@ -1177,7 +1183,7 @@ const DATA = {
         {
           "name": "Genoese Crossbowman",
           "age": "Castle",
-          "building": "Archery Range",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 45,
@@ -1216,7 +1222,7 @@ const DATA = {
         {
           "name": "Samurai",
           "age": "Castle",
-          "building": "Barracks",
+          "building": "Castle",
           "cost": {
             "food": 45,
             "wood": 0,
@@ -1247,7 +1253,7 @@ const DATA = {
         {
           "name": "Iron Pagoda",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 80,
             "wood": 0,
@@ -1287,7 +1293,7 @@ const DATA = {
         {
           "name": "Liao Dao",
           "age": "Castle",
-          "building": "Barracks",
+          "building": "Castle",
           "cost": {
             "food": 40,
             "wood": 0,
@@ -1327,7 +1333,7 @@ const DATA = {
         {
           "name": "Ballista Elephant",
           "age": "Castle",
-          "building": "Siege Workshop",
+          "building": "Castle",
           "cost": {
             "food": 100,
             "wood": 0,
@@ -1352,7 +1358,7 @@ const DATA = {
         {
           "name": "War Wagon",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 200,
@@ -1397,7 +1403,7 @@ const DATA = {
         {
           "name": "Leitis",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 70,
             "wood": 0,
@@ -1434,7 +1440,7 @@ const DATA = {
         {
           "name": "Magyar Huszar",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 35,
             "wood": 0,
@@ -1460,7 +1466,7 @@ const DATA = {
         {
           "name": "Karambit Warrior",
           "age": "Castle",
-          "building": "Barracks",
+          "building": "Castle",
           "cost": {
             "food": 25,
             "wood": 0,
@@ -1487,7 +1493,7 @@ const DATA = {
         {
           "name": "Gbeto",
           "age": "Castle",
-          "building": "Barracks",
+          "building": "Castle",
           "cost": {
             "food": 50,
             "wood": 0,
@@ -1517,7 +1523,7 @@ const DATA = {
         {
           "name": "Kona",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 65,
             "wood": 0,
@@ -1566,7 +1572,7 @@ const DATA = {
         {
           "name": "Plumed Archer",
           "age": "Castle",
-          "building": "Archery Range",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 55,
@@ -1601,7 +1607,7 @@ const DATA = {
         {
           "name": "Mangudai",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 55,
@@ -1626,7 +1632,7 @@ const DATA = {
         {
           "name": "Guecha Warrior",
           "age": "Castle",
-          "building": "Archery Range",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 50,
@@ -1676,7 +1682,7 @@ const DATA = {
         {
           "name": "War Elephant",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 170,
             "wood": 0,
@@ -1718,7 +1724,7 @@ const DATA = {
         {
           "name": "Obuch",
           "age": "Castle",
-          "building": "Barracks",
+          "building": "Castle",
           "cost": {
             "food": 55,
             "wood": 0,
@@ -1763,7 +1769,7 @@ const DATA = {
         {
           "name": "Organ Gun",
           "age": "Castle",
-          "building": "Siege Workshop",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 80,
@@ -1800,7 +1806,7 @@ const DATA = {
         {
           "name": "Centurion",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 75,
             "wood": 0,
@@ -1846,7 +1852,7 @@ const DATA = {
         {
           "name": "Mameluke",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 55,
             "wood": 0,
@@ -1869,7 +1875,7 @@ const DATA = {
         {
           "name": "White Feather Guard",
           "age": "Castle",
-          "building": "Barracks",
+          "building": "Castle",
           "cost": {
             "food": 60,
             "wood": 0,
@@ -1923,8 +1929,8 @@ const DATA = {
       "uniqueUnits": [
         {
           "name": "Serjeant",
-          "age": "Feudal",
-          "building": "Barracks",
+          "age": "Castle",
+          "building": "Castle",
           "cost": {
             "food": 55,
             "wood": 0,
@@ -1956,7 +1962,7 @@ const DATA = {
         {
           "name": "Boyar",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 60,
             "wood": 0,
@@ -1989,7 +1995,7 @@ const DATA = {
         {
           "name": "Conquistador",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 70,
             "wood": 0,
@@ -2026,7 +2032,7 @@ const DATA = {
         {
           "name": "Keshik",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 60,
             "wood": 0,
@@ -2063,7 +2069,7 @@ const DATA = {
         {
           "name": "Teutonic Knight",
           "age": "Castle",
-          "building": "Barracks",
+          "building": "Castle",
           "cost": {
             "food": 85,
             "wood": 0,
@@ -2087,7 +2093,7 @@ const DATA = {
         {
           "name": "Blackwood Archer",
           "age": "Castle",
-          "building": "Archery Range",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 35,
@@ -2141,7 +2147,7 @@ const DATA = {
         {
           "name": "Janissary",
           "age": "Castle",
-          "building": "Archery Range",
+          "building": "Castle",
           "cost": {
             "food": 60,
             "wood": 0,
@@ -2171,7 +2177,7 @@ const DATA = {
         {
           "name": "Rattan Archer",
           "age": "Castle",
-          "building": "Archery Range",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 50,
@@ -2209,7 +2215,7 @@ const DATA = {
         {
           "name": "Berserk",
           "age": "Castle",
-          "building": "Barracks",
+          "building": "Castle",
           "cost": {
             "food": 65,
             "wood": 0,
@@ -2259,7 +2265,7 @@ const DATA = {
         {
           "name": "Tiger Cavalry",
           "age": "Castle",
-          "building": "Stable",
+          "building": "Castle",
           "cost": {
             "food": 60,
             "wood": 0,
@@ -2314,7 +2320,7 @@ const DATA = {
         {
           "name": "Fire Archer",
           "age": "Castle",
-          "building": "Archery Range",
+          "building": "Castle",
           "cost": {
             "food": 0,
             "wood": 45,
@@ -3269,7 +3275,7 @@ function renderResults() {
     const checkpoints = pending.length
       ? buildTimeline(rates, villRate, startVills, villagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening, ageIndex(startAgeId))
       : [];
-    extras = renderSetupCard(villagers, civ)
+    extras = renderSetupCard(villagers, civ, rows.some(r => r.line.building === 'Castle'))
       + renderTimelineCard(checkpoints, villRate, civ)
       + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ, hasNoHouses);
   }
@@ -3282,10 +3288,10 @@ function renderResults() {
 // you pay once, not an ongoing rate (unlike farm upkeep, which recurs).
 // Doesn't model relocating to a new camp when a deposit runs out — how
 // often that happens depends on the map, not anything this tool tracks.
-function renderSetupCard(villagers, civ) {
+function renderSetupCard(villagers, civ, needsCastle) {
   const settlement = (civ?.ecoBonuses || []).find(b => b.type === 'settlement');
   const muleCart = (civ?.ecoBonuses || []).find(b => b.type === 'mule-cart');
-  const needsAny = villagers.food > 0 || villagers.gold > 0 || villagers.stone > 0 || villagers.wood > 0;
+  const needsAny = villagers.food > 0 || villagers.gold > 0 || villagers.stone > 0 || villagers.wood > 0 || needsCastle;
   if (!needsAny) return '';
 
   const pillsFor = cost => {
@@ -3326,9 +3332,17 @@ function renderSetupCard(villagers, civ) {
     note = (campDiscount ? `${civ.name} buildings discounted ${campDiscount.value}%. ` : '') + 'Assumes one camp per resource; a map with scattered deposits may need more.';
   }
 
+  // A civ's signature unique unit (and a handful of others — see this
+  // session's building-field audit) trains at a real Castle, not the
+  // Barracks/Stable/Archery Range/Siege Workshop the roster used to claim —
+  // stone-only, and Settlement doesn't cover it (Settlement only replaces
+  // Mill/Lumber Camp/Mining Camp).
+  if (needsCastle) items.push({ name: 'Castle', cost: DATA.castle.cost });
+
   const totalFood = items.reduce((s, i) => s + (i.cost.food || 0), 0);
   const totalWood = items.reduce((s, i) => s + (i.cost.wood || 0), 0);
-  const totalParts = [totalFood && `${totalFood} food`, totalWood && `${totalWood} wood`].filter(Boolean);
+  const totalStone = items.reduce((s, i) => s + (i.cost.stone || 0), 0);
+  const totalParts = [totalFood && `${totalFood} food`, totalWood && `${totalWood} wood`, totalStone && `${totalStone} stone`].filter(Boolean);
 
   return `<div class="setup-card">
     <h3>One-Time Setup</h3>
