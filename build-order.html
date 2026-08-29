@@ -364,7 +364,13 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "starting-resources",
+          "delta": { "food": 0, "wood": 0, "gold": 50, "stone": 0 },
+          "note": "Start with +50 gold"
+        }
+      ],
       "unavailableUnitLines": [
         "cavalry-archer-line",
         "scout-cavalry-line",
@@ -715,7 +721,14 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "starting-resources",
+          "delta": { "food": -200, "wood": -50, "gold": 0, "stone": 0 },
+          "villagerDelta": 3,
+          "note": "Start with +3 villagers, but -50 wood and -200 food"
+        }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -1027,6 +1040,11 @@ const DATA = {
         {
           "type": "no-houses",
           "note": "Population space granted automatically, no Houses needed"
+        },
+        {
+          "type": "starting-resources",
+          "delta": { "food": 0, "wood": -100, "gold": 0, "stone": 0 },
+          "note": "Start with -100 wood (tradeoff for not needing Houses)"
         }
       ],
       "unavailableUnitLines": [
@@ -1480,7 +1498,14 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "starting-resources",
+          "delta": { "food": -50, "wood": 0, "gold": 0, "stone": 0 },
+          "villagerDelta": 1,
+          "note": "Start with +1 villager, but -50 food"
+        }
+      ],
       "unavailableUnitLines": [
         "cavalry-archer-line",
         "scout-cavalry-line",
@@ -1595,7 +1620,13 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "starting-resources",
+          "delta": { "food": 50, "wood": 50, "gold": 0, "stone": 0 },
+          "note": "Start with +50 wood and +50 food"
+        }
+      ],
       "unavailableUnitLines": [
         "eagle-line"
       ]
@@ -1824,7 +1855,13 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "starting-resources",
+          "delta": { "food": 0, "wood": 0, "gold": 0, "stone": 100 },
+          "note": "Start with +100 stone"
+        }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -1999,6 +2036,11 @@ const DATA = {
           "type": "settlement",
           "cost": 125,
           "note": "Settlement replaces Mill + Lumber Camp + Mining Camp with one 125-wood building covering all three"
+        },
+        {
+          "type": "starting-resources",
+          "delta": { "food": 25, "wood": 25, "gold": 25, "stone": 25 },
+          "note": "Start with +25 of every resource"
         }
       ],
       "unavailableUnitLines": [
@@ -2528,6 +2570,18 @@ function updateUpgradeCell(line) {
 
 // ─── Cost / rate math ────────────────────────────────────────────────────────
 
+// The stockpile a game actually starts with — 200/200/50/0 baseline, plus
+// whatever a civ's own starting-resources bonus adds or subtracts (Persians
+// +50F/+50W, Chinese -200F/-50W, etc.). Doesn't model villagerDelta (extra
+// starting villagers like Chinese +3) — there's no "current villager count"
+// tracked in this tool for that to feed into.
+function startingPoolForCiv(civ) {
+  const bonus = (civ?.ecoBonuses || []).find(b => b.type === 'starting-resources');
+  const pool = { ...DATA.startingResources };
+  if (bonus) RES.forEach(r => { pool[r] = Math.max(0, pool[r] + (bonus.delta[r] || 0)); });
+  return pool;
+}
+
 function costForCiv(cost, civ) {
   const out = { ...cost };
   (civ?.ecoBonuses || []).forEach(b => {
@@ -2664,7 +2718,7 @@ function renderResults() {
 
   if (!rows.length) {
     descEl.textContent = 'Add production buildings above to see the split.';
-    bodyEl.innerHTML = '<div class="empty-hint">No production set yet.</div>' + renderPendingCard(pending, rates, { food: 0, wood: 0, gold: 0, stone: 0 }, villRate, 0);
+    bodyEl.innerHTML = '<div class="empty-hint">No production set yet.</div>' + renderPendingCard(pending, rates, { food: 0, wood: 0, gold: 0, stone: 0 }, villRate, 0, civ);
     return;
   }
 
@@ -2738,7 +2792,7 @@ function renderResults() {
     </div>`;
   }).join('');
 
-  bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>' + renderSetupCard(villagers, civ) + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil);
+  bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>' + renderSetupCard(villagers, civ) + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ);
 }
 
 // One-time building costs implied by needing villagers on a resource at
@@ -2802,11 +2856,14 @@ function renderSetupCard(villagers, civ) {
   </div>`;
 }
 
-function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil) {
+function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ) {
   if (!pending.length) return '';
+  const startingPool = startingPoolForCiv(civ);
+  const civStartNote = (civ?.ecoBonuses || []).find(b => b.type === 'starting-resources')
+    ? ` (${civ.name}${civ.name.endsWith('s') ? '’' : '’s'} starting-resource bonus applied)` : '';
 
   if (villRate > 0) {
-    let cursorTime = 0, cursorVills = totalVillCeil, pool = { ...DATA.startingResources };
+    let cursorTime = 0, cursorVills = totalVillCeil, pool = { ...startingPool };
     const results = pending.map(item => {
       const r = simulateItemReady(item, rates, villRate, cursorTime, cursorVills, pool);
       if (r) { cursorTime = r.time; cursorVills = r.vills; pool = r.pool; }
@@ -2819,7 +2876,7 @@ function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil) {
         <div class="cost-pills">${RES.filter(r => item.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${item.cost[r]}</span>`).join('')}</div>
         <span class="save-time${result ? '' : ' blocked'}">${result ? `${result.vills} vills · ${fmtClock(result.time)}` : 'past 60 min — add TCs'}</span>
       </div>`).join('')}
-      <p class="assumptions">Credits your starting stockpile (200 food/200 wood/50 gold) before any villager income, same as a real game start — doesn't yet account for civ-specific starting-resource bonuses (Persians, Mayans, Chinese, Cumans, etc.). Assumes you keep training new villagers and send each new one to whichever of these is furthest behind, in the order checked above; villager allocation is fully automatic. Unit-batch goals also need enough queue time (assumed 1 production building, serial) on top of the resources.</p>
+      <p class="assumptions">Credits your starting stockpile (200 food/200 wood/50 gold baseline) before any villager income, same as a real game start${civStartNote}. Doesn't yet account for extra/fewer starting villagers (e.g. Chinese +3, Mayans +1) — no current-villager-count tracking to plug that into. Assumes you keep training new villagers and send each new one to whichever of these is furthest behind, in the order checked above; villager allocation is fully automatic. Unit-batch goals also need enough queue time (assumed 1 production building, serial) on top of the resources.</p>
     </div>`;
   }
 
@@ -2832,7 +2889,7 @@ function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil) {
   pending.forEach(p => RES.forEach(r => pendingCost[r] += p.cost[r] || 0));
   // Credit the starting stockpile here too, same as the constant-production
   // path — a real game doesn't start at zero resources.
-  RES.forEach(r => { pendingCost[r] = Math.max(0, pendingCost[r] - DATA.startingResources[r]); });
+  RES.forEach(r => { pendingCost[r] = Math.max(0, pendingCost[r] - startingPool[r]); });
   const perResourceEta = {};
   RES.forEach(r => {
     if (pendingCost[r] <= 0) { perResourceEta[r] = 0; return; }
@@ -2845,7 +2902,7 @@ function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil) {
     <h3>Saving For (all-in — no new villagers)</h3>
     ${pending.map(p => `<div class="pending-item"><span>${p.name}</span><div class="cost-pills">${RES.filter(r => p.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${p.cost[r]}</span>`).join('')}</div></div>`).join('')}
     <div class="pending-item total"><span>Ready in</span><span class="save-time${readySeconds === Infinity ? ' blocked' : ''}">${readySeconds === Infinity ? 'need spare villagers' : fmtSecs(readySeconds)}</span></div>
-    <p class="assumptions">Credits your starting stockpile (200 food/200 wood/50 gold) against the total first. Rounding villager counts up leaves a little spare income per resource — that surplus funds the rest without touching your sustain rate.${blockedRes.length ? ` No spare ${blockedRes.map(r => RES_LABEL[r]).join('/')} yet.` : ''} Set Villager buildings above 0 for constant production instead.</p>
+    <p class="assumptions">Credits your starting stockpile (200 food/200 wood/50 gold baseline) against the total first${civStartNote}. Rounding villager counts up leaves a little spare income per resource — that surplus funds the rest without touching your sustain rate.${blockedRes.length ? ` No spare ${blockedRes.map(r => RES_LABEL[r]).join('/')} yet.` : ''} Set Villager buildings above 0 for constant production instead.</p>
   </div>`;
 }
 
