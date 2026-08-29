@@ -219,14 +219,14 @@ const DATA = {
     { id:'padded-archer-armor', name:'Padded Archer Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
     { id:'leather-archer-armor', name:'Leather Archer Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:150,stone:0}, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
     { id:'ring-archer-armor', name:'Ring Archer Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:250,wood:0,gold:250,stone:0}, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
-    { id:'bloodlines', name:'Bloodlines', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:100,stone:0}, group:'stable' },
-    { id:'husbandry', name:'Husbandry', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, group:'stable' },
+    { id:'bloodlines', name:'Bloodlines', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:100,stone:0}, group:'stable', saveOnly:true },
+    { id:'husbandry', name:'Husbandry', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, group:'stable', saveOnly:true },
     // Researched at the University in-game, but grouped here under Siege
     // Workshop since that's the production building they buff and this
     // tool organizes by building, not literal research location.
-    { id:'ballistics', name:'Ballistics', age:'Castle', resource:null, bonusPct:0, cost:{food:0,wood:300,gold:175,stone:0}, group:'siege' },
-    { id:'siege-engineers', name:'Siege Engineers', age:'Imperial', resource:null, bonusPct:0, cost:{food:500,wood:600,gold:0,stone:0}, group:'siege' },
-    { id:'chemistry', name:'Chemistry', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, group:'siege' },
+    { id:'ballistics', name:'Ballistics', age:'Castle', resource:null, bonusPct:0, cost:{food:0,wood:300,gold:175,stone:0}, group:'siege', saveOnly:true },
+    { id:'siege-engineers', name:'Siege Engineers', age:'Imperial', resource:null, bonusPct:0, cost:{food:500,wood:600,gold:0,stone:0}, group:'siege', saveOnly:true },
+    { id:'chemistry', name:'Chemistry', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, group:'siege', saveOnly:true },
   ],
   unitLines: [
     { id:'militia-line', name:'Militia', building:'Barracks', cost:{food:50,wood:0,gold:20,stone:0}, pop:1, tiers:[
