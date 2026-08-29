@@ -88,7 +88,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 .alloc-row .rname{width:64px;font-size:12px;font-weight:700;flex-shrink:0;}
 .alloc-bar-wrap{flex:1;background:var(--bg);border-radius:6px;overflow:hidden;height:22px;border:1px solid var(--border);}
 .alloc-bar{height:100%;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:11px;font-weight:700;color:#1a0a00;transition:width .25s;white-space:nowrap;min-width:2px;}
-.alloc-row .rvills{width:150px;text-align:right;font-size:12px;color:var(--text2);flex-shrink:0;}
+.alloc-row .rvills{width:190px;text-align:right;font-size:12px;color:var(--text2);flex-shrink:0;}
 .alloc-row .rvills b{color:var(--text);}
 
 .empty-hint{font-size:12px;color:var(--text3);padding:14px 0;text-align:center;}
@@ -113,7 +113,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
   <div class="card">
     <h2>What this does</h2>
     <p class="desc" style="margin-bottom:0">Pick a civ, the economy upgrades you'll have, and the army you want to keep producing — this works out the resource income you need and tells you how many villagers to put on Wood/Food/Gold/Stone to sustain it.</p>
-    <p class="assumptions">Steady-state estimate, not a minute-by-minute timeline: it assumes you keep this mix in constant production forever (not a one-time batch) and food comes from farms (not hunting/berries). Villager counts are a target ratio to sustain that rotation, not "move vills at pop X" instructions. The Wood total includes farm upkeep (60 wood to rebuild a depleted farm) — food villagers need wood villagers behind them, not just their own gather rate.</p>
+    <p class="assumptions">Steady-state estimate, not a minute-by-minute timeline: it assumes you keep this mix in constant production forever (not a one-time batch) and food comes from farms (not hunting/berries). Villager counts are a target ratio to sustain that rotation, not "move vills at pop X" instructions. The Wood total includes farm upkeep (60 wood to rebuild a depleted farm) and house upkeep (25 wood per House, 5 pop each) — food and population both need wood villagers behind them, not just their own gather rate.</p>
   </div>
 
   <div class="card">
@@ -172,6 +172,8 @@ const DATA = {
   villager: { cost:{food:50,wood:0,gold:0,stone:0}, trainTime:25 },
   farmBuildCost: 60, // wood — standard across editions, a farm needs rebuilding once its yield is used up
   campCosts: { miningCamp: 100, lumberCamp: 100 }, // wood — one-time, pending verification for civ exceptions
+  houseCost: 25, // wood
+  housePopSpace: 5, // pop per house
   dataSourceNotes: 'Wood/gold/stone base gather rates are widely-cited community figures, not independently re-verified. Full 53-civ roster with unique units and unavailableUnitLines pulled programmatically from game data; ecoBonuses cover 11 civs whose bonuses cleanly matched this calculator\'s bonus shapes (see aoe2_civs_data.json sourceNotes for real bonuses that were excluded for not fitting, e.g. Portuguese -20% gold cost, Byzantines\' line-scoped discount).',
   ecoTechs: [
     { id:'double-bit-axe', name:'Double-Bit Axe', age:'Feudal', resource:'wood', bonusPct:20, cost:{food:100,wood:50,gold:0,stone:0} },
@@ -1003,7 +1005,12 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "no-houses",
+          "note": "Population space granted automatically, no Houses needed"
+        }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -2535,6 +2542,14 @@ function renderResults() {
   const farmUpkeepWoodPerSec = totalIncome.food * DATA.farmBuildCost / farmYield;
   totalIncome.wood += farmUpkeepWoodPerSec;
 
+  // Every villager and unit you train also eats into your population cap,
+  // and pop space isn't free — each House costs wood and covers a fixed
+  // amount of pop. Growing pop at popRate therefore has its own ongoing
+  // wood cost, same shape as farm upkeep.
+  const hasNoHouses = (civ?.ecoBonuses || []).some(b => b.type === 'no-houses');
+  const houseWoodPerSec = hasNoHouses ? 0 : popRate * DATA.houseCost / DATA.housePopSpace;
+  totalIncome.wood += houseWoodPerSec;
+
   const villagers = {};
   let totalVillagers = 0;
   RES.forEach(r => {
@@ -2552,10 +2567,14 @@ function renderResults() {
   </div>`;
 
   const farmUpkeepVills = rates.wood > 0 ? farmUpkeepWoodPerSec / rates.wood : 0;
+  const houseUpkeepVills = rates.wood > 0 ? houseWoodPerSec / rates.wood : 0;
   const maxV = Math.max(1, ...RES.map(r => villagers[r]));
   const bars = RES.filter(r => totalIncome[r] > 0).map(r => {
     const pct = Math.max(4, (villagers[r] / maxV) * 100);
-    const upkeepNote = r === 'wood' && farmUpkeepVills >= 0.05 ? ` (${Math.ceil(farmUpkeepVills)} for farm upkeep)` : '';
+    const upkeepParts = [];
+    if (r === 'wood' && farmUpkeepVills >= 0.05) upkeepParts.push(`${Math.ceil(farmUpkeepVills)} farms`);
+    if (r === 'wood' && houseUpkeepVills >= 0.05) upkeepParts.push(`${Math.ceil(houseUpkeepVills)} houses`);
+    const upkeepNote = upkeepParts.length ? ` (${upkeepParts.join(', ')})` : '';
     return `<div class="alloc-row">
       <div class="rname">${RES_ICON[r]} ${RES_LABEL[r]}</div>
       <div class="alloc-bar-wrap"><div class="alloc-bar" style="width:${pct}%;background:var(--${r})">${villagers[r] >= 0.5 ? Math.ceil(villagers[r]) : ''}</div></div>
