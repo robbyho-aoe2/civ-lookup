@@ -157,15 +157,15 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
       <div>
         <label for="start-age" style="display:block;margin-bottom:6px;">Current Age</label>
         <select id="start-age">
-          <option value="Dark">Dark Age</option>
-          <option value="Feudal" selected>Feudal Age</option>
+          <option value="Dark" selected>Dark Age</option>
+          <option value="Feudal">Feudal Age</option>
           <option value="Castle">Castle Age</option>
           <option value="Imperial">Imperial Age</option>
         </select>
       </div>
       <div>
         <label for="start-vills" style="display:block;margin-bottom:6px;">Starting Villagers</label>
-        <input type="number" id="start-vills" value="20" min="0" style="width:80px;">
+        <input type="number" id="start-vills" value="0" min="0" style="width:80px;">
       </div>
     </div>
   </div>
@@ -2547,7 +2547,13 @@ function renderUnitTable() {
         if (ageIndex(l.tiers[i].age) <= maxAgeIdx) { defaultTier = i; break; }
       }
     }
-    lineState[l.id] = { tierIdx: defaultTier, buildings: l.isVillager ? 1 : 0, goalQty: 0, saving: false };
+    // Constant Production assumes an economy already running (Villager
+    // defaults to 1 = constant production). Build Order Builder starts from
+    // a true blank slate — nothing built yet, not even a Town Center on
+    // Villager duty — so the player states what they have as part of
+    // planning, same as everything else.
+    const defaultBuildings = l.isVillager && currentMode === 'production' ? 1 : 0;
+    lineState[l.id] = { tierIdx: defaultTier, buildings: defaultBuildings, goalQty: 0, saving: false };
   });
 
   const byBuilding = {};
@@ -3000,6 +3006,7 @@ civSelect.addEventListener('change', () => {
   renderResults();
 });
 document.getElementById('start-age').addEventListener('change', () => {
+  updateArmyDesc();
   renderUnitTable();
   renderResults();
 });
@@ -3020,9 +3027,22 @@ const MODE_COPY = {
     introDesc: 'Set your starting age, villagers, and what you already have running, then say what you want to build — this works out the fastest way to get there, crediting your starting stockpile and routing new villagers to whichever goal is furthest behind.',
     introAssumptions: 'Same steady-state economics as Constant Production underneath, plus a time-based savings simulation for one-time goals (techs, unit batches). Villager allocation toward goals is fully automatic. This estimates when you can afford something, not a literal minute-by-minute script of which building to click first.',
     ecoDesc: "Check what you already have. Blacksmith/Stable/Siege upgrades below are goals only (no \"have\" toggle) since you only ever research them once — check \"Save\" to track one.",
-    armyDesc: '<b>Buildings</b> = what you already have running (ongoing production). <b>Goal Qty</b> = a one-time batch you want to add as a target, e.g. 10 Man-at-Arms. Pick each line\'s current upgrade tier, capped by your Starting Point age above — training cost doesn\'t change, but train time does.',
   },
 };
+
+const NEXT_AGE = { Dark: 'Feudal', Feudal: 'Castle', Castle: 'Imperial', Imperial: null };
+
+function buildOrderArmyDesc() {
+  const age = document.getElementById('start-age')?.value || 'Dark';
+  const next = NEXT_AGE[age];
+  const goalPhrase = next ? `Select the units you want to make in ${next} Age` : 'Select the units you want to make going forward';
+  return `${goalPhrase} as <b>Goal Qty</b> — a one-time batch, e.g. 10 Man-at-Arms. <b>Buildings</b> is separate: what you already have running as ongoing production, not part of the goal. Pick each line's current upgrade tier, capped by your Starting Point age above — training cost doesn't change, but train time does.`;
+}
+
+function updateArmyDesc() {
+  const el = document.getElementById('army-desc');
+  el.innerHTML = currentMode === 'buildorder' ? buildOrderArmyDesc() : MODE_COPY.production.armyDesc;
+}
 
 function setMode(mode) {
   currentMode = mode;
@@ -3034,7 +3054,7 @@ function setMode(mode) {
   document.getElementById('intro-desc').textContent = copy.introDesc;
   document.getElementById('intro-assumptions').textContent = copy.introAssumptions;
   document.getElementById('eco-desc').textContent = copy.ecoDesc;
-  document.getElementById('army-desc').innerHTML = copy.armyDesc;
+  updateArmyDesc();
   renderTechGrid();
   renderUnitTable();
   renderCivBonusList();
