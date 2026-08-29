@@ -2464,7 +2464,7 @@ function renderUnitTable() {
       const buildingsTitle = l.isVillager ? 'title="0 = stop training villagers (all-in)"' : '';
       const goalCell = l.isVillager ? '<span class="tage">—</span>' : `<input type="number" class="qty-input" min="0" value="0" data-goal-qty="${l.id}" title="One-time batch to reach as a goal, on top of any ongoing Buildings production">`;
       return `<tr class="${l.unique ? 'unique-row' : ''}" data-line="${l.id}">
-        <td class="uname">${l.name}</td>
+        <td class="uname" data-uname="${l.id}">${l.tiers[defaultTier].name}</td>
         <td>${tierCell}</td>
         <td><div class="cost-pills">${RES.filter(r => l.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${l.cost[r]}</span>`).join('')}</div></td>
         <td class="num" data-traintime="${l.id}">${l.tiers[defaultTier].trainTime}s</td>
@@ -2499,6 +2499,7 @@ function renderUnitTable() {
         state.saving = false;
         dots.forEach((d, j) => d.classList.toggle('filled', j <= i));
         document.querySelector(`[data-traintime="${line.id}"]`).textContent = line.tiers[i].trainTime + 's';
+        document.querySelector(`[data-uname="${line.id}"]`).textContent = line.tiers[i].name;
         updateUpgradeCell(line);
         renderResults();
       });
