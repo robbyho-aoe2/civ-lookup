@@ -34,6 +34,10 @@ header .back:hover{color:var(--amberL);}
 .card .desc{font-size:12px;color:var(--text2);margin:0 0 16px;}
 
 select,input[type=number]{background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-size:13px;padding:8px 10px;font-family:inherit;}
+#civ-bonus-list{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+#civ-bonus-list .civ-bonus-item{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--text2);}
+#civ-bonus-list .civ-bonus-item::before{content:'●';color:var(--amber);flex-shrink:0;line-height:1.5;}
+#civ-bonus-list .civ-bonus-none{font-size:12px;color:var(--text3);}
 select:focus,input:focus{outline:none;border-color:var(--amber);}
 label{font-size:12px;color:var(--text2);}
 
@@ -135,6 +139,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <h2>Civilization</h2>
     <p class="desc">Adds their unique unit(s) to the roster below and applies any economy bonus they have.</p>
     <select id="civ-select"></select>
+    <div id="civ-bonus-list"></div>
   </div>
 
   <div class="card">
@@ -2817,9 +2822,19 @@ function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, s
   </div>`;
 }
 
+function renderCivBonusList() {
+  const civ = selectedCiv();
+  const list = document.getElementById('civ-bonus-list');
+  const bonuses = civ?.ecoBonuses || [];
+  if (!civ) { list.innerHTML = ''; return; }
+  if (!bonuses.length) { list.innerHTML = `<div class="civ-bonus-none">No economy bonuses that affect this calculator's numbers.</div>`; return; }
+  list.innerHTML = bonuses.map(b => `<div class="civ-bonus-item">${b.note || b.type}</div>`).join('');
+}
+
 civSelect.addEventListener('change', () => {
   renderTechGrid();
   renderUnitTable();
+  renderCivBonusList();
   renderResults();
 });
 document.getElementById('start-age').addEventListener('change', () => {
@@ -2830,6 +2845,7 @@ document.getElementById('start-vills').addEventListener('input', renderResults);
 
 renderTechGrid();
 renderUnitTable();
+renderCivBonusList();
 renderResults();
 </script>
 </body>
