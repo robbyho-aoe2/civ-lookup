@@ -2563,12 +2563,12 @@ function renderUnitTable() {
         if (ageIndex(l.tiers[i].age) <= maxAgeIdx) { defaultTier = i; break; }
       }
     }
-    // Constant Production assumes an economy already running (Villager
-    // defaults to 1 = constant production). Build Order Builder starts from
-    // a true blank slate — nothing built yet, not even a Town Center on
-    // Villager duty — so the player states what they have as part of
-    // planning, same as everything else.
-    const defaultBuildings = l.isVillager && currentMode === 'production' ? 1 : 0;
+    // A game always starts with 1 active Town Center, so Villager defaults
+    // to 1 in both modes — that's not "assuming an economy already
+    // running", it's just the one building everyone actually starts with.
+    // Every other line (Barracks, etc.) still starts at 0 in Build Order
+    // mode, since those genuinely aren't built yet at game start.
+    const defaultBuildings = l.isVillager ? 1 : 0;
     lineState[l.id] = { tierIdx: defaultTier, buildings: defaultBuildings, goalQty: 0, saving: false };
   });
 
