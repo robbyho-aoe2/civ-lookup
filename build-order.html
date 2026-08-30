@@ -240,12 +240,28 @@ const DATA = {
   // Center is deliberately absent — every game starts with one, so it's
   // never a new prerequisite; Castle is handled separately above since it
   // already has its own richer mechanic (Castle-unit gating everywhere).
+  //
+  // `requires` is a SEPARATE, genuinely real mechanic from the age-up
+  // building-COUNT rule above (any 2 Dark buildings, etc.) — some buildings
+  // can't be built at all without a specific OTHER building already
+  // standing, regardless of Age: confirmed via the Fandom wiki's per-
+  // building "Requires" infobox field AND independently via each civ's
+  // tech-tree file (`link_id`, pointing Archery Range/Stable at Barracks'
+  // building id, Siege Workshop at Blacksmith's) — two sources agreeing.
+  // Civ-specific alternates exist (Sicilians' Donjon substitutes for
+  // Barracks; Poles' Folwark / Inca-family's Settlement substitute for Mill
+  // on the Market requirement) but aren't modeled here — Market itself has
+  // no mechanic in this tool at all (no trade/currency-exchange feature),
+  // so its Mill requirement is moot; the Sicilians/Donjon exception is a
+  // known, deliberately unmodeled simplification (Sicilians will show an
+  // extra Barracks requirement this tool can't waive).
   productionBuildings: {
     'Barracks': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Dark' },
     'Dock': { cost: { wood: 150 }, buildTimeSeconds: 35, minAge: 'Dark' },
-    'Archery Range': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Feudal' },
-    'Stable': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Feudal' },
-    'Siege Workshop': { cost: { wood: 200 }, buildTimeSeconds: 40, minAge: 'Castle' },
+    'Blacksmith': { cost: { wood: 150 }, buildTimeSeconds: 40, minAge: 'Feudal' },
+    'Archery Range': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Feudal', requires: 'Barracks' },
+    'Stable': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Feudal', requires: 'Barracks' },
+    'Siege Workshop': { cost: { wood: 200 }, buildTimeSeconds: 40, minAge: 'Castle', requires: 'Blacksmith' },
     'Monastery': { cost: { wood: 175 }, buildTimeSeconds: 40, minAge: 'Castle' },
   },
   houseCost: 25, // wood
@@ -2846,7 +2862,20 @@ function pendingUpgrades(lines, civ) {
   // villagers, so queueSeconds (a floor on the whole timeline, not a TC
   // block) is the closest honest approximation without a bigger rework.
   // Each building type is inserted once even if multiple goals need it.
+  // Some buildings also need a specific OTHER building already standing
+  // (Archery Range/Stable need a Barracks, Siege Workshop a Blacksmith —
+  // `requires` on the productionBuildings entry) — a separate, real
+  // mechanic from the age-up building-COUNT rule elsewhere in this tool,
+  // so the prerequisite is walked and inserted first, recursively.
   const buildingsAdded = new Set();
+  function addBuildingItem(name) {
+    if (buildingsAdded.has(name)) return;
+    const def = name === 'Castle' ? DATA.castle : DATA.productionBuildings[name];
+    if (!def) return;
+    if (def.requires) addBuildingItem(def.requires);
+    items.push({ name, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge });
+    buildingsAdded.add(name);
+  }
   lines.forEach(l => {
     const state = lineState[l.id];
     if (!state) return;
@@ -2858,25 +2887,7 @@ function pendingUpgrades(lines, civ) {
     // AND enough queue time to actually train them (assumed serial on one
     // production building, since goal allocation is automatic/idealized).
     if (state.goalQty > 0) {
-      if (l.building === 'Castle' && !buildingsAdded.has('Castle')) {
-        items.push({
-          name: 'Castle',
-          cost: costForCiv(DATA.castle.cost, civ),
-          queueSeconds: DATA.castle.buildTimeSeconds,
-          age: DATA.castle.minAge,
-        });
-        buildingsAdded.add('Castle');
-      }
-      const buildingDef = DATA.productionBuildings[l.building];
-      if (buildingDef && !buildingsAdded.has(l.building)) {
-        items.push({
-          name: l.building,
-          cost: costForCiv(buildingDef.cost, civ),
-          queueSeconds: buildingDef.buildTimeSeconds,
-          age: buildingDef.minAge,
-        });
-        buildingsAdded.add(l.building);
-      }
+      if (l.building === 'Castle' || DATA.productionBuildings[l.building]) addBuildingItem(l.building);
       const tier = l.tiers[state.tierIdx];
       const cost = {};
       RES.forEach(r => { cost[r] = (l.cost[r] || 0) * state.goalQty; });
@@ -3307,22 +3318,28 @@ function initialBuiltState(civ) {
 // and the Cuman-only Feudal Siege Workshop aren't modeled at all), so this
 // can under-count — a safe direction, worst case a false warning — but
 // should never over-count and silently miss a real prerequisite gap.
-function qualifyingBuildingCount(targetAge, civ, rows, techIds, villagers, hasCastle) {
-  const usesBuilding = b => rows.some(r => r.line.building === b);
+function qualifyingBuildingCount(targetAge, civ, activeLines, techIds, villagers, hasCastle) {
+  const usesBuilding = b => activeLines.some(l => l.building === b);
+  // Archery Range/Stable/Siege Workshop now (correctly) pull in Barracks/
+  // Blacksmith as real build prerequisites (see productionBuildings'
+  // `requires`) — so using one of those transitively means the building it
+  // requires exists too, which should count here as well.
+  const hasBarracks = usesBuilding('Barracks') || usesBuilding('Archery Range') || usesBuilding('Stable');
+  const hasBlacksmith = usesBuilding('Blacksmith') || usesBuilding('Siege Workshop') || DATA.ecoTechs.some(t => t.group === 'blacksmith' && techIds.has(t.id));
   if (targetAge === 'Feudal') {
     const settlement = (civ?.ecoBonuses || []).find(b => b.type === 'settlement');
     const names = new Set();
     RES.forEach(r => { if (villagers[r] > 0) names.add(structureForResource(r, civ).name); });
     if (settlement && names.size > 0) return 2; // Settlement alone satisfies the whole requirement
     let n = names.size; // Mill / Lumber Camp / Mining Camp(s) / Mule Cart each count as 1
-    if (usesBuilding('Barracks')) n++;
+    if (hasBarracks) n++;
     return n;
   }
   if (targetAge === 'Castle') {
     let n = 0;
     if (usesBuilding('Archery Range')) n++;
     if (usesBuilding('Stable')) n++;
-    if (DATA.ecoTechs.some(t => t.group === 'blacksmith' && techIds.has(t.id))) n++;
+    if (hasBlacksmith) n++;
     return n;
   }
   if (targetAge === 'Imperial') {
@@ -3528,6 +3545,10 @@ function renderResults() {
     const checkpoints = pending.length
       ? buildTimeline(rates, villRate, startVills, villagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening, ageIndex(startAgeId), civ)
       : [];
+    // Any line with either ongoing production OR a one-time goal batch needs
+    // its training building — rows only reflects ongoing `buildings`, so a
+    // Goal-Qty-only line (no ongoing production) would otherwise be missed.
+    const activeLines = lines.filter(l => { const s = lineState[l.id]; return s && (s.buildings > 0 || s.goalQty > 0); });
     // Age-up also requires 2 qualifying buildings from the prior age (a
     // Castle instead, for Imperial) — a real, separate gate from the
     // cost/TC-time simulateItemReady already enforces. This tool doesn't
@@ -3536,21 +3557,30 @@ function renderResults() {
     // rather than fabricate a timing delay, flag it as a warning on the
     // relevant age-up checkpoint using the FINAL configured build as a
     // static check.
-    const hasCastleBuilt = rows.some(r => r.line.building === 'Castle') || pending.some(item => item.name === 'Castle');
+    const hasCastleBuilt = activeLines.some(l => l.building === 'Castle') || pending.some(item => item.name === 'Castle');
     checkpoints.forEach(c => {
       if (c.kind !== 'age') return;
       const req = DATA.ageUpBuildingReqs[c.ageName];
       if (!req) return;
-      const have = qualifyingBuildingCount(c.ageName, civ, rows, techIds, villagers, hasCastleBuilt);
+      const have = qualifyingBuildingCount(c.ageName, civ, activeLines, techIds, villagers, hasCastleBuilt);
       if (have < req.count) {
         c.warning = `only ${have}/${req.count} qualifying buildings tracked for ${c.ageName} Age (${req.buildings.join('/')}${c.ageName === 'Imperial' ? ', or a Castle' : c.ageName === 'Feudal' ? ', or a Settlement' : ''})`;
       }
     });
-    // Any line with either ongoing production OR a one-time goal batch needs
-    // its training building — rows only reflects ongoing `buildings`, so a
-    // Goal-Qty-only line (no ongoing production) would otherwise be missed.
-    const activeLines = lines.filter(l => { const s = lineState[l.id]; return s && (s.buildings > 0 || s.goalQty > 0); });
-    extras = renderSetupCard(villagers, civ, activeLines.some(l => l.building === 'Castle'), new Set(activeLines.map(l => l.building).filter(b => DATA.productionBuildings[b])))
+    // Expanded to include transitive `requires` (Archery Range/Stable also
+    // pull in Barracks, Siege Workshop pulls in Blacksmith), same mechanic
+    // pendingUpgrades' addBuildingItem walks for the timeline.
+    const neededBuildings = new Set();
+    activeLines.forEach(l => {
+      const chain = [];
+      let b = l.building;
+      while (DATA.productionBuildings[b] && !neededBuildings.has(b) && !chain.includes(b)) {
+        chain.push(b);
+        b = DATA.productionBuildings[b].requires;
+      }
+      chain.reverse().forEach(name => neededBuildings.add(name)); // prerequisite first, e.g. Barracks before Archery Range
+    });
+    extras = renderSetupCard(villagers, civ, activeLines.some(l => l.building === 'Castle'), neededBuildings)
       + renderTimelineCard(checkpoints, villRate, civ)
       + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ, hasNoHouses);
   }
