@@ -230,6 +230,24 @@ const DATA = {
   // `building` field, corrected this session against real game data.
   // 650 stone only (no food/wood/gold), 200s build time, Castle Age minimum.
   castle: { cost: { food: 0, wood: 0, gold: 0, stone: 650 }, buildTimeSeconds: 200, minAge: 'Castle' },
+  // Every production building a unit line actually trains at — wanting
+  // Militia means a Barracks has to exist first, wanting Archers an Archery
+  // Range, etc., same idea as Castle above but for the ordinary training
+  // buildings, which this tool treated as free/instant until now. Costs
+  // wood-only, matches AoE2:DE's real values (source: SiegeEngineers/
+  // aoe2techtree data.json Building table; minAge cross-checked against two
+  // civs' tech-tree files since Building itself has no age field). Town
+  // Center is deliberately absent — every game starts with one, so it's
+  // never a new prerequisite; Castle is handled separately above since it
+  // already has its own richer mechanic (Castle-unit gating everywhere).
+  productionBuildings: {
+    'Barracks': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Dark' },
+    'Dock': { cost: { wood: 150 }, buildTimeSeconds: 35, minAge: 'Dark' },
+    'Archery Range': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Feudal' },
+    'Stable': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Feudal' },
+    'Siege Workshop': { cost: { wood: 200 }, buildTimeSeconds: 40, minAge: 'Castle' },
+    'Monastery': { cost: { wood: 175 }, buildTimeSeconds: 40, minAge: 'Castle' },
+  },
   houseCost: 25, // wood
   startingResources: { food: 200, wood: 200, gold: 50, stone: 0 }, // standard random-map start
   housePopSpace: 5, // pop per house
@@ -2817,16 +2835,18 @@ function pendingUpgrades(lines, civ) {
     const t = DATA.ecoTechs.find(x => x.id === cb.dataset.techSave);
     if (t) items.push({ name: t.name, cost: t.cost || {}, tcQueue: t.tcQueue, researchTime: t.researchTime, deferToEnd: t.deferToEnd, age: t.age });
   });
-  // A Castle-trained unit goal needs an actual Castle first — 650 stone and
-  // at least DATA.castle.buildTimeSeconds regardless of affordability (the
-  // same "takes at least this long" role queueSeconds already plays for
-  // unit-batch training below). Not tcQueue: building a Castle doesn't stop
-  // the whole TC's villager production the way researching a tech does,
-  // only one villager's worth of labor — this tool doesn't model individual
+  // A unit goal needs its training building to actually exist first — a
+  // Castle for Castle-trained units (650 stone), a Barracks for Militia-
+  // line, an Archery Range for Archers, etc. — costing wood and at least
+  // that building's buildTimeSeconds regardless of affordability (the same
+  // "takes at least this long" role queueSeconds already plays for
+  // unit-batch training below). Not tcQueue: building it doesn't stop the
+  // whole TC's villager production the way researching a tech does, only
+  // one villager's worth of labor — this tool doesn't model individual
   // villagers, so queueSeconds (a floor on the whole timeline, not a TC
   // block) is the closest honest approximation without a bigger rework.
-  // Inserted once even if multiple Castle-unit goals are set.
-  let castleAdded = false;
+  // Each building type is inserted once even if multiple goals need it.
+  const buildingsAdded = new Set();
   lines.forEach(l => {
     const state = lineState[l.id];
     if (!state) return;
@@ -2838,14 +2858,24 @@ function pendingUpgrades(lines, civ) {
     // AND enough queue time to actually train them (assumed serial on one
     // production building, since goal allocation is automatic/idealized).
     if (state.goalQty > 0) {
-      if (l.building === 'Castle' && !castleAdded) {
+      if (l.building === 'Castle' && !buildingsAdded.has('Castle')) {
         items.push({
           name: 'Castle',
           cost: costForCiv(DATA.castle.cost, civ),
           queueSeconds: DATA.castle.buildTimeSeconds,
           age: DATA.castle.minAge,
         });
-        castleAdded = true;
+        buildingsAdded.add('Castle');
+      }
+      const buildingDef = DATA.productionBuildings[l.building];
+      if (buildingDef && !buildingsAdded.has(l.building)) {
+        items.push({
+          name: l.building,
+          cost: costForCiv(buildingDef.cost, civ),
+          queueSeconds: buildingDef.buildTimeSeconds,
+          age: buildingDef.minAge,
+        });
+        buildingsAdded.add(l.building);
       }
       const tier = l.tiers[state.tierIdx];
       const cost = {};
@@ -3316,7 +3346,7 @@ function qualifyingBuildingCount(targetAge, civ, rows, techIds, villagers, hasCa
 function actionParts(c, prevHouses) {
   const parts = [];
   if (c.kind === 'age') parts.push(`Advance to ${c.ageName} Age`);
-  else if (c.kind === 'tech') parts.push(`${c.itemName === 'Castle' ? 'Build' : 'Research'} ${c.itemName}`);
+  else if (c.kind === 'tech') parts.push(`${c.itemName === 'Castle' || DATA.productionBuildings[c.itemName] ? 'Build' : 'Research'} ${c.itemName}`);
   else if (c.kind === 'unit') parts.push(`Train ${c.itemName}`);
   if (c.kind === 'house') {
     const n = c.houseDelta ?? c.houses;
@@ -3516,7 +3546,11 @@ function renderResults() {
         c.warning = `only ${have}/${req.count} qualifying buildings tracked for ${c.ageName} Age (${req.buildings.join('/')}${c.ageName === 'Imperial' ? ', or a Castle' : c.ageName === 'Feudal' ? ', or a Settlement' : ''})`;
       }
     });
-    extras = renderSetupCard(villagers, civ, rows.some(r => r.line.building === 'Castle'))
+    // Any line with either ongoing production OR a one-time goal batch needs
+    // its training building — rows only reflects ongoing `buildings`, so a
+    // Goal-Qty-only line (no ongoing production) would otherwise be missed.
+    const activeLines = lines.filter(l => { const s = lineState[l.id]; return s && (s.buildings > 0 || s.goalQty > 0); });
+    extras = renderSetupCard(villagers, civ, activeLines.some(l => l.building === 'Castle'), new Set(activeLines.map(l => l.building).filter(b => DATA.productionBuildings[b])))
       + renderTimelineCard(checkpoints, villRate, civ)
       + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ, hasNoHouses);
   }
@@ -3529,10 +3563,10 @@ function renderResults() {
 // you pay once, not an ongoing rate (unlike farm upkeep, which recurs).
 // Doesn't model relocating to a new camp when a deposit runs out — how
 // often that happens depends on the map, not anything this tool tracks.
-function renderSetupCard(villagers, civ, needsCastle) {
+function renderSetupCard(villagers, civ, needsCastle, neededBuildings) {
   const settlement = (civ?.ecoBonuses || []).find(b => b.type === 'settlement');
   const muleCart = (civ?.ecoBonuses || []).find(b => b.type === 'mule-cart');
-  const needsAny = villagers.food > 0 || villagers.gold > 0 || villagers.stone > 0 || villagers.wood > 0 || needsCastle;
+  const needsAny = villagers.food > 0 || villagers.gold > 0 || villagers.stone > 0 || villagers.wood > 0 || needsCastle || neededBuildings.size > 0;
   if (!needsAny) return '';
 
   const pillsFor = cost => {
@@ -3579,6 +3613,14 @@ function renderSetupCard(villagers, civ, needsCastle) {
   // stone-only, and Settlement doesn't cover it (Settlement only replaces
   // Mill/Lumber Camp/Mining Camp).
   if (needsCastle) items.push({ name: 'Castle', cost: DATA.castle.cost });
+
+  // Whichever training buildings the current Army Composition actually uses
+  // (Barracks for Militia-line, Archery Range for Archers, etc.) — a real
+  // wood cost this tool treated as free/instant until now.
+  neededBuildings.forEach(b => {
+    const def = DATA.productionBuildings[b];
+    if (def) items.push({ name: b, cost: def.cost });
+  });
 
   const totalFood = items.reduce((s, i) => s + (i.cost.food || 0), 0);
   const totalWood = items.reduce((s, i) => s + (i.cost.wood || 0), 0);
