@@ -105,6 +105,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 .timeline-table th.res-stone,.timeline-table td.res-stone{color:var(--stone);}
 .timeline-table tr.blocked td{color:var(--red);}
 .tl-build{color:var(--text3);font-weight:400;}
+.tl-warn{color:var(--red);font-weight:400;font-size:11px;margin-top:2px;}
 
 .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:4px;}
 .stat-tile{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;}
@@ -244,6 +245,25 @@ const DATA = {
     { id: 'castle', toAge: 'Castle', cost: { food: 800, wood: 0, gold: 200, stone: 0 }, researchTime: 160 },
     { id: 'imperial', toAge: 'Imperial', cost: { food: 1000, wood: 0, gold: 800, stone: 0 }, researchTime: 190 },
   ],
+  // Age-up building-count prerequisites — a real, independent gate in
+  // AoE2:DE (build any N qualifying buildings from the prior age; Houses,
+  // Farms, walls, Outposts, and Watch Towers never count) that's separate
+  // from the cost/TC-time above and wasn't checked at all until now. Source:
+  // AoE2 Fandom wiki (aoe2techtree's data.json has no data on this — it only
+  // covers tech-tree unlocks, not the age-advancement building-count rule).
+  // `buildings` lists only the types this tool actually tracks the
+  // existence of in some form (Market and the Cuman-only Feudal Siege
+  // Workshop exception aren't modeled and are deliberately left out —
+  // undercounting is the safe direction, since it only ever produces a
+  // false warning, never a false all-clear). Settlement alone satisfies the
+  // whole Feudal requirement by itself (counts as 2, handled specially in
+  // qualifyingBuildingCount); Mule Cart is a normal single qualifying
+  // building like Barracks/Mill, NOT a multiplier.
+  ageUpBuildingReqs: {
+    Feudal: { count: 2, buildings: ['Mill', 'Lumber Camp', 'Mining Camp', 'Barracks'] },
+    Castle: { count: 2, buildings: ['Archery Range', 'Stable', 'Blacksmith'] },
+    Imperial: { count: 2, buildings: ['Monastery', 'University'], castleAlt: true },
+  },
   dataSourceNotes: 'Wood/gold/stone base gather rates are widely-cited community figures, not independently re-verified. Full 53-civ roster with unique units and unavailableUnitLines pulled programmatically from game data; ecoBonuses cover 11 civs whose bonuses cleanly matched this calculator\'s bonus shapes (see aoe2_civs_data.json sourceNotes for real bonuses that were excluded for not fitting, e.g. Portuguese -20% gold cost, Byzantines\' line-scoped discount).',
   ecoTechs: [
     { id:'double-bit-axe', name:'Double-Bit Axe', age:'Feudal', resource:'wood', bonusPct:20, cost:{food:100,wood:50,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping' },
@@ -3250,6 +3270,42 @@ function initialBuiltState(civ) {
   return built;
 }
 
+// Best-effort estimate of how many age-up-qualifying buildings exist, given
+// only what this tool already tracks — it doesn't cost/time Barracks/
+// Archery Range/Stable/Blacksmith/Monastery/University themselves, so
+// existence is inferred from whether any active unit line trains there, or
+// a relevant tech is checked as "have". Deliberately conservative (Market
+// and the Cuman-only Feudal Siege Workshop aren't modeled at all), so this
+// can under-count — a safe direction, worst case a false warning — but
+// should never over-count and silently miss a real prerequisite gap.
+function qualifyingBuildingCount(targetAge, civ, rows, techIds, villagers, hasCastle) {
+  const usesBuilding = b => rows.some(r => r.line.building === b);
+  if (targetAge === 'Feudal') {
+    const settlement = (civ?.ecoBonuses || []).find(b => b.type === 'settlement');
+    const names = new Set();
+    RES.forEach(r => { if (villagers[r] > 0) names.add(structureForResource(r, civ).name); });
+    if (settlement && names.size > 0) return 2; // Settlement alone satisfies the whole requirement
+    let n = names.size; // Mill / Lumber Camp / Mining Camp(s) / Mule Cart each count as 1
+    if (usesBuilding('Barracks')) n++;
+    return n;
+  }
+  if (targetAge === 'Castle') {
+    let n = 0;
+    if (usesBuilding('Archery Range')) n++;
+    if (usesBuilding('Stable')) n++;
+    if (DATA.ecoTechs.some(t => t.group === 'blacksmith' && techIds.has(t.id))) n++;
+    return n;
+  }
+  if (targetAge === 'Imperial') {
+    if (hasCastle) return 2; // a Castle alone satisfies the whole requirement
+    let n = 0;
+    if (usesBuilding('Monastery')) n++;
+    if (['ballistics', 'siege-engineers', 'chemistry'].some(id => techIds.has(id))) n++; // University techs, grouped under Siege Workshop elsewhere in this tool
+    return n;
+  }
+  return 2;
+}
+
 // Turns a checkpoint into the imperative instruction(s) a player would
 // actually act on — "Build 2 Houses", "Send new vills: 3 → Food, 3 → Wood",
 // "Research Loom", "Advance to Feudal Age" — rather than just the
@@ -3287,6 +3343,7 @@ function renderTimelineCard(checkpoints, villRate, civ) {
     if (c.blocked) return `<tr class="blocked"><td>—</td><td colspan="9"><b>${c.label}</b></td></tr>`;
     const alloc = c.alloc || { food: 0, wood: 0, gold: 0, stone: 0 };
     const buildNote = c.buildNotes?.length ? ` <span class="tl-build">+ ${c.buildNotes.join(', + ')}</span>` : '';
+    const warnNote = c.warning ? `<div class="tl-warn">⚠ ${c.warning}</div>` : '';
     const action = actionParts(c, prevHouses);
     prevHouses = c.houses || 0;
     return `<tr>
@@ -3298,7 +3355,7 @@ function renderTimelineCard(checkpoints, villRate, civ) {
       <td class="num res-gold">${alloc.gold}</td>
       <td class="num res-stone">${alloc.stone}</td>
       <td class="num">${c.houses || 0}</td>
-      <td><b>${c.label}</b>${buildNote}</td>
+      <td><b>${c.label}</b>${buildNote}${warnNote}</td>
       <td>${action.length ? action.join(' · ') : '—'}</td>
     </tr>`;
   }).join('');
@@ -3442,6 +3499,24 @@ function renderResults() {
     const checkpoints = pending.length
       ? buildTimeline(rates, villRate, startVills, villagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening, ageIndex(startAgeId), civ)
       : [];
+    // Age-up also requires 2 qualifying buildings from the prior age (a
+    // Castle instead, for Imperial) — a real, separate gate from the
+    // cost/TC-time simulateItemReady already enforces. This tool doesn't
+    // simulate WHEN each qualifying building gets built (most of them —
+    // Barracks, Archery Range, etc. — have no cost/time tracked at all), so
+    // rather than fabricate a timing delay, flag it as a warning on the
+    // relevant age-up checkpoint using the FINAL configured build as a
+    // static check.
+    const hasCastleBuilt = rows.some(r => r.line.building === 'Castle') || pending.some(item => item.name === 'Castle');
+    checkpoints.forEach(c => {
+      if (c.kind !== 'age') return;
+      const req = DATA.ageUpBuildingReqs[c.ageName];
+      if (!req) return;
+      const have = qualifyingBuildingCount(c.ageName, civ, rows, techIds, villagers, hasCastleBuilt);
+      if (have < req.count) {
+        c.warning = `only ${have}/${req.count} qualifying buildings tracked for ${c.ageName} Age (${req.buildings.join('/')}${c.ageName === 'Imperial' ? ', or a Castle' : c.ageName === 'Feudal' ? ', or a Settlement' : ''})`;
+      }
+    });
     extras = renderSetupCard(villagers, civ, rows.some(r => r.line.building === 'Castle'))
       + renderTimelineCard(checkpoints, villRate, civ)
       + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ, hasNoHouses);
