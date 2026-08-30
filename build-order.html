@@ -2649,7 +2649,7 @@ function renderUnitTable() {
   const buildingOrder = Object.keys(byBuilding).sort((a, b) => (a === 'Town Center' ? -1 : b === 'Town Center' ? 1 : 0));
   const colCount = 5;
 
-  const thead = `<thead><tr><th>Unit</th><th>Tier</th><th>Cost</th><th class="num">Train</th><th class="num">Units on Constant Production</th></tr></thead>`;
+  const thead = `<thead><tr><th>Unit</th><th>Tier</th><th>Cost</th><th class="num">Train</th><th class="num">In Production</th></tr></thead>`;
   const body = buildingOrder.map(building => {
     const list = byBuilding[building];
     const rows = list.map(l => {
