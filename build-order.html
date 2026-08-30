@@ -83,9 +83,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 .tier-dot.filled[data-age="Feudal"]{background:var(--ageFeudal);border-color:var(--ageFeudal);}
 .tier-dot.filled[data-age="Castle"]{background:var(--ageCastle);border-color:var(--ageCastle);}
 .tier-dot.filled[data-age="Imperial"]{background:var(--ageImperial);border-color:var(--ageImperial);}
-.tier-dot.saving{border-color:var(--amberL);box-shadow:0 0 0 3px var(--amberBg);}
 .tier-dot input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;width:100%;height:100%;}
-.tech-line-row .save-check{margin-left:auto;}
 
 .pending-card{margin-top:18px;border-top:1px solid var(--border);padding-top:16px;}
 .setup-card{margin-top:18px;border-top:1px solid var(--border);padding-top:16px;}
@@ -2480,18 +2478,26 @@ function renderTechGrid() {
 function renderTierLinesHtml(techs, free) {
   const lined = techs.filter(t => t.line);
   const flat = techs.filter(t => !t.line);
+  // Build Order Builder starts every tech un-researched (a real game always
+  // does) — dots there set a GOAL chain (data-tech-save on every tier up
+  // through the one clicked, since you have to research a line in order)
+  // rather than an immediate "already have it" effect. Constant Production
+  // keeps the old "have" semantics (data-tech, immediate rate effect),
+  // matching its own steady-state framing. A free civ tech (auto-unlocked,
+  // no research needed) is always "have" regardless of mode.
+  const isGoalMode = currentMode === 'buildorder';
 
   const lines = {};
   lined.forEach(t => { (lines[t.line] = lines[t.line] || []).push(t); });
   const lineRows = Object.values(lines).map(lineTechs => {
     const dots = lineTechs.map(t => {
       const isFree = free.has(t.id);
-      return `<span class="tier-dot${isFree ? ' filled locked' : ''}" data-age="${t.age}" title="${t.name} (${t.age})"></span><input type="checkbox" data-tech="${t.id}" ${isFree ? 'checked disabled' : ''} style="display:none">`;
+      const attr = isFree ? 'data-tech' : (isGoalMode ? 'data-tech-save' : 'data-tech');
+      return `<span class="tier-dot${isFree ? ' filled locked' : ''}" data-age="${t.age}" title="${t.name} (${t.age})"></span><input type="checkbox" ${attr}="${t.id}" ${isFree ? 'checked disabled' : ''} style="display:none">`;
     }).join('');
     return `<div class="tech-line-row">
       <span class="tname">${lineTechs[0].lineLabel}</span>
       <div class="tier-dots" data-tier-line="${lineTechs[0].line}">${dots}</div>
-      <span class="line-save-slot" data-line-save-slot="${lineTechs[0].line}"></span>
     </div>`;
   }).join('');
 
@@ -2517,9 +2523,14 @@ function renderFlatTechRow(t, free) {
   </div>`;
 }
 
-// Wires click-to-set-level on each tier-line's dots (clicking dot i sets
-// "have" up through tier i, cumulative — clicking the current max dot again
-// steps back down) and keeps the single "Save for next tier" slot in sync.
+// Wires click-to-set-level on each tier-line's dots — clicking dot i fills
+// tiers 0..i (cumulative — clicking the current max dot again steps back
+// down). In Constant Production that cumulative fill IS "have it" (checked
+// data-tech inputs, immediate rate effect). In Build Order Builder it's a
+// GOAL chain instead (checked data-tech-save inputs feeding straight into
+// pendingUpgrades, same as everything else there) — selecting a later tier
+// automatically pulls in every tier before it, since you have to research a
+// line in order; there's no separate "have" state to set first.
 function wireTierLines(grid, free) {
   const lines = {};
   DATA.ecoTechs.filter(t => t.line).forEach(t => { (lines[t.line] = lines[t.line] || []).push(t); });
@@ -2528,7 +2539,7 @@ function wireTierLines(grid, free) {
     const dotsWrap = grid.querySelector(`[data-tier-line="${lineId}"]`);
     if (!dotsWrap) return;
     const dotEls = [...dotsWrap.querySelectorAll('.tier-dot')];
-    const dotInputs = [...dotsWrap.querySelectorAll('input[data-tech]')];
+    const dotInputs = [...dotsWrap.querySelectorAll('input[data-tech], input[data-tech-save]')];
 
     let level = 0;
     dotInputs.forEach((inp, i) => { if (inp.checked) level = i + 1; }); // seeds from free-tech checked attrs
@@ -2536,18 +2547,6 @@ function wireTierLines(grid, free) {
     function apply() {
       dotInputs.forEach((inp, j) => { if (!inp.disabled) inp.checked = j < level; });
       dotEls.forEach((el, j) => { if (!el.classList.contains('locked')) el.classList.toggle('filled', j < level); });
-
-      const saveSlot = grid.querySelector(`[data-line-save-slot="${lineId}"]`);
-      const nextTech = lineTechs[level];
-      if (!saveSlot) return;
-      if (!nextTech) { saveSlot.innerHTML = ''; return; }
-      saveSlot.innerHTML = `<label class="save-check"><input type="checkbox" data-tech-save="${nextTech.id}"> Save for ${nextTech.name}</label>`;
-      const saveCb = saveSlot.querySelector('input');
-      dotEls[level]?.classList.toggle('saving', saveCb.checked);
-      saveCb.addEventListener('change', () => {
-        dotEls[level]?.classList.toggle('saving', saveCb.checked);
-        renderResults();
-      });
     }
 
     dotEls.forEach((dot, i) => {
@@ -3739,7 +3738,7 @@ const MODE_COPY = {
   buildorder: {
     introDesc: 'Set your starting age, villagers, and what you already have running, then say what you want to build — this works out the fastest way to get there, crediting your starting stockpile and routing new villagers to whichever goal is furthest behind.',
     introAssumptions: 'Same steady-state economics as Constant Production underneath, plus a time-based savings simulation for one-time goals (techs, unit batches). Villager allocation toward goals is fully automatic. This estimates when you can afford something, not a literal minute-by-minute script of which building to click first.',
-    ecoDesc: "Check what you already have. Blacksmith/Stable/Siege upgrades below are goals only (no \"have\" toggle) since you only ever research them once — check \"Save\" to track one.",
+    ecoDesc: "Select which upgrades you want — everything starts un-researched, same as a real game. Picking a later tier automatically pulls in the ones before it, since you have to research a line in order; each becomes a real, timed goal in the simulation below.",
   },
 };
 
