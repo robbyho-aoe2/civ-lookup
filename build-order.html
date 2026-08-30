@@ -2877,12 +2877,18 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool) {
     pool[r] -= credit;
   });
   if (need.every(r => saved[r] >= item.cost[r])) {
-    return { time: Math.max(startTime, minTime) + tcDelay, vills: startVills, pool, assigned: { food: 0, wood: 0, gold: 0, stone: 0 }, newVills: 0 };
+    return { time: Math.max(startTime, minTime) + tcDelay, vills: startVills, pool, assigned: { food: 0, wood: 0, gold: 0, stone: 0 }, newVills: 0, firstAssignedAt: {} };
   }
 
   if (villRate <= 0) return null;
 
   const assigned = { food: 0, wood: 0, gold: 0, stone: 0 };
+  // The moment each resource FIRST gets a villager assigned to it during
+  // this call — lets a caller show "villagers start gathering X" as its own
+  // step at the time it actually happened, rather than lumped in with
+  // whatever this item's own "ready" checkpoint ends up being (which can be
+  // much later, once enough has accumulated).
+  const firstAssignedAt = {};
   let vills = startVills;
   let t = startTime;
   const dt = 0.5;
@@ -2901,10 +2907,11 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool) {
         if (eta > worstEta) { worstEta = eta; target = r; }
       });
       assigned[target]++;
+      if (!(target in firstAssignedAt)) firstAssignedAt[target] = t;
       nextBirth += 1 / villRate;
     }
     RES.forEach(r => { if (assigned[r]) saved[r] += assigned[r] * rates[r] * dt; });
-    if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) return { time: t + tcDelay, vills, pool, assigned, newVills: vills - startVills };
+    if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) return { time: t + tcDelay, vills, pool, assigned, newVills: vills - startVills, firstAssignedAt };
     t += dt;
   }
   return null;
@@ -3064,7 +3071,7 @@ function expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, house
   return expanded;
 }
 
-function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening, startAgeIdx) {
+function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening, startAgeIdx, civ) {
   // Cumulative villagers assigned to each resource so far — every checkpoint
   // gets a snapshot of this (not just its own newly-assigned split) so the
   // chart can show a running Food/Wood/Gold/Stone column. Starting villagers
@@ -3077,7 +3084,22 @@ function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCe
   if (isDarkOpening) {
     for (let i = 0; i < startVills; i++) cumAlloc[OPENING_SEQUENCE[i] || 'food']++;
   }
-  const checkpoints = [{ label: 'Start', time: 0, vills: startVills, split: null, houses: 0, alloc: { ...cumAlloc }, kind: 'start' }];
+  // Which resources already have a drop-off building, civ-consolidation
+  // aware (Settlement/Mule Cart cover multiple at once) — seeded from
+  // whatever the opening already committed to (food/wood, on a Dark start)
+  // so those don't get a redundant later "+ Building" checkpoint of their
+  // own; noted directly on the Start checkpoint instead.
+  const builtResources = initialBuiltState(civ);
+  const startBuildNotes = [];
+  if (isDarkOpening) {
+    RES.forEach(r => {
+      if (cumAlloc[r] <= 0 || builtResources[r]) return;
+      const s = structureForResource(r, civ);
+      startBuildNotes.push(s.name);
+      s.covers.forEach(r2 => { builtResources[r2] = true; });
+    });
+  }
+  const checkpoints = [{ label: 'Start', time: 0, vills: startVills, split: null, houses: 0, alloc: { ...cumAlloc }, kind: 'start', buildNotes: startBuildNotes }];
   let housesAlready = 0, houseBaseline = startVills;
 
   // Standard opening: 2 Houses go up immediately from starting wood, before
@@ -3120,55 +3142,112 @@ function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCe
     const ramp = simulateRampToSustain(rates, villRate, startVills, targetVillagers, totalVillCeil, cursorTime, openingSequence);
     if (ramp) {
       cursorTime = ramp.time; cursorVills = ramp.vills;
+      const rampBuildNotes = [];
+      RES.forEach(r => {
+        if (!ramp.assigned[r] || builtResources[r]) return;
+        const s = structureForResource(r, civ);
+        rampBuildNotes.push(s.name);
+        s.covers.forEach(r2 => { builtResources[r2] = true; });
+      });
       RES.forEach(r => { cumAlloc[r] += ramp.assigned[r] || 0; });
       checkpoints.push({
         label: `Reach sustain (${totalVillCeil} villagers for your composition)`,
         time: cursorTime, vills: cursorVills,
-        split: ramp.assigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, kind: 'sustain',
+        split: ramp.assigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, kind: 'sustain', buildNotes: rampBuildNotes,
       });
     }
   }
 
-  primed.remaining.forEach(item => {
-    const r = simulateItemReady(item, rates, villRate, cursorTime, cursorVills, pool);
-    if (!r) { checkpoints.push({ label: `${item.name} — past 60 min, add more TCs`, blocked: true }); return; }
+  let ri = 0;
+  while (ri < primed.remaining.length) {
+    const item = primed.remaining[ri];
+    const next = primed.remaining[ri + 1];
+    // deferToEnd (Loom) is meant to research right at the end of its age,
+    // immediately before advancing — not whenever its cost happens to be
+    // affordable, which (since its TC-block costs the same total time no
+    // matter when it happens) would otherwise show it resolving arbitrarily
+    // early. Loom is the only deferToEnd tech and is always Dark-tagged, so
+    // it's always immediately followed by the next age-up once one exists —
+    // the two are resolved as one combined transaction (costs and TC-block
+    // times summed) so both checkpoints land at the same final moment.
+    const merged = item.deferToEnd && next?.isAgeUp;
+    const simItem = merged ? {
+      name: next.name, isAgeUp: true, age: next.age, tcQueue: true,
+      cost: RES.reduce((c, r) => { c[r] = (item.cost[r] || 0) + (next.cost[r] || 0); return c; }, {}),
+      researchTime: (item.researchTime || 0) + (next.researchTime || 0),
+    } : item;
+
+    const callStartTime = cursorTime, callStartVills = cursorVills;
+    const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool);
+    if (!r) { checkpoints.push({ label: `${simItem.name} — past 60 min, add more TCs`, blocked: true }); ri += merged ? 2 : 1; continue; }
     cursorTime = r.time; cursorVills = r.vills; pool = r.pool;
-    RES.forEach(res => { cumAlloc[res] += r.assigned[res] || 0; });
-    checkpoints.push({
-      label: `${item.name} ready`,
-      time: cursorTime, vills: cursorVills,
-      split: r.assigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, ...checkpointKindFor(item),
+
+    // Any resource this item is the first to actually need gets its own
+    // "villagers begin gathering X" checkpoint at the real (interpolated)
+    // time that happened, rather than lumped in with wherever this item's
+    // own "ready" checkpoint ends up — a Castle needs stone GATHERED first,
+    // not delivered "at the same instant" it finishes.
+    const remainingAssigned = { ...r.assigned };
+    const span = cursorTime - callStartTime;
+    RES.forEach(res => {
+      if (!r.assigned[res] || builtResources[res]) return;
+      const s = structureForResource(res, civ);
+      if (s.covers.some(r2 => builtResources[r2])) return;
+      s.covers.forEach(r2 => { builtResources[r2] = true; });
+      const frac = span > 0 ? (r.firstAssignedAt[res] - callStartTime) / span : 0;
+      const gatherTime = callStartTime + frac * span;
+      const gatherVills = Math.round(callStartVills + frac * (cursorVills - callStartVills));
+      cumAlloc[res] += 1;
+      remainingAssigned[res] = Math.max(0, remainingAssigned[res] - 1);
+      checkpoints.push({
+        label: s.name, time: gatherTime, vills: gatherVills,
+        split: { food: 0, wood: 0, gold: 0, stone: 0, [res]: 1 },
+        houses: housesFor(gatherVills), alloc: { ...cumAlloc }, kind: 'gather',
+      });
     });
-  });
+
+    RES.forEach(res => { cumAlloc[res] += remainingAssigned[res] || 0; });
+    if (merged) {
+      checkpoints.push({ label: `${item.name} ready`, time: cursorTime, vills: cursorVills, split: null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, ...checkpointKindFor(item) });
+      checkpoints.push({ label: `${next.name} ready`, time: cursorTime, vills: cursorVills, split: remainingAssigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, ...checkpointKindFor(next) });
+    } else {
+      checkpoints.push({
+        label: `${item.name} ready`,
+        time: cursorTime, vills: cursorVills,
+        split: remainingAssigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, ...checkpointKindFor(item),
+      });
+    }
+    ri += merged ? 2 : 1;
+  }
 
   return expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, housePopSpace, hasNoHouses);
 }
 
 // Which drop-off building a resource's FIRST assigned villager implies —
-// mirrors renderSetupCard's civ handling (Settlement/Mule Cart consolidate
-// multiple resources into one building) so the two panels never disagree,
-// but here it's used to annotate the Event column with a "+ Building" note
-// the moment that resource's running total leaves zero, instead of showing
-// it as a separate disconnected card.
-function timelineBuildAnnotator(civ) {
+// Which structure resource r's drop-off implies for this civ, and which
+// OTHER resources it covers "for free" the instant it's built (Settlement:
+// all four; Mule Cart: wood/gold/stone) — mirrors renderSetupCard's civ
+// handling so the two panels never disagree. Used by buildTimeline to
+// insert a dedicated "villagers begin gathering X" checkpoint at the real
+// time that happens, instead of a trailing note on whatever goal happens to
+// complete later (e.g. stone genuinely has to be gathered before a Castle
+// finishes, not "at the same instant" it finishes).
+function structureForResource(r, civ) {
   const settlement = (civ?.ecoBonuses || []).find(b => b.type === 'settlement');
   const muleCart = (civ?.ecoBonuses || []).find(b => b.type === 'mule-cart');
   const millName = civ?.millName || 'Mill';
+  if (settlement) return { name: 'Settlement', covers: RES };
+  if (muleCart && r !== 'food') return { name: 'Mule Cart', covers: ['wood', 'gold', 'stone'] };
+  if (r === 'food') return { name: millName, covers: ['food'] };
+  if (r === 'wood') return { name: 'Lumber Camp', covers: ['wood'] };
+  return { name: `Mining Camp (${RES_LABEL[r]})`, covers: [r] };
+}
+
+function initialBuiltState(civ) {
   const built = { food: false, wood: false, gold: false, stone: false };
+  const muleCart = (civ?.ecoBonuses || []).find(b => b.type === 'mule-cart');
   if (muleCart?.freeStarting) { built.wood = built.gold = built.stone = true; } // already on the map at t=0
-  return alloc => {
-    const notes = new Set();
-    RES.forEach(r => {
-      if ((alloc[r] || 0) <= 0 || built[r]) return;
-      built[r] = true;
-      if (settlement) { notes.add('Settlement'); RES.forEach(r2 => { built[r2] = true; }); }
-      else if (muleCart && r !== 'food') { notes.add('Mule Cart'); built.wood = built.gold = built.stone = true; }
-      else if (r === 'food') notes.add(millName);
-      else if (r === 'wood') notes.add('Lumber Camp');
-      else notes.add(`Mining Camp (${RES_LABEL[r]})`);
-    });
-    return [...notes];
-  };
+  return built;
 }
 
 // Turns a checkpoint into the imperative instruction(s) a player would
@@ -3203,17 +3282,16 @@ function actionParts(c, prevHouses) {
 
 function renderTimelineCard(checkpoints, villRate, civ) {
   if (checkpoints.length <= 1) return '';
-  const annotate = timelineBuildAnnotator(civ);
   let prevHouses = 0;
   const rows = checkpoints.map((c, i) => {
-    if (c.blocked) return `<tr class="blocked"><td>—</td><td colspan="8"><b>${c.label}</b></td></tr>`;
+    if (c.blocked) return `<tr class="blocked"><td>—</td><td colspan="9"><b>${c.label}</b></td></tr>`;
     const alloc = c.alloc || { food: 0, wood: 0, gold: 0, stone: 0 };
-    const newBuildings = annotate(alloc);
-    const buildNote = newBuildings.length ? ` <span class="tl-build">+ ${newBuildings.join(', + ')}</span>` : '';
+    const buildNote = c.buildNotes?.length ? ` <span class="tl-build">+ ${c.buildNotes.join(', + ')}</span>` : '';
     const action = actionParts(c, prevHouses);
     prevHouses = c.houses || 0;
     return `<tr>
       <td>${i === 0 ? '0:00' : fmtClock(c.time)}</td>
+      <td class="num">${c.vills + SCOUT_POP}</td>
       <td class="num">${c.vills}</td>
       <td class="num res-food">${alloc.food}</td>
       <td class="num res-wood">${alloc.wood}</td>
@@ -3229,7 +3307,7 @@ function renderTimelineCard(checkpoints, villRate, civ) {
     <div style="overflow-x:auto;">
     <table class="timeline-table">
       <thead><tr>
-        <th>Time</th><th class="num">Vills</th>
+        <th>Time</th><th class="num">Pop</th><th class="num">Vills</th>
         <th class="num res-food">${RES_ICON.food}</th><th class="num res-wood">${RES_ICON.wood}</th>
         <th class="num res-gold">${RES_ICON.gold}</th><th class="num res-stone">${RES_ICON.stone}</th>
         <th class="num">🏠</th><th>Event</th><th>Action</th>
@@ -3237,7 +3315,7 @@ function renderTimelineCard(checkpoints, villRate, civ) {
       <tbody>${rows}</tbody>
     </table>
     </div>
-    <p class="assumptions">Food/Wood/Gold/Stone columns are cumulative villagers on that resource so far, not just this step's change (starting villagers are only pre-assigned this way for a Dark Age start, per the standard sheep-then-wood opening). "+ Building" in Event marks the first time a resource needs its drop-off building. Action only ever routes newly-trained villagers to a resource — it doesn't model reassigning villagers already working one. Assumes ${villRate > 0 ? 'constant villager production' : 'no ongoing villager production'} and fully automatic allocation — a planning estimate, not a literal script of which building to click first.</p>
+    <p class="assumptions">Pop includes the starting Scout Cavalry (Vills + 1), which occupies population space this tool doesn't otherwise track. Food/Wood/Gold/Stone columns are cumulative villagers on that resource so far, not just this step's change. "+ Building" in Event marks the moment a resource's drop-off building is first needed, shown as its own step at the time gathering actually starts (not lumped in with whatever goal happens to finish later). Action only ever routes newly-trained villagers to a resource — it doesn't model reassigning villagers already working one. Assumes ${villRate > 0 ? 'constant villager production' : 'no ongoing villager production'} and fully automatic allocation — a planning estimate, not a literal script of which building to click first.</p>
   </div>`;
 }
 
@@ -3362,7 +3440,7 @@ function renderResults() {
     const startingPool = startingPoolForCiv(civ);
     const isDarkOpening = document.getElementById('start-age')?.value === 'Dark';
     const checkpoints = pending.length
-      ? buildTimeline(rates, villRate, startVills, villagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening, ageIndex(startAgeId))
+      ? buildTimeline(rates, villRate, startVills, villagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening, ageIndex(startAgeId), civ)
       : [];
     extras = renderSetupCard(villagers, civ, rows.some(r => r.line.building === 'Castle'))
       + renderTimelineCard(checkpoints, villRate, civ)
