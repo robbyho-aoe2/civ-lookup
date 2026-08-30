@@ -158,36 +158,13 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
   </div>
 
   <div class="card" data-mode-only="buildorder">
-    <h2>Starting Point</h2>
-    <p class="desc">Where you're starting from — caps which upgrade tiers are selectable below and seeds the Goals &amp; Savings simulation.</p>
-    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-end;">
-      <div>
-        <label for="start-age" style="display:block;margin-bottom:6px;">Current Age</label>
-        <select id="start-age">
-          <option value="Dark" selected>Dark Age</option>
-          <option value="Feudal">Feudal Age</option>
-          <option value="Castle">Castle Age</option>
-          <option value="Imperial">Imperial Age</option>
-        </select>
-      </div>
-      <div>
-        <label for="start-vills" style="display:block;margin-bottom:6px;">Starting Villagers</label>
-        <input type="number" id="start-vills" value="0" min="0" style="width:80px;">
-      </div>
-      <div>
-        <label style="display:block;margin-bottom:6px;">Goals — At</label>
-        <div class="tier-dots" id="target-age-dots">
-          <span class="tier-dot" data-age="Dark" data-idx="0" title="Dark Age"></span>
-          <span class="tier-dot" data-age="Feudal" data-idx="1" title="Feudal Age"></span>
-          <span class="tier-dot" data-age="Castle" data-idx="2" title="Castle Age"></span>
-          <span class="tier-dot" data-age="Imperial" data-idx="3" title="Imperial Age"></span>
-        </div>
-      </div>
-      <div>
-        <label style="display:block;margin-bottom:6px;">Also Building</label>
-        <label class="save-check" style="display:block;margin-bottom:4px;"><input type="checkbox" id="build-market"> Market</label>
-        <label class="save-check" style="display:block;"><input type="checkbox" id="build-blacksmith"> Blacksmith</label>
-      </div>
+    <h2>Goals — At</h2>
+    <p class="desc">Every build starts from a fresh Dark Age game (3 villagers, 1 Scout Cavalry). Pick an age here if you want your goals ready by a specific point beyond whatever your picks below already require.</p>
+    <div class="tier-dots" id="target-age-dots">
+      <span class="tier-dot" data-age="Dark" data-idx="0" title="Dark Age"></span>
+      <span class="tier-dot" data-age="Feudal" data-idx="1" title="Feudal Age"></span>
+      <span class="tier-dot" data-age="Castle" data-idx="2" title="Castle Age"></span>
+      <span class="tier-dot" data-age="Imperial" data-idx="3" title="Imperial Age"></span>
     </div>
     <p class="assumptions" id="target-age-desc" style="margin-top:10px;margin-bottom:0"></p>
   </div>
@@ -275,6 +252,9 @@ const DATA = {
     'Stable': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Feudal', requires: 'Barracks' },
     'Siege Workshop': { cost: { wood: 200 }, buildTimeSeconds: 40, minAge: 'Castle', requires: 'Blacksmith' },
     'Monastery': { cost: { wood: 175 }, buildTimeSeconds: 40, minAge: 'Castle' },
+    // No unit trains here, but it's a real Imperial-Age-qualifying building
+    // (see ageUpBuildingReqs) and a legitimate filler pick for it.
+    'University': { cost: { wood: 200 }, buildTimeSeconds: 60, minAge: 'Castle' },
   },
   houseCost: 25, // wood
   startingResources: { food: 200, wood: 200, gold: 50, stone: 0 }, // standard random-map start
@@ -2624,7 +2604,7 @@ function selectedTechIds() {
 
 const AGE_ORDER = ['Dark', 'Feudal', 'Castle', 'Imperial'];
 function ageIndex(age) { return AGE_ORDER.indexOf(age); }
-function currentAgeIndex() { return ageIndex(document.getElementById('start-age')?.value || 'Imperial'); }
+function currentAgeIndex() { return 0; } // every build now starts in Dark Age
 
 function allLinesForCiv(civ) {
   const villagerLine = {
@@ -2645,43 +2625,31 @@ function allLinesForCiv(civ) {
   return [villagerLine, ...unique, ...standardLines];
 }
 
-let lineState = {}; // id -> { tierIdx, buildings, saving }
+let lineState = {}; // id -> { tierIdx, buildings }
 
 function renderUnitTable() {
   const civ = selectedCiv();
   const lines = allLinesForCiv(civ);
-  const showGoals = currentMode === 'buildorder';
-  // Age-capping which tiers are pre-selected/selectable only makes sense
-  // once there's a Starting Point to cap against (Build Order mode) —
-  // Constant Production has no "current age" concept, so tiers there stay
-  // freely selectable and always default to the base tier.
-  const useAgeCap = currentMode === 'buildorder';
-  const maxAgeIdx = useAgeCap ? currentAgeIndex() : null;
 
   lineState = {};
   lines.forEach(l => {
-    let defaultTier = 0;
-    if (useAgeCap) {
-      for (let i = l.tiers.length - 1; i >= 0; i--) {
-        if (ageIndex(l.tiers[i].age) <= maxAgeIdx) { defaultTier = i; break; }
-      }
-    }
     // A game always starts with 1 active Town Center, so Villager defaults
-    // to 1 in both modes — that's not "assuming an economy already
-    // running", it's just the one building everyone actually starts with.
-    // Every other line (Barracks, etc.) still starts at 0 in Build Order
-    // mode, since those genuinely aren't built yet at game start.
+    // to 1 — that's not "assuming an economy already running", it's just
+    // the one building everyone actually starts with. Every other line
+    // starts at 0 (genuinely not built yet) and at its base tier — tiers
+    // are always freely selectable in both modes; picking a later one in
+    // Build Order mode just means the tool researches every step up to it.
     const defaultBuildings = l.isVillager ? 1 : 0;
-    lineState[l.id] = { tierIdx: defaultTier, buildings: defaultBuildings, goalQty: 0, saving: false };
+    lineState[l.id] = { tierIdx: 0, buildings: defaultBuildings };
   });
 
   const byBuilding = {};
   lines.forEach(l => { (byBuilding[l.building] = byBuilding[l.building] || []).push(l); });
   // Town Center first (Villager), then the rest in insertion order.
   const buildingOrder = Object.keys(byBuilding).sort((a, b) => (a === 'Town Center' ? -1 : b === 'Town Center' ? 1 : 0));
-  const colCount = showGoals ? 7 : 6;
+  const colCount = 5;
 
-  const thead = `<thead><tr><th>Unit</th><th>Tier</th><th>Cost</th><th class="num">Train</th><th class="num">Buildings</th>${showGoals ? '<th class="num">Goal Qty</th>' : ''}<th>Next Upgrade</th></tr></thead>`;
+  const thead = `<thead><tr><th>Unit</th><th>Tier</th><th>Cost</th><th class="num">Train</th><th class="num">Buildings</th></tr></thead>`;
   const body = buildingOrder.map(building => {
     const list = byBuilding[building];
     const rows = list.map(l => {
@@ -2689,18 +2657,15 @@ function renderUnitTable() {
       const tierCell = l.isVillager
         ? '<span class="tage">—</span>'
         : l.tiers.length > 1
-          ? `<div class="tier-dots" data-unit-tier-line="${l.id}">${l.tiers.map((t, i) => `<span class="tier-dot${i <= defaultTier ? ' filled' : ''}${useAgeCap && ageIndex(t.age) > maxAgeIdx ? ' disabled' : ''}" data-age="${t.age}" data-idx="${i}" title="${t.name} (${t.age})"></span>`).join('')}</div>`
+          ? `<div class="tier-dots" data-unit-tier-line="${l.id}">${l.tiers.map((t, i) => `<span class="tier-dot${i <= defaultTier ? ' filled' : ''}" data-age="${t.age}" data-idx="${i}" title="${t.name} (${t.age})"></span>`).join('')}</div>`
           : `<span class="tage">${l.tiers[0].age}</span>`;
       const buildingsTitle = l.isVillager ? 'title="0 = stop training villagers (all-in)"' : '';
-      const goalCell = l.isVillager ? '<span class="tage">—</span>' : `<input type="number" class="qty-input" min="0" value="0" data-goal-qty="${l.id}" title="One-time batch to reach as a goal, on top of any ongoing Buildings production">`;
       return `<tr class="${l.unique ? 'unique-row' : ''}" data-line="${l.id}">
         <td class="uname" data-uname="${l.id}">${l.tiers[defaultTier].name}</td>
         <td>${tierCell}</td>
         <td><div class="cost-pills">${RES.filter(r => l.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${l.cost[r]}</span>`).join('')}</div></td>
         <td class="num" data-traintime="${l.id}">${l.tiers[defaultTier].trainTime}s</td>
         <td class="num"><input type="number" class="qty-input" min="0" value="${lineState[l.id].buildings}" data-line-qty="${l.id}" ${buildingsTitle}></td>
-        ${showGoals ? `<td class="num">${goalCell}</td>` : ''}
-        <td data-upgrade-cell="${l.id}"></td>
       </tr>`;
     }).join('');
     return `<tr class="unit-group-row"><td colspan="${colCount}">${building}</td></tr>${rows}`;
@@ -2709,51 +2674,26 @@ function renderUnitTable() {
   const tableEl = document.getElementById('unit-table');
   tableEl.innerHTML = thead + '<tbody>' + body + '</tbody>';
 
-  lines.forEach(l => updateUpgradeCell(l));
-
   tableEl.querySelectorAll('[data-line-qty]').forEach(inp => inp.addEventListener('input', () => {
     lineState[inp.dataset.lineQty].buildings = Number(inp.value) || 0;
-    renderResults();
-  }));
-  tableEl.querySelectorAll('[data-goal-qty]').forEach(inp => inp.addEventListener('input', () => {
-    lineState[inp.dataset.goalQty].goalQty = Number(inp.value) || 0;
     renderResults();
   }));
   tableEl.querySelectorAll('[data-unit-tier-line]').forEach(dotsWrap => {
     const line = lines.find(l => l.id === dotsWrap.dataset.unitTierLine);
     const dots = [...dotsWrap.querySelectorAll('.tier-dot')];
     dots.forEach((dot, i) => {
-      if (dot.classList.contains('disabled')) return;
       dot.addEventListener('click', () => {
         const state = lineState[line.id];
         state.tierIdx = i;
-        state.saving = false;
         dots.forEach((d, j) => d.classList.toggle('filled', j <= i));
         document.querySelector(`[data-traintime="${line.id}"]`).textContent = line.tiers[i].trainTime + 's';
         document.querySelector(`[data-uname="${line.id}"]`).textContent = line.tiers[i].name;
-        updateUpgradeCell(line);
         renderResults();
       });
     });
   });
 
   return lines;
-}
-
-function updateUpgradeCell(line) {
-  const cell = document.querySelector(`[data-upgrade-cell="${line.id}"]`);
-  if (!cell) return;
-  const state = lineState[line.id];
-  const nextTier = line.tiers[state.tierIdx + 1];
-  if (!nextTier || !nextTier.upgradeCost) {
-    cell.innerHTML = '<span class="tage">—</span>';
-    return;
-  }
-  cell.innerHTML = `<label class="save-check"><input type="checkbox" data-save="${line.id}" ${state.saving ? 'checked' : ''}> Save for ${nextTier.name}</label>`;
-  cell.querySelector('[data-save]').addEventListener('change', e => {
-    lineState[line.id].saving = e.target.checked;
-    renderResults();
-  });
 }
 
 // ─── Cost / rate math ────────────────────────────────────────────────────────
@@ -2863,26 +2803,15 @@ function effectiveGatherRate(resource, civ, techIds) {
 
 function pendingUpgrades(lines, civ) {
   const items = [];
-  document.querySelectorAll('[data-tech-save]:checked').forEach(cb => {
-    const t = DATA.ecoTechs.find(x => x.id === cb.dataset.techSave);
-    if (t) items.push({ name: t.name, cost: t.cost || {}, tcQueue: t.tcQueue, researchTime: t.researchTime, deferToEnd: t.deferToEnd, age: t.age });
-  });
-  // A unit goal needs its training building to actually exist first — a
-  // Castle for Castle-trained units (650 stone), a Barracks for Militia-
-  // line, an Archery Range for Archers, etc. — costing wood and at least
-  // that building's buildTimeSeconds regardless of affordability (the same
-  // "takes at least this long" role queueSeconds already plays for
-  // unit-batch training below). Not tcQueue: building it doesn't stop the
-  // whole TC's villager production the way researching a tech does, only
-  // one villager's worth of labor — this tool doesn't model individual
-  // villagers, so queueSeconds (a floor on the whole timeline, not a TC
-  // block) is the closest honest approximation without a bigger rework.
-  // Each building type is inserted once even if multiple goals need it.
   // Some buildings also need a specific OTHER building already standing
   // (Archery Range/Stable need a Barracks, Siege Workshop a Blacksmith —
   // `requires` on the productionBuildings entry) — a separate, real
   // mechanic from the age-up building-COUNT rule elsewhere in this tool,
-  // so the prerequisite is walked and inserted first, recursively.
+  // so the prerequisite is walked and inserted first, recursively. Each
+  // building type is inserted once even if multiple goals need it;
+  // `buildingsAdded` becomes the authoritative record of which buildings
+  // are real, reused by qualifyingBuildingCount/renderSetupCard instead of
+  // each recomputing their own version of this same set.
   const buildingsAdded = new Set();
   function addBuildingItem(name) {
     if (buildingsAdded.has(name)) return;
@@ -2892,43 +2821,40 @@ function pendingUpgrades(lines, civ) {
     items.push({ name, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge });
     buildingsAdded.add(name);
   }
+  document.querySelectorAll('[data-tech-save]:checked').forEach(cb => {
+    const t = DATA.ecoTechs.find(x => x.id === cb.dataset.techSave);
+    if (!t) return;
+    items.push({ name: t.name, cost: t.cost || {}, tcQueue: t.tcQueue, researchTime: t.researchTime, deferToEnd: t.deferToEnd, age: t.age });
+    // Researching a Blacksmith tech obviously implies a Blacksmith exists.
+    if (t.group === 'blacksmith') addBuildingItem('Blacksmith');
+  });
+  // Ongoing production (Buildings > 0) is the only production concept now —
+  // needs both its training building (a Castle for Castle-trained units, a
+  // Barracks for Militia-line, an Archery Range for Archers, etc. — costing
+  // wood and at least that building's buildTimeSeconds regardless of
+  // affordability, same "takes at least this long" role queueSeconds plays
+  // elsewhere; not tcQueue, since building it occupies one villager's
+  // labor, not the whole TC) and the full research chain up through
+  // whichever tier is selected — picking a later tier (e.g. Paladin)
+  // automatically researches every step before it (Knight → Cavalier →
+  // Paladin), matching how the eco-tech goal-chain dots already work.
   lines.forEach(l => {
     const state = lineState[l.id];
-    if (!state) return;
-    if (state.saving) {
-      const next = l.tiers[state.tierIdx + 1];
-      if (next?.upgradeCost) items.push({ name: `${l.name} → ${next.name}`, cost: next.upgradeCost, age: next.age });
-    }
-    // A one-time goal batch of this unit — needs both the resources banked
-    // AND enough queue time to actually train them (assumed serial on one
-    // production building, since goal allocation is automatic/idealized).
-    if (state.goalQty > 0) {
-      if (l.building === 'Castle' || DATA.productionBuildings[l.building]) addBuildingItem(l.building);
-      const tier = l.tiers[state.tierIdx];
-      const cost = {};
-      RES.forEach(r => { cost[r] = (l.cost[r] || 0) * state.goalQty; });
-      items.push({
-        name: `${state.goalQty}x ${tier.name}`,
-        cost,
-        queueSeconds: state.goalQty * tier.trainTime,
-        age: tier.age,
-      });
+    if (!state || state.buildings <= 0) return;
+    addBuildingItem(l.building); // no-ops for Town Center (not in productionBuildings)
+    for (let i = 1; i <= state.tierIdx; i++) {
+      const t = l.tiers[i];
+      if (t?.upgradeCost) items.push({ name: `${l.tiers[i - 1].name} → ${t.name}`, cost: costForCiv(t.upgradeCost, civ), age: t.age });
     }
   });
-  // Market/Blacksmith have no unit line to trigger them (Market trains
-  // nothing at all; Blacksmith only techs) — a Fast Castle build commonly
-  // builds one or both purely to satisfy the Feudal->Castle building-count
-  // requirement without committing to an Archery Range/Stable it doesn't
-  // want yet, so they're opt-in checkboxes instead.
-  if (document.getElementById('build-market')?.checked) addBuildingItem('Market');
-  if (document.getElementById('build-blacksmith')?.checked) addBuildingItem('Blacksmith');
   // Items flagged deferToEnd (Loom) process last — the standard opening
   // delays them rather than paying their TC-time cost before it matters,
   // regardless of the order they happened to be checked in.
-  return items
+  const sorted = items
     .map((item, i) => ({ item, i }))
     .sort((a, b) => (a.item.deferToEnd === b.item.deferToEnd ? a.i - b.i : a.item.deferToEnd ? 1 : -1))
     .map(({ item }) => item);
+  return { items: sorted, buildingsAdded };
 }
 
 // Simulates constant villager production: new villagers are born at a fixed
@@ -3333,54 +3259,52 @@ function initialBuiltState(civ) {
   return built;
 }
 
-// Best-effort estimate of how many age-up-qualifying buildings exist, given
-// only what this tool already tracks — it doesn't cost/time Barracks/
-// Archery Range/Stable/Blacksmith/Monastery/University themselves, so
-// existence is inferred from whether any active unit line trains there, or
-// a relevant tech is checked as "have". Deliberately conservative (Market
-// and the Cuman-only Feudal Siege Workshop aren't modeled at all), so this
-// can under-count — a safe direction, worst case a false warning — but
-// should never over-count and silently miss a real prerequisite gap.
-function qualifyingBuildingCount(targetAge, civ, activeLines, techIds, villagers, hasCastle) {
-  const usesBuilding = b => activeLines.some(l => l.building === b);
-  // Archery Range/Stable/Siege Workshop now (correctly) pull in Barracks/
-  // Blacksmith as real build prerequisites (see productionBuildings'
-  // `requires`) — so using one of those transitively means the building it
-  // requires exists too, which should count here as well.
-  const hasBarracks = usesBuilding('Barracks') || usesBuilding('Archery Range') || usesBuilding('Stable');
-  // Market/Blacksmith have no unit line of their own to trigger them (see
-  // pendingUpgrades), so their explicit "Also Building" checkboxes (a Fast
-  // Castle build's classic way to hit the Castle-Age count without an
-  // Archery Range/Stable it doesn't want yet) count here too.
-  const hasBlacksmith = usesBuilding('Blacksmith') || usesBuilding('Siege Workshop')
-    || DATA.ecoTechs.some(t => t.group === 'blacksmith' && techIds.has(t.id))
-    || !!document.getElementById('build-blacksmith')?.checked;
-  const hasMarket = !!document.getElementById('build-market')?.checked;
+// How many age-up-qualifying buildings exist, given `haveSet` — the
+// authoritative set of real buildings pendingUpgrades' addBuildingItem
+// already produced (expanded through `requires` chains, e.g. an Archery
+// Range goal already means Barracks is in there too). Feudal is the one
+// exception: its qualifying buildings (Mill/Lumber Camp/Mining Camp/Mule
+// Cart/Settlement) are gather-based, tracked via structureForResource
+// instead of haveSet, since nothing "adds" a Mill the way addBuildingItem
+// adds a Barracks.
+function qualifyingBuildingCount(targetAge, civ, haveSet, villagers) {
   if (targetAge === 'Feudal') {
     const settlement = (civ?.ecoBonuses || []).find(b => b.type === 'settlement');
     const names = new Set();
     RES.forEach(r => { if (villagers[r] > 0) names.add(structureForResource(r, civ).name); });
     if (settlement && names.size > 0) return 2; // Settlement alone satisfies the whole requirement
     let n = names.size; // Mill / Lumber Camp / Mining Camp(s) / Mule Cart each count as 1
-    if (hasBarracks) n++;
+    if (haveSet.has('Barracks')) n++;
     return n;
   }
-  if (targetAge === 'Castle') {
-    let n = 0;
-    if (usesBuilding('Archery Range')) n++;
-    if (usesBuilding('Stable')) n++;
-    if (hasBlacksmith) n++;
-    if (hasMarket) n++;
-    return n;
+  if (targetAge === 'Imperial' && haveSet.has('Castle')) return 2; // a Castle alone satisfies the whole requirement
+  const req = DATA.ageUpBuildingReqs[targetAge];
+  return req ? req.buildings.filter(b => haveSet.has(b)).length : 2;
+}
+
+// Buildings this tool will automatically add (never asks the user to
+// toggle) when a real build falls short of the age-up building-count
+// requirement — cheapest / least-commitment options first, so aging up
+// doesn't silently force an unwanted Archery Range/Stable. Verified against
+// DATA.ageUpBuildingReqs that these three lists are disjoint, so an earlier
+// age's filler pick can never help satisfy a later age's count — order
+// (Feudal→Castle→Imperial) only mirrors real progression, isn't load-
+// bearing for correctness.
+const FILLER_BUILDING_PRIORITY = { Feudal: ['Barracks'], Castle: ['Market', 'Blacksmith'], Imperial: ['Monastery', 'University'] };
+
+function fillerBuildingsNeeded(targetAge, civ, villagers, haveSet) {
+  const req = DATA.ageUpBuildingReqs[targetAge];
+  if (!req) return [];
+  let short = req.count - qualifyingBuildingCount(targetAge, civ, haveSet, villagers);
+  const picks = [];
+  for (const name of FILLER_BUILDING_PRIORITY[targetAge] || []) {
+    if (short <= 0) break;
+    if (haveSet.has(name)) continue;
+    picks.push(name);
+    haveSet.add(name);
+    short--;
   }
-  if (targetAge === 'Imperial') {
-    if (hasCastle) return 2; // a Castle alone satisfies the whole requirement
-    let n = 0;
-    if (usesBuilding('Monastery')) n++;
-    if (['ballistics', 'siege-engineers', 'chemistry'].some(id => techIds.has(id))) n++; // University techs, grouped under Siege Workshop elsewhere in this tool
-    return n;
-  }
-  return 2;
+  return picks;
 }
 
 // Turns a checkpoint into the imperative instruction(s) a player would
@@ -3470,34 +3394,12 @@ function renderResults() {
   const descEl = document.getElementById('results-desc');
   const bodyEl = document.getElementById('results-body');
 
-  const goalPending = pendingUpgrades(lines, civ);
-  // In Build Order mode, any age-up needed to reach the Goals-At target
-  // (set via the Target Age dots) is inserted as its own real, costed,
-  // TC-queue-blocking checkpoint, sequenced so age-tagged goals always land
-  // after the age-up that unlocks them. A pending goal's OWN age is also a
-  // hard floor on the target — e.g. a Castle-unit goal implies Castle Age is
-  // required even if the user never touched the Target Age dots — otherwise
-  // that goal would resolve the moment it's affordable with no age-up ever
-  // inserted to gate it against, silently ignoring the age requirement.
-  const startAgeId = document.getElementById('start-age')?.value || 'Dark';
-  const neededAgeIdx = goalPending.reduce((max, item) => Math.max(max, ageIndex(item.age || 'Dark')), ageIndex(startAgeId));
-  const targetAgeId = AGE_ORDER[Math.max(targetAgeIdx, neededAgeIdx)];
-  const pending = currentMode === 'buildorder'
-    ? mergeWithAgeUps(goalPending, ageUpPending(startAgeId, targetAgeId, civ))
-    : goalPending;
   const rates = {};
   RES.forEach(r => { rates[r] = effectiveGatherRate(r, civ, techIds); });
 
   const villagerState = lineState['villager'];
   const villRate = villagerState && villagerState.buildings > 0 ? villagerState.buildings / DATA.villager.trainTime : 0;
   const hasNoHouses = (civ?.ecoBonuses || []).some(b => b.type === 'no-houses');
-
-  if (!rows.length) {
-    descEl.textContent = 'Add production buildings above to see the split.';
-    const emptyPending = currentMode === 'buildorder' ? renderPendingCard(pending, rates, { food: 0, wood: 0, gold: 0, stone: 0 }, villRate, 0, civ, hasNoHouses) : '';
-    bodyEl.innerHTML = '<div class="empty-hint">No production set yet.</div>' + emptyPending;
-    return;
-  }
 
   const totalIncome = { food: 0, wood: 0, gold: 0, stone: 0 }; // per second
   let popRate = 0; // pop/sec
@@ -3545,6 +3447,45 @@ function renderResults() {
   });
   const totalVillCeil = Math.ceil(totalVillagers);
 
+  // Every game is now a fresh Dark Age start (3 villagers, 1 Scout Cavalry)
+  // — no more Starting Age/Villagers inputs. pendingUpgrades already tags
+  // every item with its own age; a line sitting at its base tier (no
+  // upgrade-chain item at all, e.g. Spearman — Feudal-age but trained at
+  // Barracks, a Dark-age building) still needs its OWN tier's age folded in
+  // directly, or a Feudal-tier unit with no research step would never
+  // trigger the Feudal age-up it actually requires.
+  const { items: goalPending, buildingsAdded: haveSet } = pendingUpgrades(lines, civ);
+  const neededAgeIdx = Math.max(
+    goalPending.reduce((max, item) => Math.max(max, ageIndex(item.age || 'Dark')), 0),
+    rows.reduce((max, r) => Math.max(max, ageIndex(r.tier.age)), 0),
+  );
+  const targetAgeId = AGE_ORDER[Math.max(targetAgeIdx, neededAgeIdx)];
+  // Any age-up needed to reach that target is inserted as its own real,
+  // costed, TC-queue-blocking checkpoint. Buildings the age-up itself
+  // requires (2 qualifying buildings from the prior age, or a Castle for
+  // Imperial) that aren't already implied by a real selection are added
+  // automatically too — cheapest/least-commitment options first — instead
+  // of asking the user to toggle them.
+  if (currentMode === 'buildorder') {
+    ['Feudal', 'Castle', 'Imperial'].forEach(age => {
+      if (ageIndex(age) > ageIndex(targetAgeId)) return;
+      fillerBuildingsNeeded(age, civ, villagers, haveSet).forEach(name => {
+        const def = DATA.productionBuildings[name];
+        goalPending.push({ name, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge });
+      });
+    });
+  }
+  const pending = currentMode === 'buildorder'
+    ? mergeWithAgeUps(goalPending, ageUpPending('Dark', targetAgeId, civ))
+    : goalPending;
+
+  if (!rows.length) {
+    descEl.textContent = 'Add production buildings above to see the split.';
+    const emptyPending = currentMode === 'buildorder' ? renderPendingCard(pending, rates, { food: 0, wood: 0, gold: 0, stone: 0 }, villRate, 0, civ, hasNoHouses) : '';
+    bodyEl.innerHTML = '<div class="empty-hint">No production set yet.</div>' + emptyPending;
+    return;
+  }
+
   descEl.textContent = `Continuous production across ${rows.length} building type${rows.length === 1 ? '' : 's'} — population growing ~${(popRate * 60).toFixed(1)}/min.`;
 
   const statRow = `<div class="stat-row">
@@ -3570,50 +3511,25 @@ function renderResults() {
 
   let extras = '';
   if (currentMode === 'buildorder') {
-    const startVills = Math.max(0, Number(document.getElementById('start-vills')?.value) || 0);
     const startingPool = startingPoolForCiv(civ);
-    const isDarkOpening = document.getElementById('start-age')?.value === 'Dark';
     const checkpoints = pending.length
-      ? buildTimeline(rates, villRate, startVills, villagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening, ageIndex(startAgeId), civ)
+      ? buildTimeline(rates, villRate, 3, villagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, true, 0, civ)
       : [];
-    // Any line with either ongoing production OR a one-time goal batch needs
-    // its training building — rows only reflects ongoing `buildings`, so a
-    // Goal-Qty-only line (no ongoing production) would otherwise be missed.
-    const activeLines = lines.filter(l => { const s = lineState[l.id]; return s && (s.buildings > 0 || s.goalQty > 0); });
-    // Age-up also requires 2 qualifying buildings from the prior age (a
-    // Castle instead, for Imperial) — a real, separate gate from the
-    // cost/TC-time simulateItemReady already enforces. This tool doesn't
-    // simulate WHEN each qualifying building gets built (most of them —
-    // Barracks, Archery Range, etc. — have no cost/time tracked at all), so
-    // rather than fabricate a timing delay, flag it as a warning on the
-    // relevant age-up checkpoint using the FINAL configured build as a
-    // static check.
-    const hasCastleBuilt = activeLines.some(l => l.building === 'Castle') || pending.some(item => item.name === 'Castle');
+    // Residual defensive check — filler above should already guarantee this
+    // never fires in practice (Castle/Imperial both have 2 filler options,
+    // always enough; Feudal's single option is backed by the near-universal
+    // Mill+Lumber Camp baseline any real villager-producing build already
+    // has), but keep it rather than silently trust that in every edge case.
     checkpoints.forEach(c => {
       if (c.kind !== 'age') return;
       const req = DATA.ageUpBuildingReqs[c.ageName];
       if (!req) return;
-      const have = qualifyingBuildingCount(c.ageName, civ, activeLines, techIds, villagers, hasCastleBuilt);
+      const have = qualifyingBuildingCount(c.ageName, civ, haveSet, villagers);
       if (have < req.count) {
         c.warning = `only ${have}/${req.count} qualifying buildings tracked for ${c.ageName} Age (${req.buildings.join('/')}${c.ageName === 'Imperial' ? ', or a Castle' : c.ageName === 'Feudal' ? ', or a Settlement' : ''})`;
       }
     });
-    // Expanded to include transitive `requires` (Archery Range/Stable also
-    // pull in Barracks, Siege Workshop pulls in Blacksmith), same mechanic
-    // pendingUpgrades' addBuildingItem walks for the timeline.
-    const neededBuildings = new Set();
-    activeLines.forEach(l => {
-      const chain = [];
-      let b = l.building;
-      while (DATA.productionBuildings[b] && !neededBuildings.has(b) && !chain.includes(b)) {
-        chain.push(b);
-        b = DATA.productionBuildings[b].requires;
-      }
-      chain.reverse().forEach(name => neededBuildings.add(name)); // prerequisite first, e.g. Barracks before Archery Range
-    });
-    if (document.getElementById('build-market')?.checked) neededBuildings.add('Market');
-    if (document.getElementById('build-blacksmith')?.checked) neededBuildings.add('Blacksmith');
-    extras = renderSetupCard(villagers, civ, activeLines.some(l => l.building === 'Castle'), neededBuildings)
+    extras = renderSetupCard(villagers, civ, haveSet.has('Castle'), haveSet)
       + renderTimelineCard(checkpoints, villRate, civ)
       + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ, hasNoHouses);
   }
@@ -3699,19 +3615,17 @@ function renderSetupCard(villagers, civ, needsCastle, neededBuildings) {
 
 function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ, hasNoHouses) {
   if (!pending.length) return '';
-  const isDarkOpening = document.getElementById('start-age')?.value === 'Dark';
   const rawStartingPool = startingPoolForCiv(civ);
-  const startingPool = openingHousesInfo(rawStartingPool, isDarkOpening, villRate, hasNoHouses).pool;
+  const startingPool = openingHousesInfo(rawStartingPool, true, villRate, hasNoHouses).pool;
   const civStartNote = (civ?.ecoBonuses || []).find(b => b.type === 'starting-resources')
     ? ` (${civ.name}${civ.name.endsWith('s') ? '’' : '’s'} starting-resource bonus applied)` : '';
 
   if (villRate > 0) {
-    const startVills = Math.max(0, Number(document.getElementById('start-vills')?.value) || 0);
+    const startVills = 3;
     // Goals fully covered by the starting stockpile resolve instantly,
     // independent of how long the villager ramp-up takes — see
     // primeInstantGoals for why this has to happen before the sustain catch-up.
-    const startAgeIdx = ageIndex(document.getElementById('start-age')?.value || 'Dark');
-    const primed = primeInstantGoals(pending, startingPool, startAgeIdx);
+    const primed = primeInstantGoals(pending, startingPool, 0);
     const resultByItem = new Map();
     primed.resolved.forEach(({ item, time }) => { resultByItem.set(item, { time, vills: startVills }); });
 
@@ -3739,7 +3653,7 @@ function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, c
         <div class="cost-pills">${RES.filter(r => item.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${item.cost[r]}</span>`).join('')}</div>
         <span class="save-time${result ? '' : ' blocked'}">${result ? `${result.vills} vills · ${fmtClock(result.time)}` : 'past 60 min — add TCs'}</span>
       </div>`).join('')}
-      <p class="assumptions">Credits your starting stockpile (200 food/200 wood/50 gold baseline) before any villager income, same as a real game start${civStartNote}. Civs with extra/fewer starting villagers (Chinese +3, Mayans +1) aren't auto-added to Starting Villagers above — adjust that yourself if it matters. Assumes you keep training new villagers and send each new one to whichever of these is furthest behind, in the order checked above; villager allocation is fully automatic. Unit-batch goals also need enough queue time (assumed 1 production building, serial) on top of the resources.${catchUpNote}</p>
+      <p class="assumptions">Credits your starting stockpile (200 food/200 wood/50 gold baseline) before any villager income, same as a real game start${civStartNote}. Always assumes the standard 3-villager Dark Age start — civs with a different starting villager count (Chinese +3, Mayans +1) aren't modeled. Assumes you keep training new villagers and send each new one to whichever of these is furthest behind, in the order checked above; villager allocation is fully automatic.${catchUpNote}</p>
     </div>`;
   }
 
@@ -3783,9 +3697,10 @@ function renderCivBonusList() {
 // Feudal Age" means "ready by the moment Feudal is reached", which requires
 // actually modeling the Feudal age-up as a real cost/time checkpoint (see
 // ageUpPending) rather than treating Goals as available whenever affordable
-// regardless of age. Defaults to the Starting Point's Current Age (no forced
-// age-up), so existing behavior is unchanged until a higher dot is picked;
-// can never go below Current Age since you can't target an age already passed.
+// regardless of age. Defaults to Dark (no forced age-up beyond whatever the
+// selected buildings/tiers/techs already require) — every build starts in
+// Dark Age now, so this only ever pushes the target LATER than what's
+// already implied, never earlier.
 let targetAgeIdx = 0;
 
 function targetAgeDesc() {
@@ -3821,16 +3736,6 @@ civSelect.addEventListener('change', () => {
   renderCivBonusList();
   renderResults();
 });
-document.getElementById('start-age').addEventListener('change', () => {
-  updateArmyDesc();
-  renderUnitTable();
-  renderTargetAgeDots();
-  renderResults();
-});
-document.getElementById('start-vills').addEventListener('input', renderResults);
-document.getElementById('build-market').addEventListener('change', renderResults);
-document.getElementById('build-blacksmith').addEventListener('change', renderResults);
-
 // ─── Mode: Constant Production vs. Build Order Builder ─────────────────────
 
 let currentMode = 'production'; // 'production' | 'buildorder'
@@ -3843,24 +3748,15 @@ const MODE_COPY = {
     armyDesc: 'Set how many <b>production buildings</b> you\'ll keep queuing each unit — 2 Barracks on Long Swordsmen, 1 Archery Range on Crossbowmen, etc. Zero = not in production. Pick each line\'s tier freely — training cost doesn\'t change, but train time does. The Town Center row\'s Villager count defaults to 1 (constant villager production) — set it to 0 for "all-in" (stop making villagers).',
   },
   buildorder: {
-    introDesc: 'Set your starting age, villagers, and what you already have running, then say what you want to build — this works out the fastest way to get there, crediting your starting stockpile and routing new villagers to whichever goal is furthest behind.',
-    introAssumptions: 'Same steady-state economics as Constant Production underneath, plus a time-based savings simulation for one-time goals (techs, unit batches). Villager allocation toward goals is fully automatic. This estimates when you can afford something, not a literal minute-by-minute script of which building to click first.',
+    introDesc: 'Say what you want to build — production, upgrades, and buildings — starting from a fresh Dark Age game (3 villagers, 1 Scout Cavalry), and this works out the fastest way to get there, crediting your starting stockpile and routing new villagers to whichever goal is furthest behind.',
+    introAssumptions: 'Same steady-state economics as Constant Production underneath, plus a time-based savings simulation for one-time goals (tech research, unit-tier upgrades, age-ups, and the buildings they require). Villager allocation toward goals is fully automatic, and any production or age-up-qualifying building your picks imply is inserted for you automatically. This estimates when you can afford something, not a literal minute-by-minute script of which building to click first.',
     ecoDesc: "Select which upgrades you want — everything starts un-researched, same as a real game. Picking a later tier automatically pulls in the ones before it, since you have to research a line in order; each becomes a real, timed goal in the simulation below.",
+    armyDesc: 'Set how many production buildings you\'ll keep queuing each unit — 2 Barracks on Long Swordsmen, 1 Archery Range on Crossbowmen, etc. Zero = not in production. Pick each line\'s tier freely — selecting a later tier (e.g. Paladin) automatically researches every step before it (Knight → Cavalier → Paladin) and advances you through whatever age that requires, inserting any extra buildings the age-up itself needs.',
   },
 };
 
-const NEXT_AGE = { Dark: 'Feudal', Feudal: 'Castle', Castle: 'Imperial', Imperial: null };
-
-function buildOrderArmyDesc() {
-  const age = document.getElementById('start-age')?.value || 'Dark';
-  const next = NEXT_AGE[age];
-  const goalPhrase = next ? `Select the units you want to make in ${next} Age` : 'Select the units you want to make going forward';
-  return `${goalPhrase} as <b>Goal Qty</b> — a one-time batch, e.g. 10 Man-at-Arms. <b>Buildings</b> is separate: what you already have running as ongoing production, not part of the goal. Pick each line's current upgrade tier, capped by your Starting Point age above — training cost doesn't change, but train time does.`;
-}
-
 function updateArmyDesc() {
-  const el = document.getElementById('army-desc');
-  el.innerHTML = currentMode === 'buildorder' ? buildOrderArmyDesc() : MODE_COPY.production.armyDesc;
+  document.getElementById('army-desc').innerHTML = MODE_COPY[currentMode].armyDesc;
 }
 
 function setMode(mode) {
