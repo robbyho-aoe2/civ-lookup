@@ -183,6 +183,11 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
           <span class="tier-dot" data-age="Imperial" data-idx="3" title="Imperial Age"></span>
         </div>
       </div>
+      <div>
+        <label style="display:block;margin-bottom:6px;">Also Building</label>
+        <label class="save-check" style="display:block;margin-bottom:4px;"><input type="checkbox" id="build-market"> Market</label>
+        <label class="save-check" style="display:block;"><input type="checkbox" id="build-blacksmith"> Blacksmith</label>
+      </div>
     </div>
     <p class="assumptions" id="target-age-desc" style="margin-top:10px;margin-bottom:0"></p>
   </div>
@@ -259,6 +264,13 @@ const DATA = {
     'Barracks': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Dark' },
     'Dock': { cost: { wood: 150 }, buildTimeSeconds: 35, minAge: 'Dark' },
     'Blacksmith': { cost: { wood: 150 }, buildTimeSeconds: 40, minAge: 'Feudal' },
+    // Market really does require a Mill (or Folwark/Settlement) too, but
+    // Mill isn't tracked in this dict at all (its own drop-off/gather
+    // mechanic lives in structureForResource instead) — omitted here since
+    // it'd be a no-op `requires` link; a Mill is virtually always already
+    // present anyway (needed for any food gathering) so this doesn't
+    // meaningfully undercount.
+    'Market': { cost: { wood: 175 }, buildTimeSeconds: 60, minAge: 'Feudal' },
     'Archery Range': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Feudal', requires: 'Barracks' },
     'Stable': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Feudal', requires: 'Barracks' },
     'Siege Workshop': { cost: { wood: 200 }, buildTimeSeconds: 40, minAge: 'Castle', requires: 'Blacksmith' },
@@ -284,16 +296,20 @@ const DATA = {
   // AoE2 Fandom wiki (aoe2techtree's data.json has no data on this — it only
   // covers tech-tree unlocks, not the age-advancement building-count rule).
   // `buildings` lists only the types this tool actually tracks the
-  // existence of in some form (Market and the Cuman-only Feudal Siege
-  // Workshop exception aren't modeled and are deliberately left out —
-  // undercounting is the safe direction, since it only ever produces a
-  // false warning, never a false all-clear). Settlement alone satisfies the
-  // whole Feudal requirement by itself (counts as 2, handled specially in
+  // existence of in some form (the Cuman-only Feudal Siege Workshop
+  // exception isn't modeled and is deliberately left out — undercounting
+  // is the safe direction, since it only ever produces a false warning,
+  // never a false all-clear). Settlement alone satisfies the whole Feudal
+  // requirement by itself (counts as 2, handled specially in
   // qualifyingBuildingCount); Mule Cart is a normal single qualifying
-  // building like Barracks/Mill, NOT a multiplier.
+  // building like Barracks/Mill, NOT a multiplier. Market has no other
+  // mechanic in this tool (no trade/currency-exchange modeled) but is a
+  // real qualifying building for Castle Age — commonly built purely for
+  // this requirement in a Fast Castle build alongside Blacksmith, since
+  // neither commits you to an Archery Range/Stable you don't want yet.
   ageUpBuildingReqs: {
     Feudal: { count: 2, buildings: ['Mill', 'Lumber Camp', 'Mining Camp', 'Barracks'] },
-    Castle: { count: 2, buildings: ['Archery Range', 'Stable', 'Blacksmith'] },
+    Castle: { count: 2, buildings: ['Archery Range', 'Stable', 'Blacksmith', 'Market'] },
     Imperial: { count: 2, buildings: ['Monastery', 'University'], castleAlt: true },
   },
   dataSourceNotes: 'Wood/gold/stone base gather rates are widely-cited community figures, not independently re-verified. Full 53-civ roster with unique units and unavailableUnitLines pulled programmatically from game data; ecoBonuses cover 11 civs whose bonuses cleanly matched this calculator\'s bonus shapes (see aoe2_civs_data.json sourceNotes for real bonuses that were excluded for not fitting, e.g. Portuguese -20% gold cost, Byzantines\' line-scoped discount).',
@@ -2899,6 +2915,13 @@ function pendingUpgrades(lines, civ) {
       });
     }
   });
+  // Market/Blacksmith have no unit line to trigger them (Market trains
+  // nothing at all; Blacksmith only techs) — a Fast Castle build commonly
+  // builds one or both purely to satisfy the Feudal->Castle building-count
+  // requirement without committing to an Archery Range/Stable it doesn't
+  // want yet, so they're opt-in checkboxes instead.
+  if (document.getElementById('build-market')?.checked) addBuildingItem('Market');
+  if (document.getElementById('build-blacksmith')?.checked) addBuildingItem('Blacksmith');
   // Items flagged deferToEnd (Loom) process last — the standard opening
   // delays them rather than paying their TC-time cost before it matters,
   // regardless of the order they happened to be checked in.
@@ -3325,7 +3348,14 @@ function qualifyingBuildingCount(targetAge, civ, activeLines, techIds, villagers
   // `requires`) — so using one of those transitively means the building it
   // requires exists too, which should count here as well.
   const hasBarracks = usesBuilding('Barracks') || usesBuilding('Archery Range') || usesBuilding('Stable');
-  const hasBlacksmith = usesBuilding('Blacksmith') || usesBuilding('Siege Workshop') || DATA.ecoTechs.some(t => t.group === 'blacksmith' && techIds.has(t.id));
+  // Market/Blacksmith have no unit line of their own to trigger them (see
+  // pendingUpgrades), so their explicit "Also Building" checkboxes (a Fast
+  // Castle build's classic way to hit the Castle-Age count without an
+  // Archery Range/Stable it doesn't want yet) count here too.
+  const hasBlacksmith = usesBuilding('Blacksmith') || usesBuilding('Siege Workshop')
+    || DATA.ecoTechs.some(t => t.group === 'blacksmith' && techIds.has(t.id))
+    || !!document.getElementById('build-blacksmith')?.checked;
+  const hasMarket = !!document.getElementById('build-market')?.checked;
   if (targetAge === 'Feudal') {
     const settlement = (civ?.ecoBonuses || []).find(b => b.type === 'settlement');
     const names = new Set();
@@ -3340,6 +3370,7 @@ function qualifyingBuildingCount(targetAge, civ, activeLines, techIds, villagers
     if (usesBuilding('Archery Range')) n++;
     if (usesBuilding('Stable')) n++;
     if (hasBlacksmith) n++;
+    if (hasMarket) n++;
     return n;
   }
   if (targetAge === 'Imperial') {
@@ -3580,6 +3611,8 @@ function renderResults() {
       }
       chain.reverse().forEach(name => neededBuildings.add(name)); // prerequisite first, e.g. Barracks before Archery Range
     });
+    if (document.getElementById('build-market')?.checked) neededBuildings.add('Market');
+    if (document.getElementById('build-blacksmith')?.checked) neededBuildings.add('Blacksmith');
     extras = renderSetupCard(villagers, civ, activeLines.some(l => l.building === 'Castle'), neededBuildings)
       + renderTimelineCard(checkpoints, villRate, civ)
       + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ, hasNoHouses);
@@ -3795,6 +3828,8 @@ document.getElementById('start-age').addEventListener('change', () => {
   renderResults();
 });
 document.getElementById('start-vills').addEventListener('input', renderResults);
+document.getElementById('build-market').addEventListener('change', renderResults);
+document.getElementById('build-blacksmith').addEventListener('change', renderResults);
 
 // ─── Mode: Constant Production vs. Build Order Builder ─────────────────────
 
