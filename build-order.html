@@ -2792,12 +2792,22 @@ function effectiveGatherRate(resource, civ, techIds) {
   return rate;
 }
 
-function pendingUpgrades(lines) {
+function pendingUpgrades(lines, civ) {
   const items = [];
   document.querySelectorAll('[data-tech-save]:checked').forEach(cb => {
     const t = DATA.ecoTechs.find(x => x.id === cb.dataset.techSave);
     if (t) items.push({ name: t.name, cost: t.cost || {}, tcQueue: t.tcQueue, researchTime: t.researchTime, deferToEnd: t.deferToEnd, age: t.age });
   });
+  // A Castle-trained unit goal needs an actual Castle first — 650 stone and
+  // at least DATA.castle.buildTimeSeconds regardless of affordability (the
+  // same "takes at least this long" role queueSeconds already plays for
+  // unit-batch training below). Not tcQueue: building a Castle doesn't stop
+  // the whole TC's villager production the way researching a tech does,
+  // only one villager's worth of labor — this tool doesn't model individual
+  // villagers, so queueSeconds (a floor on the whole timeline, not a TC
+  // block) is the closest honest approximation without a bigger rework.
+  // Inserted once even if multiple Castle-unit goals are set.
+  let castleAdded = false;
   lines.forEach(l => {
     const state = lineState[l.id];
     if (!state) return;
@@ -2809,6 +2819,15 @@ function pendingUpgrades(lines) {
     // AND enough queue time to actually train them (assumed serial on one
     // production building, since goal allocation is automatic/idealized).
     if (state.goalQty > 0) {
+      if (l.building === 'Castle' && !castleAdded) {
+        items.push({
+          name: 'Castle',
+          cost: costForCiv(DATA.castle.cost, civ),
+          queueSeconds: DATA.castle.buildTimeSeconds,
+          age: DATA.castle.minAge,
+        });
+        castleAdded = true;
+      }
       const tier = l.tiers[state.tierIdx];
       const cost = {};
       RES.forEach(r => { cost[r] = (l.cost[r] || 0) * state.goalQty; });
@@ -2950,6 +2969,13 @@ function primeInstantGoals(pending, startingPool, startAgeIdx) {
   // process it in array order, i.e. after the age-up it depends on.
   let reachedAgeIdx = startAgeIdx == null ? Infinity : startAgeIdx;
   pending.forEach(item => {
+    // deferToEnd (Loom) must never jump the queue here even when the
+    // stockpile covers it outright — the whole point of deferring it is to
+    // avoid spending TC time on it before villager production ramps up, so
+    // it always falls through to the sequential simulateItemReady loop,
+    // which respects the ordering mergeWithAgeUps already gave it (last in
+    // its age bucket, right before the next age-up).
+    if (item.deferToEnd) { remaining.push(item); return; }
     const itemAgeIdx = ageIndex(item.age || 'Dark');
     const ageGateOk = item.isAgeUp ? itemAgeIdx === reachedAgeIdx + 1 : itemAgeIdx <= reachedAgeIdx;
     if (!ageGateOk) { remaining.push(item); return; }
@@ -3020,6 +3046,17 @@ function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCe
     checkpoints.push({ label: 'Build 2 Houses', time: 0, vills: startVills, split: null, houses: 2, alloc: { ...cumAlloc }, kind: 'house' });
     housesAlready = 2;
     houseBaseline = startVills + 2 * housePopSpace;
+  }
+  // The standard opening also queues as many villagers as starting food
+  // allows (4, at the 200-food baseline) right at 0:00 — display-only, since
+  // villRate already assumes continuous production from t=0 throughout this
+  // whole simulation; this just makes that opening action visible alongside
+  // "Build 2 Houses" instead of leaving it implicit.
+  if (isDarkOpening && villRate > 0) {
+    const openingVills = Math.floor(startingPool.food / DATA.villager.cost.food);
+    if (openingVills > 0) {
+      checkpoints.push({ label: `Queue ${openingVills} Villagers`, time: 0, vills: startVills, split: null, houses: opening.applies ? 2 : 0, alloc: { ...cumAlloc }, kind: 'start' });
+    }
   }
   const housesFor = v => hasNoHouses ? 0 : housesAlready + Math.max(0, Math.ceil((v - houseBaseline) / housePopSpace));
 
@@ -3102,7 +3139,7 @@ function timelineBuildAnnotator(civ) {
 function actionParts(c, prevHouses) {
   const parts = [];
   if (c.kind === 'age') parts.push(`Advance to ${c.ageName} Age`);
-  else if (c.kind === 'tech') parts.push(`Research ${c.itemName}`);
+  else if (c.kind === 'tech') parts.push(`${c.itemName === 'Castle' ? 'Build' : 'Research'} ${c.itemName}`);
   else if (c.kind === 'unit') parts.push(`Train ${c.itemName}`);
   if (c.kind === 'house') {
     parts.push(`Build ${c.houses} House${c.houses === 1 ? '' : 's'}`);
@@ -3174,7 +3211,7 @@ function renderResults() {
   const descEl = document.getElementById('results-desc');
   const bodyEl = document.getElementById('results-body');
 
-  const goalPending = pendingUpgrades(lines);
+  const goalPending = pendingUpgrades(lines, civ);
   // In Build Order mode, any age-up needed to reach the Goals-At target
   // (set via the Target Age dots) is inserted as its own real, costed,
   // TC-queue-blocking checkpoint, sequenced so age-tagged goals always land
