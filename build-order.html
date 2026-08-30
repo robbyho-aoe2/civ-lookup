@@ -2923,6 +2923,17 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool) {
 // Age — Feudal+ starts have no "opening" to model, just the target ratio.
 const OPENING_SEQUENCE = ['food', 'food', 'food', 'food', 'food', 'food', 'wood', 'wood', 'wood'];
 
+// Population-cap constants shared by buildTimeline's own housesFor and
+// expandHouseCheckpoints below. The starting Scout Cavalry occupies a
+// population slot too, even though this tool only ever tracks villagers —
+// folding it in here means the cap (and the next house) is correctly
+// crossed one villager earlier than raw villager count alone would suggest.
+// Houses are also queued a few population points ahead of when they're
+// strictly needed, since a house takes real build time to finish — queuing
+// it exactly at the cap would still leave a capped gap while it's building.
+const SCOUT_POP = 1;
+const HOUSE_LEAD_POP = 2;
+
 function simulateRampToSustain(rates, villRate, startVills, targetVillagers, totalVillCeil, startTime, openingSequence) {
   if (startVills >= totalVillCeil || villRate <= 0) return null;
   const assigned = { food: 0, wood: 0, gold: 0, stone: 0 };
@@ -3021,6 +3032,38 @@ function checkpointKindFor(item) {
   return { kind: 'tech', itemName: item.name, ageName: null };
 }
 
+// Spreads a lump "Build N Houses" total across N separate checkpoints, one
+// per house, each at the (interpolated) moment population actually crosses
+// that house's pop-space threshold — real AoE2 build orders build houses
+// one at a time as you approach the cap, not all at once when some later,
+// unrelated goal happens to finish. Population growth between two adjacent
+// checkpoints is treated as linear (exactly true for a plain villager-birth
+// ramp; slightly approximate across a checkpoint that included TC-queue dead
+// time, since vills is flat during that window and this doesn't know
+// exactly where within the gap it fell — a reasonable approximation for a
+// planning estimate, not a literal script).
+function expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, housePopSpace, hasNoHouses) {
+  if (hasNoHouses) return checkpoints;
+  const housesFor = v => housesAlready + Math.max(0, Math.ceil((v - houseBaseline) / housePopSpace));
+  const expanded = [checkpoints[0]];
+  for (let i = 1; i < checkpoints.length; i++) {
+    const prev = checkpoints[i - 1], cur = checkpoints[i];
+    if (cur.blocked || cur.kind === 'house' || cur.vills <= prev.vills) { expanded.push(cur); continue; }
+    const fromCount = housesFor(prev.vills), toCount = housesFor(cur.vills);
+    for (let k = fromCount + 1; k <= toCount; k++) {
+      const thresholdVills = houseBaseline + (k - housesAlready - 1) * housePopSpace + 1;
+      const frac = (thresholdVills - prev.vills) / (cur.vills - prev.vills);
+      expanded.push({
+        label: 'Build 1 House', time: prev.time + frac * (cur.time - prev.time),
+        vills: thresholdVills, split: null, houses: k, houseDelta: 1,
+        alloc: { ...prev.alloc }, kind: 'house',
+      });
+    }
+    expanded.push(cur);
+  }
+  return expanded;
+}
+
 function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening, startAgeIdx) {
   // Cumulative villagers assigned to each resource so far — every checkpoint
   // gets a snapshot of this (not just its own newly-assigned split) so the
@@ -3058,7 +3101,7 @@ function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCe
       checkpoints.push({ label: `Queue ${openingVills} Villagers`, time: 0, vills: startVills, split: null, houses: opening.applies ? 2 : 0, alloc: { ...cumAlloc }, kind: 'start' });
     }
   }
-  const housesFor = v => hasNoHouses ? 0 : housesAlready + Math.max(0, Math.ceil((v - houseBaseline) / housePopSpace));
+  const housesFor = v => hasNoHouses ? 0 : housesAlready + Math.max(0, Math.ceil((v + SCOUT_POP - houseBaseline) / housePopSpace));
 
   const primed = primeInstantGoals(pending, opening.pool, startAgeIdx);
   primed.resolved.forEach(({ item, time }) => {
@@ -3068,7 +3111,7 @@ function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCe
     });
   });
 
-  if (villRate <= 0) return checkpoints;
+  if (villRate <= 0) return expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, housePopSpace, hasNoHouses);
 
   let cursorVills = startVills, cursorTime = primed.tcBusyUntil, pool = primed.pool;
 
@@ -3098,7 +3141,7 @@ function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCe
     });
   });
 
-  return checkpoints;
+  return expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, housePopSpace, hasNoHouses);
 }
 
 // Which drop-off building a resource's FIRST assigned villager implies —
@@ -3142,10 +3185,14 @@ function actionParts(c, prevHouses) {
   else if (c.kind === 'tech') parts.push(`${c.itemName === 'Castle' ? 'Build' : 'Research'} ${c.itemName}`);
   else if (c.kind === 'unit') parts.push(`Train ${c.itemName}`);
   if (c.kind === 'house') {
-    parts.push(`Build ${c.houses} House${c.houses === 1 ? '' : 's'}`);
+    const n = c.houseDelta ?? c.houses;
+    parts.push(`Build ${n} House${n === 1 ? '' : 's'}`);
   } else {
-    const houseDelta = (c.houses || 0) - prevHouses;
-    if (houseDelta > 0) parts.push(`Build ${houseDelta} House${houseDelta === 1 ? '' : 's'}`);
+    // Safety net only — expandHouseCheckpoints should already have inserted
+    // a dedicated 'house' checkpoint for every threshold crossed, so this
+    // should rarely if ever actually fire in practice.
+    const fallbackDelta = (c.houses || 0) - prevHouses;
+    if (fallbackDelta > 0) parts.push(`Build ${fallbackDelta} House${fallbackDelta === 1 ? '' : 's'}`);
   }
   if (c.split) {
     const bits = RES.filter(r => c.split[r] > 0).map(r => `${c.split[r]} → ${RES_LABEL[r]}`);
@@ -3215,9 +3262,14 @@ function renderResults() {
   // In Build Order mode, any age-up needed to reach the Goals-At target
   // (set via the Target Age dots) is inserted as its own real, costed,
   // TC-queue-blocking checkpoint, sequenced so age-tagged goals always land
-  // after the age-up that unlocks them.
+  // after the age-up that unlocks them. A pending goal's OWN age is also a
+  // hard floor on the target — e.g. a Castle-unit goal implies Castle Age is
+  // required even if the user never touched the Target Age dots — otherwise
+  // that goal would resolve the moment it's affordable with no age-up ever
+  // inserted to gate it against, silently ignoring the age requirement.
   const startAgeId = document.getElementById('start-age')?.value || 'Dark';
-  const targetAgeId = AGE_ORDER[Math.max(targetAgeIdx, ageIndex(startAgeId))];
+  const neededAgeIdx = goalPending.reduce((max, item) => Math.max(max, ageIndex(item.age || 'Dark')), ageIndex(startAgeId));
+  const targetAgeId = AGE_ORDER[Math.max(targetAgeIdx, neededAgeIdx)];
   const pending = currentMode === 'buildorder'
     ? mergeWithAgeUps(goalPending, ageUpPending(startAgeId, targetAgeId, civ))
     : goalPending;
