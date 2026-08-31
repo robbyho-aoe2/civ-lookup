@@ -79,6 +79,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 .tier-dot{position:relative;width:15px;height:15px;border-radius:50%;border:2px solid var(--border2);cursor:pointer;flex-shrink:0;box-sizing:border-box;}
 .tier-dot.filled{background:var(--amber);border-color:var(--amber);}
 .tier-dot.disabled{cursor:not-allowed;opacity:.4;}
+.tier-dot.free:not(.filled){border-style:dashed;border-color:var(--amberL);}
 .tier-dot.filled[data-age="Dark"]{background:var(--ageDark);border-color:var(--ageDark);}
 .tier-dot.filled[data-age="Feudal"]{background:var(--ageFeudal);border-color:var(--ageFeudal);}
 .tier-dot.filled[data-age="Castle"]{background:var(--ageCastle);border-color:var(--ageCastle);}
@@ -2654,12 +2655,19 @@ function renderTierLinesHtml(techs, free) {
   const lines = {};
   techs.forEach(t => { (lines[t.line] = lines[t.line] || []).push(t); });
   return Object.values(lines).map(lineTechs => {
-    const dots = lineTechs.map(t => {
+    // "Free" for this civ means no-cost research, not "have it from the
+    // start" — Franks still can't have Crop Rotation until they're actually
+    // in Imperial. So free lines default to just the first tier checked
+    // (the earliest one could plausibly have it) and stay fully clickable/
+    // deselectable like any other line, instead of locking every tier on.
+    const lineHasFree = lineTechs.some(t => free.has(t.id));
+    const dots = lineTechs.map((t, i) => {
       const isFree = free.has(t.id);
-      return `<span class="tier-dot${isFree ? ' filled locked' : ''}" data-age="${t.age}" title="${t.name} (${t.age})"></span><input type="checkbox" data-tech="${t.id}" ${isFree ? 'checked disabled' : ''} style="display:none">`;
+      const defaultChecked = lineHasFree && i === 0;
+      return `<span class="tier-dot${isFree ? ' free' : ''}" data-age="${t.age}" title="${t.name} (${t.age})${isFree ? ' — free for this civ, still gated by age' : ''}"></span><input type="checkbox" data-tech="${t.id}" ${defaultChecked ? 'checked' : ''} style="display:none">`;
     }).join('');
     return `<div class="tech-line-row">
-      <span class="tname">${lineTechs[0].lineLabel}</span>
+      <span class="tname">${lineTechs[0].lineLabel}${lineHasFree ? '<span style="margin-left:5px;font-size:10px;color:var(--text3);font-weight:400;">free</span>' : ''}</span>
       <div class="tier-dots" data-tier-line="${lineTechs[0].line}">${dots}</div>
     </div>`;
   }).join('');
@@ -2681,15 +2689,14 @@ function wireTierLines(grid, free) {
     const dotInputs = [...dotsWrap.querySelectorAll('input[data-tech]')];
 
     let level = 0;
-    dotInputs.forEach((inp, i) => { if (inp.checked) level = i + 1; }); // seeds from free-tech checked attrs
+    dotInputs.forEach((inp, i) => { if (inp.checked) level = i + 1; }); // seeds from the default-checked first free tier, if any
 
     function apply() {
-      dotInputs.forEach((inp, j) => { if (!inp.disabled) inp.checked = j < level; });
-      dotEls.forEach((el, j) => { if (!el.classList.contains('locked')) el.classList.toggle('filled', j < level); });
+      dotInputs.forEach((inp, j) => { inp.checked = j < level; });
+      dotEls.forEach((el, j) => { el.classList.toggle('filled', j < level); });
     }
 
     dotEls.forEach((dot, i) => {
-      if (dot.classList.contains('locked')) return;
       dot.addEventListener('click', () => {
         level = level === i + 1 ? i : i + 1;
         apply();
