@@ -3352,6 +3352,13 @@ function relevantEcoLines(rows, civ) {
 // actually benefits from booming past 3 TCs this early.
 const MAX_EXTRA_TC = 2;
 
+// For a 'quantity'-goal stage (see buildStagedOptimizeTimeline), the number
+// of production buildings isn't fixed by the user — the search picks it,
+// same idea as MAX_EXTRA_TC: caps growth beyond wherever the stage started
+// (its own first physical copy, or however many an earlier stage already
+// built at the same building) so the state space stays small.
+const MAX_EXTRA_BUILDINGS = 5;
+
 // The mandatory items ONE STAGE needs beyond what earlier stages already
 // established: its training building (+ requires-chain, e.g. an Archery
 // Range needs a Barracks first) and buildingCount-1 extra physical copies
@@ -3401,7 +3408,11 @@ function stageMandatoryItems(stage, civ, allIn, haveSet, fromAgeIdx, extraItems)
   // Cavalry then Knight, both at the Stable). Town Center is excluded —
   // every game already starts with one, and "N Town Centers" is a decision
   // the search itself makes (see MAX_EXTRA_TC), not implied by buildingCount.
-  if (line.building !== 'Town Center') {
+  // A 'quantity' stage doesn't have a fixed buildingCount at all — the
+  // search picks it (see the 'building' move in buildStagedOptimizeTimeline)
+  // — so only the one physical copy buildingChainItems already added above
+  // gets built here; every further copy is an in-search decision.
+  if (line.building !== 'Town Center' && stage.goalType !== 'quantity') {
     const already = haveSet.buildingCounts.get(line.building) || 0;
     if (buildingCount > already) {
       const def = line.building === 'Castle' ? DATA.castle : DATA.productionBuildings[line.building];
@@ -3615,6 +3626,15 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
 
   for (const stage of sortedStages) {
     const { line, tierIdx, buildingCount } = stage;
+    // A 'quantity' stage ("N total units, fastest") has no fixed
+    // buildingCount from the UI — the search below picks it, starting from
+    // wherever this exact building already stands (an earlier stage may
+    // have built copies of the same one) and growing it as a real move
+    // alongside eco-tech/extra-TC, instead of assuming "sustain forever"
+    // for a user-fixed count.
+    const isQuantity = stage.goalType === 'quantity';
+    const qty = stage.qty || 9;
+    const initialBuildingCount = isQuantity ? (haveSet.buildingCounts.get(line.building) || 1) : buildingCount;
     const targetAgeIdx = ageIndex(line.tiers[tierIdx].age);
     const extraItems = [];
     if (stageResults.length === 0 && loomOn && !allIn && !free.has('loom')) {
@@ -3644,7 +3664,7 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
     // resources than an earlier stage's) branch further from wherever
     // `levels`/tcExtra already are, to reach THIS stage's own sustain
     // target fastest. ──
-    const stageRows = [{ line, tier: line.tiers[tierIdx], buildings: buildingCount }];
+    const stageRows = [{ line, tier: line.tiers[tierIdx], buildings: initialBuildingCount }];
     const relevantLines = relevantEcoLines(stageRows, civ);
     relevantLines.forEach(id => {
       if (id in levels) return;
@@ -3653,10 +3673,15 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
       while (lvl < chain.length && free.has(chain[lvl].id)) lvl++;
       levels[id] = lvl;
     });
-    function stateKey(lv, tc) { return relevantLines.map(id => lv[id]).join(',') + '|' + tc; }
+    // buildingCount is a real dimension of the state now (not just tech
+    // levels + extra TCs) so a 'quantity' stage's search can weigh "build
+    // one more copy" against "research one more tech" on equal footing —
+    // for a 'sustain' stage this is always the same fixed number, so it
+    // rides along inertly in every key without changing anything.
+    function stateKey(lv, tc, bc) { return relevantLines.map(id => lv[id]).join(',') + '|' + tc + '|' + bc; }
 
-    const startState = { levels: { ...levels }, tcExtra, time: cursorTime, vills: cursorVills, pool };
-    const startKey = stateKey(startState.levels, startState.tcExtra);
+    const startState = { levels: { ...levels }, tcExtra, buildingCount: initialBuildingCount, time: cursorTime, vills: cursorVills, pool };
+    const startKey = stateKey(startState.levels, startState.tcExtra, startState.buildingCount);
     const finalized = new Map([[startKey, startState]]);
     const cameFrom = new Map();
     const frontier = [startState];
@@ -3664,7 +3689,7 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
 
     while (frontier.length) {
       const cur = popMinTime(frontier);
-      const curKey = stateKey(cur.levels, cur.tcExtra);
+      const curKey = stateKey(cur.levels, cur.tcExtra, cur.buildingCount);
       if (finalized.get(curKey) !== cur) continue;
       const rates = ratesFor(civ, techIdsFor(cur.levels));
       const villRate = villRateFor(cur.tcExtra);
@@ -3677,10 +3702,10 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
         const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence);
         if (!r) return;
         const nextLevels = { ...cur.levels, [id]: cur.levels[id] + 1 };
-        const key = stateKey(nextLevels, cur.tcExtra);
+        const key = stateKey(nextLevels, cur.tcExtra, cur.buildingCount);
         const existing = finalized.get(key);
         if (existing && existing.time <= r.time) return;
-        const next = { levels: nextLevels, tcExtra: cur.tcExtra, time: r.time, vills: r.vills, pool: r.pool };
+        const next = { levels: nextLevels, tcExtra: cur.tcExtra, buildingCount: cur.buildingCount, time: r.time, vills: r.vills, pool: r.pool };
         finalized.set(key, next);
         cameFrom.set(key, { fromKey: curKey, move: { type: 'tech', id, item } });
         frontier.push(next);
@@ -3690,24 +3715,43 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
         const item = { name: 'Town Center', cost: costForCiv(DATA.townCenter.cost, civ), queueSeconds: DATA.townCenter.buildTimeSeconds, age: DATA.townCenter.minAge };
         const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence);
         if (r) {
-          const key = stateKey(cur.levels, cur.tcExtra + 1);
+          const key = stateKey(cur.levels, cur.tcExtra + 1, cur.buildingCount);
           const existing = finalized.get(key);
           if (!existing || existing.time > r.time) {
-            const next = { levels: cur.levels, tcExtra: cur.tcExtra + 1, time: r.time, vills: r.vills, pool: r.pool };
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra + 1, buildingCount: cur.buildingCount, time: r.time, vills: r.vills, pool: r.pool };
             finalized.set(key, next);
             cameFrom.set(key, { fromKey: curKey, move: { type: 'tc', item } });
             frontier.push(next);
           }
         }
       }
+
+      // Only a 'quantity' stage lets the search grow buildingCount itself —
+      // a 'sustain' stage's count is a deliberate user choice, left alone.
+      if (isQuantity && cur.buildingCount < initialBuildingCount + MAX_EXTRA_BUILDINGS) {
+        const def = line.building === 'Castle' ? DATA.castle : DATA.productionBuildings[line.building];
+        const item = { name: line.building, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge };
+        const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence);
+        if (r) {
+          const key = stateKey(cur.levels, cur.tcExtra, cur.buildingCount + 1);
+          const existing = finalized.get(key);
+          if (!existing || existing.time > r.time) {
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra, buildingCount: cur.buildingCount + 1, time: r.time, vills: r.vills, pool: r.pool };
+            finalized.set(key, next);
+            cameFrom.set(key, { fromKey: curKey, move: { type: 'building', item } });
+            frontier.push(next);
+          }
+        }
+      }
     }
 
-    let bestKey = null, bestTotal = Infinity, bestRamp = null, bestRates = null, bestVillagers = null, bestVillCeil = 0, bestIncome = null, bestUpkeep = null;
+    let bestKey = null, bestTotal = Infinity, bestRamp = null, bestRates = null, bestVillagers = null, bestVillCeil = 0, bestIncome = null, bestUpkeep = null, bestBuildingCount = initialBuildingCount;
     finalized.forEach((state, key) => {
       const techIds = techIdsFor(state.levels);
       const rates = ratesFor(civ, techIds);
       const villRate = villRateFor(state.tcExtra);
-      const incomeInfo = computeTotalIncome(rowsWithVillagers(stageRows, 1 + state.tcExtra), civ, techIds);
+      const rowsForState = isQuantity ? [{ line, tier: line.tiers[tierIdx], buildings: state.buildingCount }] : stageRows;
+      const incomeInfo = computeTotalIncome(rowsWithVillagers(rowsForState, 1 + state.tcExtra), civ, techIds);
       const { villagers, totalVillCeil } = villagersFromIncome(incomeInfo.totalIncome, rates);
       let total, ramp = null;
       if (state.vills >= totalVillCeil) {
@@ -3716,14 +3760,26 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
         ramp = simulateRampToSustain(rates, villRate, state.vills, villagers, totalVillCeil, state.time, openingSequence);
         total = ramp ? ramp.time : Infinity;
       }
-      if (total < bestTotal) { bestTotal = total; bestKey = key; bestRamp = ramp; bestRates = rates; bestVillagers = villagers; bestVillCeil = totalVillCeil; bestIncome = incomeInfo.totalIncome; bestUpkeep = incomeInfo; }
+      // A 'quantity' stage isn't done once it can SUSTAIN the composition —
+      // it still has to actually produce `qty` of it. Once sustained,
+      // production runs at the building count's own full rate (resource
+      // income is no longer the bottleneck by definition of "sustained"),
+      // so this tail is independent of eco-tech and only shrinks with a
+      // bigger buildingCount — the real lever a finite goal has that an
+      // infinite sustain target doesn't. Deliberately ignores any partial
+      // output produced DURING the ramp itself (ramp time already counts
+      // toward `total`, so this is a conservative floor, not a loophole).
+      if (isQuantity) total += qty / (state.buildingCount / line.tiers[tierIdx].trainTime);
+      if (total < bestTotal) { bestTotal = total; bestKey = key; bestRamp = ramp; bestRates = rates; bestVillagers = villagers; bestVillCeil = totalVillCeil; bestIncome = incomeInfo.totalIncome; bestUpkeep = incomeInfo; bestBuildingCount = state.buildingCount; }
     });
 
     if (bestKey == null) {
-      checkpoints.push({ label: `${buildingCount}x ${line.tiers[tierIdx].name} — past 60 min, add more Town Centers`, blocked: true });
-      stageResults.push({ line, tierIdx, buildingCount, villagers: {}, totalVillCeil: 0, rates: ratesFor(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
+      checkpoints.push({ label: `${bestBuildingCount}x ${line.tiers[tierIdx].name} — past 60 min, add more Town Centers`, blocked: true });
+      stageResults.push({ line, tierIdx, buildingCount: bestBuildingCount, goalType: stage.goalType, qty: stage.qty, villagers: {}, totalVillCeil: 0, rates: ratesFor(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
       break; // a later stage built on an unreachable one isn't meaningful either
     }
+
+    if (isQuantity) haveSet.buildingCounts.set(line.building, bestBuildingCount);
 
     const path = [];
     let k = bestKey;
@@ -3731,7 +3787,9 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
     path.forEach(move => {
       runSequential([move.item], ratesFor(civ, techIdsFor(levels)), villRateFor(tcExtra));
       if (move.type === 'tech') levels = { ...levels, [move.id]: levels[move.id] + 1 };
-      else tcExtra += 1;
+      else if (move.type === 'tc') tcExtra += 1;
+      // 'building' moves don't affect levels/tcExtra — bestBuildingCount
+      // (already resolved above) is the only thing downstream needs.
     });
 
     if (bestRamp) {
@@ -3745,13 +3803,21 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
       });
       RES.forEach(r => { cumAlloc[r] += bestRamp.assigned[r] || 0; });
       checkpoints.push({
-        label: `Reach sustain (${bestVillCeil} villagers for ${buildingCount}x ${line.tiers[tierIdx].name})`,
+        label: `Reach sustain (${bestVillCeil} villagers for ${bestBuildingCount}x ${line.tiers[tierIdx].name})`,
         time: cursorTime, vills: cursorVills, split: bestRamp.assigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, kind: 'sustain', buildNotes: rampBuildNotes,
       });
     }
 
+    if (isQuantity) {
+      cursorTime += qty / (bestBuildingCount / line.tiers[tierIdx].trainTime);
+      checkpoints.push({
+        label: `${qty}x ${line.tiers[tierIdx].name} complete`,
+        time: cursorTime, vills: cursorVills, split: null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, kind: 'complete',
+      });
+    }
+
     stageResults.push({
-      line, tierIdx, buildingCount,
+      line, tierIdx, buildingCount: bestBuildingCount, goalType: stage.goalType, qty: stage.qty,
       villagers: bestVillagers, totalVillCeil: bestVillCeil, rates: bestRates, totalIncome: bestIncome,
       farmUpkeepWoodPerSec: bestUpkeep.farmUpkeepWoodPerSec, houseWoodPerSec: bestUpkeep.houseWoodPerSec,
       finishTime: cursorTime, tcCount: 1 + tcExtra,
@@ -4116,12 +4182,16 @@ function renderVillagerBars(villagers, rates, totalIncome, farmUpkeepWoodPerSec,
   }).join('');
 }
 
-// A "stage" is just {lineId, tierIdx, buildingCount} — the SAME shape as
-// the old single-target state, one per stage. There's no separate "which
+// A "stage" is {lineId, tierIdx, buildingCount, goalType, qty} — the SAME
+// shape as the old single-target state, one per stage, plus a goal type:
+// 'sustain' (buildingCount is fixed, search optimizes for producing it
+// forever — the original/default behavior) or 'quantity' (buildingCount is
+// picked BY the search instead, to finish `qty` total units as fast as
+// possible — see buildStagedOptimizeTimeline). There's no separate "which
 // age does this stage start at" field: the target unit's own tier already
 // says that (Scout Cavalry is Feudal, Knight is Castle), and
 // buildStagedOptimizeTimeline sorts stages by that age itself.
-let optimizeState = { stages: [{ lineId: null, tierIdx: 0, buildingCount: 1 }], loomOn: true, allIn: false };
+let optimizeState = { stages: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }], loomOn: true, allIn: false };
 
 function renderOptimizeResults() {
   const civ = selectedCiv();
@@ -4129,17 +4199,24 @@ function renderOptimizeResults() {
   const descEl = document.getElementById('results-desc');
   const bodyEl = document.getElementById('results-body');
   const stages = optimizeState.stages
-    .map(s => ({ line: lines.find(l => l.id === s.lineId), tierIdx: s.tierIdx, buildingCount: s.buildingCount }))
+    .map(s => ({ line: lines.find(l => l.id === s.lineId), tierIdx: s.tierIdx, buildingCount: s.buildingCount, goalType: s.goalType, qty: s.qty }))
     .filter(s => s.line);
   if (!stages.length) { descEl.textContent = 'Pick a unit above to optimize for.'; bodyEl.innerHTML = ''; return; }
 
   const result = buildStagedOptimizeTimeline(stages, optimizeState.loomOn, optimizeState.allIn, civ);
   const styleNote = optimizeState.allIn ? ' — all-in, no realistic-economy pacing' : ' — realistic economy (sheep → berries/hunt → farms, no early Barracks)';
-  const planDesc = stages.length > 1
-    ? stages.map(s => `${s.buildingCount}x ${s.line.tiers[s.tierIdx].name}`).join(' → switching to ')
-    : `${stages[0].buildingCount}x ${stages[0].line.tiers[stages[0].tierIdx].name}`;
+  // Built from result.stageResults (not the input `stages`) since a
+  // 'quantity' stage's actual buildingCount is only known once the search
+  // picks it, and stageResults is also already sorted the same way the
+  // search itself processed stages (by target age), unlike the input order.
+  const srDesc = sr => sr.goalType === 'quantity'
+    ? `${sr.qty}x ${sr.line.tiers[sr.tierIdx].name} ASAP`
+    : `${sr.buildingCount}x ${sr.line.tiers[sr.tierIdx].name} in constant production`;
+  const planDesc = result.stageResults.length > 1
+    ? result.stageResults.map(srDesc).join(' → switching to ')
+    : srDesc(result.stageResults[0]);
   descEl.textContent = result.finishTime != null
-    ? `Fastest path to ${planDesc} in constant production — ready by ${fmtClock(result.finishTime)}, using ${result.tcCount} Town Center${result.tcCount === 1 ? '' : 's'}${styleNote}.`
+    ? `Fastest path to ${planDesc} — ready by ${fmtClock(result.finishTime)}, using ${result.tcCount} Town Center${result.tcCount === 1 ? '' : 's'}${styleNote}.`
     : `${planDesc} couldn't be reached within the 60-minute simulation cap — try fewer production buildings.`;
 
   const statRow = `<div class="stat-row">
@@ -4152,7 +4229,7 @@ function renderOptimizeResults() {
   // plan is exactly what it always showed.
   const stageBreakdown = result.stageResults.length <= 1 ? '' : result.stageResults.map((sr, i) => `
     <div class="pending-card">
-      <h3>Stage ${i + 1}: ${sr.buildingCount}x ${sr.line.tiers[sr.tierIdx].name}${sr.finishTime == null ? ' (blocked)' : ` — ready by ${fmtClock(sr.finishTime)}`}</h3>
+      <h3>Stage ${i + 1}: ${srDesc(sr)}${sr.finishTime == null ? ' (blocked)' : ` — ${sr.goalType === 'quantity' ? 'done' : 'ready'} by ${fmtClock(sr.finishTime)}`}</h3>
       ${sr.finishTime == null ? '' : renderVillagerBars(sr.villagers, sr.rates, sr.totalIncome, sr.farmUpkeepWoodPerSec, sr.houseWoodPerSec)}
     </div>`).join('');
 
@@ -4205,13 +4282,25 @@ function renderOptimizeStages() {
         <span class="tname">${line.tiers[stage.tierIdx].name}</span>
       </div>
       <div style="margin-top:8px;">
+        <span class="tname">Goal</span><br>
+        <div class="goal-type-toggle" data-stage-idx="${i}" style="display:flex;gap:6px;margin-top:6px;">
+          <button type="button" class="goal-type-btn" data-stage-idx="${i}" data-goal-type="sustain" style="flex:none;padding:6px 10px;font-size:12px;border-radius:var(--radius);cursor:pointer;font-family:inherit;${stage.goalType !== 'quantity' ? 'border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);' : 'border:1px solid var(--border2);background:var(--bg);color:var(--text2);'}">Constant Production</button>
+          <button type="button" class="goal-type-btn" data-stage-idx="${i}" data-goal-type="quantity" style="flex:none;padding:6px 10px;font-size:12px;border-radius:var(--radius);cursor:pointer;font-family:inherit;${stage.goalType === 'quantity' ? 'border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);' : 'border:1px solid var(--border2);background:var(--bg);color:var(--text2);'}">N Total</button>
+        </div>
+      </div>
+      ${stage.goalType === 'quantity' ? `
+      <div style="margin-top:8px;display:flex;align-items:center;gap:6px;">
+        <input type="number" class="stage-qty-input" data-stage-idx="${i}" min="1" value="${stage.qty ?? 9}" style="width:56px;padding:4px 6px;font-size:12px;">
+        <span class="tname" style="font-weight:400;">units total, as fast as possible — production-building count is picked automatically</span>
+      </div>` : `
+      <div style="margin-top:8px;">
         <span class="tname">Units in Constant Production</span><br>
         <div class="tier-dots stage-count-dots" data-stage-idx="${i}" style="margin-top:6px;">
           <span class="tier-dot${stage.buildingCount >= 1 ? ' filled' : ''}" data-count-idx="0" title="1 production building"></span>
           <span class="tier-dot${stage.buildingCount >= 2 ? ' filled' : ''}" data-count-idx="1" title="2 production buildings"></span>
           <span class="tier-dot${stage.buildingCount >= 3 ? ' filled' : ''}" data-count-idx="2" title="3 production buildings"></span>
         </div>
-      </div>
+      </div>`}
     </div>`;
   }).join('');
 
@@ -4238,6 +4327,17 @@ function renderOptimizeStages() {
       renderOptimizeResults();
     }));
   });
+  container.querySelectorAll('.goal-type-btn').forEach(btn => btn.addEventListener('click', () => {
+    const i = Number(btn.dataset.stageIdx);
+    optimizeState.stages[i].goalType = btn.dataset.goalType;
+    renderOptimizeStages();
+    renderOptimizeResults();
+  }));
+  container.querySelectorAll('.stage-qty-input').forEach(inp => inp.addEventListener('input', e => {
+    const i = Number(e.target.dataset.stageIdx);
+    optimizeState.stages[i].qty = Math.max(1, Number(e.target.value) || 1);
+    renderOptimizeResults();
+  }));
   container.querySelectorAll('.stage-remove').forEach(btn => btn.addEventListener('click', () => {
     optimizeState.stages.splice(Number(btn.dataset.stageIdx), 1);
     renderOptimizeStages();
@@ -4248,7 +4348,7 @@ function renderOptimizeStages() {
 document.getElementById('optimize-add-stage').addEventListener('click', () => {
   const civ = selectedCiv();
   const lines = allLinesForCiv(civ);
-  optimizeState.stages.push({ lineId: (lines[1] || lines[0]).id, tierIdx: 0, buildingCount: 1 });
+  optimizeState.stages.push({ lineId: (lines[1] || lines[0]).id, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 });
   renderOptimizeStages();
   renderOptimizeResults();
 });
