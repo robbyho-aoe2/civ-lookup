@@ -1078,6 +1078,12 @@ function renderWeeklyReport(report) {
         <div class="stat-tile"><div class="label">All-Time Combined</div><div class="value">${g.allTimeCombined.toLocaleString()}</div></div>
         <div class="stat-tile"><div class="label">This Week (${report.windowStart} → ${report.windowEnd})</div><div class="value">${g.windowCombined.toLocaleString()}</div></div>
       </div>
+      ${g.windowBySize ? `
+      <div class="stat-row" style="margin-top:8px">
+        ${Object.entries(g.windowBySize).filter(([size]) => size !== 'total').map(([size, count]) => `
+          <div class="stat-tile"><div class="label">${size} This Week</div><div class="value">${count.toLocaleString()}</div></div>
+        `).join('')}
+      </div>` : ''}
       <p class="sub-desc">+${g.growth1v1.toLocaleString()} 1v1 / +${g.growthTeam.toLocaleString()} Team since last report · this week: ${g.window1v1.toLocaleString()} 1v1, ${g.windowTeam.toLocaleString()} Team${g.lowActivityCaveat ? ' — <b>note:</b> this looks low for the tracked pool, likely a data-refresh lag rather than an real activity drop' : ''}</p>
     </div>`;
 
@@ -1090,22 +1096,15 @@ function renderWeeklyReport(report) {
       )}
     </div>`;
 
-  const rivalryUpdates = `
+  const rivalries = `
     <div class="weekly-section">
-      <h3>Rivalry Updates</h3>
-      <p class="sub-desc">The marquee all-time head-to-heads, and how much they grew this week.</p>
-      ${weeklyTable(
-        [{ label: 'Rivalry' }, { label: 'All-Time Games', num: true }, { label: 'Record', num: true }, { label: 'This Week', num: true }],
-        report.rivalryUpdates.map(r => [`${wLink(r.nameA, r.idA)} vs ${wLink(r.nameB, r.idB)}`, r.allTimeGames.toLocaleString(), r.record, r.gamesThisWindow ? `+${r.gamesThisWindow}` : 'quiet week'])
-      )}
-    </div>`;
-
-  const rivalryOfWeek = `
-    <div class="weekly-section">
-      <h3>Rivalry of the Week</h3>
-      ${report.rivalryOfWeek
-        ? `<div class="weekly-highlight"><b>${wLink(report.rivalryOfWeek.nameA, report.rivalryOfWeek.idA)}</b> vs <b>${wLink(report.rivalryOfWeek.nameB, report.rivalryOfWeek.idB)}</b> — ${report.rivalryOfWeek.gamesThisWindow} games this week, ${report.rivalryOfWeek.record}</div>`
-        : '<p class="weekly-empty">No pair played each other more than once this week.</p>'}
+      <h3>Rivalries</h3>
+      <p class="sub-desc">1v1 pairs with at least 3 games together, ranked by whoever played each other most recently — a constantly-updating list rather than a fixed all-time top 5.</p>
+      ${!report.rivalries || !report.rivalries.length ? '<p class="weekly-empty">No qualifying rivalries found.</p>' : report.rivalries.map(r => `
+        <div class="weekly-highlight" style="margin-bottom:10px">
+          <b>${wLink(r.nameA, r.idA)}</b> vs <b>${wLink(r.nameB, r.idB)}</b> — ${r.allTimeGames.toLocaleString()} games all-time, ${r.record}, last played ${r.lastPlayed}
+          <div class="sub-desc" style="margin-top:4px">${r.recentGames.map(g => `${g.date} on ${g.map} (${g.winnerName} won)`).join(' · ')}</div>
+        </div>`).join('')}
     </div>`;
 
   const upsets = `
@@ -1120,7 +1119,7 @@ function renderWeeklyReport(report) {
 
   const newPlayers = `
     <div class="weekly-section">
-      <h3>New Players</h3>
+      <h3>New/Returning Players</h3>
       ${weeklyTable(
         [{ label: 'Player' }, { label: 'Games', num: true }, { label: 'Rating', num: true }, { label: 'First 10 WR', num: true }, { label: 'Day Span', num: true }],
         report.newPlayers.map(p => [wLink(p.name, p.profileId), p.totalGames.toLocaleString(), p.rating ?? '—', weeklyPct(p.firstTenWinRate), p.daySpan == null ? '—' : p.daySpan.toLocaleString()])
@@ -1156,13 +1155,23 @@ function renderWeeklyReport(report) {
       ${weeklyTable([{ label: 'Squad' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }], rows.map(r => [r.names.map((n, i) => wLink(n, r.profileIds?.[i])).join(' + '), r.games.toLocaleString(), weeklyPct(r.winRate)]))}`;
   const squads = `
     <div class="weekly-section">
-      <h3>Top Duos / Trios / Quads This Week</h3>
+      <h3>Top 5 Duos / Trios / Quads This Week</h3>
       ${squadTable('Duos', sq.duos)}
       ${squadTable('Trios', sq.trios)}
       ${squadTable('Quads', sq.quads)}
     </div>`;
 
-  return headline + mostGames + rivalryUpdates + rivalryOfWeek + upsets + newPlayers + civPopularity + movers + squads;
+  const pcStandings = report.pc1v1Standings ? `
+    <div class="weekly-section">
+      <h3>PC 1v1 Standings — Console Roster</h3>
+      <p class="sub-desc">Current 1v1 PC rating for tracked console players with crossplay history. Rank-movement tracking (gainers/losers, like Biggest Movers above) starts next week now that a rating snapshot exists to diff against — this week just shows where everyone stands.</p>
+      ${weeklyTable(
+        [{ label: 'Player' }, { label: 'PC 1v1 Rating', num: true }, { label: 'Games This Week', num: true }, { label: 'Total PC 1v1 Games', num: true }],
+        report.pc1v1Standings.map(p => [wLink(p.name, p.profileId), p.rating.toLocaleString(), p.windowGamesPC1v1.toLocaleString(), p.totalGamesPC1v1.toLocaleString()])
+      )}
+    </div>` : '';
+
+  return headline + mostGames + rivalries + upsets + newPlayers + civPopularity + movers + squads + pcStandings;
 }
 
 async function loadAndRenderWeekly() {
