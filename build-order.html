@@ -438,6 +438,22 @@ const DATA = {
       { name:'Heavy Camel Rider', age:'Imperial', trainTime:20, upgradeCost:{food:325,wood:0,gold:360,stone:0}, upgradeResearchTime:105 },
       { name:'Imperial Camel Rider', age:'Imperial', trainTime:20, upgradeCost:{food:1000,wood:0,gold:500,stone:0}, upgradeResearchTime:125 },
     ]},
+    // Two genuinely distinct elephant lines — NOT the same unit, don't
+    // conflate with the Persians' War Elephant / Khmer's Ballista Elephant
+    // uniques below (both Castle-trained, already correctly modeled as
+    // civ-specific uniqueUnits, not lines here). Verified against the
+    // AoE2 Fandom wiki (cross-checked vs. SiegeEngineers/aoe2techtree's
+    // data.json, which had one stale-looking cost record for Elephant
+    // Archer that didn't match any real patch note, so the wiki's current,
+    // changelog-tracked numbers were trusted instead for that one).
+    { id:'battle-elephant-line', name:'Battle Elephant', building:'Stable', cost:{food:100,wood:0,gold:70,stone:0}, pop:1, civRestriction:'Bengalis, Burmese, Dravidians, Khmer, Malay, Vietnamese only; Dravidians cannot research the Elite upgrade (not modeled — this tool doesn\'t restrict individual tiers per civ)', tiers:[
+      { name:'Battle Elephant', age:'Castle', trainTime:24 },
+      { name:'Elite Battle Elephant', age:'Imperial', trainTime:24, upgradeCost:{food:1100,wood:0,gold:700,stone:0}, upgradeResearchTime:100 },
+    ]},
+    { id:'elephant-archer-line', name:'Elephant Archer', building:'Archery Range', cost:{food:60,wood:0,gold:80,stone:0}, pop:1, civRestriction:'Bengalis, Dravidians, Gurjaras only — not Hindustanis, who lost access to this unit', tiers:[
+      { name:'Elephant Archer', age:'Castle', trainTime:32 },
+      { name:'Elite Elephant Archer', age:'Imperial', trainTime:32, upgradeCost:{food:900,wood:0,gold:500,stone:0}, upgradeResearchTime:80 },
+    ]},
     { id:'mangonel-line', name:'Mangonel', building:'Siege Workshop', cost:{food:0,wood:160,gold:135,stone:0}, pop:1, tiers:[
       { name:'Mangonel', age:'Castle', trainTime:46 },
       { name:'Onager', age:'Imperial', trainTime:46, upgradeCost:{food:800,wood:0,gold:500,stone:0}, upgradeResearchTime:75 },
@@ -506,7 +522,9 @@ const DATA = {
         "eagle-line",
         "camel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -540,7 +558,9 @@ const DATA = {
         "knight-line",
         "camel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -605,7 +625,9 @@ const DATA = {
       ],
       "ecoBonuses": [],
       "unavailableUnitLines": [
-        "eagle-line"
+        "eagle-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -664,7 +686,9 @@ const DATA = {
       "unavailableUnitLines": [
         "eagle-line",
         "cavalry-archer-line",
-        "camel-line"
+        "camel-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -690,7 +714,9 @@ const DATA = {
         "eagle-line",
         "camel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -716,7 +742,9 @@ const DATA = {
         "eagle-line",
         "camel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -753,7 +781,9 @@ const DATA = {
       "ecoBonuses": [],
       "unavailableUnitLines": [
         "eagle-line",
-        "camel-line"
+        "camel-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -794,7 +824,8 @@ const DATA = {
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
-        "hand-cannoneer"
+        "hand-cannoneer",
+        "elephant-archer-line"
       ]
     },
     {
@@ -819,7 +850,9 @@ const DATA = {
         { "type": "age-cost-pct", "scope": "imperial", "value": 33, "note": "Imperial Age costs 33% less" }
       ],
       "unavailableUnitLines": [
-        "eagle-line"
+        "eagle-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -852,7 +885,9 @@ const DATA = {
         "eagle-line",
         "camel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -899,7 +934,9 @@ const DATA = {
         "camel-line",
         "mangonel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -924,7 +961,9 @@ const DATA = {
       "unavailableUnitLines": [
         "eagle-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -988,7 +1027,9 @@ const DATA = {
       "ecoBonuses": [],
       "unavailableUnitLines": [
         "eagle-line",
-        "hand-cannoneer"
+        "hand-cannoneer",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1028,7 +1069,9 @@ const DATA = {
       ],
       "unavailableUnitLines": [
         "eagle-line",
-        "camel-line"
+        "camel-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1060,7 +1103,9 @@ const DATA = {
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1090,7 +1135,9 @@ const DATA = {
       ],
       "unavailableUnitLines": [
         "eagle-line",
-        "camel-line"
+        "camel-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1142,7 +1189,8 @@ const DATA = {
         "eagle-line",
         "cavalry-archer-line",
         "knight-line",
-        "ram-line"
+        "ram-line",
+        "battle-elephant-line"
       ]
     },
     {
@@ -1180,7 +1228,9 @@ const DATA = {
       "unavailableUnitLines": [
         "eagle-line",
         "knight-line",
-        "ram-line"
+        "ram-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1216,7 +1266,9 @@ const DATA = {
         "eagle-line",
         "camel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1257,7 +1309,9 @@ const DATA = {
         "knight-line",
         "camel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1296,7 +1350,9 @@ const DATA = {
       ],
       "unavailableUnitLines": [
         "eagle-line",
-        "camel-line"
+        "camel-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1327,7 +1383,9 @@ const DATA = {
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1367,7 +1425,9 @@ const DATA = {
         "knight-line",
         "camel-line",
         "mangonel-line",
-        "hand-cannoneer"
+        "hand-cannoneer",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1407,7 +1467,9 @@ const DATA = {
         "knight-line",
         "mangonel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1432,7 +1494,8 @@ const DATA = {
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
-        "bombard-cannon"
+        "bombard-cannon",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1477,7 +1540,9 @@ const DATA = {
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
-        "mangonel-line"
+        "mangonel-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1514,7 +1579,9 @@ const DATA = {
       "ecoBonuses": [],
       "unavailableUnitLines": [
         "eagle-line",
-        "camel-line"
+        "camel-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1540,7 +1607,9 @@ const DATA = {
         "eagle-line",
         "camel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1567,7 +1636,8 @@ const DATA = {
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
-        "hand-cannoneer"
+        "hand-cannoneer",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1597,7 +1667,9 @@ const DATA = {
         }
       ],
       "unavailableUnitLines": [
-        "eagle-line"
+        "eagle-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1646,7 +1718,9 @@ const DATA = {
         "knight-line",
         "camel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1681,7 +1755,9 @@ const DATA = {
         "knight-line",
         "camel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1706,7 +1782,9 @@ const DATA = {
       "unavailableUnitLines": [
         "eagle-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1756,7 +1834,9 @@ const DATA = {
         "knight-line",
         "camel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1798,7 +1878,9 @@ const DATA = {
         }
       ],
       "unavailableUnitLines": [
-        "eagle-line"
+        "eagle-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1843,7 +1925,9 @@ const DATA = {
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
-        "hand-cannoneer"
+        "hand-cannoneer",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1880,7 +1964,9 @@ const DATA = {
       "ecoBonuses": [],
       "unavailableUnitLines": [
         "eagle-line",
-        "camel-line"
+        "camel-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1926,7 +2012,9 @@ const DATA = {
         "eagle-line",
         "camel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -1949,7 +2037,9 @@ const DATA = {
       ],
       "ecoBonuses": [],
       "unavailableUnitLines": [
-        "eagle-line"
+        "eagle-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -2004,7 +2094,9 @@ const DATA = {
         "scorpion-line",
         "hand-cannoneer",
         "bombard-cannon",
-        "trebuchet"
+        "trebuchet",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -2036,7 +2128,9 @@ const DATA = {
         "eagle-line",
         "camel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -2069,7 +2163,9 @@ const DATA = {
         "eagle-line",
         "camel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -2106,7 +2202,9 @@ const DATA = {
       "ecoBonuses": [],
       "unavailableUnitLines": [
         "eagle-line",
-        "camel-line"
+        "camel-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -2143,7 +2241,9 @@ const DATA = {
       "ecoBonuses": [],
       "unavailableUnitLines": [
         "eagle-line",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -2167,7 +2267,9 @@ const DATA = {
       "ecoBonuses": [],
       "unavailableUnitLines": [
         "eagle-line",
-        "camel-line"
+        "camel-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -2221,7 +2323,9 @@ const DATA = {
         "knight-line",
         "camel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -2251,7 +2355,9 @@ const DATA = {
         }
       ],
       "unavailableUnitLines": [
-        "eagle-line"
+        "eagle-line",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -2289,7 +2395,8 @@ const DATA = {
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
-        "hand-cannoneer"
+        "hand-cannoneer",
+        "elephant-archer-line"
       ]
     },
     {
@@ -2339,7 +2446,9 @@ const DATA = {
         "eagle-line",
         "camel-line",
         "hand-cannoneer",
-        "bombard-cannon"
+        "bombard-cannon",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -2394,7 +2503,9 @@ const DATA = {
         "camel-line",
         "hand-cannoneer",
         "bombard-cannon",
-        "trebuchet"
+        "trebuchet",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     },
     {
@@ -2448,7 +2559,9 @@ const DATA = {
         "camel-line",
         "hand-cannoneer",
         "bombard-cannon",
-        "trebuchet"
+        "trebuchet",
+        "battle-elephant-line",
+        "elephant-archer-line"
       ]
     }
   ],
@@ -3190,13 +3303,29 @@ function relevantEcoLines(rows, civ) {
 // affordable, same as before this behavior existed. Only applies when the
 // plan actually leaves Dark Age at all — a pure Dark-Age target (e.g. plain
 // Militia) has nothing to defer TO, so it's just built immediately either way.
-function optimizeMandatorySetup(targetLine, tierIdx, civ, loomOn, allIn, free) {
+function optimizeMandatorySetup(targetLine, tierIdx, civ, loomOn, allIn, buildingCount, free) {
   const haveSet = new Set();
   const items = [];
   const willAgeUp = !allIn && ageIndex(targetLine.tiers[tierIdx].age) > ageIndex('Dark');
   const buildingItems = buildingChainItems(targetLine.building, civ, haveSet);
   if (willAgeUp) buildingItems.forEach(it => { if (it.age === 'Dark') it.deferToEnd = true; });
   items.push(...buildingItems);
+  // buildingChainItems only ever adds ONE of the target's own training
+  // building (haveSet dedups by name, since a prerequisite only needs to
+  // exist AT ALL — Archery Range doesn't need multiple Barracks). Running N
+  // production buildings in parallel needs N PHYSICAL copies of that one
+  // though, unlike its prerequisites: each extra copy is its own build, not
+  // a re-unlock. Town Center is excluded — every game already starts with
+  // one, and "N Town Centers" is a decision the search itself makes (see
+  // MAX_EXTRA_TC), not something implied by the target line's own count.
+  if (targetLine.building !== 'Town Center' && buildingCount > 1) {
+    const def = targetLine.building === 'Castle' ? DATA.castle : DATA.productionBuildings[targetLine.building];
+    for (let i = 1; i < buildingCount; i++) {
+      const extra = { name: targetLine.building, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge };
+      if (willAgeUp && extra.age === 'Dark') extra.deferToEnd = true;
+      items.push(extra);
+    }
+  }
   if (loomOn && !allIn && !free.has('loom')) {
     const loom = DATA.ecoTechs.find(t => t.id === 'loom');
     items.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age });
@@ -3246,7 +3375,7 @@ const MAX_EXTRA_TC = 2;
 
 function buildOptimizeTimeline(targetLine, tierIdx, buildingCount, loomOn, allIn, civ) {
   const free = freeTechIds(civ);
-  const mandatory = optimizeMandatorySetup(targetLine, tierIdx, civ, loomOn, allIn, free);
+  const mandatory = optimizeMandatorySetup(targetLine, tierIdx, civ, loomOn, allIn, buildingCount, free);
   // The realistic-economy script (see OPENING_SEQUENCE) governs EVERY
   // villager born while still within it, overriding whatever any individual
   // item needs — skipped entirely (pure "assign to whatever's neediest for
@@ -3728,7 +3857,7 @@ function renderResults() {
 // you pay once, not an ongoing rate (unlike farm upkeep, which recurs).
 // Doesn't model relocating to a new camp when a deposit runs out — how
 // often that happens depends on the map, not anything this tool tracks.
-function renderSetupCard(villagers, civ, needsCastle, neededBuildings) {
+function renderSetupCard(villagers, civ, needsCastle, neededBuildings, buildingCounts) {
   const settlement = (civ?.ecoBonuses || []).find(b => b.type === 'settlement');
   const muleCart = (civ?.ecoBonuses || []).find(b => b.type === 'mule-cart');
   const needsAny = villagers.food > 0 || villagers.gold > 0 || villagers.stone > 0 || villagers.wood > 0 || needsCastle || neededBuildings.size > 0;
@@ -3772,19 +3901,32 @@ function renderSetupCard(villagers, civ, needsCastle, neededBuildings) {
     note = (campDiscount ? `${civ.name} buildings discounted ${campDiscount.value}%. ` : '') + 'Assumes one camp per resource; a map with scattered deposits may need more.';
   }
 
+  // Multiple production buildings (Optimize's "Units in Constant
+  // Production" count) means multiple PHYSICAL copies of whichever building
+  // actually trains the target — buildingCounts carries that count for just
+  // that one building name; everything else here (prerequisites, filler)
+  // only ever needs one.
+  const timesCost = (cost, n) => n <= 1 ? cost : RES.reduce((c, r) => { c[r] = (cost[r] || 0) * n; return c; }, {});
+  const countFor = name => buildingCounts?.[name] || 1;
+
   // A civ's signature unique unit (and a handful of others — see this
   // session's building-field audit) trains at a real Castle, not the
   // Barracks/Stable/Archery Range/Siege Workshop the roster used to claim —
   // stone-only, and Settlement doesn't cover it (Settlement only replaces
   // Mill/Lumber Camp/Mining Camp).
-  if (needsCastle) items.push({ name: 'Castle', cost: DATA.castle.cost });
+  if (needsCastle) {
+    const n = countFor('Castle');
+    items.push({ name: n > 1 ? `Castle ×${n}` : 'Castle', cost: timesCost(DATA.castle.cost, n) });
+  }
 
   // Whichever training buildings the current Army Composition actually uses
   // (Barracks for Militia-line, Archery Range for Archers, etc.) — a real
   // wood cost this tool treated as free/instant until now.
   neededBuildings.forEach(b => {
     const def = DATA.productionBuildings[b];
-    if (def) items.push({ name: b, cost: def.cost });
+    if (!def) return;
+    const n = countFor(b);
+    items.push({ name: n > 1 ? `${b} ×${n}` : b, cost: timesCost(def.cost, n) });
   });
 
   const totalFood = items.reduce((s, i) => s + (i.cost.food || 0), 0);
@@ -3846,7 +3988,7 @@ function renderOptimizeResults() {
   const bars = renderVillagerBars(result.villagers, result.rates, result.totalIncome, result.farmUpkeepWoodPerSec, result.houseWoodPerSec);
 
   bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>'
-    + renderSetupCard(result.villagers, civ, result.haveSet.has('Castle'), result.haveSet)
+    + renderSetupCard(result.villagers, civ, result.haveSet.has('Castle'), result.haveSet, { [targetLine.building]: optimizeState.buildingCount })
     + renderTimelineCard(result.checkpoints, result.villRate, civ);
 }
 
