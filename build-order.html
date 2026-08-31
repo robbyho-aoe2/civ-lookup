@@ -2537,10 +2537,15 @@ function renderTierLinesHtml(techs, free) {
 
 function renderFlatTechRow(t, free) {
   if (t.saveOnly) {
+    // defaultSave (Loom) only means anything in Build Order Builder — the
+    // "Save" checkbox never affects Constant Production's output at all (no
+    // timeline/goals concept there), so defaulting it checked there is just
+    // a misleading checked-box that does nothing. Off by default in that mode.
+    const checked = t.defaultSave && currentMode === 'buildorder';
     return `<div class="tech-row">
       <span class="tname">${t.name}</span>
       <span class="tage">${t.age}</span>
-      <label class="save-check"><input type="checkbox" data-tech-save="${t.id}" ${t.defaultSave ? 'checked' : ''}> Save</label>
+      <label class="save-check"><input type="checkbox" data-tech-save="${t.id}" ${checked ? 'checked' : ''}> Save</label>
     </div>`;
   }
   const isFree = free.has(t.id);
