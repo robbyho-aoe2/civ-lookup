@@ -147,7 +147,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <h2>Choose a Tool</h2>
     <div class="mode-toggle">
       <button class="mode-btn" data-mode="production" type="button"><b>⚙️ Constant Production</b><span>Check off what you have and what you want to keep producing — see the ideal villager split.</span></button>
-      <button class="mode-btn" data-mode="buildorder" type="button"><b>📋 Build Order Builder</b><span>Set your starting point and what you want to make — see how to get there fastest.</span></button>
+      <button class="mode-btn" data-mode="optimize" type="button"><b>⚡ Optimize</b><span>Pick a unit and go — the fastest path to constant production of it.</span></button>
     </div>
   </div>
 
@@ -157,18 +157,6 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="assumptions" id="intro-assumptions"></p>
   </div>
 
-  <div class="card" data-mode-only="buildorder">
-    <h2>Goals — At</h2>
-    <p class="desc">Every build starts from a fresh Dark Age game (3 villagers, 1 Scout Cavalry). Pick an age here if you want your goals ready by a specific point beyond whatever your picks below already require.</p>
-    <div class="tier-dots" id="target-age-dots">
-      <span class="tier-dot" data-age="Dark" data-idx="0" title="Dark Age"></span>
-      <span class="tier-dot" data-age="Feudal" data-idx="1" title="Feudal Age"></span>
-      <span class="tier-dot" data-age="Castle" data-idx="2" title="Castle Age"></span>
-      <span class="tier-dot" data-age="Imperial" data-idx="3" title="Imperial Age"></span>
-    </div>
-    <p class="assumptions" id="target-age-desc" style="margin-top:10px;margin-bottom:0"></p>
-  </div>
-
   <div class="card">
     <h2>Civilization</h2>
     <p class="desc">Adds their unique unit(s) to the roster below and applies any economy bonus they have.</p>
@@ -176,13 +164,31 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <div id="civ-bonus-list"></div>
   </div>
 
-  <div class="card">
+  <div class="card" data-mode-only="optimize">
+    <h2>Optimize For</h2>
+    <p class="desc">Pick a unit to constantly produce, and this finds the fastest path there — automatically deciding which economy upgrades and extra Town Centers are worth it along the way.</p>
+    <select id="optimize-unit-select"></select>
+    <div class="tier-dots" id="optimize-tier-dots" style="margin-top:10px;"></div>
+    <div style="display:flex;align-items:center;gap:24px;margin-top:14px;flex-wrap:wrap;">
+      <div>
+        <span class="tname">Units in Constant Production</span><br>
+        <div class="tier-dots" id="optimize-count-dots" style="margin-top:6px;">
+          <span class="tier-dot" data-idx="0" title="1 production building"></span>
+          <span class="tier-dot" data-idx="1" title="2 production buildings"></span>
+          <span class="tier-dot" data-idx="2" title="3 production buildings"></span>
+        </div>
+      </div>
+      <label class="save-check" style="font-size:12px;"><input type="checkbox" id="optimize-loom" checked> Research Loom</label>
+    </div>
+  </div>
+
+  <div class="card" data-mode-only="production">
     <h2>Economy Upgrades</h2>
     <p class="desc" id="eco-desc"></p>
     <div class="tech-grid" id="tech-grid"></div>
   </div>
 
-  <div class="card">
+  <div class="card" data-mode-only="production">
     <h2 id="army-heading">Army Composition</h2>
     <p class="desc" id="army-desc"></p>
     <div style="max-height:460px;overflow-y:auto;">
@@ -212,6 +218,19 @@ const DATA = {
   // `building` field, corrected this session against real game data.
   // 650 stone only (no food/wood/gold), 200s build time, Castle Age minimum.
   castle: { cost: { food: 0, wood: 0, gold: 0, stone: 650 }, buildTimeSeconds: 200, minAge: 'Castle' },
+  // An additional (constructed, not the free starting) Town Center — 275
+  // wood + 100 stone, 150s build time, buildable from Dark Age on (verified
+  // against SiegeEngineers/aoe2techtree data.json's TOWNCENTER record and
+  // cross-checked against the Fandom wiki, which also confirms this is a
+  // FLAT per-TC cost — no mechanic in current AoE2:DE makes each additional
+  // TC cost progressively more). Known, deliberately unmodeled gap, same
+  // spirit as the Sicilians/Donjon note above: Britons (-50% wood, Castle
+  // Age+), Bulgarians (-50% stone), Incas (-15% stone), and Malians (-15%
+  // wood) all discount Town Centers specifically, but this tool's cost-
+  // modifier system (costForCiv) has no building-scoped hook, only global
+  // per-resource ones — adding one just for this would be a bigger change
+  // than this tool's other known civ-exception gaps warrant right now.
+  townCenter: { cost: { food: 0, wood: 275, gold: 0, stone: 100 }, buildTimeSeconds: 150, minAge: 'Dark' },
   // Every production building a unit line actually trains at — wanting
   // Militia means a Barracks has to exist first, wanting Archers an Archery
   // Range, etc., same idea as Castle above but for the ordinary training
@@ -315,11 +334,26 @@ const DATA = {
     // meaningful, so it skips the have/save pair and shows only a
     // pre-checked "save for" (saveOnly + defaultSave), staying out of the
     // Wheelbarrow/Hand Cart dot-line since it's not part of that tier chain.
-    // Wheelbarrow/Hand Cart boost carry capacity + movement speed —
-    // approximated as an all-resource rate bump since this tool has no
-    // distance/travel model; Hand Cart's 50% is a TOTAL that replaces
-    // Wheelbarrow's 25% rather than stacking on top of it (handled by
-    // `supersedes` in effectiveGatherRate).
+    // Wheelbarrow/Hand Cart's nominal tooltip numbers (+25%/+50% carry
+    // capacity, +10%/+10% move speed) do NOT translate to a flat +25%/+50%
+    // gather-rate bump on every resource — that overstates the real effect
+    // badly, since the benefit only comes from round-trip walking time, and
+    // Lumber/Mining Camps are normally built adjacent to their resource
+    // (short walk) while Farms still carry real per-trip walking + a hard
+    // per-farm rate cap. Real effective gather-rate deltas, sourced from two
+    // independent measurement sets (an in-game DE timed test in a Steam
+    // guide, "Farming Rates in AoE2:DE" by Milorad Dodik, and Spirit of the
+    // Law's published food/wood/gold rates as embedded in the AoEZone
+    // Wheelbarrow/Hand Cart calculator's source): Farm food +12%(Wheelbarrow)
+    // / +20% total (Hand Cart); Wood +3% / +6% total; Gold +2% / +4% total.
+    // Stone has no measured data — modeled the same as Gold (mechanically
+    // closest: short-distance mining-camp gathering). Hunt/Forage aren't
+    // tracked as separate resources by this tool (folded into the single
+    // "food" rate, which favors the Farm number since farms dominate food
+    // gathering for most of a build) — see bonusByResource below, consumed
+    // by effectiveGatherRate in place of a blanket bonusPct. Hand Cart's
+    // numbers are TOTALS that replace Wheelbarrow's rather than stacking
+    // (handled by `supersedes` in effectiveGatherRate).
     // tcQueue:true = researched at the Town Center, which can only do ONE
     // thing at a time (train a villager OR research a tech) — so these
     // PAUSE villager production for researchTime seconds, unlike every
@@ -330,8 +364,8 @@ const DATA = {
     // Loom itself doesn't get more useful by waiting, so there's no reason
     // to pay that villager-time cost before you have to.
     { id:'loom', name:'Loom', age:'Dark', resource:null, bonusPct:0, cost:{food:0,wood:0,gold:50,stone:0}, group:'tc', saveOnly:true, defaultSave:true, tcQueue:true, researchTime:25, deferToEnd:true },
-    { id:'wheelbarrow', name:'Wheelbarrow', age:'Feudal', resource:'all', bonusPct:25, cost:{food:175,wood:50,gold:0,stone:0}, group:'tc', line:'carry-capacity', lineLabel:'Carry Capacity', tcQueue:true, researchTime:75 },
-    { id:'hand-cart',    name:'Hand Cart',    age:'Castle', resource:'all', bonusPct:50, cost:{food:300,wood:200,gold:0,stone:0}, group:'tc', supersedes:'wheelbarrow', line:'carry-capacity', lineLabel:'Carry Capacity', tcQueue:true, researchTime:55 },
+    { id:'wheelbarrow', name:'Wheelbarrow', age:'Feudal', resource:'all', bonusByResource:{food:12,wood:3,gold:2,stone:2}, cost:{food:175,wood:50,gold:0,stone:0}, group:'tc', line:'carry-capacity', lineLabel:'Carry Capacity', tcQueue:true, researchTime:75 },
+    { id:'hand-cart',    name:'Hand Cart',    age:'Castle', resource:'all', bonusByResource:{food:20,wood:6,gold:4,stone:4}, cost:{food:300,wood:200,gold:0,stone:0}, group:'tc', supersedes:'wheelbarrow', line:'carry-capacity', lineLabel:'Carry Capacity', tcQueue:true, researchTime:55 },
     // Purely-combat techs — zero gather-rate/cost effect (resource:null, so
     // effectiveGatherRate/costForCiv never touch them), included only so
     // they're saveable as goals like Loom already is.
@@ -2446,32 +2480,32 @@ function freeTechIds(civ) {
   return new Set((civ?.ecoBonuses || []).filter(b => b.type === 'free-tech').map(b => b.techId));
 }
 
-// ─── Economy tech grid (have-it vs. saving-for-it) ─────────────────────────
+// ─── Economy tech grid ("have it" — Constant Production's only user) ──────
 
 function renderTechGrid() {
   const civ = selectedCiv();
   const free = freeTechIds(civ);
   const grid = document.getElementById('tech-grid');
 
-  // Group by resource, but pull out the 'mill' and 'carry' sub-groups (both
+  // Group by resource, but pull out the 'mill' and 'tc' sub-groups (both
   // otherwise resource:'food'/'all') into their own labeled blocks so they
   // don't read as one undifferentiated list. Every group here is rendered
-  // by renderTierLinesHtml, which handles both dot-lines (2+ tiers sharing
-  // a `.line`) and lone flat/saveOnly entries (like Loom) in one pass.
+  // by renderTierLinesHtml as a dot-line (2+ tiers sharing a `.line`).
   const groups = [];
   RES.concat('all').forEach(r => {
     const techs = DATA.ecoTechs.filter(t => t.resource === r && !t.group);
     if (techs.length) groups.push({ label: `${RES_ICON[r] || ''} ${RES_LABEL[r] || 'All Resources'}`, techs });
   });
-  // Blacksmith/Stable/Siege techs have zero gather-rate effect — they're
-  // goals (things to save toward), not economy inputs, so Constant
-  // Production (which only cares about steady-state villager placement)
-  // doesn't show them at all.
-  const structuralGroups = currentMode === 'buildorder'
-    ? ['mill', 'tc', 'blacksmith', 'stable', 'siege']
-    : ['mill', 'tc'];
+  // Blacksmith/Stable/Siege techs have zero gather-rate effect — this grid
+  // only cares about steady-state villager placement (Constant Production is
+  // its only user now that Build Order Builder is gone), so they're left out
+  // entirely rather than shown as inert rows. Loom (`saveOnly`, part of the
+  // 'tc' group) is excluded the same way — it never had a gather-rate effect
+  // either, and the "save it as a goal" concept it used to support doesn't
+  // exist anywhere in this tool anymore.
+  const structuralGroups = ['mill', 'tc'];
   structuralGroups.forEach(g => {
-    const techs = DATA.ecoTechs.filter(t => t.group === g);
+    const techs = DATA.ecoTechs.filter(t => t.group === g && !t.saveOnly);
     if (techs.length) groups.push({ label: TECH_GROUP_LABEL[g], techs });
   });
 
@@ -2480,20 +2514,7 @@ function renderTechGrid() {
       ${renderTierLinesHtml(techs, free)}
     </div>`).join('');
 
-  grid.querySelectorAll('[data-tech]').forEach(cb => cb.addEventListener('change', () => {
-    if (cb.checked) {
-      const save = grid.querySelector(`[data-tech-save="${cb.dataset.tech}"]`);
-      if (save) save.checked = false;
-    }
-    renderResults();
-  }));
-  grid.querySelectorAll('[data-tech-save]').forEach(cb => cb.addEventListener('change', () => {
-    if (cb.checked) {
-      const have = grid.querySelector(`[data-tech="${cb.dataset.techSave}"]`);
-      if (have) have.checked = false;
-    }
-    renderResults();
-  }));
+  grid.querySelectorAll('[data-tech]').forEach(cb => cb.addEventListener('change', renderResults));
 
   wireTierLines(grid, free);
 }
@@ -2505,67 +2526,29 @@ function renderTechGrid() {
 // the dot never triggers the checkbox's own native click/activation
 // behavior — state is driven entirely by JS in wireTierLines, avoiding a
 // timing fight with the browser's pre-click-toggle/cancel-revert sequence.
+// Every tech reaching this grid now carries a `.line` (the structural groups
+// that don't — Loom, and the combat techs excluded above — never make it in,
+// see renderTechGrid), so this only ever needs the dot-line rendering.
 function renderTierLinesHtml(techs, free) {
-  const lined = techs.filter(t => t.line);
-  const flat = techs.filter(t => !t.line);
-  // Build Order Builder starts every tech un-researched (a real game always
-  // does) — dots there set a GOAL chain (data-tech-save on every tier up
-  // through the one clicked, since you have to research a line in order)
-  // rather than an immediate "already have it" effect. Constant Production
-  // keeps the old "have" semantics (data-tech, immediate rate effect),
-  // matching its own steady-state framing. A free civ tech (auto-unlocked,
-  // no research needed) is always "have" regardless of mode.
-  const isGoalMode = currentMode === 'buildorder';
-
   const lines = {};
-  lined.forEach(t => { (lines[t.line] = lines[t.line] || []).push(t); });
-  const lineRows = Object.values(lines).map(lineTechs => {
+  techs.forEach(t => { (lines[t.line] = lines[t.line] || []).push(t); });
+  return Object.values(lines).map(lineTechs => {
     const dots = lineTechs.map(t => {
       const isFree = free.has(t.id);
-      const attr = isFree ? 'data-tech' : (isGoalMode ? 'data-tech-save' : 'data-tech');
-      return `<span class="tier-dot${isFree ? ' filled locked' : ''}" data-age="${t.age}" title="${t.name} (${t.age})"></span><input type="checkbox" ${attr}="${t.id}" ${isFree ? 'checked disabled' : ''} style="display:none">`;
+      return `<span class="tier-dot${isFree ? ' filled locked' : ''}" data-age="${t.age}" title="${t.name} (${t.age})"></span><input type="checkbox" data-tech="${t.id}" ${isFree ? 'checked disabled' : ''} style="display:none">`;
     }).join('');
     return `<div class="tech-line-row">
       <span class="tname">${lineTechs[0].lineLabel}</span>
       <div class="tier-dots" data-tier-line="${lineTechs[0].line}">${dots}</div>
     </div>`;
   }).join('');
-
-  const flatRows = flat.map(t => renderFlatTechRow(t, free)).join('');
-  return lineRows + flatRows;
-}
-
-function renderFlatTechRow(t, free) {
-  if (t.saveOnly) {
-    // defaultSave (Loom) only means anything in Build Order Builder — the
-    // "Save" checkbox never affects Constant Production's output at all (no
-    // timeline/goals concept there), so defaulting it checked there is just
-    // a misleading checked-box that does nothing. Off by default in that mode.
-    const checked = t.defaultSave && currentMode === 'buildorder';
-    return `<div class="tech-row">
-      <span class="tname">${t.name}</span>
-      <span class="tage">${t.age}</span>
-      <label class="save-check"><input type="checkbox" data-tech-save="${t.id}" ${checked ? 'checked' : ''}> Save</label>
-    </div>`;
-  }
-  const isFree = free.has(t.id);
-  return `<div class="tech-row${isFree ? ' locked' : ''}">
-    <input type="checkbox" data-tech="${t.id}" ${isFree ? 'checked disabled' : ''}>
-    <span class="tname">${t.name}</span>
-    <span class="tage">${t.age}</span>
-    <span class="tbonus">+${t.bonusPct}%</span>
-    ${isFree ? '' : `<label class="save-check"><input type="checkbox" data-tech-save="${t.id}"> Save</label>`}
-  </div>`;
 }
 
 // Wires click-to-set-level on each tier-line's dots — clicking dot i fills
 // tiers 0..i (cumulative — clicking the current max dot again steps back
-// down). In Constant Production that cumulative fill IS "have it" (checked
-// data-tech inputs, immediate rate effect). In Build Order Builder it's a
-// GOAL chain instead (checked data-tech-save inputs feeding straight into
-// pendingUpgrades, same as everything else there) — selecting a later tier
-// automatically pulls in every tier before it, since you have to research a
-// line in order; there's no separate "have" state to set first.
+// down). That cumulative fill IS "have it" (checked data-tech inputs,
+// immediate rate effect) — Constant Production's only user of this grid has
+// no separate goal/timeline concept to distinguish from "have".
 function wireTierLines(grid, free) {
   const lines = {};
   DATA.ecoTechs.filter(t => t.line).forEach(t => { (lines[t.line] = lines[t.line] || []).push(t); });
@@ -2574,7 +2557,7 @@ function wireTierLines(grid, free) {
     const dotsWrap = grid.querySelector(`[data-tier-line="${lineId}"]`);
     if (!dotsWrap) return;
     const dotEls = [...dotsWrap.querySelectorAll('.tier-dot')];
-    const dotInputs = [...dotsWrap.querySelectorAll('input[data-tech], input[data-tech-save]')];
+    const dotInputs = [...dotsWrap.querySelectorAll('input[data-tech]')];
 
     let level = 0;
     dotInputs.forEach((inp, i) => { if (inp.checked) level = i + 1; }); // seeds from free-tech checked attrs
@@ -2779,7 +2762,7 @@ function ageUpPending(startAge, targetAge, civ) {
 // Feudal-tagged goal is always sequenced after "Advance to Feudal Age", not
 // alongside it — matching "in Feudal Age" meaning "as soon as Feudal is
 // reached". Dark-age goals (including deferToEnd Loom, already sorted last
-// within Dark by pendingUpgrades) stay before any age-up; goals in the same
+// within Dark by the caller) stay before any age-up; goals in the same
 // age as an age-up keep their relative order via the stable secondary sort.
 function mergeWithAgeUps(goalItems, ageItems) {
   const merged = [...goalItems, ...ageItems];
@@ -2800,66 +2783,34 @@ function effectiveGatherRate(resource, civ, techIds) {
   // own contribution when both are checked.
   const superseded = new Set(DATA.ecoTechs.filter(t => t.supersedes && techIds.has(t.id)).map(t => t.supersedes));
   DATA.ecoTechs.filter(t => techIds.has(t.id) && !superseded.has(t.id) && (t.resource === resource || t.resource === 'all'))
-    .forEach(t => { rate *= 1 + t.bonusPct / 100; });
+    .forEach(t => { const pct = t.bonusByResource ? (t.bonusByResource[resource] || 0) : t.bonusPct; rate *= 1 + pct / 100; });
   (civ?.ecoBonuses || []).filter(b => b.resource === resource && b.type === 'pct')
     .forEach(b => { rate *= 1 + b.value / 100; });
   return rate;
 }
 
-function pendingUpgrades(lines, civ) {
+// Some buildings also need a specific OTHER building already standing
+// (Archery Range/Stable need a Barracks, Siege Workshop a Blacksmith —
+// `requires` on the productionBuildings entry) — a separate, real mechanic
+// from the age-up building-COUNT rule elsewhere in this tool, so the
+// prerequisite is walked and inserted first, recursively. `haveSet` is
+// shared/mutated across calls so a building is only ever inserted once even
+// when multiple callers need it (e.g. a filler pick later reusing a building
+// a unit line's own chain already added) — it becomes the authoritative
+// record of which buildings are real, reused by qualifyingBuildingCount/
+// renderSetupCard instead of each recomputing their own version of this set.
+function buildingChainItems(buildingName, civ, haveSet) {
   const items = [];
-  // Some buildings also need a specific OTHER building already standing
-  // (Archery Range/Stable need a Barracks, Siege Workshop a Blacksmith —
-  // `requires` on the productionBuildings entry) — a separate, real
-  // mechanic from the age-up building-COUNT rule elsewhere in this tool,
-  // so the prerequisite is walked and inserted first, recursively. Each
-  // building type is inserted once even if multiple goals need it;
-  // `buildingsAdded` becomes the authoritative record of which buildings
-  // are real, reused by qualifyingBuildingCount/renderSetupCard instead of
-  // each recomputing their own version of this same set.
-  const buildingsAdded = new Set();
-  function addBuildingItem(name) {
-    if (buildingsAdded.has(name)) return;
+  function add(name) {
+    if (haveSet.has(name) || name === 'Town Center') return; // every game starts with one
     const def = name === 'Castle' ? DATA.castle : DATA.productionBuildings[name];
     if (!def) return;
-    if (def.requires) addBuildingItem(def.requires);
+    if (def.requires) add(def.requires);
     items.push({ name, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge });
-    buildingsAdded.add(name);
+    haveSet.add(name);
   }
-  document.querySelectorAll('[data-tech-save]:checked').forEach(cb => {
-    const t = DATA.ecoTechs.find(x => x.id === cb.dataset.techSave);
-    if (!t) return;
-    items.push({ name: t.name, cost: t.cost || {}, tcQueue: t.tcQueue, researchTime: t.researchTime, deferToEnd: t.deferToEnd, age: t.age });
-    // Researching a Blacksmith tech obviously implies a Blacksmith exists.
-    if (t.group === 'blacksmith') addBuildingItem('Blacksmith');
-  });
-  // Ongoing production (Buildings > 0) is the only production concept now —
-  // needs both its training building (a Castle for Castle-trained units, a
-  // Barracks for Militia-line, an Archery Range for Archers, etc. — costing
-  // wood and at least that building's buildTimeSeconds regardless of
-  // affordability, same "takes at least this long" role queueSeconds plays
-  // elsewhere; not tcQueue, since building it occupies one villager's
-  // labor, not the whole TC) and the full research chain up through
-  // whichever tier is selected — picking a later tier (e.g. Paladin)
-  // automatically researches every step before it (Knight → Cavalier →
-  // Paladin), matching how the eco-tech goal-chain dots already work.
-  lines.forEach(l => {
-    const state = lineState[l.id];
-    if (!state || state.buildings <= 0) return;
-    addBuildingItem(l.building); // no-ops for Town Center (not in productionBuildings)
-    for (let i = 1; i <= state.tierIdx; i++) {
-      const t = l.tiers[i];
-      if (t?.upgradeCost) items.push({ name: `${l.tiers[i - 1].name} → ${t.name}`, cost: costForCiv(t.upgradeCost, civ), age: t.age });
-    }
-  });
-  // Items flagged deferToEnd (Loom) process last — the standard opening
-  // delays them rather than paying their TC-time cost before it matters,
-  // regardless of the order they happened to be checked in.
-  const sorted = items
-    .map((item, i) => ({ item, i }))
-    .sort((a, b) => (a.item.deferToEnd === b.item.deferToEnd ? a.i - b.i : a.item.deferToEnd ? 1 : -1))
-    .map(({ item }) => item);
-  return { items: sorted, buildingsAdded };
+  add(buildingName);
+  return items;
 }
 
 // Simulates constant villager production: new villagers are born at a fixed
@@ -3085,163 +3036,386 @@ function expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, house
   return expanded;
 }
 
-function buildTimeline(rates, villRate, startVills, targetVillagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, isDarkOpening, startAgeIdx, civ) {
-  // Cumulative villagers assigned to each resource so far — every checkpoint
-  // gets a snapshot of this (not just its own newly-assigned split) so the
-  // chart can show a running Food/Wood/Gold/Stone column. Starting villagers
-  // aren't a "new villager" event the simulator generates a split for, but
-  // the standard opening still puts them to work in the same sheep-then-wood
-  // order as newly-born ones, so they're retroactively credited here using
-  // the same OPENING_SEQUENCE — Dark Age starts only; a Feudal+ start has no
-  // defined opening to infer this from, so those villagers stay unallocated.
-  const cumAlloc = { food: 0, wood: 0, gold: 0, stone: 0 };
-  if (isDarkOpening) {
-    for (let i = 0; i < startVills; i++) cumAlloc[OPENING_SEQUENCE[i] || 'food']++;
+// ─── Shared income/rate math (used by both Constant Production and Optimize) ─
+
+// Per-second resource cost of keeping `rows` (each {line, tier, buildings})
+// in constant production, plus the two ongoing wood upkeep costs that come
+// along with any real income: farms wear out and need rebuilding, and
+// growing population needs Houses. `techIds` only matters here through the
+// Mill farm-yield tier (horse-collar/heavy-plow/crop-rotation), which lowers
+// farm upkeep per food gathered — everything else that affects RATE (not
+// this per-second COST) lives in effectiveGatherRate instead.
+function computeTotalIncome(rows, civ, techIds) {
+  const totalIncome = { food: 0, wood: 0, gold: 0, stone: 0 };
+  let popRate = 0;
+  rows.forEach(({ line, tier, buildings }) => {
+    const cost = costForCiv(line.cost, civ);
+    const unitRate = buildings / tier.trainTime;
+    RES.forEach(r => totalIncome[r] += (cost[r] || 0) * unitRate);
+    popRate += line.pop * unitRate;
+  });
+  const farmYield = techIds.has('crop-rotation') ? 550 : techIds.has('heavy-plow') ? 375 : techIds.has('horse-collar') ? 250 : 175;
+  const folwarkBonus = (civ?.ecoBonuses || []).find(b => b.type === 'folwark-yield-bonus');
+  const effectiveFarmYield = farmYield * (folwarkBonus ? 1 + folwarkBonus.value / 100 : 1);
+  const farmUpkeepWoodPerSec = totalIncome.food * DATA.farmBuildCost / effectiveFarmYield;
+  totalIncome.wood += farmUpkeepWoodPerSec;
+  const popSpaceOverride = (civ?.ecoBonuses || []).find(b => b.type === 'house-pop-space');
+  const housePopSpace = popSpaceOverride ? popSpaceOverride.value : DATA.housePopSpace;
+  const hasNoHouses = (civ?.ecoBonuses || []).some(b => b.type === 'no-houses');
+  const houseWoodPerSec = hasNoHouses ? 0 : popRate * DATA.houseCost / housePopSpace;
+  totalIncome.wood += houseWoodPerSec;
+  return { totalIncome, popRate, farmUpkeepWoodPerSec, houseWoodPerSec, housePopSpace, hasNoHouses };
+}
+
+function villagersFromIncome(totalIncome, rates) {
+  const villagers = {}; let total = 0;
+  RES.forEach(r => { const v = rates[r] > 0 ? totalIncome[r] / rates[r] : 0; villagers[r] = v; total += v; });
+  return { villagers, totalVillCeil: Math.ceil(total) };
+}
+
+function ratesFor(civ, techIds) {
+  const rates = {};
+  RES.forEach(r => { rates[r] = effectiveGatherRate(r, civ, techIds); });
+  return rates;
+}
+
+// ─── Optimize mode ───────────────────────────────────────────────────────────
+// "Constantly produce N x [unit] as fast as possible from a fresh Dark Age
+// start" — the tool picks a target unit/tier/production-building count and
+// this works out, automatically, which economy upgrades and extra Town
+// Centers are worth investing in before ramping to that steady state, and
+// which aren't. Loom is a simple non-searched toggle (its TC-block costs the
+// same total time no matter when it's paid, so it never changes the OPTIMAL
+// finish time — only whether it's realistically included at all).
+
+const ECO_LINE_IDS = ['wood-chop', 'gold-mine', 'stone-mine', 'farm-yield', 'carry-capacity'];
+const ecoLineTechs = {};
+ECO_LINE_IDS.forEach(id => { ecoLineTechs[id] = DATA.ecoTechs.filter(t => t.line === id); });
+
+// Which eco-tech lines can possibly matter for this target composition — no
+// point letting the search consider Stone Mining for a unit that never costs
+// stone. `techIds` doesn't affect WHICH resources are used, only how much
+// (an empty set is fine here — see computeTotalIncome above).
+function relevantEcoLines(rows, civ) {
+  const { totalIncome } = computeTotalIncome(rows, civ, new Set());
+  const relevant = [];
+  if (totalIncome.wood > 0) { relevant.push('wood-chop'); relevant.push('carry-capacity'); }
+  if (totalIncome.gold > 0) relevant.push('gold-mine');
+  if (totalIncome.stone > 0) relevant.push('stone-mine');
+  if (totalIncome.food > 0) relevant.push('farm-yield');
+  return [...new Set(relevant)];
+}
+
+// The fixed, non-optional prefix every plan needs regardless of which
+// eco-techs/extra Town Centers the search ends up choosing: the target
+// unit's own training building (+ whatever THAT building requires, e.g. an
+// Archery Range needs a Barracks first), its full tier-upgrade chain up to
+// the picked tier, and whichever age-up-qualifying filler buildings the
+// resulting age requires — same automatic-filler idea the old Build Order
+// Builder used, just scoped to a single target line. `free` techs a civ
+// already has for free are skipped (no cost/time to pay, and — for Loom
+// specifically — no point adding a redundant research step).
+function optimizeMandatorySetup(targetLine, tierIdx, civ, loomOn, free) {
+  const haveSet = new Set();
+  const items = [];
+  if (loomOn && !free.has('loom')) {
+    const loom = DATA.ecoTechs.find(t => t.id === 'loom');
+    items.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age });
   }
-  // Which resources already have a drop-off building, civ-consolidation
-  // aware (Settlement/Mule Cart cover multiple at once) — seeded from
-  // whatever the opening already committed to (food/wood, on a Dark start)
-  // so those don't get a redundant later "+ Building" checkpoint of their
-  // own; noted directly on the Start checkpoint instead.
+  items.push(...buildingChainItems(targetLine.building, civ, haveSet));
+  for (let i = 1; i <= tierIdx; i++) {
+    const t = targetLine.tiers[i];
+    if (t?.upgradeCost) items.push({ name: `${targetLine.tiers[i - 1].name} → ${t.name}`, cost: costForCiv(t.upgradeCost, civ), age: t.age });
+  }
+  // Filler-building choice only depends on WHICH resources the composition
+  // touches, not how much of each (see fillerBuildingsNeeded) — a
+  // buildings:1 placeholder row is enough to derive that safely.
+  const baselineRows = [{ line: targetLine, tier: targetLine.tiers[tierIdx], buildings: 1 }];
+  const { totalIncome: baselineIncome } = computeTotalIncome(baselineRows, civ, new Set());
+  const baselineVillagers = villagersFromIncome(baselineIncome, ratesFor(civ, new Set())).villagers;
+  const neededAgeIdx = Math.max(
+    ageIndex(targetLine.tiers[tierIdx].age),
+    items.reduce((m, it) => Math.max(m, ageIndex(it.age || 'Dark')), 0),
+  );
+  const targetAgeId = AGE_ORDER[neededAgeIdx];
+  ['Feudal', 'Castle', 'Imperial'].forEach(age => {
+    if (ageIndex(age) > neededAgeIdx) return;
+    fillerBuildingsNeeded(age, civ, baselineVillagers, haveSet).forEach(name => {
+      const def = DATA.productionBuildings[name];
+      items.push({ name, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge });
+    });
+  });
+  // Items flagged deferToEnd (Loom) process last within Dark Age — the
+  // standard opening delays them rather than paying their TC-time cost
+  // before it matters, regardless of where they happened to land above;
+  // mergeWithAgeUps then slots the Feudal age-up right after, so
+  // runSequential's deferToEnd+isAgeUp merge (see below) actually fires.
+  const sorted = items
+    .map((item, i) => ({ item, i }))
+    .sort((a, b) => (a.item.deferToEnd === b.item.deferToEnd ? a.i - b.i : a.item.deferToEnd ? 1 : -1))
+    .map(({ item }) => item);
+  return { items: mergeWithAgeUps(sorted, ageUpPending('Dark', targetAgeId, civ)), haveSet };
+}
+
+// Extra Town Centers built beyond the free starting one are capped at 2 (3
+// total) — a deliberate modeling cap, not a game rule: it keeps the search
+// space small and matches how rarely a "sustain one unit line ASAP" target
+// actually benefits from booming past 3 TCs this early.
+const MAX_EXTRA_TC = 2;
+
+function buildOptimizeTimeline(targetLine, tierIdx, buildingCount, loomOn, civ) {
+  const free = freeTechIds(civ);
+  const mandatory = optimizeMandatorySetup(targetLine, tierIdx, civ, loomOn, free);
+  const rows = [{ line: targetLine, tier: targetLine.tiers[tierIdx], buildings: buildingCount }];
+  const { hasNoHouses, housePopSpace } = computeTotalIncome(rows, civ, free);
+  const relevantLines = relevantEcoLines(rows, civ);
+
+  const initialLevels = {};
+  relevantLines.forEach(id => {
+    const chain = ecoLineTechs[id];
+    let lvl = 0;
+    while (lvl < chain.length && free.has(chain[lvl].id)) lvl++;
+    initialLevels[id] = lvl;
+  });
+  function techIdsFor(levels) {
+    const ids = new Set(free);
+    relevantLines.forEach(id => { for (let i = 0; i < levels[id]; i++) ids.add(ecoLineTechs[id][i].id); });
+    return ids;
+  }
+  function villRateFor(tcExtra) { return (1 + tcExtra) / DATA.villager.trainTime; }
+  function stateKey(levels, tcExtra) { return relevantLines.map(id => levels[id]).join(',') + '|' + tcExtra; }
+
+  // ── Opening + mandatory prefix — same shape as the old buildTimeline's
+  // opening/prime/sequential-loop logic, just scoped to one target line and
+  // rate-fixed at 1 TC / whatever's free, since nothing optional can affect
+  // anything strictly required. ──
+  const cumAlloc = { food: 0, wood: 0, gold: 0, stone: 0 };
+  const startVills = 3;
+  for (let i = 0; i < startVills; i++) cumAlloc[OPENING_SEQUENCE[i] || 'food']++;
   const builtResources = initialBuiltState(civ);
   const startBuildNotes = [];
-  if (isDarkOpening) {
-    RES.forEach(r => {
-      if (cumAlloc[r] <= 0 || builtResources[r]) return;
-      const s = structureForResource(r, civ);
-      startBuildNotes.push(s.name);
-      s.covers.forEach(r2 => { builtResources[r2] = true; });
-    });
-  }
+  RES.forEach(r => {
+    if (cumAlloc[r] <= 0 || builtResources[r]) return;
+    const s = structureForResource(r, civ);
+    startBuildNotes.push(s.name);
+    s.covers.forEach(r2 => { builtResources[r2] = true; });
+  });
   const checkpoints = [{ label: 'Start', time: 0, vills: startVills, split: null, houses: 0, alloc: { ...cumAlloc }, kind: 'start', buildNotes: startBuildNotes }];
   let housesAlready = 0, houseBaseline = startVills;
 
-  // Standard opening: 2 Houses go up immediately from starting wood, before
-  // anything else gets a claim on it — they don't cost TC time (villagers
-  // build them alongside whatever else is happening). Raises the pop-cap
-  // baseline so later checkpoints don't double-count these as "newly needed".
-  const opening = openingHousesInfo(startingPool, isDarkOpening, villRate, hasNoHouses);
+  const startingPool = startingPoolForCiv(civ);
+  const initialVillRate = villRateFor(0);
+  const opening = openingHousesInfo(startingPool, true, initialVillRate, hasNoHouses);
   if (opening.applies) {
     checkpoints.push({ label: 'Build 2 Houses', time: 0, vills: startVills, split: null, houses: 2, alloc: { ...cumAlloc }, kind: 'house' });
     housesAlready = 2;
     houseBaseline = startVills + 2 * housePopSpace;
   }
-  // The standard opening also queues as many villagers as starting food
-  // allows (4, at the 200-food baseline) right at 0:00 — display-only, since
-  // villRate already assumes continuous production from t=0 throughout this
-  // whole simulation; this just makes that opening action visible alongside
-  // "Build 2 Houses" instead of leaving it implicit.
-  if (isDarkOpening && villRate > 0) {
+  if (initialVillRate > 0) {
     const openingVills = Math.floor(startingPool.food / DATA.villager.cost.food);
-    if (openingVills > 0) {
-      checkpoints.push({ label: `Queue ${openingVills} Villagers`, time: 0, vills: startVills, split: null, houses: opening.applies ? 2 : 0, alloc: { ...cumAlloc }, kind: 'start' });
-    }
+    if (openingVills > 0) checkpoints.push({ label: `Queue ${openingVills} Villagers`, time: 0, vills: startVills, split: null, houses: opening.applies ? 2 : 0, alloc: { ...cumAlloc }, kind: 'start' });
   }
   const housesFor = v => hasNoHouses ? 0 : housesAlready + Math.max(0, Math.ceil((v + SCOUT_POP - houseBaseline) / housePopSpace));
 
-  const primed = primeInstantGoals(pending, opening.pool, startAgeIdx);
+  const primed = primeInstantGoals(mandatory.items, opening.pool, 0);
   primed.resolved.forEach(({ item, time }) => {
-    checkpoints.push({
-      label: `${item.name} ready`, time, vills: startVills, split: null,
-      houses: housesFor(startVills), alloc: { ...cumAlloc }, ...checkpointKindFor(item),
-    });
+    checkpoints.push({ label: `${item.name} ready`, time, vills: startVills, split: null, houses: housesFor(startVills), alloc: { ...cumAlloc }, ...checkpointKindFor(item) });
   });
 
-  if (villRate <= 0) return expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, housePopSpace, hasNoHouses);
+  let cursorTime = primed.tcBusyUntil, cursorVills = startVills, pool = primed.pool;
+  const initialRates = ratesFor(civ, techIdsFor(initialLevels));
 
-  let cursorVills = startVills, cursorTime = primed.tcBusyUntil, pool = primed.pool;
+  // Resolves one or more items sequentially against cursorTime/cursorVills/
+  // pool (closed over above), appending a checkpoint for each — reused for
+  // both the mandatory prefix (a whole list at once) and, later, for
+  // replaying the search's winning path one move at a time.
+  function runSequential(itemList, rates, villRate) {
+    let ri = 0;
+    while (ri < itemList.length) {
+      const item = itemList[ri];
+      const next = itemList[ri + 1];
+      // deferToEnd (Loom) is meant to research right at the end of Dark Age,
+      // immediately before advancing — the two are resolved as one combined
+      // transaction so both checkpoints land at the same final moment.
+      const merged = item.deferToEnd && next?.isAgeUp;
+      const simItem = merged ? {
+        name: next.name, isAgeUp: true, age: next.age, tcQueue: true,
+        cost: RES.reduce((c, r) => { c[r] = (item.cost[r] || 0) + (next.cost[r] || 0); return c; }, {}),
+        researchTime: (item.researchTime || 0) + (next.researchTime || 0),
+      } : item;
 
-  if (startVills < totalVillCeil) {
-    const openingSequence = isDarkOpening ? OPENING_SEQUENCE : null;
-    const ramp = simulateRampToSustain(rates, villRate, startVills, targetVillagers, totalVillCeil, cursorTime, openingSequence);
-    if (ramp) {
-      cursorTime = ramp.time; cursorVills = ramp.vills;
-      const rampBuildNotes = [];
-      RES.forEach(r => {
-        if (!ramp.assigned[r] || builtResources[r]) return;
-        const s = structureForResource(r, civ);
-        rampBuildNotes.push(s.name);
+      const callStartTime = cursorTime, callStartVills = cursorVills;
+      const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool);
+      if (!r) { checkpoints.push({ label: `${simItem.name} — past 60 min, add more Town Centers`, blocked: true }); ri += merged ? 2 : 1; continue; }
+      cursorTime = r.time; cursorVills = r.vills; pool = r.pool;
+
+      const remainingAssigned = { ...r.assigned };
+      const span = cursorTime - callStartTime;
+      RES.forEach(res => {
+        if (!r.assigned[res] || builtResources[res]) return;
+        const s = structureForResource(res, civ);
+        if (s.covers.some(r2 => builtResources[r2])) return;
         s.covers.forEach(r2 => { builtResources[r2] = true; });
+        const frac = span > 0 ? (r.firstAssignedAt[res] - callStartTime) / span : 0;
+        const gatherTime = callStartTime + frac * span;
+        const gatherVills = Math.round(callStartVills + frac * (cursorVills - callStartVills));
+        cumAlloc[res] += 1;
+        remainingAssigned[res] = Math.max(0, remainingAssigned[res] - 1);
+        checkpoints.push({ label: s.name, time: gatherTime, vills: gatherVills, split: { food: 0, wood: 0, gold: 0, stone: 0, [res]: 1 }, houses: housesFor(gatherVills), alloc: { ...cumAlloc }, kind: 'gather' });
       });
-      RES.forEach(r => { cumAlloc[r] += ramp.assigned[r] || 0; });
-      checkpoints.push({
-        label: `Reach sustain (${totalVillCeil} villagers for your composition)`,
-        time: cursorTime, vills: cursorVills,
-        split: ramp.assigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, kind: 'sustain', buildNotes: rampBuildNotes,
-      });
+
+      RES.forEach(res => { cumAlloc[res] += remainingAssigned[res] || 0; });
+      if (merged) {
+        checkpoints.push({ label: `${item.name} ready`, time: cursorTime, vills: cursorVills, split: null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, ...checkpointKindFor(item) });
+        checkpoints.push({ label: `${next.name} ready`, time: cursorTime, vills: cursorVills, split: remainingAssigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, ...checkpointKindFor(next) });
+      } else {
+        checkpoints.push({ label: `${item.name} ready`, time: cursorTime, vills: cursorVills, split: remainingAssigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, ...checkpointKindFor(item) });
+      }
+      ri += merged ? 2 : 1;
     }
   }
 
-  let ri = 0;
-  while (ri < primed.remaining.length) {
-    const item = primed.remaining[ri];
-    const next = primed.remaining[ri + 1];
-    // deferToEnd (Loom) is meant to research right at the end of its age,
-    // immediately before advancing — not whenever its cost happens to be
-    // affordable, which (since its TC-block costs the same total time no
-    // matter when it happens) would otherwise show it resolving arbitrarily
-    // early. Loom is the only deferToEnd tech and is always Dark-tagged, so
-    // it's always immediately followed by the next age-up once one exists —
-    // the two are resolved as one combined transaction (costs and TC-block
-    // times summed) so both checkpoints land at the same final moment.
-    const merged = item.deferToEnd && next?.isAgeUp;
-    const simItem = merged ? {
-      name: next.name, isAgeUp: true, age: next.age, tcQueue: true,
-      cost: RES.reduce((c, r) => { c[r] = (item.cost[r] || 0) + (next.cost[r] || 0); return c; }, {}),
-      researchTime: (item.researchTime || 0) + (next.researchTime || 0),
-    } : item;
+  runSequential(primed.remaining, initialRates, initialVillRate);
 
-    const callStartTime = cursorTime, callStartVills = cursorVills;
-    const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool);
-    if (!r) { checkpoints.push({ label: `${simItem.name} — past 60 min, add more TCs`, blocked: true }); ri += merged ? 2 : 1; continue; }
-    cursorTime = r.time; cursorVills = r.vills; pool = r.pool;
+  // ── Search: from here on, villRate/rates only change via moves the search
+  // takes (research the next tier on an eligible eco-tech line, or build
+  // another Town Center) — find whichever combination reaches sustain
+  // fastest. State is fully described by (tier level per relevant line,
+  // extra Town Centers built), so exploring it as a shortest-path graph
+  // (Dijkstra: always expand the lowest-elapsed-time state next, keep only
+  // the best arrival time seen for each state) finds the OPTIMAL combination
+  // exactly, not an approximation — the state space here is small (a
+  // handful of eco-tech lines, each 2-3 tiers deep, times a capped Town
+  // Center count) so this fully explores it well under a second. ──
+  const startState = { levels: { ...initialLevels }, tcExtra: 0, time: cursorTime, vills: cursorVills, pool };
+  const startKey = stateKey(startState.levels, startState.tcExtra);
+  const finalized = new Map([[startKey, startState]]);
+  const cameFrom = new Map(); // key -> { fromKey, move }
+  const frontier = [startState];
 
-    // Any resource this item is the first to actually need gets its own
-    // "villagers begin gathering X" checkpoint at the real (interpolated)
-    // time that happened, rather than lumped in with wherever this item's
-    // own "ready" checkpoint ends up — a Castle needs stone GATHERED first,
-    // not delivered "at the same instant" it finishes.
-    const remainingAssigned = { ...r.assigned };
-    const span = cursorTime - callStartTime;
-    RES.forEach(res => {
-      if (!r.assigned[res] || builtResources[res]) return;
-      const s = structureForResource(res, civ);
-      if (s.covers.some(r2 => builtResources[r2])) return;
-      s.covers.forEach(r2 => { builtResources[r2] = true; });
-      const frac = span > 0 ? (r.firstAssignedAt[res] - callStartTime) / span : 0;
-      const gatherTime = callStartTime + frac * span;
-      const gatherVills = Math.round(callStartVills + frac * (cursorVills - callStartVills));
-      cumAlloc[res] += 1;
-      remainingAssigned[res] = Math.max(0, remainingAssigned[res] - 1);
-      checkpoints.push({
-        label: s.name, time: gatherTime, vills: gatherVills,
-        split: { food: 0, wood: 0, gold: 0, stone: 0, [res]: 1 },
-        houses: housesFor(gatherVills), alloc: { ...cumAlloc }, kind: 'gather',
-      });
+  function popMinTime(arr) {
+    let bi = 0;
+    for (let i = 1; i < arr.length; i++) if (arr[i].time < arr[bi].time) bi = i;
+    return arr.splice(bi, 1)[0];
+  }
+
+  while (frontier.length) {
+    const cur = popMinTime(frontier);
+    const curKey = stateKey(cur.levels, cur.tcExtra);
+    if (finalized.get(curKey) !== cur) continue; // superseded by a better arrival already processed
+    const rates = ratesFor(civ, techIdsFor(cur.levels));
+    const villRate = villRateFor(cur.tcExtra);
+
+    relevantLines.forEach(id => {
+      const chain = ecoLineTechs[id];
+      if (cur.levels[id] >= chain.length) return;
+      const tech = chain[cur.levels[id]];
+      const item = { name: tech.name, cost: costForCiv(tech.cost, civ), tcQueue: tech.tcQueue, researchTime: tech.researchTime, age: tech.age };
+      const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool);
+      if (!r) return;
+      const nextLevels = { ...cur.levels, [id]: cur.levels[id] + 1 };
+      const key = stateKey(nextLevels, cur.tcExtra);
+      const existing = finalized.get(key);
+      if (existing && existing.time <= r.time) return;
+      const next = { levels: nextLevels, tcExtra: cur.tcExtra, time: r.time, vills: r.vills, pool: r.pool };
+      finalized.set(key, next);
+      cameFrom.set(key, { fromKey: curKey, move: { type: 'tech', id, item } });
+      frontier.push(next);
     });
 
-    RES.forEach(res => { cumAlloc[res] += remainingAssigned[res] || 0; });
-    if (merged) {
-      checkpoints.push({ label: `${item.name} ready`, time: cursorTime, vills: cursorVills, split: null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, ...checkpointKindFor(item) });
-      checkpoints.push({ label: `${next.name} ready`, time: cursorTime, vills: cursorVills, split: remainingAssigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, ...checkpointKindFor(next) });
-    } else {
-      checkpoints.push({
-        label: `${item.name} ready`,
-        time: cursorTime, vills: cursorVills,
-        split: remainingAssigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, ...checkpointKindFor(item),
-      });
+    if (cur.tcExtra < MAX_EXTRA_TC) {
+      const item = { name: 'Town Center', cost: costForCiv(DATA.townCenter.cost, civ), queueSeconds: DATA.townCenter.buildTimeSeconds, age: DATA.townCenter.minAge };
+      const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool);
+      if (r) {
+        const key = stateKey(cur.levels, cur.tcExtra + 1);
+        const existing = finalized.get(key);
+        if (!existing || existing.time > r.time) {
+          const next = { levels: cur.levels, tcExtra: cur.tcExtra + 1, time: r.time, vills: r.vills, pool: r.pool };
+          finalized.set(key, next);
+          cameFrom.set(key, { fromKey: curKey, move: { type: 'tc', item } });
+          frontier.push(next);
+        }
+      }
     }
-    ri += merged ? 2 : 1;
   }
 
-  return expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, housePopSpace, hasNoHouses);
+  // Every finalized state is a candidate "stop researching, ramp the rest of
+  // the way" point — pick whichever reaches the composition's sustain
+  // target soonest. The sustain requirement is recomputed from THAT state's
+  // own tech selection (better rates, and a lower farm-upkeep-wood cost from
+  // any farm-yield tier reached, both need fewer villagers for the same
+  // throughput), not a single value shared across every branch.
+  let bestKey = null, bestTotal = Infinity, bestRamp = null, bestRates = null, bestVillagers = null, bestVillCeil = 0, bestIncome = null, bestUpkeep = null;
+  finalized.forEach((state, key) => {
+    const techIds = techIdsFor(state.levels);
+    const rates = ratesFor(civ, techIds);
+    const incomeInfo = computeTotalIncome(rows, civ, techIds);
+    const { villagers, totalVillCeil } = villagersFromIncome(incomeInfo.totalIncome, rates);
+    const villRate = villRateFor(state.tcExtra);
+    let total, ramp = null;
+    if (state.vills >= totalVillCeil) {
+      total = state.time;
+    } else {
+      ramp = simulateRampToSustain(rates, villRate, state.vills, villagers, totalVillCeil, state.time, null);
+      total = ramp ? ramp.time : Infinity;
+    }
+    if (total < bestTotal) { bestTotal = total; bestKey = key; bestRamp = ramp; bestRates = rates; bestVillagers = villagers; bestVillCeil = totalVillCeil; bestIncome = incomeInfo.totalIncome; bestUpkeep = incomeInfo; }
+  });
+
+  if (bestKey == null) {
+    checkpoints.push({ label: 'Reach sustain — past 60 min, add more Town Centers', blocked: true });
+    return { checkpoints: expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, housePopSpace, hasNoHouses), haveSet: mandatory.haveSet, villagers: {}, totalVillCeil: 0, rates: initialRates, totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, villRate: initialVillRate, tcCount: 1, finishTime: null };
+  }
+
+  // Reconstruct the winning path — a list of moves in the order Dijkstra
+  // discovered them, which (since it always expands the lowest-elapsed-time
+  // state next) is exactly the order they'd actually happen in-game — and
+  // replay it into the checkpoint list, recomputing rates/villRate after
+  // each move exactly like the mandatory prefix above did.
+  const path = [];
+  let k = bestKey;
+  while (cameFrom.has(k)) { const { fromKey, move } = cameFrom.get(k); path.unshift(move); k = fromKey; }
+
+  let curLevels = { ...initialLevels }, curTcExtra = 0;
+  path.forEach(move => {
+    const rates = ratesFor(civ, techIdsFor(curLevels));
+    const villRate = villRateFor(curTcExtra);
+    runSequential([move.item], rates, villRate);
+    if (move.type === 'tech') curLevels = { ...curLevels, [move.id]: curLevels[move.id] + 1 };
+    else curTcExtra += 1;
+  });
+
+  const villRateFinal = villRateFor(curTcExtra);
+  if (bestRamp) {
+    cursorTime = bestRamp.time; cursorVills = bestRamp.vills;
+    const rampBuildNotes = [];
+    RES.forEach(r => {
+      if (!bestRamp.assigned[r] || builtResources[r]) return;
+      const s = structureForResource(r, civ);
+      rampBuildNotes.push(s.name);
+      s.covers.forEach(r2 => { builtResources[r2] = true; });
+    });
+    RES.forEach(r => { cumAlloc[r] += bestRamp.assigned[r] || 0; });
+    checkpoints.push({
+      label: `Reach sustain (${bestVillCeil} villagers for ${buildingCount}x ${targetLine.tiers[tierIdx].name})`,
+      time: cursorTime, vills: cursorVills, split: bestRamp.assigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, kind: 'sustain', buildNotes: rampBuildNotes,
+    });
+  }
+
+  return {
+    checkpoints: expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, housePopSpace, hasNoHouses),
+    haveSet: mandatory.haveSet,
+    villagers: bestVillagers, totalVillCeil: bestVillCeil, rates: bestRates, totalIncome: bestIncome,
+    farmUpkeepWoodPerSec: bestUpkeep.farmUpkeepWoodPerSec, houseWoodPerSec: bestUpkeep.houseWoodPerSec,
+    villRate: villRateFinal, tcCount: 1 + curTcExtra, finishTime: cursorTime,
+  };
 }
 
 // Which drop-off building a resource's FIRST assigned villager implies —
 // Which structure resource r's drop-off implies for this civ, and which
 // OTHER resources it covers "for free" the instant it's built (Settlement:
 // all four; Mule Cart: wood/gold/stone) — mirrors renderSetupCard's civ
-// handling so the two panels never disagree. Used by buildTimeline to
+// handling so the two panels never disagree. Used by buildOptimizeTimeline to
 // insert a dedicated "villagers begin gathering X" checkpoint at the real
 // time that happens, instead of a trailing note on whatever goal happens to
 // complete later (e.g. stone genuinely has to be gathered before a Castle
@@ -3265,7 +3439,7 @@ function initialBuiltState(civ) {
 }
 
 // How many age-up-qualifying buildings exist, given `haveSet` — the
-// authoritative set of real buildings pendingUpgrades' addBuildingItem
+// authoritative set of real buildings buildingChainItems' recursive walk
 // already produced (expanded through `requires` chains, e.g. an Archery
 // Range goal already means Barracks is in there too). Feudal is the one
 // exception: its qualifying buildings (Mill/Lumber Camp/Mining Camp/Mule
@@ -3323,7 +3497,7 @@ function fillerBuildingsNeeded(targetAge, civ, villagers, haveSet) {
 function actionParts(c, prevHouses) {
   const parts = [];
   if (c.kind === 'age') parts.push(`Advance to ${c.ageName} Age`);
-  else if (c.kind === 'tech') parts.push(`${c.itemName === 'Castle' || DATA.productionBuildings[c.itemName] ? 'Build' : 'Research'} ${c.itemName}`);
+  else if (c.kind === 'tech') parts.push(`${c.itemName === 'Castle' || c.itemName === 'Town Center' || DATA.productionBuildings[c.itemName] ? 'Build' : 'Research'} ${c.itemName}`);
   else if (c.kind === 'unit') parts.push(`Train ${c.itemName}`);
   if (c.kind === 'house') {
     const n = c.houseDelta ?? c.houses;
@@ -3399,97 +3573,15 @@ function renderResults() {
   const descEl = document.getElementById('results-desc');
   const bodyEl = document.getElementById('results-body');
 
-  const rates = {};
-  RES.forEach(r => { rates[r] = effectiveGatherRate(r, civ, techIds); });
-
-  const villagerState = lineState['villager'];
-  const villRate = villagerState && villagerState.buildings > 0 ? villagerState.buildings / DATA.villager.trainTime : 0;
-  const hasNoHouses = (civ?.ecoBonuses || []).some(b => b.type === 'no-houses');
-
-  const totalIncome = { food: 0, wood: 0, gold: 0, stone: 0 }; // per second
-  let popRate = 0; // pop/sec
-  rows.forEach(({ line, tier, buildings }) => {
-    const cost = costForCiv(line.cost, civ);
-    const unitRate = buildings / tier.trainTime; // units/sec
-    RES.forEach(r => totalIncome[r] += (cost[r] || 0) * unitRate);
-    popRate += line.pop * unitRate;
-  });
-
-  // Food here means farm food (per the tool's stated assumption), and farms
-  // aren't free to sustain: each one holds a finite yield before it's used
-  // up and has to be rebuilt (60 wood). That's a real ongoing wood cost
-  // proportional to how much food you're pulling off farms — without it,
-  // the tool would show a food villager count that's uses that in practice
-  // starves for wood. Yield scales with the Mill farm-tech tier checked
-  // (175 base -> 250 -> 375 -> 550); civ/carry-capacity bonuses are treated
-  // as pure rate effects here, not yield, which slightly overstates upkeep
-  // for a civ whose food bonus is actually a yield increase (e.g. Franks).
-  const farmYield = techIds.has('crop-rotation') ? 550 : techIds.has('heavy-plow') ? 375 : techIds.has('horse-collar') ? 250 : 175;
-  // Poles' Folwark (replaces Mill) instantly deposits a % of a farm's food
-  // on every seed/reseed at no extra wood cost — same wood-per-farm-cycle,
-  // more net food per cycle, so it lowers the effective wood-per-food ratio
-  // exactly as if farms yielded that much more (rate itself is unaffected).
-  const folwarkBonus = (civ?.ecoBonuses || []).find(b => b.type === 'folwark-yield-bonus');
-  const effectiveFarmYield = farmYield * (folwarkBonus ? 1 + folwarkBonus.value / 100 : 1);
-  const farmUpkeepWoodPerSec = totalIncome.food * DATA.farmBuildCost / effectiveFarmYield;
-  totalIncome.wood += farmUpkeepWoodPerSec;
-
-  // Every villager and unit you train also eats into your population cap,
-  // and pop space isn't free — each House costs wood and covers a fixed
-  // amount of pop. Growing pop at popRate therefore has its own ongoing
-  // wood cost, same shape as farm upkeep.
-  const popSpaceOverride = (civ?.ecoBonuses || []).find(b => b.type === 'house-pop-space');
-  const housePopSpace = popSpaceOverride ? popSpaceOverride.value : DATA.housePopSpace;
-  const houseWoodPerSec = hasNoHouses ? 0 : popRate * DATA.houseCost / housePopSpace;
-  totalIncome.wood += houseWoodPerSec;
-
-  const villagers = {};
-  let totalVillagers = 0;
-  RES.forEach(r => {
-    const v = rates[r] > 0 ? totalIncome[r] / rates[r] : 0;
-    villagers[r] = v;
-    totalVillagers += v;
-  });
-  const totalVillCeil = Math.ceil(totalVillagers);
-
-  // Every game is now a fresh Dark Age start (3 villagers, 1 Scout Cavalry)
-  // — no more Starting Age/Villagers inputs. pendingUpgrades already tags
-  // every item with its own age; a line sitting at its base tier (no
-  // upgrade-chain item at all, e.g. Spearman — Feudal-age but trained at
-  // Barracks, a Dark-age building) still needs its OWN tier's age folded in
-  // directly, or a Feudal-tier unit with no research step would never
-  // trigger the Feudal age-up it actually requires.
-  const { items: goalPending, buildingsAdded: haveSet } = pendingUpgrades(lines, civ);
-  const neededAgeIdx = Math.max(
-    goalPending.reduce((max, item) => Math.max(max, ageIndex(item.age || 'Dark')), 0),
-    rows.reduce((max, r) => Math.max(max, ageIndex(r.tier.age)), 0),
-  );
-  const targetAgeId = AGE_ORDER[Math.max(targetAgeIdx, neededAgeIdx)];
-  // Any age-up needed to reach that target is inserted as its own real,
-  // costed, TC-queue-blocking checkpoint. Buildings the age-up itself
-  // requires (2 qualifying buildings from the prior age, or a Castle for
-  // Imperial) that aren't already implied by a real selection are added
-  // automatically too — cheapest/least-commitment options first — instead
-  // of asking the user to toggle them.
-  if (currentMode === 'buildorder') {
-    ['Feudal', 'Castle', 'Imperial'].forEach(age => {
-      if (ageIndex(age) > ageIndex(targetAgeId)) return;
-      fillerBuildingsNeeded(age, civ, villagers, haveSet).forEach(name => {
-        const def = DATA.productionBuildings[name];
-        goalPending.push({ name, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge });
-      });
-    });
-  }
-  const pending = currentMode === 'buildorder'
-    ? mergeWithAgeUps(goalPending, ageUpPending('Dark', targetAgeId, civ))
-    : goalPending;
-
   if (!rows.length) {
     descEl.textContent = 'Add production buildings above to see the split.';
-    const emptyPending = currentMode === 'buildorder' ? renderPendingCard(pending, rates, { food: 0, wood: 0, gold: 0, stone: 0 }, villRate, 0, civ, hasNoHouses) : '';
-    bodyEl.innerHTML = '<div class="empty-hint">No production set yet.</div>' + emptyPending;
+    bodyEl.innerHTML = '<div class="empty-hint">No production set yet.</div>';
     return;
   }
+
+  const rates = ratesFor(civ, techIds);
+  const { totalIncome, popRate, farmUpkeepWoodPerSec, houseWoodPerSec } = computeTotalIncome(rows, civ, techIds);
+  const { villagers, totalVillCeil } = villagersFromIncome(totalIncome, rates);
 
   descEl.textContent = `Continuous production across ${rows.length} building type${rows.length === 1 ? '' : 's'} — population growing ~${(popRate * 60).toFixed(1)}/min.`;
 
@@ -3498,47 +3590,9 @@ function renderResults() {
     <div class="stat-tile"><div class="label">Pop Growth</div><div class="value">${(popRate * 60).toFixed(1)}/min</div></div>
   </div>`;
 
-  const farmUpkeepVills = rates.wood > 0 ? farmUpkeepWoodPerSec / rates.wood : 0;
-  const houseUpkeepVills = rates.wood > 0 ? houseWoodPerSec / rates.wood : 0;
-  const maxV = Math.max(1, ...RES.map(r => villagers[r]));
-  const bars = RES.filter(r => totalIncome[r] > 0).map(r => {
-    const pct = Math.max(4, (villagers[r] / maxV) * 100);
-    const upkeepParts = [];
-    if (r === 'wood' && farmUpkeepVills >= 0.05) upkeepParts.push(`${Math.ceil(farmUpkeepVills)} farms`);
-    if (r === 'wood' && houseUpkeepVills >= 0.05) upkeepParts.push(`${Math.ceil(houseUpkeepVills)} houses`);
-    const upkeepNote = upkeepParts.length ? ` (${upkeepParts.join(', ')})` : '';
-    return `<div class="alloc-row">
-      <div class="rname">${RES_ICON[r]} ${RES_LABEL[r]}</div>
-      <div class="alloc-bar-wrap"><div class="alloc-bar" style="width:${pct}%;background:var(--${r})">${villagers[r] >= 0.5 ? Math.ceil(villagers[r]) : ''}</div></div>
-      <div class="rvills"><b>${Math.ceil(villagers[r])}</b> vills · ${rates[r].toFixed(2)}/s each${upkeepNote}</div>
-    </div>`;
-  }).join('');
+  const bars = renderVillagerBars(villagers, rates, totalIncome, farmUpkeepWoodPerSec, houseWoodPerSec);
 
-  let extras = '';
-  if (currentMode === 'buildorder') {
-    const startingPool = startingPoolForCiv(civ);
-    const checkpoints = pending.length
-      ? buildTimeline(rates, villRate, 3, villagers, totalVillCeil, pending, startingPool, housePopSpace, hasNoHouses, true, 0, civ)
-      : [];
-    // Residual defensive check — filler above should already guarantee this
-    // never fires in practice (Castle/Imperial both have 2 filler options,
-    // always enough; Feudal's single option is backed by the near-universal
-    // Mill+Lumber Camp baseline any real villager-producing build already
-    // has), but keep it rather than silently trust that in every edge case.
-    checkpoints.forEach(c => {
-      if (c.kind !== 'age') return;
-      const req = DATA.ageUpBuildingReqs[c.ageName];
-      if (!req) return;
-      const have = qualifyingBuildingCount(c.ageName, civ, haveSet, villagers);
-      if (have < req.count) {
-        c.warning = `only ${have}/${req.count} qualifying buildings tracked for ${c.ageName} Age (${req.buildings.join('/')}${c.ageName === 'Imperial' ? ', or a Castle' : c.ageName === 'Feudal' ? ', or a Settlement' : ''})`;
-      }
-    });
-    extras = renderSetupCard(villagers, civ, haveSet.has('Castle'), haveSet)
-      + renderTimelineCard(checkpoints, villRate, civ)
-      + renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ, hasNoHouses);
-  }
-  bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>' + extras;
+  bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>';
 }
 
 // One-time building costs implied by needing villagers on a resource at
@@ -3618,74 +3672,54 @@ function renderSetupCard(villagers, civ, needsCastle, neededBuildings) {
   </div>`;
 }
 
-function renderPendingCard(pending, rates, villagers, villRate, totalVillCeil, civ, hasNoHouses) {
-  if (!pending.length) return '';
-  const rawStartingPool = startingPoolForCiv(civ);
-  const startingPool = openingHousesInfo(rawStartingPool, true, villRate, hasNoHouses).pool;
-  const civStartNote = (civ?.ecoBonuses || []).find(b => b.type === 'starting-resources')
-    ? ` (${civ.name}${civ.name.endsWith('s') ? '’' : '’s'} starting-resource bonus applied)` : '';
-
-  if (villRate > 0) {
-    const startVills = 3;
-    // Goals fully covered by the starting stockpile resolve instantly,
-    // independent of how long the villager ramp-up takes — see
-    // primeInstantGoals for why this has to happen before the sustain catch-up.
-    const primed = primeInstantGoals(pending, startingPool, 0);
-    const resultByItem = new Map();
-    primed.resolved.forEach(({ item, time }) => { resultByItem.set(item, { time, vills: startVills }); });
-
-    let cursorTime = primed.tcBusyUntil, cursorVills = startVills, pool = primed.pool;
-    let catchUpNote = '';
-    // If you're starting below the sustain requirement, the first stretch of
-    // new villagers goes to catching the composition up — not to savings —
-    // before any excess exists to fund anything.
-    if (cursorVills < totalVillCeil) {
-      const deficit = totalVillCeil - cursorVills;
-      cursorTime += deficit / villRate;
-      catchUpNote = ` First ${fmtClock(cursorTime)} (${deficit} vills) goes to reaching your ${totalVillCeil}-villager sustain requirement before any savings begin.`;
-      cursorVills = totalVillCeil;
-    }
-    primed.remaining.forEach(item => {
-      const r = simulateItemReady(item, rates, villRate, cursorTime, cursorVills, pool);
-      if (r) { cursorTime = r.time; cursorVills = r.vills; pool = r.pool; }
-      resultByItem.set(item, r);
-    });
-    const results = pending.map(item => ({ item, result: resultByItem.get(item) }));
-    return `<div class="pending-card">
-      <h3>Goals &amp; Savings (constant villager production)</h3>
-      ${results.map(({ item, result }) => `<div class="pending-item">
-        <span>${item.name}</span>
-        <div class="cost-pills">${RES.filter(r => item.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${item.cost[r]}</span>`).join('')}</div>
-        <span class="save-time${result ? '' : ' blocked'}">${result ? `${result.vills} vills · ${fmtClock(result.time)}` : 'past 60 min — add TCs'}</span>
-      </div>`).join('')}
-      <p class="assumptions">Credits your starting stockpile (200 food/200 wood/50 gold baseline) before any villager income, same as a real game start${civStartNote}. Always assumes the standard 3-villager Dark Age start — civs with a different starting villager count (Chinese +3, Mayans +1) aren't modeled. Assumes you keep training new villagers and send each new one to whichever of these is furthest behind, in the order checked above; villager allocation is fully automatic.${catchUpNote}</p>
+// Villager-allocation bar chart — shared by Constant Production and
+// Optimize, which both end up needing the exact same "N vills on each
+// resource, at this rate, plus upkeep note" visualization for whatever
+// composition/rates they've each worked out.
+function renderVillagerBars(villagers, rates, totalIncome, farmUpkeepWoodPerSec, houseWoodPerSec) {
+  const farmUpkeepVills = rates.wood > 0 ? farmUpkeepWoodPerSec / rates.wood : 0;
+  const houseUpkeepVills = rates.wood > 0 ? houseWoodPerSec / rates.wood : 0;
+  const maxV = Math.max(1, ...RES.map(r => villagers[r]));
+  return RES.filter(r => totalIncome[r] > 0).map(r => {
+    const pct = Math.max(4, (villagers[r] / maxV) * 100);
+    const upkeepParts = [];
+    if (r === 'wood' && farmUpkeepVills >= 0.05) upkeepParts.push(`${Math.ceil(farmUpkeepVills)} farms`);
+    if (r === 'wood' && houseUpkeepVills >= 0.05) upkeepParts.push(`${Math.ceil(houseUpkeepVills)} houses`);
+    const upkeepNote = upkeepParts.length ? ` (${upkeepParts.join(', ')})` : '';
+    return `<div class="alloc-row">
+      <div class="rname">${RES_ICON[r]} ${RES_LABEL[r]}</div>
+      <div class="alloc-bar-wrap"><div class="alloc-bar" style="width:${pct}%;background:var(--${r})">${villagers[r] >= 0.5 ? Math.ceil(villagers[r]) : ''}</div></div>
+      <div class="rvills"><b>${Math.ceil(villagers[r])}</b> vills · ${rates[r].toFixed(2)}/s each${upkeepNote}</div>
     </div>`;
-  }
+  }).join('');
+}
 
-  // All-in (Villager buildings = 0): no more villagers being born, so the
-  // only thing funding these is the spare income from rounding your current
-  // villager counts up to whole people.
-  const excessRate = {};
-  RES.forEach(r => { excessRate[r] = (Math.ceil(villagers[r] || 0) - (villagers[r] || 0)) * rates[r]; });
-  const pendingCost = { food: 0, wood: 0, gold: 0, stone: 0 };
-  pending.forEach(p => RES.forEach(r => pendingCost[r] += p.cost[r] || 0));
-  // Credit the starting stockpile here too, same as the constant-production
-  // path — a real game doesn't start at zero resources.
-  RES.forEach(r => { pendingCost[r] = Math.max(0, pendingCost[r] - startingPool[r]); });
-  const perResourceEta = {};
-  RES.forEach(r => {
-    if (pendingCost[r] <= 0) { perResourceEta[r] = 0; return; }
-    perResourceEta[r] = excessRate[r] > 0.0005 ? pendingCost[r] / excessRate[r] : Infinity;
-  });
-  const readySeconds = Math.max(0, ...RES.map(r => perResourceEta[r]));
-  const blockedRes = RES.filter(r => pendingCost[r] > 0 && excessRate[r] <= 0.0005);
+let optimizeState = { lineId: null, tierIdx: 0, buildingCount: 1, loomOn: true };
 
-  return `<div class="pending-card">
-    <h3>Saving For (all-in — no new villagers)</h3>
-    ${pending.map(p => `<div class="pending-item"><span>${p.name}</span><div class="cost-pills">${RES.filter(r => p.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${p.cost[r]}</span>`).join('')}</div></div>`).join('')}
-    <div class="pending-item total"><span>Ready in</span><span class="save-time${readySeconds === Infinity ? ' blocked' : ''}">${readySeconds === Infinity ? 'need spare villagers' : fmtSecs(readySeconds)}</span></div>
-    <p class="assumptions">Credits your starting stockpile (200 food/200 wood/50 gold baseline) against the total first${civStartNote}. Rounding villager counts up leaves a little spare income per resource — that surplus funds the rest without touching your sustain rate.${blockedRes.length ? ` No spare ${blockedRes.map(r => RES_LABEL[r]).join('/')} yet.` : ''} Set Villager buildings above 0 for constant production instead.</p>
+function renderOptimizeResults() {
+  const civ = selectedCiv();
+  const lines = allLinesForCiv(civ);
+  const targetLine = lines.find(l => l.id === optimizeState.lineId);
+  const descEl = document.getElementById('results-desc');
+  const bodyEl = document.getElementById('results-body');
+  if (!targetLine) { descEl.textContent = 'Pick a unit above to optimize for.'; bodyEl.innerHTML = ''; return; }
+
+  const result = buildOptimizeTimeline(targetLine, optimizeState.tierIdx, optimizeState.buildingCount, optimizeState.loomOn, civ);
+  const tierName = targetLine.tiers[optimizeState.tierIdx].name;
+  descEl.textContent = result.finishTime != null
+    ? `Fastest path to ${optimizeState.buildingCount}x ${tierName} in constant production — ready by ${fmtClock(result.finishTime)}, using ${result.tcCount} Town Center${result.tcCount === 1 ? '' : 's'}.`
+    : `${optimizeState.buildingCount}x ${tierName} couldn't be reached within the 60-minute simulation cap — try fewer production buildings.`;
+
+  const statRow = `<div class="stat-row">
+    <div class="stat-tile"><div class="label">Total Villagers</div><div class="value">${result.totalVillCeil}</div></div>
+    <div class="stat-tile"><div class="label">Town Centers</div><div class="value">${result.tcCount}</div></div>
   </div>`;
+
+  const bars = renderVillagerBars(result.villagers, result.rates, result.totalIncome, result.farmUpkeepWoodPerSec, result.houseWoodPerSec);
+
+  bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>'
+    + renderSetupCard(result.villagers, civ, result.haveSet.has('Castle'), result.haveSet)
+    + renderTimelineCard(result.checkpoints, result.villRate, civ);
 }
 
 function renderCivBonusList() {
@@ -3697,53 +3731,78 @@ function renderCivBonusList() {
   list.innerHTML = bonuses.map(b => `<div class="civ-bonus-item">${b.note || b.type}</div>`).join('');
 }
 
-// ─── Target Age ("Goals — At") dot selector ─────────────────────────────────
-// Clicking a dot sets the age Goals below should be evaluated against — "in
-// Feudal Age" means "ready by the moment Feudal is reached", which requires
-// actually modeling the Feudal age-up as a real cost/time checkpoint (see
-// ageUpPending) rather than treating Goals as available whenever affordable
-// regardless of age. Defaults to Dark (no forced age-up beyond whatever the
-// selected buildings/tiers/techs already require) — every build starts in
-// Dark Age now, so this only ever pushes the target LATER than what's
-// already implied, never earlier.
-let targetAgeIdx = 0;
+// ─── Optimize mode's own UI (target unit, tier, production-building count,
+// Loom toggle) ────────────────────────────────────────────────────────────
 
-function targetAgeDesc() {
-  const startIdx = currentAgeIndex();
-  if (targetAgeIdx <= startIdx) return 'Goals are evaluated as soon as they\'re affordable — no age-up required.';
-  const target = AGE_ORDER[targetAgeIdx];
-  return `Goals are sequenced to become ready only after advancing to ${target} Age — the age-up itself (${AGE_ORDER.slice(startIdx + 1, targetAgeIdx + 1).join(' → ')}) is modeled as a real, costed step in the timeline below.`;
+function renderOptimizeUnitSelect() {
+  const civ = selectedCiv();
+  const lines = allLinesForCiv(civ);
+  const select = document.getElementById('optimize-unit-select');
+  const prevId = optimizeState.lineId;
+  select.innerHTML = lines.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+  const stillValid = lines.some(l => l.id === prevId);
+  optimizeState.lineId = stillValid ? prevId : (lines[1] || lines[0]).id;
+  select.value = optimizeState.lineId;
+  if (!stillValid) optimizeState.tierIdx = 0;
+  renderOptimizeTierDots();
 }
 
-function renderTargetAgeDots() {
-  const startIdx = currentAgeIndex();
-  if (targetAgeIdx < startIdx) targetAgeIdx = startIdx;
-  document.querySelectorAll('#target-age-dots .tier-dot').forEach((dot, i) => {
-    dot.classList.toggle('filled', i <= targetAgeIdx);
-    dot.classList.toggle('disabled', i < startIdx);
+function renderOptimizeTierDots() {
+  const civ = selectedCiv();
+  const lines = allLinesForCiv(civ);
+  const line = lines.find(l => l.id === optimizeState.lineId);
+  const wrap = document.getElementById('optimize-tier-dots');
+  if (!line || line.tiers.length <= 1) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = line.tiers.map((t, i) => `<span class="tier-dot${i <= optimizeState.tierIdx ? ' filled' : ''}" data-idx="${i}" title="${t.name} (${t.age})"></span>`).join('');
+  [...wrap.querySelectorAll('.tier-dot')].forEach((dot, i) => {
+    dot.addEventListener('click', () => {
+      optimizeState.tierIdx = i;
+      renderOptimizeTierDots();
+      renderOptimizeResults();
+    });
   });
-  const desc = document.getElementById('target-age-desc');
-  if (desc) desc.textContent = targetAgeDesc();
 }
 
-document.querySelectorAll('#target-age-dots .tier-dot').forEach((dot, i) => {
+function renderOptimizeCountDots() {
+  document.querySelectorAll('#optimize-count-dots .tier-dot').forEach((dot, i) => {
+    dot.classList.toggle('filled', i <= optimizeState.buildingCount - 1);
+  });
+}
+
+document.getElementById('optimize-unit-select').addEventListener('change', e => {
+  optimizeState.lineId = e.target.value;
+  optimizeState.tierIdx = 0;
+  renderOptimizeTierDots();
+  renderOptimizeResults();
+});
+document.querySelectorAll('#optimize-count-dots .tier-dot').forEach((dot, i) => {
   dot.addEventListener('click', () => {
-    if (i < currentAgeIndex()) return;
-    targetAgeIdx = i;
-    renderTargetAgeDots();
-    renderResults();
+    optimizeState.buildingCount = i + 1;
+    renderOptimizeCountDots();
+    renderOptimizeResults();
   });
+});
+document.getElementById('optimize-loom').addEventListener('change', e => {
+  optimizeState.loomOn = e.target.checked;
+  renderOptimizeResults();
 });
 
 civSelect.addEventListener('change', () => {
   renderTechGrid();
   renderUnitTable();
+  renderOptimizeUnitSelect();
   renderCivBonusList();
-  renderResults();
+  renderCurrentModeResults();
 });
-// ─── Mode: Constant Production vs. Build Order Builder ─────────────────────
 
-let currentMode = 'production'; // 'production' | 'buildorder'
+// ─── Mode: Constant Production vs. Optimize ─────────────────────────────────
+
+let currentMode = 'production'; // 'production' | 'optimize'
+
+function renderCurrentModeResults() {
+  if (currentMode === 'optimize') renderOptimizeResults();
+  else renderResults();
+}
 
 const MODE_COPY = {
   production: {
@@ -3752,11 +3811,11 @@ const MODE_COPY = {
     ecoDesc: "Check what you'll have researched by the time this composition is in full production.",
     armyDesc: 'Set how many <b>production buildings</b> you\'ll keep queuing each unit — 2 Barracks on Long Swordsmen, 1 Archery Range on Crossbowmen, etc. Zero = not in production. Pick each line\'s tier freely — training cost doesn\'t change, but train time does. The Town Center row\'s Villager count defaults to 1 (constant villager production) — set it to 0 for "all-in" (stop making villagers).',
   },
-  buildorder: {
-    introDesc: 'Say what you want to build — production, upgrades, and buildings — starting from a fresh Dark Age game (3 villagers, 1 Scout Cavalry), and this works out the fastest way to get there, crediting your starting stockpile and routing new villagers to whichever goal is furthest behind.',
-    introAssumptions: 'Same steady-state economics as Constant Production underneath, plus a time-based savings simulation for one-time goals (tech research, unit-tier upgrades, age-ups, and the buildings they require). Villager allocation toward goals is fully automatic, and any production or age-up-qualifying building your picks imply is inserted for you automatically. This estimates when you can afford something, not a literal minute-by-minute script of which building to click first.',
-    ecoDesc: "Select which upgrades you want — everything starts un-researched, same as a real game. Picking a later tier automatically pulls in the ones before it, since you have to research a line in order; each becomes a real, timed goal in the simulation below.",
-    armyDesc: 'Set how many production buildings you\'ll keep queuing each unit — 2 Barracks on Long Swordsmen, 1 Archery Range on Crossbowmen, etc. Zero = not in production. Pick each line\'s tier freely — selecting a later tier (e.g. Paladin) automatically researches every step before it (Knight → Cavalier → Paladin) and advances you through whatever age that requires, inserting any extra buildings the age-up itself needs.',
+  optimize: {
+    introDesc: "Pick a unit to constantly produce, and this finds the fastest path there from a fresh Dark Age start (3 villagers, 1 Scout Cavalry) — automatically deciding which economy upgrades and extra Town Centers are worth building along the way, and which aren't.",
+    introAssumptions: "Explores every combination of eco-tech research and extra Town Centers exactly (not a guess or a single fixed build) and picks whichever reaches your target soonest. Your target unit's own training building, tier-upgrade chain, and any age-up (plus the buildings that age-up itself requires) are mandatory and always built first; Loom is a simple on/off toggle rather than something the search weighs, since its cost is small and fixed regardless of when it's researched. Extra Town Centers are capped at 2 beyond the starting one, and civs that discount Town Centers specifically (Britons, Bulgarians, Incas, Malians) aren't modeled.",
+    ecoDesc: '',
+    armyDesc: '',
   },
 };
 
@@ -3773,13 +3832,18 @@ function setMode(mode) {
   const copy = MODE_COPY[mode];
   document.getElementById('intro-desc').textContent = copy.introDesc;
   document.getElementById('intro-assumptions').textContent = copy.introAssumptions;
-  document.getElementById('eco-desc').textContent = copy.ecoDesc;
-  updateArmyDesc();
-  renderTechGrid();
-  renderUnitTable();
-  renderTargetAgeDots();
+  if (mode === 'production') {
+    document.getElementById('eco-desc').textContent = copy.ecoDesc;
+    updateArmyDesc();
+    renderTechGrid();
+    renderUnitTable();
+  } else {
+    renderOptimizeUnitSelect();
+    renderOptimizeCountDots();
+    document.getElementById('optimize-loom').checked = optimizeState.loomOn;
+  }
   renderCivBonusList();
-  renderResults();
+  renderCurrentModeResults();
 }
 
 document.querySelectorAll('.mode-btn').forEach(btn => btn.addEventListener('click', () => setMode(btn.dataset.mode)));
