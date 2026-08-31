@@ -2858,6 +2858,17 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
 
   if (villRate <= 0) return null;
 
+  // Training new villagers isn't free — villRate implies a constant stream
+  // of 50-food villagers being born throughout, which competes with
+  // whatever this item still needs, same as it would with anything else you
+  // were trying to save up for. (Constant Production's steady-state target
+  // already gets this via rowsWithVillagers; this is the matching fix for
+  // the moment-to-moment timeline — how fast a food-costing goal like an
+  // age-up ACTUALLY gets funded, not just what the final villager count
+  // needs to be.) Only matters for `saved.food`, since nothing else this
+  // item might need is affected by training a villager.
+  const villagerFoodDrainPerSec = villRate * DATA.villager.cost.food;
+
   const assigned = { food: 0, wood: 0, gold: 0, stone: 0 };
   // The moment each resource FIRST gets a villager assigned to it during
   // this call — lets a caller show "villagers start gathering X" as its own
@@ -2899,6 +2910,7 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
       nextBirth += 1 / villRate;
     }
     RES.forEach(r => { if (assigned[r]) saved[r] += assigned[r] * rates[r] * dt; });
+    saved.food -= villagerFoodDrainPerSec * dt;
     if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) return { time: t + tcDelay, vills, pool, assigned, newVills: vills - startVills, firstAssignedAt, millAt };
     t += dt;
   }
@@ -3131,12 +3143,25 @@ const ECO_LINE_IDS = ['wood-chop', 'gold-mine', 'stone-mine', 'farm-yield', 'car
 const ecoLineTechs = {};
 ECO_LINE_IDS.forEach(id => { ecoLineTechs[id] = DATA.ecoTechs.filter(t => t.line === id); });
 
+// Constant Production mode gets villager-training's own food/pop cost for
+// free, since it treats Villager as just another line in `rows` (buildings
+// = TCs). Optimize's target composition is only ever the one line the user
+// picked — this fills in the same thing, using whatever villRate (i.e. TC
+// count) is actually in play, so the sustain target correctly reflects that
+// keeping villRate running costs real food, same as any other unit would.
+const VILLAGER_ROW_LINE = { cost: DATA.villager.cost, pop: 1 };
+function rowsWithVillagers(targetRows, tcCount) {
+  return [...targetRows, { line: VILLAGER_ROW_LINE, tier: { trainTime: DATA.villager.trainTime }, buildings: tcCount }];
+}
+
 // Which eco-tech lines can possibly matter for this target composition — no
 // point letting the search consider Stone Mining for a unit that never costs
 // stone. `techIds` doesn't affect WHICH resources are used, only how much
-// (an empty set is fine here — see computeTotalIncome above).
+// (an empty set is fine here — see computeTotalIncome above). Villager
+// training always costs food regardless of how many TCs are running, so a
+// representative single TC is enough to know farm-yield is relevant.
 function relevantEcoLines(rows, civ) {
-  const { totalIncome } = computeTotalIncome(rows, civ, new Set());
+  const { totalIncome } = computeTotalIncome(rowsWithVillagers(rows, 1), civ, new Set());
   const relevant = [];
   if (totalIncome.wood > 0) { relevant.push('wood-chop'); relevant.push('carry-capacity'); }
   if (totalIncome.gold > 0) relevant.push('gold-mine');
@@ -3451,9 +3476,9 @@ function buildOptimizeTimeline(targetLine, tierIdx, buildingCount, loomOn, allIn
   finalized.forEach((state, key) => {
     const techIds = techIdsFor(state.levels);
     const rates = ratesFor(civ, techIds);
-    const incomeInfo = computeTotalIncome(rows, civ, techIds);
-    const { villagers, totalVillCeil } = villagersFromIncome(incomeInfo.totalIncome, rates);
     const villRate = villRateFor(state.tcExtra);
+    const incomeInfo = computeTotalIncome(rowsWithVillagers(rows, 1 + state.tcExtra), civ, techIds);
+    const { villagers, totalVillCeil } = villagersFromIncome(incomeInfo.totalIncome, rates);
     let total, ramp = null;
     if (state.vills >= totalVillCeil) {
       total = state.time;
