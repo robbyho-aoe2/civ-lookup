@@ -3979,7 +3979,10 @@ function renderProductionBody() {
 // it. Framed as "minutes to the next 100" rather than a raw rate, since a
 // tiny per-second surplus (often ~0.01-0.05) is unreadable as-is.
 function renderExtraResources(villagers, rates, totalIncome) {
-  const tiles = RES.filter(r => totalIncome[r] > 0).map(r => {
+  // Stone excluded: its only source is the Castle calculator's manually-
+  // typed villager count, which is already a whole number — there's never
+  // any rounding surplus to report, so the tile would always read "—".
+  const tiles = RES.filter(r => r !== 'stone' && totalIncome[r] > 0).map(r => {
     const surplusRate = (Math.ceil(villagers[r]) - villagers[r]) * rates[r];
     const label = surplusRate > 0.0005 ? fmtSecs(100 / surplusRate) : '—';
     return `<div class="stat-tile" style="padding:8px 10px;">
