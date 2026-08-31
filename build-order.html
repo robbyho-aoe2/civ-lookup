@@ -2709,7 +2709,7 @@ function selectedTechIds() {
   return ids;
 }
 
-let castleStoneState = { vills: 1, includeStarting: true };
+let castleStoneState = { vills: 0, includeStarting: true };
 
 function updateCastleStoneReadout() {
   const civ = selectedCiv();
@@ -2749,6 +2749,7 @@ function renderCastleStoneCalc() {
   document.getElementById('castle-stone-vills').addEventListener('input', e => {
     castleStoneState.vills = Math.max(0, Number(e.target.value) || 0);
     updateCastleStoneReadout();
+    renderProductionBody();
   });
   document.getElementById('castle-stone-starting').addEventListener('change', e => {
     castleStoneState.includeStarting = e.target.checked;
@@ -3908,16 +3909,23 @@ function renderTimelineCard(checkpoints, villRate, civ) {
 // ─── Results ─────────────────────────────────────────────────────────────────
 
 function renderResults() {
-  const civ = selectedCiv();
-  const techIds = selectedTechIds();
-  const lines = allLinesForCiv(civ);
-
   // Independent of army composition (Castle costs stone once, it isn't a
   // production line), so this refreshes here unconditionally rather than
   // after the "any production set?" check below — Stone Mining affects its
   // rate the same way any other tech-grid checkbox does, so it needs to
   // stay in sync with the exact same triggers renderResults already has.
   renderCastleStoneCalc();
+  renderProductionBody();
+}
+
+// Split out from renderResults so the Castle calculator's own "Villagers on
+// Stone" input can refresh just this half — re-running renderCastleStoneCalc
+// on every keystroke would rebuild that input's DOM node and steal focus
+// from under the user while they're still typing.
+function renderProductionBody() {
+  const civ = selectedCiv();
+  const techIds = selectedTechIds();
+  const lines = allLinesForCiv(civ);
 
   const rows = [];
   lines.forEach(l => {
@@ -3929,7 +3937,7 @@ function renderResults() {
   const descEl = document.getElementById('results-desc');
   const bodyEl = document.getElementById('results-body');
 
-  if (!rows.length) {
+  if (!rows.length && castleStoneState.vills <= 0) {
     descEl.textContent = 'Add production buildings above to see the split.';
     bodyEl.innerHTML = '<div class="empty-hint">No production set yet.</div>';
     return;
@@ -3937,9 +3945,21 @@ function renderResults() {
 
   const rates = ratesFor(civ, techIds);
   const { totalIncome, popRate, farmUpkeepWoodPerSec, houseWoodPerSec } = computeTotalIncome(rows, civ, techIds);
-  const { villagers, totalVillCeil } = villagersFromIncome(totalIncome, rates);
+  const { villagers } = villagersFromIncome(totalIncome, rates);
 
-  descEl.textContent = `Continuous production across ${rows.length} building type${rows.length === 1 ? '' : 's'} — population growing ~${(popRate * 60).toFixed(1)}/min.`;
+  // Villagers manually assigned to stone in the Castle calculator above are
+  // a separate, deliberate allocation — not part of the army composition's
+  // sustained income — but they're still real villagers gathering stone, so
+  // they belong in the same allocation view rather than a disconnected number.
+  if (castleStoneState.vills > 0) {
+    villagers.stone += castleStoneState.vills;
+    totalIncome.stone += castleStoneState.vills * rates.stone;
+  }
+  const totalVillCeil = Math.ceil(RES.reduce((sum, r) => sum + villagers[r], 0));
+
+  descEl.textContent = rows.length
+    ? `Continuous production across ${rows.length} building type${rows.length === 1 ? '' : 's'} — population growing ~${(popRate * 60).toFixed(1)}/min.`
+    : 'No production buildings set — showing villagers assigned to stone for the Castle calculator.';
 
   const statRow = `<div class="stat-row">
     <div class="stat-tile"><div class="label">Total Villagers</div><div class="value">${totalVillCeil}</div></div>
