@@ -188,8 +188,6 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <h2>Economy Upgrades</h2>
     <p class="desc" id="eco-desc"></p>
     <div class="tech-grid" id="tech-grid"></div>
-    <div id="castle-stone-calc" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);"></div>
-    <div class="tech-grid" id="tech-grid-carry"></div>
   </div>
 
   <div class="card">
@@ -2600,16 +2598,14 @@ function renderTechGrid() {
   const civ = selectedCiv();
   const free = freeTechIds(civ);
   const grid = document.getElementById('tech-grid');
-  const carryGrid = document.getElementById('tech-grid-carry');
 
-  // Wood, Gold, Farm Capacity, Stone Mining, in that specific order — Stone
-  // Mining sits directly above the Castle stone calculator below it, since
-  // they're the two stone-related things on this card and read better
-  // adjacent than split by Farm Capacity landing between them. Every group
-  // here is rendered by renderTierLinesHtml as a dot-line (2+ tiers sharing
-  // a `.line`). Carry Capacity ('tc') renders into its own separate grid
-  // (below the Castle calculator, see the HTML) rather than this ordered
-  // list, so the calculator can sit between Stone Mining and it.
+  // Wood, Gold, Farm Capacity, Stone Mining, Carry Capacity, in that order
+  // — the grid is 2 columns, so that lays out as (Wood,Gold) / (Farm,Stone)
+  // / (Carry Capacity, Castle calculator), putting Carry Capacity directly
+  // left of the Castle calculator and Stone Mining directly above it,
+  // purely from the natural grid flow — no special-case positioning CSS.
+  // Every group here is rendered by renderTierLinesHtml as a dot-line (2+
+  // tiers sharing a `.line`).
   const pushResGroup = (groups, r) => {
     const techs = DATA.ecoTechs.filter(t => t.resource === r && !t.group);
     if (techs.length) groups.push({ label: `${RES_ICON[r] || ''} ${RES_LABEL[r] || 'All Resources'}`, techs });
@@ -2630,24 +2626,16 @@ function renderTechGrid() {
   pushResGroup(groups, 'gold');
   pushStructGroup(groups, 'mill'); // Farm Capacity
   pushResGroup(groups, 'stone');
-
-  const carryGroups = [];
-  pushStructGroup(carryGroups, 'tc'); // Carry Capacity
+  pushStructGroup(groups, 'tc'); // Carry Capacity
 
   grid.innerHTML = groups.map(({ label, techs }) => `<div class="tech-group">
       <h3>${label}</h3>
       ${renderTierLinesHtml(techs, free)}
-    </div>`).join('');
-  carryGrid.innerHTML = carryGroups.map(({ label, techs }) => `<div class="tech-group">
-      <h3>${label}</h3>
-      ${renderTierLinesHtml(techs, free)}
-    </div>`).join('');
+    </div>`).join('') + '<div class="tech-group" id="castle-stone-calc"></div>';
 
   grid.querySelectorAll('[data-tech]').forEach(cb => cb.addEventListener('change', renderResults));
-  carryGrid.querySelectorAll('[data-tech]').forEach(cb => cb.addEventListener('change', renderResults));
 
   wireTierLines(grid, free);
-  wireTierLines(carryGrid, free);
 
   renderCastleStoneCalc();
 }
@@ -2715,10 +2703,7 @@ function wireTierLines(grid, free) {
 
 function selectedTechIds() {
   const ids = new Set();
-  // #tech-grid-carry holds Carry Capacity, split out into its own grid
-  // container so the Castle stone calculator can sit between it and the
-  // rest (see renderTechGrid) — still has to be read here too.
-  document.querySelectorAll('#tech-grid input[data-tech], #tech-grid-carry input[data-tech]').forEach(cb => {
+  document.querySelectorAll('#tech-grid input[data-tech]').forEach(cb => {
     if (cb.checked) ids.add(cb.dataset.tech);
   });
   return ids;
@@ -2752,16 +2737,13 @@ function renderCastleStoneCalc() {
   const startingStone = startingPoolForCiv(civ).stone;
 
   el.innerHTML = `
-    <span class="tname">Castle (${DATA.castle.cost.stone} stone)</span>
-    <p class="desc" style="margin-top:2px;margin-bottom:0;">How long to gather enough stone for a Castle, given some villagers dedicated to it.</p>
-    <div style="display:flex;align-items:center;gap:14px;margin-top:8px;flex-wrap:wrap;">
-      <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;">Villagers on Stone
-        <input type="number" id="castle-stone-vills" min="0" value="${castleStoneState.vills}" style="width:60px;">
+    <h3>🏰 Castle (${DATA.castle.cost.stone} stone)</h3>
+    <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--text2);">
+      <label style="display:flex;align-items:center;gap:6px;">Villagers on Stone
+        <input type="number" id="castle-stone-vills" min="0" value="${castleStoneState.vills}" style="width:48px;padding:4px 6px;font-size:12px;">
       </label>
-      <label class="save-check" style="font-size:12px;"><input type="checkbox" id="castle-stone-starting" ${castleStoneState.includeStarting ? 'checked' : ''}> Include starting stone (${startingStone})</label>
-    </div>
-    <div class="stat-row" style="margin-top:10px;">
-      <div class="stat-tile"><div class="label">Time to ${DATA.castle.cost.stone} Stone</div><div class="value" id="castle-stone-time" style="font-size:17px;"></div></div>
+      <label class="save-check"><input type="checkbox" id="castle-stone-starting" ${castleStoneState.includeStarting ? 'checked' : ''}> Include starting stone (${startingStone})</label>
+      <div>Time to ${DATA.castle.cost.stone}: <b id="castle-stone-time" style="color:var(--text);"></b></div>
     </div>`;
 
   document.getElementById('castle-stone-vills').addEventListener('input', e => {
