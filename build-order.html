@@ -168,7 +168,10 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <h2>Optimize For</h2>
     <p class="desc">Pick a unit to constantly produce, and this finds the fastest path there — automatically deciding which economy upgrades and extra Town Centers are worth it along the way.</p>
     <select id="optimize-unit-select"></select>
-    <div class="tier-dots" id="optimize-tier-dots" style="margin-top:10px;"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
+      <div class="tier-dots" id="optimize-tier-dots"></div>
+      <span class="tname" id="optimize-tier-name"></span>
+    </div>
     <div style="display:flex;align-items:center;gap:24px;margin-top:14px;flex-wrap:wrap;">
       <div>
         <span class="tname">Units in Constant Production</span><br>
@@ -4022,7 +4025,14 @@ function renderOptimizeTierDots() {
   const lines = allLinesForCiv(civ);
   const line = lines.find(l => l.id === optimizeState.lineId);
   const wrap = document.getElementById('optimize-tier-dots');
-  if (!line || line.tiers.length <= 1) { wrap.innerHTML = ''; return; }
+  const nameEl = document.getElementById('optimize-tier-name');
+  if (!line) { wrap.innerHTML = ''; nameEl.textContent = ''; return; }
+  // The dropdown above only ever shows the LINE's base name (e.g.
+  // "Militia") — this makes the actually-selected TIER visible too (e.g.
+  // "Long Swordsman"), the same way Constant Production's own unit table
+  // updates its name cell when a tier dot is clicked.
+  nameEl.textContent = line.tiers[optimizeState.tierIdx].name;
+  if (line.tiers.length <= 1) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = line.tiers.map((t, i) => `<span class="tier-dot${i <= optimizeState.tierIdx ? ' filled' : ''}" data-idx="${i}" title="${t.name} (${t.age})"></span>`).join('');
   [...wrap.querySelectorAll('.tier-dot')].forEach((dot, i) => {
     dot.addEventListener('click', () => {
