@@ -1100,11 +1100,14 @@ function renderWeeklyReport(report) {
     <div class="weekly-section">
       <h3>Rivalries</h3>
       <p class="sub-desc">1v1 pairs with at least 3 games together, ranked by whoever played each other most recently — a constantly-updating list rather than a fixed all-time top 5.</p>
-      ${!report.rivalries || !report.rivalries.length ? '<p class="weekly-empty">No qualifying rivalries found.</p>' : report.rivalries.map(r => `
-        <div class="weekly-highlight" style="margin-bottom:10px">
-          <b>${wLink(r.nameA, r.idA)}</b> vs <b>${wLink(r.nameB, r.idB)}</b> — ${r.allTimeGames.toLocaleString()} games all-time, ${r.record}, last played ${r.lastPlayed}
-          <div class="sub-desc" style="margin-top:4px">${r.recentGames.map(g => `${g.date} on ${g.map} (${g.winnerName} won)`).join(' · ')}</div>
-        </div>`).join('')}
+      ${weeklyTable(
+        [{ label: 'Rivalry' }, { label: 'All-Time Record', num: true }, { label: 'This Week', num: true }],
+        (report.rivalries || []).map(r => [
+          `${wLink(r.nameA, r.idA)} vs ${wLink(r.nameB, r.idB)}`,
+          r.record,
+          r.recordThisWeek ? `${r.recordThisWeek} (${r.gamesThisWeek})` : 'quiet week',
+        ])
+      )}
     </div>`;
 
   const upsets = `
@@ -1161,17 +1164,13 @@ function renderWeeklyReport(report) {
       ${squadTable('Quads', sq.quads)}
     </div>`;
 
-  const pcStandings = report.pc1v1Standings ? `
-    <div class="weekly-section">
-      <h3>PC 1v1 Standings — Console Roster</h3>
-      <p class="sub-desc">Current 1v1 PC rating for tracked console players with crossplay history. Rank-movement tracking (gainers/losers, like Biggest Movers above) starts next week now that a rating snapshot exists to diff against — this week just shows where everyone stands.</p>
-      ${weeklyTable(
-        [{ label: 'Player' }, { label: 'PC 1v1 Rating', num: true }, { label: 'Games This Week', num: true }, { label: 'Total PC 1v1 Games', num: true }],
-        report.pc1v1Standings.map(p => [wLink(p.name, p.profileId), p.rating.toLocaleString(), p.windowGamesPC1v1.toLocaleString(), p.totalGamesPC1v1.toLocaleString()])
-      )}
-    </div>` : '';
+  // PC 1v1 rank movement: no historical PC-rating snapshot existed anywhere
+  // in the repo before 2026-08-31, so there's nothing yet to diff against.
+  // data/snapshots/console-2026-08-31.json now records PC 1v1 ratings, so
+  // the 2026-09-07 report can show real gainers/losers — bring this section
+  // back then instead of showing undated "current standings" in the meantime.
 
-  return headline + mostGames + rivalries + upsets + newPlayers + civPopularity + movers + squads + pcStandings;
+  return headline + mostGames + rivalries + upsets + newPlayers + civPopularity + movers + squads;
 }
 
 async function loadAndRenderWeekly() {
