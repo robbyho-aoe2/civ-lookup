@@ -3296,22 +3296,27 @@ function relevantEcoLines(rows, civ) {
 // already has for free are skipped (no cost/time to pay, and — for Loom
 // specifically — no point adding a redundant research step).
 //
-// Real Dark-Age-qualifying production buildings (Barracks — the only one
-// this tool trains from in Dark Age) are never actually built that early in
-// standard play: there's no reason to spend wood on one before the units it
-// trains are even worth having, so it goes up right alongside Loom, at the
-// very end of Dark Age, immediately before advancing — UNLESS `allIn` (the
-// "prioritize military" toggle) is on, in which case the whole realistic-
-// economy framing is skipped and everything is built the moment it's
-// affordable, same as before this behavior existed. Only applies when the
-// plan actually leaves Dark Age at all — a pure Dark-Age target (e.g. plain
-// Militia) has nothing to defer TO, so it's just built immediately either way.
+// A production building is never actually built the moment its own age is
+// reached in standard play if the REAL target sits further out — there's no
+// reason to spend wood on a Stable while sprinting through Feudal on the
+// way to a Fast Castle Knights build, any more than there was a reason to
+// put up a Barracks early in Dark Age. Each building-chain/filler item
+// below defers to the END of its OWN age (merging with the age-up that
+// takes you out of it — Dark items merge with the Feudal age-up, Feudal
+// items with the Castle age-up, and so on; mergeWithAgeUps' per-age-bucket
+// sort already does this correctly once an item is just flagged deferToEnd,
+// no per-item "defer to which age-up" tracking needed) whenever its own age
+// is BELOW the target unit's own age — UNLESS `allIn` (the "prioritize
+// military" toggle) is on, in which case the whole realistic-economy
+// framing is skipped and everything is built the moment it's affordable,
+// same as before this behavior existed.
 function optimizeMandatorySetup(targetLine, tierIdx, civ, loomOn, allIn, buildingCount, free) {
   const haveSet = new Set();
   const items = [];
-  const willAgeUp = !allIn && ageIndex(targetLine.tiers[tierIdx].age) > ageIndex('Dark');
+  const targetAgeIdx = ageIndex(targetLine.tiers[tierIdx].age);
+  const deferIfEarly = it => { if (!allIn && ageIndex(it.age) < targetAgeIdx) it.deferToEnd = true; };
   const buildingItems = buildingChainItems(targetLine.building, civ, haveSet);
-  if (willAgeUp) buildingItems.forEach(it => { if (it.age === 'Dark') it.deferToEnd = true; });
+  buildingItems.forEach(deferIfEarly);
   items.push(...buildingItems);
   // buildingChainItems only ever adds ONE of the target's own training
   // building (haveSet dedups by name, since a prerequisite only needs to
@@ -3325,7 +3330,7 @@ function optimizeMandatorySetup(targetLine, tierIdx, civ, loomOn, allIn, buildin
     const def = targetLine.building === 'Castle' ? DATA.castle : DATA.productionBuildings[targetLine.building];
     for (let i = 1; i < buildingCount; i++) {
       const extra = { name: targetLine.building, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge };
-      if (willAgeUp && extra.age === 'Dark') extra.deferToEnd = true;
+      deferIfEarly(extra);
       items.push(extra);
     }
   }
@@ -3343,26 +3348,25 @@ function optimizeMandatorySetup(targetLine, tierIdx, civ, loomOn, allIn, buildin
   const baselineRows = [{ line: targetLine, tier: targetLine.tiers[tierIdx], buildings: 1 }];
   const { totalIncome: baselineIncome } = computeTotalIncome(baselineRows, civ, new Set());
   const baselineVillagers = villagersFromIncome(baselineIncome, ratesFor(civ, new Set())).villagers;
-  const neededAgeIdx = Math.max(
-    ageIndex(targetLine.tiers[tierIdx].age),
-    items.reduce((m, it) => Math.max(m, ageIndex(it.age || 'Dark')), 0),
-  );
+  const neededAgeIdx = Math.max(targetAgeIdx, items.reduce((m, it) => Math.max(m, ageIndex(it.age || 'Dark')), 0));
   const targetAgeId = AGE_ORDER[neededAgeIdx];
   ['Feudal', 'Castle', 'Imperial'].forEach(age => {
     if (ageIndex(age) > neededAgeIdx) return;
     fillerBuildingsNeeded(age, civ, baselineVillagers, haveSet).forEach(name => {
       const def = DATA.productionBuildings[name];
       const item = { name, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge };
-      if (willAgeUp && item.age === 'Dark') item.deferToEnd = true;
+      deferIfEarly(item);
       items.push(item);
     });
   });
-  // Items flagged deferToEnd (Barracks, then Loom) process last within Dark
-  // Age, in that relative order — Loom ends up immediately adjacent to the
-  // age-up (pushed after Barracks above, and the sort below is stable), so
-  // runSequential's deferToEnd+isAgeUp merge still pairs Loom with the
-  // age-up specifically, not Barracks. mergeWithAgeUps then slots the
-  // Feudal age-up right after both.
+  // This first sort only orders deferToEnd items after non-deferred ones
+  // (stable, so relative push order survives — buildings before Loom,
+  // Loom always last since it's pushed after every building-chain item).
+  // mergeWithAgeUps' OWN sort then buckets everything by age, so within
+  // each age's bucket the deferred items (still in this relative order)
+  // land immediately before THAT age's own age-up — a Dark building ends
+  // up right before Feudal, a Feudal one right before Castle, etc. — not
+  // all lumped at the very end of the whole plan.
   const sorted = items
     .map((item, i) => ({ item, i }))
     .sort((a, b) => (a.item.deferToEnd === b.item.deferToEnd ? a.i - b.i : a.item.deferToEnd ? 1 : -1))
@@ -3456,11 +3460,13 @@ function buildOptimizeTimeline(targetLine, tierIdx, buildingCount, loomOn, allIn
   function runSequential(itemList, rates, villRate) {
     let ri = 0;
     while (ri < itemList.length) {
-      // A whole RUN of consecutive deferToEnd items (Barracks, then Loom)
-      // immediately followed by an age-up is resolved as ONE simultaneous
-      // transaction, right before advancing — not just processed in list
-      // order, which would let a cheap deferred item (Barracks) finish in
-      // the first couple minutes despite being flagged "wait for this."
+      // A whole RUN of consecutive deferToEnd items in the same age bucket
+      // (e.g. Barracks then Loom, right before Feudal — or a Stable alone,
+      // right before Castle, for a Fast-Castle-into-Knights plan) immediately
+      // followed by an age-up is resolved as ONE simultaneous transaction,
+      // right before advancing — not just processed in list order, which
+      // would let a cheap deferred item (Barracks) finish in the first
+      // couple minutes despite being flagged "wait for this."
       // Their costs sum; TC-blocking time (Loom's researchTime) sums too
       // (same TC, serial); a non-TC-blocking build's own time (Barracks'
       // queueSeconds — a separate villager's parallel construction) is a
