@@ -174,8 +174,9 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <div style="display:flex;align-items:center;gap:24px;margin-top:16px;flex-wrap:wrap;">
       <label class="save-check" style="font-size:12px;"><input type="checkbox" id="optimize-loom" checked> Research Loom</label>
       <label class="save-check" style="font-size:12px;"><input type="checkbox" id="optimize-allin"> Prioritize Military (all-in)</label>
+      <label class="save-check" style="font-size:12px;">Efficiency <input type="number" id="optimize-efficiency" min="1" max="100" value="85" style="width:48px;padding:3px 5px;font-size:12px;margin-left:4px;">%</label>
     </div>
-    <p class="assumptions" style="margin-top:10px;margin-bottom:0;">Off (default): a realistic economy — sheep, then wood, then berries/hunt up to pop 20, no Barracks before Feudal, Loom right before advancing. On: skip all of that and build everything the instant it's affordable, prioritizing the target unit above all else. A later stage REPLACES the earlier one's production once its age is reached, it doesn't run alongside it.</p>
+    <p class="assumptions" style="margin-top:10px;margin-bottom:0;">Off (default): a realistic economy — sheep, then wood, then berries/hunt up to pop 20, no Barracks before Feudal, Loom right before advancing. On: skip all of that and build everything the instant it's affordable, prioritizing the target unit above all else. A later stage REPLACES the earlier one's production once its age is reached, it doesn't run alongside it. Efficiency scales down gather AND villager-training rate together — a rough stand-in for real-play friction (idle time, imperfect pathing, reaction delay) this idealized math otherwise ignores entirely. 100% = no friction; not a researched default, meant to be tuned against real games.</p>
   </div>
 
   <div class="card" data-mode-only="production">
@@ -197,7 +198,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.03</div>
+  <div class="version">v0.04</div>
 </div>
 
 <script>
@@ -3539,22 +3540,34 @@ function withQuantityTail(trial, qty, buildingCount, tierName, trainTime) {
 }
 
 const _optimizeMemo = new Map();
-function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
+function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ, efficiency) {
   const memoKey = JSON.stringify([
     stages.map(s => [s.line?.id, s.tierIdx, s.buildingCount ?? null, s.goalType || 'sustain', s.qty ?? null]),
-    loomOn, allIn, civ?.id ?? null,
+    loomOn, allIn, civ?.id ?? null, efficiency ?? 100,
   ]);
   if (_optimizeMemo.has(memoKey)) return _optimizeMemo.get(memoKey);
-  const result = buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ);
+  const result = buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficiency ?? 100);
   _optimizeMemo.set(memoKey, result);
   return result;
 }
 
-function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
+function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficiency) {
   const free = freeTechIds(civ);
   const openingSequence = allIn ? null : OPENING_SEQUENCE;
   const sortedStages = [...stages].sort((a, b) => ageIndex(a.line.tiers[a.tierIdx].age) - ageIndex(b.line.tiers[b.tierIdx].age));
-  function villRateFor(tcExtra) { return (1 + tcExtra) / DATA.villager.trainTime; }
+  const effFactor = (efficiency ?? 100) / 100;
+  // A single "how efficiently is this economy actually running vs. the
+  // idealized math" knob, scoped to Optimize only — Constant Production's
+  // OWN use of ratesFor (renderProductionBody) is untouched, deliberately
+  // not wrapped here. 100 (the default) must be mathematically identical
+  // to not having this at all — every existing tested scenario's numbers
+  // depend on that.
+  function villRateFor(tcExtra) { return (1 + tcExtra) / DATA.villager.trainTime * effFactor; }
+  function ratesForOptimize(civ, techIds) {
+    const r = ratesFor(civ, techIds);
+    RES.forEach(res => { r[res] *= effFactor; });
+    return r;
+  }
   function techIdsFor(levels) {
     const ids = new Set(free);
     Object.keys(levels).forEach(id => { for (let i = 0; i < levels[id]; i++) ids.add(ecoLineTechs[id][i].id); });
@@ -3724,6 +3737,106 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
     const isQuantity = stage.goalType === 'quantity';
     const qty = stage.qty || 9;
 
+    // Villager-as-target is fundamentally different from every other line:
+    // there's no separate "build infrastructure, then sustain production
+    // of something else" — growing the population IS the whole goal, and
+    // "TC count" and "the composition" are the same knob, not two like
+    // buildingCount vs tcExtra elsewhere. Forcing it through the normal
+    // buildingCount+stageMandatoryItems+computeTotalIncome machinery below
+    // caused a real bug: buildingCount could climb past however many TCs
+    // actually got built (tcExtra, tracked completely separately, capped
+    // at MAX_EXTRA_TC=2), reporting a rate for TCs that were never
+    // constructed or paid for (confirmed: zero stone ever spent on them).
+    // Dedicated branch instead, reusing simulateItemReady for real TC
+    // construction (same mechanics as the tcExtra move below, just walked
+    // manually since this isn't a Dijkstra state search) and
+    // simulateRampToSustain for the population climb once TCs are built.
+    if (isQuantity && line.isVillager) {
+      const currentTcCount = 1 + tcExtra;
+      const rates = ratesForOptimize(civ, techIdsFor(levels));
+      const checkpointsBeforeStage = [...checkpoints];
+
+      // Builds ONE candidate's full result from scratch (not touching any
+      // shared state) so multiple candidates can be tried and compared —
+      // only the winner's effects get committed afterward.
+      function tryTcCount(finalTc) {
+        let t = cursorTime, v = cursorVills, p = { ...pool };
+        let tc = currentTcCount;
+        const cp = [...checkpointsBeforeStage];
+        while (tc < finalTc) {
+          const villRate = villRateFor(tc - 1);
+          const item = { name: 'Town Center', cost: costForCiv(DATA.townCenter.cost, civ), queueSeconds: DATA.townCenter.buildTimeSeconds, age: DATA.townCenter.minAge };
+          const r = simulateItemReady(item, rates, villRate, t, v, p, openingSequence);
+          if (!r) return null; // unreachable at this TC count within the sim cap
+          t = r.time; v = r.vills; p = r.pool;
+          tc++;
+          cp.push({ label: 'Town Center ready', time: t, vills: v, split: null, houses: housesFor(v), alloc: { ...cumAlloc }, pool: { ...p }, kind: 'tech', itemName: 'Town Center', ageName: null });
+        }
+        const villRate = villRateFor(tc - 1);
+        let villagers, totalIncome, houseWoodPerSec = 0;
+        if (v < qty) {
+          const income = computeTotalIncome(rowsWithVillagers([], tc), civ, techIdsFor(levels));
+          const targetRatio = villagersFromIncome(income.totalIncome, rates).villagers;
+          const ramp = simulateRampToSustain(rates, villRate, v, targetRatio, qty, t, openingSequence);
+          if (!ramp) return null;
+          t = ramp.time; v = ramp.vills;
+          cp.push({ label: 'Queue Villagers', time: t, vills: v, split: ramp.assigned, houses: housesFor(v), alloc: { ...cumAlloc }, pool: { ...p }, kind: 'queue', itemName: 'Villager' });
+          // Scale the support ratio (food-for-training, wood-for-houses) up
+          // to the full qty so the bars sum to what the stat tile shows —
+          // most of a big population isn't tied to any resource by this
+          // goal, but showing them split in the same ratio the economy
+          // naturally wants is a reasonable, honest-enough default.
+          const ratioSum = RES.reduce((s, r) => s + targetRatio[r], 0) || 1;
+          villagers = {}; RES.forEach(r => { villagers[r] = targetRatio[r] * (qty / ratioSum); });
+          totalIncome = income.totalIncome;
+          houseWoodPerSec = income.houseWoodPerSec;
+        } else {
+          // Already had enough purely from building TCs — nothing to ramp.
+          villagers = { food: qty, wood: 0, gold: 0, stone: 0 };
+          totalIncome = { food: 0, wood: 0, gold: 0, stone: 0 };
+        }
+        cp.push({ label: `${qty}x Villager complete`, time: t, vills: v, split: null, houses: housesFor(v), alloc: { ...cumAlloc }, pool: { ...p }, kind: 'complete' });
+        return { finishTime: t, endVills: v, endPool: p, tcCount: tc, checkpoints: cp, villagers, totalIncome, houseWoodPerSec };
+      }
+
+      const MAX_TC_FOR_VILLAGER_TARGET = 20; // separate from MAX_EXTRA_TC, which stays untouched for military targets — real booms use far more TCs than a 3-TC cap makes sense for
+      let bestTc = currentTcCount, bestResult = null, worseStreak = 0;
+      const tried = [];
+      for (let finalTc = currentTcCount; finalTc <= MAX_TC_FOR_VILLAGER_TARGET; finalTc++) {
+        const res = tryTcCount(finalTc);
+        if (!res) continue;
+        tried.push({ buildingCount: finalTc, finishTime: res.finishTime, result: { checkpoints: res.checkpoints, haveSet, villagers: res.villagers, totalVillCeil: qty, rates, totalIncome: res.totalIncome, farmUpkeepWoodPerSec: 0, houseWoodPerSec: res.houseWoodPerSec, tcCount: finalTc, finishTime: res.finishTime, stageResults: [{ line, tierIdx, buildingCount: finalTc, goalType: stage.goalType, qty: stage.qty }] } });
+        if (!bestResult || res.finishTime < bestResult.finishTime) { bestTc = finalTc; bestResult = res; worseStreak = 0; }
+        else if (++worseStreak >= 2) break; // more TCs only cost more once the build-them-all overhead outweighs the extra training throughput — mirrors the same unimodal pattern buildingCount's own search already relies on
+      }
+
+      if (!bestResult) {
+        checkpoints.push({ label: `${qty}x Villager — past 60 min, add more Town Centers`, blocked: true });
+        stageResults.push({ line, tierIdx, buildingCount: currentTcCount, goalType: stage.goalType, qty: stage.qty, buildingCountAlternatives: null, villagers: {}, totalVillCeil: 0, rates, totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: currentTcCount });
+        break;
+      }
+
+      checkpoints.length = 0;
+      checkpoints.push(...bestResult.checkpoints);
+      cursorTime = bestResult.finishTime;
+      cursorVills = bestResult.endVills;
+      pool = bestResult.endPool;
+      tcExtra = bestTc - 1;
+      // cumAlloc (the timeline's cumulative-allocation columns) intentionally
+      // isn't touched here — bestResult.villagers is a target SPLIT for
+      // display, not a record of individually-assigned villagers the way
+      // runSequential's real per-villager assignments are.
+
+      const alternatives = tried.filter(t => t.buildingCount !== bestTc).sort((a, b) => a.finishTime - b.finishTime).slice(0, 2);
+      stageResults.push({
+        line, tierIdx, buildingCount: bestTc, goalType: stage.goalType, qty: stage.qty, buildingCountAlternatives: alternatives,
+        villagers: bestResult.villagers, totalVillCeil: qty, rates, totalIncome: bestResult.totalIncome,
+        farmUpkeepWoodPerSec: 0, houseWoodPerSec: bestResult.houseWoodPerSec,
+        finishTime: cursorTime, tcCount: bestTc,
+      });
+      continue;
+    }
+
     // A 'quantity' stage ("N total units, fastest") has no fixed
     // buildingCount from the UI. Trying candidate counts by re-running
     // THIS WHOLE FUNCTION from scratch — for every stage up to and
@@ -3749,7 +3862,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
       let bestK = initialBuildingCount, bestTotal = Infinity, worseStreak = 0;
       const tried = []; // every candidate actually evaluated — cheap to keep, lets the UI show runner-ups (full timeline included) instead of throwing this away
       for (let k = initialBuildingCount; k <= initialBuildingCount + MAX_EXTRA_BUILDINGS; k++) {
-        const trial = buildStagedOptimizeTimeline([...prefixStages, { ...stage, goalType: 'sustain', buildingCount: k }], loomOn, allIn, civ);
+        const trial = buildStagedOptimizeTimeline([...prefixStages, { ...stage, goalType: 'sustain', buildingCount: k }], loomOn, allIn, civ, efficiency);
         const trialResult = trial.stageResults[trial.stageResults.length - 1];
         if (trialResult.finishTime == null) continue; // unreachable at this count — skip, don't let it win by default
         const total = trialResult.finishTime + qty / (k / line.tiers[tierIdx].trainTime);
@@ -3790,13 +3903,13 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
     cursorTime = stageStartTime + primed.tcBusyUntil;
     pool = primed.pool;
 
-    const prefixBlocked = runSequential(primed.remaining, ratesFor(civ, techIdsFor(levels)), villRateFor(tcExtra));
+    const prefixBlocked = runSequential(primed.remaining, ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra));
     if (prefixBlocked) {
       // Bail out the same way an unreachable Dijkstra state already does
       // below, rather than silently continuing with a cursorTime/
       // cursorVills that never actually got here.
       checkpoints.push({ label: `${buildingCount}x ${line.tiers[tierIdx].name} — past 60 min, add more Town Centers`, blocked: true });
-      stageResults.push({ line, tierIdx, buildingCount, goalType: stage.goalType, qty: stage.qty, buildingCountAlternatives, villagers: {}, totalVillCeil: 0, rates: ratesFor(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
+      stageResults.push({ line, tierIdx, buildingCount, goalType: stage.goalType, qty: stage.qty, buildingCountAlternatives, villagers: {}, totalVillCeil: 0, rates: ratesForOptimize(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
       break;
     }
     reachedAgeIdx = targetAgeIdx;
@@ -3829,7 +3942,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
       const cur = popMinTime(frontier);
       const curKey = stateKey(cur.levels, cur.tcExtra);
       if (finalized.get(curKey) !== cur) continue;
-      const rates = ratesFor(civ, techIdsFor(cur.levels));
+      const rates = ratesForOptimize(civ, techIdsFor(cur.levels));
       const villRate = villRateFor(cur.tcExtra);
 
       relevantLines.forEach(id => {
@@ -3868,7 +3981,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
     let bestKey = null, bestTotal = Infinity, bestRamp = null, bestRates = null, bestVillagers = null, bestVillCeil = 0, bestIncome = null, bestUpkeep = null;
     finalized.forEach((state, key) => {
       const techIds = techIdsFor(state.levels);
-      const rates = ratesFor(civ, techIds);
+      const rates = ratesForOptimize(civ, techIds);
       const villRate = villRateFor(state.tcExtra);
       const incomeInfo = computeTotalIncome(rowsWithVillagers(stageRows, 1 + state.tcExtra), civ, techIds);
       const { villagers, totalVillCeil } = villagersFromIncome(incomeInfo.totalIncome, rates);
@@ -3884,7 +3997,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
 
     if (bestKey == null) {
       checkpoints.push({ label: `${buildingCount}x ${line.tiers[tierIdx].name} — past 60 min, add more Town Centers`, blocked: true });
-      stageResults.push({ line, tierIdx, buildingCount, goalType: stage.goalType, qty: stage.qty, buildingCountAlternatives, villagers: {}, totalVillCeil: 0, rates: ratesFor(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
+      stageResults.push({ line, tierIdx, buildingCount, goalType: stage.goalType, qty: stage.qty, buildingCountAlternatives, villagers: {}, totalVillCeil: 0, rates: ratesForOptimize(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
       break; // a later stage built on an unreachable one isn't meaningful either
     }
 
@@ -3892,7 +4005,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
     let k = bestKey;
     while (cameFrom.has(k)) { const { fromKey, move } = cameFrom.get(k); path.unshift(move); k = fromKey; }
     path.forEach(move => {
-      runSequential([move.item], ratesFor(civ, techIdsFor(levels)), villRateFor(tcExtra));
+      runSequential([move.item], ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra));
       if (move.type === 'tech') levels = { ...levels, [move.id]: levels[move.id] + 1 };
       else tcExtra += 1;
     });
@@ -4351,7 +4464,12 @@ function renderVillagerBars(villagers, rates, totalIncome, farmUpkeepWoodPerSec,
 // age does this stage start at" field: the target unit's own tier already
 // says that (Scout Cavalry is Feudal, Knight is Castle), and
 // buildStagedOptimizeTimeline sorts stages by that age itself.
-let optimizeState = { stages: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }], loomOn: true, allIn: false };
+// efficiency: a first-guess calibration knob (100 = no friction, the
+// idealized math as before this existed) — real play never hits the
+// theoretical max gather/training rate (idle time, imperfect pathing,
+// reaction delay), and this model had no way to account for that at all.
+// Not a researched number — meant to be tuned down from real games.
+let optimizeState = { stages: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }], loomOn: true, allIn: false, efficiency: 85 };
 // Pure UI/display state, not part of the plan itself — which buildingCount
 // alternative (if any) the last stage's tabs are currently showing instead
 // of the recommended pick. Reset to null (back to the real pick) whenever
@@ -4369,7 +4487,7 @@ function renderOptimizeResults() {
     .filter(s => s.line);
   if (!stages.length) { descEl.textContent = 'Pick a unit above to optimize for.'; bodyEl.innerHTML = ''; return; }
 
-  const result = buildStagedOptimizeTimeline(stages, optimizeState.loomOn, optimizeState.allIn, civ);
+  const result = buildStagedOptimizeTimeline(stages, optimizeState.loomOn, optimizeState.allIn, civ, optimizeState.efficiency);
   const styleNote = optimizeState.allIn ? ' — all-in, no realistic-economy pacing' : ' — realistic economy (sheep → berries/hunt → farms, no early Barracks)';
   // Built from result.stageResults (not the input `stages`) since a
   // 'quantity' stage's actual buildingCount is only known once the search
@@ -4575,6 +4693,13 @@ document.getElementById('optimize-allin').addEventListener('change', e => {
   optimizeAltView = null;
   renderOptimizeResults();
 });
+document.getElementById('optimize-efficiency').addEventListener('input', e => {
+  const v = Math.min(100, Math.max(1, Number(e.target.value) || 100));
+  optimizeState.efficiency = v;
+  optimizeAltView = null;
+  clearTimeout(window.__efficiencyDebounce);
+  window.__efficiencyDebounce = setTimeout(renderOptimizeResults, 400);
+});
 
 civSelect.addEventListener('change', () => {
   renderTechGrid();
@@ -4630,6 +4755,7 @@ function setMode(mode) {
     renderOptimizeStages();
     document.getElementById('optimize-loom').checked = optimizeState.loomOn;
     document.getElementById('optimize-allin').checked = optimizeState.allIn;
+    document.getElementById('optimize-efficiency').value = optimizeState.efficiency;
   }
   renderCivBonusList();
   renderCurrentModeResults();
