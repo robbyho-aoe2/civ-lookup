@@ -3255,7 +3255,7 @@ function expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, house
       expanded.push({
         label: 'Build 1 House', time: prev.time + frac * (cur.time - prev.time),
         vills: thresholdVills, split: null, houses: k, houseDelta: 1,
-        alloc: { ...prev.alloc }, kind: 'house',
+        alloc: { ...prev.alloc }, pool: { ...prev.pool }, kind: 'house',
       });
     }
     expanded.push(cur);
@@ -3540,19 +3540,19 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
     startBuildNotes.push(s.name);
     s.covers.forEach(r2 => { builtResources[r2] = true; });
   });
-  const checkpoints = [{ label: 'Start', time: 0, vills: startVills, split: null, houses: 0, alloc: { ...cumAlloc }, kind: 'start', buildNotes: startBuildNotes }];
+  const checkpoints = [{ label: 'Start', time: 0, vills: startVills, split: null, houses: 0, alloc: { ...cumAlloc }, pool: startingPoolForCiv(civ), kind: 'start', buildNotes: startBuildNotes }];
   let housesAlready = 0, houseBaseline = startVills;
 
   const startingPool = startingPoolForCiv(civ);
   const opening = openingHousesInfo(startingPool, true, villRateFor(0), hasNoHouses);
   if (opening.applies) {
-    checkpoints.push({ label: 'Build 2 Houses', time: 0, vills: startVills, split: null, houses: 2, alloc: { ...cumAlloc }, kind: 'house' });
+    checkpoints.push({ label: 'Build 2 Houses', time: 0, vills: startVills, split: null, houses: 2, alloc: { ...cumAlloc }, pool: { ...opening.pool }, kind: 'house' });
     housesAlready = 2;
     houseBaseline = startVills + 2 * housePopSpace;
   }
   if (villRateFor(0) > 0) {
     const openingVills = Math.floor(startingPool.food / DATA.villager.cost.food);
-    if (openingVills > 0) checkpoints.push({ label: `Queue ${openingVills} Villagers`, time: 0, vills: startVills, split: null, houses: opening.applies ? 2 : 0, alloc: { ...cumAlloc }, kind: 'start' });
+    if (openingVills > 0) checkpoints.push({ label: `Queue ${openingVills} Villagers`, time: 0, vills: startVills, split: null, houses: opening.applies ? 2 : 0, alloc: { ...cumAlloc }, pool: { ...opening.pool }, kind: 'start' });
   }
   const housesFor = v => hasNoHouses ? 0 : housesAlready + Math.max(0, Math.ceil((v + SCOUT_POP - houseBaseline) / housePopSpace));
 
@@ -3624,7 +3624,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
         const gatherVills = Math.round(callStartVills + frac * (cursorVills - callStartVills));
         cumAlloc[res] += 1;
         remainingAssigned[res] = Math.max(0, remainingAssigned[res] - 1);
-        checkpoints.push({ label: s.name, time: gatherTime, vills: gatherVills, split: { food: 0, wood: 0, gold: 0, stone: 0, [res]: 1 }, houses: housesFor(gatherVills), alloc: { ...cumAlloc }, kind: 'gather' });
+        checkpoints.push({ label: s.name, time: gatherTime, vills: gatherVills, split: { food: 0, wood: 0, gold: 0, stone: 0, [res]: 1 }, houses: housesFor(gatherVills), alloc: { ...cumAlloc }, pool: { ...pool }, kind: 'gather' });
       });
 
       // The scripted opening's own food-structure trigger: the moment (if
@@ -3637,7 +3637,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
           s.covers.forEach(r2 => { builtResources[r2] = true; });
           cumAlloc.food += 1;
           remainingAssigned.food = Math.max(0, remainingAssigned.food - 1);
-          checkpoints.push({ label: s.name, time: r.millAt, vills: OPENING_MILL_INDEX, split: { food: 1, wood: 0, gold: 0, stone: 0 }, houses: housesFor(OPENING_MILL_INDEX), alloc: { ...cumAlloc }, kind: 'gather' });
+          checkpoints.push({ label: s.name, time: r.millAt, vills: OPENING_MILL_INDEX, split: { food: 1, wood: 0, gold: 0, stone: 0 }, houses: housesFor(OPENING_MILL_INDEX), alloc: { ...cumAlloc }, pool: { ...pool }, kind: 'gather' });
         } else {
           builtResources.food = true; // already covered by another resource's structure (e.g. Settlement)
         }
@@ -3650,7 +3650,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
       // combined transaction would actually read to a player.
       mergedItems.forEach((it, idx) => {
         const isLast = idx === mergedItems.length - 1;
-        checkpoints.push({ label: `${it.name} ready`, time: cursorTime, vills: cursorVills, split: isLast ? remainingAssigned : null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, ...checkpointKindFor(it) });
+        checkpoints.push({ label: `${it.name} ready`, time: cursorTime, vills: cursorVills, split: isLast ? remainingAssigned : null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, pool: { ...pool }, ...checkpointKindFor(it) });
       });
       ri += mergedItems.length;
     }
@@ -3682,19 +3682,23 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
     // may itself be 'quantity') needs to resolve exactly the same way it
     // would for real — re-running from stage 0 guarantees that for free.
     let buildingCount = stage.buildingCount;
+    let buildingCountAlternatives = null;
     if (isQuantity) {
       const initialBuildingCount = haveSet.buildingCounts.get(line.building) || 1;
       const prefixStages = sortedStages.slice(0, stageIdx);
       let bestK = initialBuildingCount, bestTotal = Infinity, worseStreak = 0;
+      const tried = []; // every candidate actually evaluated — cheap to keep, lets the UI show runner-ups instead of throwing this away
       for (let k = initialBuildingCount; k <= initialBuildingCount + MAX_EXTRA_BUILDINGS; k++) {
         const trial = buildStagedOptimizeTimeline([...prefixStages, { ...stage, goalType: 'sustain', buildingCount: k }], loomOn, allIn, civ);
         const trialResult = trial.stageResults[trial.stageResults.length - 1];
         if (trialResult.finishTime == null) continue; // unreachable at this count — skip, don't let it win by default
         const total = trialResult.finishTime + qty / (k / line.tiers[tierIdx].trainTime);
+        tried.push({ buildingCount: k, finishTime: total });
         if (total < bestTotal) { bestTotal = total; bestK = k; worseStreak = 0; }
         else if (++worseStreak >= 2) break; // more buildings only cost more once ramp-up starts dominating the tail savings — confirmed empirically unimodal (single dip), so 2 non-improving trials in a row means it won't get better; stop re-running full searches for nothing
       }
       buildingCount = bestK;
+      buildingCountAlternatives = tried.filter(t => t.buildingCount !== bestK).sort((a, b) => a.finishTime - b.finishTime).slice(0, 2);
     }
 
     const targetAgeIdx = ageIndex(line.tiers[tierIdx].age);
@@ -3712,7 +3716,12 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
     const stageStartTime = cursorTime, stageStartVills = cursorVills;
     const primed = primeInstantGoals(mandatoryItems, pool, reachedAgeIdx);
     primed.resolved.forEach(({ item, time }) => {
-      checkpoints.push({ label: `${item.name} ready`, time: stageStartTime + time, vills: stageStartVills, split: null, houses: housesFor(stageStartVills), alloc: { ...cumAlloc }, ...checkpointKindFor(item) });
+      // primed.pool is the pool AFTER every instant-afford resolves, not a
+      // per-item snapshot (primeInstantGoals doesn't track intermediate
+      // pool state) — close enough since these all clear at effectively
+      // the same moment (instantly affordable from the stockpile already
+      // on hand), unlike the spread-out checkpoints elsewhere in this table.
+      checkpoints.push({ label: `${item.name} ready`, time: stageStartTime + time, vills: stageStartVills, split: null, houses: housesFor(stageStartVills), alloc: { ...cumAlloc }, pool: { ...primed.pool }, ...checkpointKindFor(item) });
     });
     cursorTime = stageStartTime + primed.tcBusyUntil;
     pool = primed.pool;
@@ -3803,7 +3812,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
 
     if (bestKey == null) {
       checkpoints.push({ label: `${buildingCount}x ${line.tiers[tierIdx].name} — past 60 min, add more Town Centers`, blocked: true });
-      stageResults.push({ line, tierIdx, buildingCount, goalType: stage.goalType, qty: stage.qty, villagers: {}, totalVillCeil: 0, rates: ratesFor(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
+      stageResults.push({ line, tierIdx, buildingCount, goalType: stage.goalType, qty: stage.qty, buildingCountAlternatives, villagers: {}, totalVillCeil: 0, rates: ratesFor(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
       break; // a later stage built on an unreachable one isn't meaningful either
     }
 
@@ -3827,8 +3836,13 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
       });
       RES.forEach(r => { cumAlloc[r] += bestRamp.assigned[r] || 0; });
       checkpoints.push({
+        // simulateRampToSustain doesn't track resource pool (it's pure
+        // villager-count ramping, no cost accounting) — `pool` here is
+        // whatever it was BEFORE the ramp, not updated for it. A known gap,
+        // not worth a bigger fix: once sustained, income is fully claimed
+        // by ongoing costs anyway, so it should sit near zero regardless.
         label: `Reach sustain (${bestVillCeil} villagers for ${buildingCount}x ${line.tiers[tierIdx].name})`,
-        time: cursorTime, vills: cursorVills, split: bestRamp.assigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, kind: 'sustain', buildNotes: rampBuildNotes,
+        time: cursorTime, vills: cursorVills, split: bestRamp.assigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, pool: { ...pool }, kind: 'sustain', buildNotes: rampBuildNotes,
       });
     }
 
@@ -3839,15 +3853,25 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
     // is independent of eco-tech — the trial loop above already picked
     // whichever buildingCount minimizes THIS total, not just time-to-sustain.
     if (isQuantity) {
+      // Every other checkpoint in this table marks when something FINISHES
+      // — this is the one moment that's a START instead (production could
+      // just as easily run forever from here, same as sustain mode; it's
+      // only stopping at `qty` because that's the goal), so without an
+      // explicit marker here the table jumps straight to "9x complete"
+      // with no visible step for "and this is when you began."
+      checkpoints.push({
+        label: `Queue ${line.tiers[tierIdx].name}`,
+        time: cursorTime, vills: cursorVills, split: null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, pool: { ...pool }, kind: 'queue', itemName: line.tiers[tierIdx].name,
+      });
       cursorTime += qty / (buildingCount / line.tiers[tierIdx].trainTime);
       checkpoints.push({
         label: `${qty}x ${line.tiers[tierIdx].name} complete`,
-        time: cursorTime, vills: cursorVills, split: null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, kind: 'complete',
+        time: cursorTime, vills: cursorVills, split: null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, pool: { ...pool }, kind: 'complete',
       });
     }
 
     stageResults.push({
-      line, tierIdx, buildingCount, goalType: stage.goalType, qty: stage.qty,
+      line, tierIdx, buildingCount, goalType: stage.goalType, qty: stage.qty, buildingCountAlternatives,
       villagers: bestVillagers, totalVillCeil: bestVillCeil, rates: bestRates, totalIncome: bestIncome,
       farmUpkeepWoodPerSec: bestUpkeep.farmUpkeepWoodPerSec, houseWoodPerSec: bestUpkeep.houseWoodPerSec,
       finishTime: cursorTime, tcCount: 1 + tcExtra,
@@ -3916,22 +3940,29 @@ function qualifyingBuildingCount(targetAge, civ, haveSet, villagers) {
 
 // Buildings this tool will automatically add (never asks the user to
 // toggle) when a real build falls short of the age-up building-count
-// requirement — cheapest / least-commitment options first, so aging up
-// doesn't silently force an unwanted Archery Range/Stable. Verified against
+// requirement — cheapest option(s) first, so aging up doesn't silently
+// force an unwanted, more expensive commitment. Verified against
 // DATA.ageUpBuildingReqs that these three lists are disjoint, so an earlier
 // age's filler pick can never help satisfy a later age's count — order
 // (Feudal→Castle→Imperial) only mirrors real progression, isn't load-
-// bearing for correctness.
-const FILLER_BUILDING_PRIORITY = { Feudal: ['Barracks'], Castle: ['Market', 'Blacksmith'], Imperial: ['Monastery', 'University'] };
+// bearing for correctness. Cost is looked up live (not hand-ordered here)
+// so it can't silently drift out of sync with DATA.productionBuildings —
+// which it had: this list used to hardcode Market before Blacksmith even
+// though Blacksmith is cheaper (150 wood, 40s vs 175 wood, 60s) and a
+// civ's own building-cost discounts could reorder this further still.
+const FILLER_BUILDING_CANDIDATES = { Feudal: ['Barracks'], Castle: ['Market', 'Blacksmith'], Imperial: ['Monastery', 'University'] };
 
 function fillerBuildingsNeeded(targetAge, civ, villagers, haveSet) {
   const req = DATA.ageUpBuildingReqs[targetAge];
   if (!req) return [];
   let short = req.count - qualifyingBuildingCount(targetAge, civ, haveSet, villagers);
+  const totalCost = name => RES.reduce((s, r) => s + (costForCiv(DATA.productionBuildings[name].cost, civ)[r] || 0), 0);
+  const candidates = (FILLER_BUILDING_CANDIDATES[targetAge] || [])
+    .filter(name => !haveSet.has(name))
+    .sort((a, b) => totalCost(a) - totalCost(b));
   const picks = [];
-  for (const name of FILLER_BUILDING_PRIORITY[targetAge] || []) {
+  for (const name of candidates) {
     if (short <= 0) break;
-    if (haveSet.has(name)) continue;
     picks.push(name);
     haveSet.add(name);
     short--;
@@ -3957,6 +3988,10 @@ function actionParts(c, prevHouses) {
   if (c.kind === 'age') parts.push(`Advanced to ${c.ageName} Age`);
   else if (c.kind === 'tech') parts.push(`${c.itemName === 'Castle' || c.itemName === 'Town Center' || DATA.productionBuildings[c.itemName] ? 'Built' : 'Researched'} ${c.itemName}`);
   else if (c.kind === 'unit') parts.push(`Trained ${c.itemName}`);
+  // The one genuine exception to the past-tense rule above — a 'quantity'
+  // stage's "Queue X" checkpoint really is the start of something (see
+  // buildStagedOptimizeTimeline), not the end, so it stays imperative.
+  else if (c.kind === 'queue') parts.push(`Queue ${c.itemName}`);
   if (c.kind === 'house') {
     const n = c.houseDelta ?? c.houses;
     parts.push(`Build ${n} House${n === 1 ? '' : 's'}`);
@@ -3977,14 +4012,31 @@ function actionParts(c, prevHouses) {
 function renderTimelineCard(checkpoints, villRate, civ) {
   if (checkpoints.length <= 1) return '';
   let prevHouses = 0;
+  // Every row until the next age-up belongs to whichever age the LAST
+  // "Advance to X Age" checkpoint (or Dark, at the very start) put us in —
+  // tinting each row by that gives the table an at-a-glance sense of "this
+  // whole stretch is still Feudal" without reading every single timestamp.
+  let currentAge = 'Dark';
   const rows = checkpoints.map((c, i) => {
     if (c.blocked) return `<tr class="blocked"><td>—</td><td colspan="9"><b>${c.label}</b></td></tr>`;
+    if (c.kind === 'age') currentAge = c.ageName;
     const alloc = c.alloc || { food: 0, wood: 0, gold: 0, stone: 0 };
     const buildNote = c.buildNotes?.length ? ` <span class="tl-build">+ ${c.buildNotes.join(', + ')}</span>` : '';
     const warnNote = c.warning ? `<div class="tl-warn">⚠ ${c.warning}</div>` : '';
     const action = actionParts(c, prevHouses);
     prevHouses = c.houses || 0;
-    return `<tr>
+    // A production building (Barracks, Stable, Market, Castle, ...)
+    // finishing is a bigger deal than a tech or an age-up's own filler
+    // requirement — flags it with a left accent stripe so it stands out
+    // from the rest of that age's rows at a glance.
+    const isProdBuilding = c.kind === 'tech' && (c.itemName === 'Castle' || DATA.productionBuildings[c.itemName]);
+    const rowStyle = `background:color-mix(in srgb, var(--age${currentAge}) 11%, transparent);${isProdBuilding ? 'border-left:3px solid var(--amber);' : ''}`;
+    // Resources sitting banked-but-unspent at this moment — a rounded 0
+    // means "nothing spare right now" (the common case: this model spends
+    // resources the instant they're needed), not "never had any."
+    const pool = c.pool || { food: 0, wood: 0, gold: 0, stone: 0 };
+    const poolBits = RES.filter(r => Math.round(pool[r]) > 0).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${Math.round(pool[r])}</span>`);
+    return `<tr style="${rowStyle}">
       <td>${i === 0 ? '0:00' : fmtClock(c.time)}</td>
       <td class="num">${c.vills + SCOUT_POP}</td>
       <td class="num">${c.vills}</td>
@@ -3993,6 +4045,7 @@ function renderTimelineCard(checkpoints, villRate, civ) {
       <td class="num res-gold">${alloc.gold}</td>
       <td class="num res-stone">${alloc.stone}</td>
       <td class="num">${c.houses || 0}</td>
+      <td style="white-space:nowrap;">${poolBits.length ? poolBits.join(' ') : '—'}</td>
       <td><b>${c.label}</b>${buildNote}${warnNote}</td>
       <td>${action.length ? action.join(' · ') : '—'}</td>
     </tr>`;
@@ -4005,12 +4058,12 @@ function renderTimelineCard(checkpoints, villRate, civ) {
         <th>Time</th><th class="num">Pop</th><th class="num">Vills</th>
         <th class="num res-food">${RES_ICON.food}</th><th class="num res-wood">${RES_ICON.wood}</th>
         <th class="num res-gold">${RES_ICON.gold}</th><th class="num res-stone">${RES_ICON.stone}</th>
-        <th class="num">🏠</th><th>Event</th><th>Action</th>
+        <th class="num">🏠</th><th>Available</th><th>Event</th><th>Action</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
     </div>
-    <p class="assumptions">Pop includes the starting Scout Cavalry (Vills + 1), which occupies population space this tool doesn't otherwise track. Food/Wood/Gold/Stone columns are cumulative villagers on that resource so far, not just this step's change. "+ Building" in Event marks the moment a resource's drop-off building is first needed, shown as its own step at the time gathering actually starts (not lumped in with whatever goal happens to finish later). Action only ever routes newly-trained villagers to a resource — it doesn't model reassigning villagers already working one. Assumes ${villRate > 0 ? 'constant villager production' : 'no ongoing villager production'} and fully automatic allocation — a planning estimate, not a literal script of which building to click first.</p>
+    <p class="assumptions">Row shading = current age (Dark/Feudal/Castle/Imperial); a gold left edge = a production building just finished. Pop includes the starting Scout Cavalry (Vills + 1), which occupies population space this tool doesn't otherwise track. Food/Wood/Gold/Stone columns are cumulative villagers on that resource so far, not just this step's change. Available is whatever's banked but unspent at that moment — usually "—" (0), since this model spends resources the instant something needs them, not what's ever been collected in total. "+ Building" in Event marks the moment a resource's drop-off building is first needed, shown as its own step at the time gathering actually starts (not lumped in with whatever goal happens to finish later). Every row's TIME is when that row's own item finishes — its "start" is whatever the row above already reads. Action only ever routes newly-trained villagers to a resource — it doesn't model reassigning villagers already working one. Assumes ${villRate > 0 ? 'constant villager production' : 'no ongoing villager production'} and fully automatic allocation — a planning estimate, not a literal script of which building to click first.</p>
   </div>`;
 }
 
@@ -4247,6 +4300,15 @@ function renderOptimizeResults() {
   const srDesc = sr => sr.goalType === 'quantity'
     ? `${sr.qty}x ${sr.line.tiers[sr.tierIdx].name} ASAP`
     : `${sr.buildingCount}x ${sr.line.tiers[sr.tierIdx].name} in constant production`;
+  // A 'quantity' stage's trial loop already evaluates several buildingCount
+  // candidates to find the winner — surfacing the runner-ups it already
+  // computed (rather than only ever showing the single best) costs nothing
+  // extra and lets a player see the real trade-off instead of taking the
+  // pick on faith, e.g. if they'd rather commit fewer Stables even at a
+  // small time cost.
+  const altText = sr => sr.buildingCountAlternatives?.length
+    ? `<p class="desc" style="margin:4px 0 0;">Also considered: ${sr.buildingCountAlternatives.map(a => `${a.buildingCount}x ${sr.line.building} → ${fmtClock(a.finishTime)}`).join(' · ')}</p>`
+    : '';
   const planDesc = result.stageResults.length > 1
     ? result.stageResults.map(srDesc).join(' → switching to ')
     : srDesc(result.stageResults[0]);
@@ -4265,13 +4327,15 @@ function renderOptimizeResults() {
   const stageBreakdown = result.stageResults.length <= 1 ? '' : result.stageResults.map((sr, i) => `
     <div class="pending-card">
       <h3>Stage ${i + 1}: ${srDesc(sr)}${sr.finishTime == null ? ' (blocked)' : ` — ${sr.goalType === 'quantity' ? 'done' : 'ready'} by ${fmtClock(sr.finishTime)}`}</h3>
+      ${altText(sr)}
       ${sr.finishTime == null ? '' : renderVillagerBars(sr.villagers, sr.rates, sr.totalIncome, sr.farmUpkeepWoodPerSec, sr.houseWoodPerSec)}
     </div>`).join('');
+  const singleStageAlt = result.stageResults.length === 1 ? altText(result.stageResults[0]) : '';
 
   const bars = renderVillagerBars(result.villagers, result.rates, result.totalIncome, result.farmUpkeepWoodPerSec, result.houseWoodPerSec);
   const buildingCounts = Object.fromEntries(result.haveSet.buildingCounts);
 
-  bodyEl.innerHTML = statRow + '<div style="margin-top:18px">' + bars + '</div>' + stageBreakdown
+  bodyEl.innerHTML = singleStageAlt + statRow + '<div style="margin-top:18px">' + bars + '</div>' + stageBreakdown
     + renderSetupCard(result.villagers, civ, result.haveSet.has('Castle'), result.haveSet, buildingCounts)
     + renderTimelineCard(result.checkpoints, result.villRate, civ);
 }
