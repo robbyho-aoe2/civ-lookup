@@ -197,7 +197,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.02</div>
+  <div class="version">v0.03</div>
 </div>
 
 <script>
@@ -3443,7 +3443,12 @@ function stageMandatoryItems(stage, civ, allIn, haveSet, fromAgeIdx, extraItems)
         queueSeconds: def.buildTimeSeconds,
         age: def.minAge,
       };
-      deferIfEarly(extra);
+      // NOT deferred, unlike the first copy above — only that first copy
+      // actually counts toward the age-up-qualifying-building requirement;
+      // these extras are pure steady-state throughput, with no reason to
+      // hold them back until the age-up like a genuinely-required building
+      // (they'll naturally land wherever their own age sorts them, often
+      // well before the age-up they used to get needlessly bundled with).
       items.push(extra);
       haveSet.buildingCounts.set(line.building, buildingCount);
     }
@@ -3609,8 +3614,18 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
   // pool (closed over, mutated across the WHOLE plan, not reset per stage),
   // appending a checkpoint for each — reused for every stage's mandatory
   // prefix and for replaying each stage's own search's winning path.
+  // Returns true if ANY item in itemList couldn't be resolved within the
+  // 60-min simulation cap — a real failure the caller MUST check. Without
+  // checking this, the loop below just skips the failed item and keeps
+  // going with cursorTime/cursorVills silently wrong — every checkpoint
+  // after it, and the entire Dijkstra search that follows, would be built
+  // on a corrupted state that LOOKS successful (confirmed as a real,
+  // reachable failure mode while testing a since-abandoned villager-cap
+  // experiment — expensive enough combinations can still hit the internal
+  // 60-min cap even without one).
   function runSequential(itemList, rates, villRate) {
     let ri = 0;
+    let anyBlocked = false;
     while (ri < itemList.length) {
       // A whole RUN of consecutive deferToEnd items in the same age bucket
       // (e.g. Barracks then Loom, right before Feudal — or a Stable alone,
@@ -3640,7 +3655,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
 
       const callStartTime = cursorTime, callStartVills = cursorVills;
       const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence);
-      if (!r) { checkpoints.push({ label: `${simItem.name} — past 60 min, add more Town Centers`, blocked: true }); ri += mergedItems.length; continue; }
+      if (!r) { checkpoints.push({ label: `${simItem.name} — past 60 min, add more Town Centers`, blocked: true }); anyBlocked = true; ri += mergedItems.length; continue; }
       cursorTime = r.time; cursorVills = r.vills; pool = r.pool;
 
       const remainingAssigned = { ...r.assigned };
@@ -3698,6 +3713,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
       });
       ri += mergedItems.length;
     }
+    return anyBlocked;
   }
 
   const stageResults = [];
@@ -3774,7 +3790,15 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
     cursorTime = stageStartTime + primed.tcBusyUntil;
     pool = primed.pool;
 
-    runSequential(primed.remaining, ratesFor(civ, techIdsFor(levels)), villRateFor(tcExtra));
+    const prefixBlocked = runSequential(primed.remaining, ratesFor(civ, techIdsFor(levels)), villRateFor(tcExtra));
+    if (prefixBlocked) {
+      // Bail out the same way an unreachable Dijkstra state already does
+      // below, rather than silently continuing with a cursorTime/
+      // cursorVills that never actually got here.
+      checkpoints.push({ label: `${buildingCount}x ${line.tiers[tierIdx].name} — past 60 min, add more Town Centers`, blocked: true });
+      stageResults.push({ line, tierIdx, buildingCount, goalType: stage.goalType, qty: stage.qty, buildingCountAlternatives, villagers: {}, totalVillCeil: 0, rates: ratesFor(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
+      break;
+    }
     reachedAgeIdx = targetAgeIdx;
 
     // ── Search: same exact-Dijkstra shape as the single-target design (see
