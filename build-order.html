@@ -179,7 +179,9 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
         </div>
       </div>
       <label class="save-check" style="font-size:12px;"><input type="checkbox" id="optimize-loom" checked> Research Loom</label>
+      <label class="save-check" style="font-size:12px;"><input type="checkbox" id="optimize-allin"> Prioritize Military (all-in)</label>
     </div>
+    <p class="assumptions" style="margin-top:10px;margin-bottom:0;">Off (default): a realistic economy — sheep, then wood, then berries/hunt up to pop 20, no Barracks before Feudal, Loom right before advancing. On: skip all of that and build everything the instant it's affordable, prioritizing the target unit above all else.</p>
   </div>
 
   <div class="card" data-mode-only="production">
@@ -2820,7 +2822,16 @@ function buildingChainItems(buildingName, civ, haveSet) {
 // count) at which the item's full cost has accumulated AND, for a unit-batch
 // goal, enough queue time has passed to actually train it — or null if it
 // would take longer than the simulation cap.
-function simulateItemReady(item, rates, villRate, startTime, startVills, pool) {
+// `openingSequence`, when passed (the realistic-economy Optimize toggle —
+// null in all-in/rush mode), overrides the greedy "worst ETA" assignment for
+// every villager born while `vills` is still within the script: they go
+// where the script says regardless of what THIS item needs, exactly like a
+// real player can't redirect villagers away from a fixed sheep/wood/berries
+// opening just because a specific goal would benefit from gold instead.
+// Their labor still counts toward whatever they're assigned to (RES.forEach
+// below, not `need.forEach`) — it just may not help THIS item at all until
+// the script hands control back to the greedy algorithm.
+function simulateItemReady(item, rates, villRate, startTime, startVills, pool, openingSequence) {
   const need = RES.filter(r => item.cost[r] > 0);
   const minTime = startTime + (item.queueSeconds || 0);
   // Town Center techs (tcQueue:true) block villager production for their
@@ -2842,7 +2853,7 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool) {
     pool[r] -= credit;
   });
   if (need.every(r => saved[r] >= item.cost[r])) {
-    return { time: Math.max(startTime, minTime) + tcDelay, vills: startVills, pool, assigned: { food: 0, wood: 0, gold: 0, stone: 0 }, newVills: 0, firstAssignedAt: {} };
+    return { time: Math.max(startTime, minTime) + tcDelay, vills: startVills, pool, assigned: { food: 0, wood: 0, gold: 0, stone: 0 }, newVills: 0, firstAssignedAt: {}, millAt: null };
   }
 
   if (villRate <= 0) return null;
@@ -2854,6 +2865,11 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool) {
   // whatever this item's own "ready" checkpoint ends up being (which can be
   // much later, once enough has accumulated).
   const firstAssignedAt = {};
+  // The moment (if any) the scripted opening first sends a villager to food
+  // AFTER the sheep sub-phase — i.e. exactly when a Mill becomes necessary —
+  // so the caller can insert that as its own checkpoint instead of (wrongly)
+  // treating the very first, sheep-fed food villager as needing one.
+  let millAt = null;
   let vills = startVills;
   let t = startTime;
   const dt = 0.5;
@@ -2862,21 +2878,28 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool) {
 
   while (t <= capT) {
     while (t >= nextBirth - 1e-9) {
+      let target;
+      if (openingSequence && vills < openingSequence.length) {
+        target = openingSequence[vills];
+        if (target === 'food' && vills === OPENING_MILL_INDEX) millAt = t;
+      } else {
+        target = need[0];
+        let worstEta = -Infinity;
+        need.forEach(r => {
+          if (saved[r] >= item.cost[r]) return;
+          const remaining = item.cost[r] - saved[r];
+          const curRate = assigned[r] * rates[r];
+          const eta = curRate > 0 ? remaining / curRate : Infinity;
+          if (eta > worstEta) { worstEta = eta; target = r; }
+        });
+      }
       vills++;
-      let target = need[0], worstEta = -Infinity;
-      need.forEach(r => {
-        if (saved[r] >= item.cost[r]) return;
-        const remaining = item.cost[r] - saved[r];
-        const curRate = assigned[r] * rates[r];
-        const eta = curRate > 0 ? remaining / curRate : Infinity;
-        if (eta > worstEta) { worstEta = eta; target = r; }
-      });
       assigned[target]++;
       if (!(target in firstAssignedAt)) firstAssignedAt[target] = t;
       nextBirth += 1 / villRate;
     }
     RES.forEach(r => { if (assigned[r]) saved[r] += assigned[r] * rates[r] * dt; });
-    if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) return { time: t + tcDelay, vills, pool, assigned, newVills: vills - startVills, firstAssignedAt };
+    if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) return { time: t + tcDelay, vills, pool, assigned, newVills: vills - startVills, firstAssignedAt, millAt };
     t += dt;
   }
   return null;
@@ -2887,13 +2910,27 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool) {
 // is proportionally furthest from its target share (not a lump cost like
 // simulateItemReady — a target RATIO). Returns null if already at/above
 // sustain, or if there's no villager production to ramp with.
-// Standard Arabia-opening villager order: the first 6 (counting from
-// villager #1, including whichever of your starting villagers fall in this
-// range) go to food (sheep), the next 3 to wood (for houses/buildings),
-// then the rest follow the general proportional-fill toward your
-// composition's target ratio. Only applied when actually starting in Dark
-// Age — Feudal+ starts have no "opening" to model, just the target ratio.
-const OPENING_SEQUENCE = ['food', 'food', 'food', 'food', 'food', 'food', 'wood', 'wood', 'wood'];
+// Standard Arabia-opening villager order, given explicitly: the first 6
+// (counting from villager #1, including whichever of your starting
+// villagers fall in this range) go to food — sheep, no building needed —
+// the next 2-3 to wood (for houses/buildings), then EVERY villager after
+// that goes back to food — berries/hunt, which DOES need a Mill, unlike
+// sheep — all the way up to pop 20, before finally switching to the general
+// proportional-fill toward whatever the composition's actual target ratio
+// is. Only consulted at all when the "Optimize" mode's realistic-economy
+// toggle is on (passed as null, i.e. skipped entirely, in all-in/rush mode
+// — see buildOptimizeTimeline) and only while starting in Dark Age.
+const OPENING_SEQUENCE = [
+  'food', 'food', 'food', 'food', 'food', 'food', // 6 on sheep
+  'wood', 'wood', 'wood', // 2-3 on wood
+  'food', 'food', 'food', 'food', 'food', 'food', 'food', 'food', 'food', 'food', // berries/hunt until pop 20
+];
+// The villager count (0-indexed, matching OPENING_SEQUENCE's own indexing)
+// at which the scripted opening first sends a NEW villager to food after the
+// sheep sub-phase ends — i.e. the point a Mill is actually needed (sheep are
+// walked straight to the TC, no building required; berries/hunt do need
+// one). Sheep sub-phase is indices 0-5, wood is 6-8, so berries starts at 9.
+const OPENING_MILL_INDEX = 9;
 
 // Population-cap constants shared by buildTimeline's own housesFor and
 // expandHouseCheckpoints below. The starting Scout Cavalry occupies a
@@ -2909,12 +2946,14 @@ const HOUSE_LEAD_POP = 2;
 function simulateRampToSustain(rates, villRate, startVills, targetVillagers, totalVillCeil, startTime, openingSequence) {
   if (startVills >= totalVillCeil || villRate <= 0) return null;
   const assigned = { food: 0, wood: 0, gold: 0, stone: 0 };
+  let millAt = null; // see simulateItemReady's matching field
   let vills = startVills;
   let t = startTime || 0;
   while (vills < totalVillCeil) {
     let target;
     if (openingSequence && vills < openingSequence.length) {
       target = openingSequence[vills];
+      if (target === 'food' && vills === OPENING_MILL_INDEX) millAt = t;
     } else {
       target = 'food';
       let worstRatio = Infinity;
@@ -2928,7 +2967,7 @@ function simulateRampToSustain(rates, villRate, startVills, targetVillagers, tot
     vills++;
     t += 1 / villRate;
   }
-  return { time: t, vills, assigned, newVills: vills - startVills };
+  return { time: t, vills, assigned, newVills: vills - startVills, millAt };
 }
 
 // Spends the starting resource stockpile instantly (t=0) against pending
@@ -3115,14 +3154,28 @@ function relevantEcoLines(rows, civ) {
 // Builder used, just scoped to a single target line. `free` techs a civ
 // already has for free are skipped (no cost/time to pay, and — for Loom
 // specifically — no point adding a redundant research step).
-function optimizeMandatorySetup(targetLine, tierIdx, civ, loomOn, free) {
+//
+// Real Dark-Age-qualifying production buildings (Barracks — the only one
+// this tool trains from in Dark Age) are never actually built that early in
+// standard play: there's no reason to spend wood on one before the units it
+// trains are even worth having, so it goes up right alongside Loom, at the
+// very end of Dark Age, immediately before advancing — UNLESS `allIn` (the
+// "prioritize military" toggle) is on, in which case the whole realistic-
+// economy framing is skipped and everything is built the moment it's
+// affordable, same as before this behavior existed. Only applies when the
+// plan actually leaves Dark Age at all — a pure Dark-Age target (e.g. plain
+// Militia) has nothing to defer TO, so it's just built immediately either way.
+function optimizeMandatorySetup(targetLine, tierIdx, civ, loomOn, allIn, free) {
   const haveSet = new Set();
   const items = [];
-  if (loomOn && !free.has('loom')) {
+  const willAgeUp = !allIn && ageIndex(targetLine.tiers[tierIdx].age) > ageIndex('Dark');
+  const buildingItems = buildingChainItems(targetLine.building, civ, haveSet);
+  if (willAgeUp) buildingItems.forEach(it => { if (it.age === 'Dark') it.deferToEnd = true; });
+  items.push(...buildingItems);
+  if (loomOn && !allIn && !free.has('loom')) {
     const loom = DATA.ecoTechs.find(t => t.id === 'loom');
     items.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age });
   }
-  items.push(...buildingChainItems(targetLine.building, civ, haveSet));
   for (let i = 1; i <= tierIdx; i++) {
     const t = targetLine.tiers[i];
     if (t?.upgradeCost) items.push({ name: `${targetLine.tiers[i - 1].name} → ${t.name}`, cost: costForCiv(t.upgradeCost, civ), age: t.age });
@@ -3142,14 +3195,17 @@ function optimizeMandatorySetup(targetLine, tierIdx, civ, loomOn, free) {
     if (ageIndex(age) > neededAgeIdx) return;
     fillerBuildingsNeeded(age, civ, baselineVillagers, haveSet).forEach(name => {
       const def = DATA.productionBuildings[name];
-      items.push({ name, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge });
+      const item = { name, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge };
+      if (willAgeUp && item.age === 'Dark') item.deferToEnd = true;
+      items.push(item);
     });
   });
-  // Items flagged deferToEnd (Loom) process last within Dark Age — the
-  // standard opening delays them rather than paying their TC-time cost
-  // before it matters, regardless of where they happened to land above;
-  // mergeWithAgeUps then slots the Feudal age-up right after, so
-  // runSequential's deferToEnd+isAgeUp merge (see below) actually fires.
+  // Items flagged deferToEnd (Barracks, then Loom) process last within Dark
+  // Age, in that relative order — Loom ends up immediately adjacent to the
+  // age-up (pushed after Barracks above, and the sort below is stable), so
+  // runSequential's deferToEnd+isAgeUp merge still pairs Loom with the
+  // age-up specifically, not Barracks. mergeWithAgeUps then slots the
+  // Feudal age-up right after both.
   const sorted = items
     .map((item, i) => ({ item, i }))
     .sort((a, b) => (a.item.deferToEnd === b.item.deferToEnd ? a.i - b.i : a.item.deferToEnd ? 1 : -1))
@@ -3163,9 +3219,14 @@ function optimizeMandatorySetup(targetLine, tierIdx, civ, loomOn, free) {
 // actually benefits from booming past 3 TCs this early.
 const MAX_EXTRA_TC = 2;
 
-function buildOptimizeTimeline(targetLine, tierIdx, buildingCount, loomOn, civ) {
+function buildOptimizeTimeline(targetLine, tierIdx, buildingCount, loomOn, allIn, civ) {
   const free = freeTechIds(civ);
-  const mandatory = optimizeMandatorySetup(targetLine, tierIdx, civ, loomOn, free);
+  const mandatory = optimizeMandatorySetup(targetLine, tierIdx, civ, loomOn, allIn, free);
+  // The realistic-economy script (see OPENING_SEQUENCE) governs EVERY
+  // villager born while still within it, overriding whatever any individual
+  // item needs — skipped entirely (pure "assign to whatever's neediest for
+  // the current goal" greedy behavior) when `allIn` (Prioritize Military) is on.
+  const openingSequence = allIn ? null : OPENING_SEQUENCE;
   const rows = [{ line: targetLine, tier: targetLine.tiers[tierIdx], buildings: buildingCount }];
   const { hasNoHouses, housePopSpace } = computeTotalIncome(rows, civ, free);
   const relevantLines = relevantEcoLines(rows, civ);
@@ -3194,8 +3255,14 @@ function buildOptimizeTimeline(targetLine, tierIdx, buildingCount, loomOn, civ) 
   for (let i = 0; i < startVills; i++) cumAlloc[OPENING_SEQUENCE[i] || 'food']++;
   const builtResources = initialBuiltState(civ);
   const startBuildNotes = [];
+  // Food is excluded here even though the starting 3 villagers are credited
+  // to it above — they're on sheep (see OPENING_SEQUENCE), which walk
+  // straight to the TC and need no building at all, unlike every other
+  // resource's very first villager. See OPENING_MILL_INDEX / the millAt
+  // handling below for when food's own structure (a Mill, for berries/hunt)
+  // actually gets built.
   RES.forEach(r => {
-    if (cumAlloc[r] <= 0 || builtResources[r]) return;
+    if (r === 'food' || cumAlloc[r] <= 0 || builtResources[r]) return;
     const s = structureForResource(r, civ);
     startBuildNotes.push(s.name);
     s.covers.forEach(r2 => { builtResources[r2] = true; });
@@ -3232,27 +3299,44 @@ function buildOptimizeTimeline(targetLine, tierIdx, buildingCount, loomOn, civ) 
   function runSequential(itemList, rates, villRate) {
     let ri = 0;
     while (ri < itemList.length) {
-      const item = itemList[ri];
-      const next = itemList[ri + 1];
-      // deferToEnd (Loom) is meant to research right at the end of Dark Age,
-      // immediately before advancing — the two are resolved as one combined
-      // transaction so both checkpoints land at the same final moment.
-      const merged = item.deferToEnd && next?.isAgeUp;
-      const simItem = merged ? {
-        name: next.name, isAgeUp: true, age: next.age, tcQueue: true,
-        cost: RES.reduce((c, r) => { c[r] = (item.cost[r] || 0) + (next.cost[r] || 0); return c; }, {}),
-        researchTime: (item.researchTime || 0) + (next.researchTime || 0),
-      } : item;
+      // A whole RUN of consecutive deferToEnd items (Barracks, then Loom)
+      // immediately followed by an age-up is resolved as ONE simultaneous
+      // transaction, right before advancing — not just processed in list
+      // order, which would let a cheap deferred item (Barracks) finish in
+      // the first couple minutes despite being flagged "wait for this."
+      // Their costs sum; TC-blocking time (Loom's researchTime) sums too
+      // (same TC, serial); a non-TC-blocking build's own time (Barracks'
+      // queueSeconds — a separate villager's parallel construction) is a
+      // floor, not additive, so it's a max, not a sum.
+      let runEnd = ri;
+      while (itemList[runEnd]?.deferToEnd) runEnd++;
+      const deferCount = itemList[runEnd]?.isAgeUp ? runEnd - ri : 0;
+      const mergedItems = deferCount > 0 ? itemList.slice(ri, ri + deferCount + 1) : [itemList[ri]];
+      const simItem = deferCount > 0 ? (() => {
+        const ageUpItem = mergedItems[mergedItems.length - 1];
+        const deferred = mergedItems.slice(0, -1);
+        return {
+          name: ageUpItem.name, isAgeUp: true, age: ageUpItem.age, tcQueue: true,
+          cost: RES.reduce((c, r) => { c[r] = mergedItems.reduce((s, it) => s + (it.cost[r] || 0), 0); return c; }, {}),
+          researchTime: deferred.filter(it => it.tcQueue).reduce((s, it) => s + (it.researchTime || 0), 0) + (ageUpItem.researchTime || 0),
+          queueSeconds: Math.max(0, ...deferred.filter(it => !it.tcQueue).map(it => it.queueSeconds || 0)),
+        };
+      })() : mergedItems[0];
 
       const callStartTime = cursorTime, callStartVills = cursorVills;
-      const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool);
-      if (!r) { checkpoints.push({ label: `${simItem.name} — past 60 min, add more Town Centers`, blocked: true }); ri += merged ? 2 : 1; continue; }
+      const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence);
+      if (!r) { checkpoints.push({ label: `${simItem.name} — past 60 min, add more Town Centers`, blocked: true }); ri += mergedItems.length; continue; }
       cursorTime = r.time; cursorVills = r.vills; pool = r.pool;
 
       const remainingAssigned = { ...r.assigned };
       const span = cursorTime - callStartTime;
+      // Food is handled separately below (via millAt) whenever the scripted
+      // opening is active — its FIRST-ever assignment is sheep, which needs
+      // no building at all, so the generic "first assignment needs a
+      // structure" rule below would be wrong for it in that mode.
       RES.forEach(res => {
         if (!r.assigned[res] || builtResources[res]) return;
+        if (res === 'food' && openingSequence) return;
         const s = structureForResource(res, civ);
         if (s.covers.some(r2 => builtResources[r2])) return;
         s.covers.forEach(r2 => { builtResources[r2] = true; });
@@ -3264,14 +3348,32 @@ function buildOptimizeTimeline(targetLine, tierIdx, buildingCount, loomOn, civ) 
         checkpoints.push({ label: s.name, time: gatherTime, vills: gatherVills, split: { food: 0, wood: 0, gold: 0, stone: 0, [res]: 1 }, houses: housesFor(gatherVills), alloc: { ...cumAlloc }, kind: 'gather' });
       });
 
-      RES.forEach(res => { cumAlloc[res] += remainingAssigned[res] || 0; });
-      if (merged) {
-        checkpoints.push({ label: `${item.name} ready`, time: cursorTime, vills: cursorVills, split: null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, ...checkpointKindFor(item) });
-        checkpoints.push({ label: `${next.name} ready`, time: cursorTime, vills: cursorVills, split: remainingAssigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, ...checkpointKindFor(next) });
-      } else {
-        checkpoints.push({ label: `${item.name} ready`, time: cursorTime, vills: cursorVills, split: remainingAssigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, ...checkpointKindFor(item) });
+      // The scripted opening's own food-structure trigger: the moment (if
+      // any, during THIS call) the opening first sends a villager to food
+      // AFTER the sheep sub-phase — i.e. exactly when a Mill becomes
+      // necessary for berries/hunt, deterministically at villager #10.
+      if (openingSequence && r.millAt != null && !builtResources.food) {
+        const s = structureForResource('food', civ);
+        if (!s.covers.some(r2 => builtResources[r2])) {
+          s.covers.forEach(r2 => { builtResources[r2] = true; });
+          cumAlloc.food += 1;
+          remainingAssigned.food = Math.max(0, remainingAssigned.food - 1);
+          checkpoints.push({ label: s.name, time: r.millAt, vills: OPENING_MILL_INDEX, split: { food: 1, wood: 0, gold: 0, stone: 0 }, houses: housesFor(OPENING_MILL_INDEX), alloc: { ...cumAlloc }, kind: 'gather' });
+        } else {
+          builtResources.food = true; // already covered by another resource's structure (e.g. Settlement)
+        }
       }
-      ri += merged ? 2 : 1;
+
+      RES.forEach(res => { cumAlloc[res] += remainingAssigned[res] || 0; });
+      // Every merged item lands at this same final moment — only the LAST
+      // one (the age-up itself, or the item alone when nothing was merged)
+      // carries the "new villagers sent to X" split, matching how a single
+      // combined transaction would actually read to a player.
+      mergedItems.forEach((it, idx) => {
+        const isLast = idx === mergedItems.length - 1;
+        checkpoints.push({ label: `${it.name} ready`, time: cursorTime, vills: cursorVills, split: isLast ? remainingAssigned : null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, ...checkpointKindFor(it) });
+      });
+      ri += mergedItems.length;
     }
   }
 
@@ -3311,7 +3413,7 @@ function buildOptimizeTimeline(targetLine, tierIdx, buildingCount, loomOn, civ) 
       if (cur.levels[id] >= chain.length) return;
       const tech = chain[cur.levels[id]];
       const item = { name: tech.name, cost: costForCiv(tech.cost, civ), tcQueue: tech.tcQueue, researchTime: tech.researchTime, age: tech.age };
-      const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool);
+      const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence);
       if (!r) return;
       const nextLevels = { ...cur.levels, [id]: cur.levels[id] + 1 };
       const key = stateKey(nextLevels, cur.tcExtra);
@@ -3325,7 +3427,7 @@ function buildOptimizeTimeline(targetLine, tierIdx, buildingCount, loomOn, civ) 
 
     if (cur.tcExtra < MAX_EXTRA_TC) {
       const item = { name: 'Town Center', cost: costForCiv(DATA.townCenter.cost, civ), queueSeconds: DATA.townCenter.buildTimeSeconds, age: DATA.townCenter.minAge };
-      const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool);
+      const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence);
       if (r) {
         const key = stateKey(cur.levels, cur.tcExtra + 1);
         const existing = finalized.get(key);
@@ -3356,7 +3458,7 @@ function buildOptimizeTimeline(targetLine, tierIdx, buildingCount, loomOn, civ) 
     if (state.vills >= totalVillCeil) {
       total = state.time;
     } else {
-      ramp = simulateRampToSustain(rates, villRate, state.vills, villagers, totalVillCeil, state.time, null);
+      ramp = simulateRampToSustain(rates, villRate, state.vills, villagers, totalVillCeil, state.time, openingSequence);
       total = ramp ? ramp.time : Infinity;
     }
     if (total < bestTotal) { bestTotal = total; bestKey = key; bestRamp = ramp; bestRates = rates; bestVillagers = villagers; bestVillCeil = totalVillCeil; bestIncome = incomeInfo.totalIncome; bestUpkeep = incomeInfo; }
@@ -3694,7 +3796,7 @@ function renderVillagerBars(villagers, rates, totalIncome, farmUpkeepWoodPerSec,
   }).join('');
 }
 
-let optimizeState = { lineId: null, tierIdx: 0, buildingCount: 1, loomOn: true };
+let optimizeState = { lineId: null, tierIdx: 0, buildingCount: 1, loomOn: true, allIn: false };
 
 function renderOptimizeResults() {
   const civ = selectedCiv();
@@ -3704,10 +3806,11 @@ function renderOptimizeResults() {
   const bodyEl = document.getElementById('results-body');
   if (!targetLine) { descEl.textContent = 'Pick a unit above to optimize for.'; bodyEl.innerHTML = ''; return; }
 
-  const result = buildOptimizeTimeline(targetLine, optimizeState.tierIdx, optimizeState.buildingCount, optimizeState.loomOn, civ);
+  const result = buildOptimizeTimeline(targetLine, optimizeState.tierIdx, optimizeState.buildingCount, optimizeState.loomOn, optimizeState.allIn, civ);
   const tierName = targetLine.tiers[optimizeState.tierIdx].name;
+  const styleNote = optimizeState.allIn ? ' — all-in, no realistic-economy pacing' : ' — realistic economy (sheep → berries/hunt → farms, no early Barracks)';
   descEl.textContent = result.finishTime != null
-    ? `Fastest path to ${optimizeState.buildingCount}x ${tierName} in constant production — ready by ${fmtClock(result.finishTime)}, using ${result.tcCount} Town Center${result.tcCount === 1 ? '' : 's'}.`
+    ? `Fastest path to ${optimizeState.buildingCount}x ${tierName} in constant production — ready by ${fmtClock(result.finishTime)}, using ${result.tcCount} Town Center${result.tcCount === 1 ? '' : 's'}${styleNote}.`
     : `${optimizeState.buildingCount}x ${tierName} couldn't be reached within the 60-minute simulation cap — try fewer production buildings.`;
 
   const statRow = `<div class="stat-row">
@@ -3786,6 +3889,10 @@ document.getElementById('optimize-loom').addEventListener('change', e => {
   optimizeState.loomOn = e.target.checked;
   renderOptimizeResults();
 });
+document.getElementById('optimize-allin').addEventListener('change', e => {
+  optimizeState.allIn = e.target.checked;
+  renderOptimizeResults();
+});
 
 civSelect.addEventListener('change', () => {
   renderTechGrid();
@@ -3813,7 +3920,7 @@ const MODE_COPY = {
   },
   optimize: {
     introDesc: "Pick a unit to constantly produce, and this finds the fastest path there from a fresh Dark Age start (3 villagers, 1 Scout Cavalry) — automatically deciding which economy upgrades and extra Town Centers are worth building along the way, and which aren't.",
-    introAssumptions: "Explores every combination of eco-tech research and extra Town Centers exactly (not a guess or a single fixed build) and picks whichever reaches your target soonest. Your target unit's own training building, tier-upgrade chain, and any age-up (plus the buildings that age-up itself requires) are mandatory and always built first; Loom is a simple on/off toggle rather than something the search weighs, since its cost is small and fixed regardless of when it's researched. Extra Town Centers are capped at 2 beyond the starting one, and civs that discount Town Centers specifically (Britons, Bulgarians, Incas, Malians) aren't modeled.",
+    introAssumptions: "Explores every combination of eco-tech research and extra Town Centers exactly (not a guess or a single fixed build) and picks whichever reaches your target soonest. Villagers follow a realistic opening by default — 6 on sheep (no building needed), 2-3 on wood, then berries/hunt (needs a Mill) up to pop 20, only diverting to your actual target after that — and Barracks/Loom wait until right before advancing out of Dark Age, matching standard play; the \"Prioritize Military\" toggle skips all of that for an all-in rush instead. Your target unit's own training building, tier-upgrade chain, and any age-up (plus the buildings that age-up itself requires) are mandatory and always built first. Extra Town Centers are capped at 2 beyond the starting one, and civs that discount Town Centers specifically (Britons, Bulgarians, Incas, Malians) aren't modeled.",
     ecoDesc: '',
     armyDesc: '',
   },
@@ -3841,6 +3948,7 @@ function setMode(mode) {
     renderOptimizeUnitSelect();
     renderOptimizeCountDots();
     document.getElementById('optimize-loom').checked = optimizeState.loomOn;
+    document.getElementById('optimize-allin').checked = optimizeState.allIn;
   }
   renderCivBonusList();
   renderCurrentModeResults();
