@@ -325,14 +325,19 @@ const DATA = {
     { id:'gold-shaft-mining', name:'Gold Shaft Mining', age:'Castle', resource:'gold', bonusPct:15, cost:{food:175,wood:75,gold:0,stone:0}, line:'gold-mine', lineLabel:'Gold Mining' },
     { id:'stone-mining',       name:'Stone Mining',       age:'Feudal', resource:'stone', bonusPct:15, cost:{food:100,wood:75,gold:0,stone:0}, line:'stone-mine', lineLabel:'Stone Mining' },
     { id:'stone-shaft-mining', name:'Stone Shaft Mining', age:'Castle', resource:'stone', bonusPct:15, cost:{food:175,wood:75,gold:0,stone:0}, line:'stone-mine', lineLabel:'Stone Mining' },
-    // Mill farm line — each bonusPct is relative to the PRIOR tier's total
-    // (matches how these techs actually work: Horse Collar 175->250 food,
-    // Heavy Plow 250->375, Crop Rotation 375->550), so straight multiplicative
-    // stacking (what effectiveGatherRate already does) reproduces the real
-    // totals almost exactly.
-    { id:'horse-collar',  name:'Horse Collar',  age:'Feudal', resource:'food', bonusPct:42.9, cost:{food:75,wood:75,gold:0,stone:0}, group:'mill', line:'farm-yield', lineLabel:'Farm Capacity' },
-    { id:'heavy-plow',    name:'Heavy Plow',     age:'Castle', resource:'food', bonusPct:50.0, cost:{food:125,wood:125,gold:0,stone:0}, group:'mill', line:'farm-yield', lineLabel:'Farm Capacity' },
-    { id:'crop-rotation', name:'Crop Rotation',  age:'Imperial', resource:'food', bonusPct:46.7, cost:{food:250,wood:250,gold:0,stone:0}, group:'mill', line:'farm-yield', lineLabel:'Farm Capacity' },
+    // Mill farm line (Horse Collar 175->250 food, Heavy Plow 250->375, Crop
+    // Rotation 375->550) increases a farm's total YIELD, not the villager's
+    // gather RATE — a farmer produces food at the same food/sec whether the
+    // farm is base or fully upgraded, they just have to walk away and
+    // reseed less often. bonusPct is 0 here on purpose (NOT a placeholder —
+    // this used to be a nonzero multiplicative rate bonus derived from the
+    // same 175->250->375->550 numbers, which double-counted the yield
+    // increase: once correctly, as reduced farm-rebuild wood via farmYield
+    // below, and again incorrectly, as a direct food-rate boost via this
+    // field). resource:'food' stays set purely for tech-grid grouping.
+    { id:'horse-collar',  name:'Horse Collar',  age:'Feudal', resource:'food', bonusPct:0, cost:{food:75,wood:75,gold:0,stone:0}, group:'mill', line:'farm-yield', lineLabel:'Farm Capacity' },
+    { id:'heavy-plow',    name:'Heavy Plow',     age:'Castle', resource:'food', bonusPct:0, cost:{food:125,wood:125,gold:0,stone:0}, group:'mill', line:'farm-yield', lineLabel:'Farm Capacity' },
+    { id:'crop-rotation', name:'Crop Rotation',  age:'Imperial', resource:'food', bonusPct:0, cost:{food:250,wood:250,gold:0,stone:0}, group:'mill', line:'farm-yield', lineLabel:'Farm Capacity' },
     // Town Center techs. Loom is cost-only (no gather effect) and, unlike
     // everything else here, is researched in the first few seconds of
     // basically every game — tracking "do I currently have it" is never
