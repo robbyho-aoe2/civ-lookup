@@ -197,7 +197,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.01</div>
+  <div class="version">v0.02</div>
 </div>
 
 <script>
@@ -3511,6 +3511,28 @@ function stageMandatoryItems(stage, civ, allIn, haveSet, fromAgeIdx, extraItems)
 // is a pure function of its arguments. Cache key is built from plain
 // values (line id, not the line object) so it stays cheap and correct
 // across the object-identity churn `allLinesForCiv` produces on rerender.
+// A quantity-stage's buildingCount trial loop runs each candidate as a
+// plain 'sustain' stage (so it only goes as far as "reach sustain") to
+// keep the search itself simple — this bolts the SAME production-quantity
+// tail the real result gets (see the `isQuantity` block further down) onto
+// a trial's own result, so a viewer can open any candidate's full timeline,
+// not just its headline number. Synthesized from the trial's own last real
+// checkpoint (vills/houses/alloc/pool are unchanged during the tail, same
+// as the real code path — production doesn't need more villagers once
+// already sustained).
+function withQuantityTail(trial, qty, buildingCount, tierName, trainTime) {
+  const last = trial.stageResults[trial.stageResults.length - 1];
+  const lastCp = trial.checkpoints[trial.checkpoints.length - 1];
+  const snap = { vills: lastCp?.vills ?? 0, houses: lastCp?.houses ?? 0, alloc: lastCp?.alloc, pool: lastCp?.pool };
+  const doneTime = last.finishTime + qty / (buildingCount / trainTime);
+  const checkpoints = [
+    ...trial.checkpoints,
+    { label: `Queue ${tierName}`, time: last.finishTime, split: null, kind: 'queue', itemName: tierName, ...snap },
+    { label: `${qty}x ${tierName} complete`, time: doneTime, split: null, kind: 'complete', ...snap },
+  ];
+  return { ...trial, checkpoints, finishTime: doneTime };
+}
+
 const _optimizeMemo = new Map();
 function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
   const memoKey = JSON.stringify([
@@ -3709,13 +3731,17 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
       const initialBuildingCount = haveSet.buildingCounts.get(line.building) || 1;
       const prefixStages = sortedStages.slice(0, stageIdx);
       let bestK = initialBuildingCount, bestTotal = Infinity, worseStreak = 0;
-      const tried = []; // every candidate actually evaluated — cheap to keep, lets the UI show runner-ups instead of throwing this away
+      const tried = []; // every candidate actually evaluated — cheap to keep, lets the UI show runner-ups (full timeline included) instead of throwing this away
       for (let k = initialBuildingCount; k <= initialBuildingCount + MAX_EXTRA_BUILDINGS; k++) {
         const trial = buildStagedOptimizeTimeline([...prefixStages, { ...stage, goalType: 'sustain', buildingCount: k }], loomOn, allIn, civ);
         const trialResult = trial.stageResults[trial.stageResults.length - 1];
         if (trialResult.finishTime == null) continue; // unreachable at this count — skip, don't let it win by default
         const total = trialResult.finishTime + qty / (k / line.tiers[tierIdx].trainTime);
-        tried.push({ buildingCount: k, finishTime: total });
+        // Stored WITH the quantity tail applied (the trial itself only ran
+        // as far as "sustain", same as any sustain-mode stage) so a viewer
+        // can open any candidate's own full Villager Allocation/Setup
+        // Card/Step-by-Step, not just its headline number.
+        tried.push({ buildingCount: k, finishTime: total, result: withQuantityTail(trial, qty, k, line.tiers[tierIdx].name, line.tiers[tierIdx].trainTime) });
         if (total < bestTotal) { bestTotal = total; bestK = k; worseStreak = 0; }
         else if (++worseStreak >= 2) break; // more buildings only cost more once ramp-up starts dominating the tail savings — confirmed empirically unimodal (single dip), so 2 non-improving trials in a row means it won't get better; stop re-running full searches for nothing
       }
@@ -4302,6 +4328,12 @@ function renderVillagerBars(villagers, rates, totalIncome, farmUpkeepWoodPerSec,
 // says that (Scout Cavalry is Feudal, Knight is Castle), and
 // buildStagedOptimizeTimeline sorts stages by that age itself.
 let optimizeState = { stages: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }], loomOn: true, allIn: false };
+// Pure UI/display state, not part of the plan itself — which buildingCount
+// alternative (if any) the last stage's tabs are currently showing instead
+// of the recommended pick. Reset to null (back to the real pick) whenever
+// anything about the plan changes, so a stale alternative never lingers
+// looking like it's still describing the current setup.
+let optimizeAltView = null;
 
 function renderOptimizeResults() {
   const civ = selectedCiv();
@@ -4323,14 +4355,22 @@ function renderOptimizeResults() {
     ? `${sr.qty}x ${sr.line.tiers[sr.tierIdx].name} ASAP`
     : `${sr.buildingCount}x ${sr.line.tiers[sr.tierIdx].name} in constant production`;
   // A 'quantity' stage's trial loop already evaluates several buildingCount
-  // candidates to find the winner — surfacing the runner-ups it already
-  // computed (rather than only ever showing the single best) costs nothing
-  // extra and lets a player see the real trade-off instead of taking the
-  // pick on faith, e.g. if they'd rather commit fewer Stables even at a
-  // small time cost.
-  const altText = sr => sr.buildingCountAlternatives?.length
-    ? `<p class="desc" style="margin:4px 0 0;">Also considered: ${sr.buildingCountAlternatives.map(a => `${a.buildingCount}x ${sr.line.building} → ${fmtClock(a.finishTime)}`).join(' · ')}</p>`
-    : '';
+  // candidates (full timeline included, see withQuantityTail) to find the
+  // winner — surfacing the runner-ups it already computed, as clickable
+  // tabs that swap in that candidate's OWN Villager Allocation/Setup
+  // Card/Step-by-Step below, costs nothing extra and lets a player see the
+  // real trade-off in full instead of a terse one-line time comparison.
+  const lastSr = result.stageResults[result.stageResults.length - 1];
+  const activeAlt = lastSr?.buildingCountAlternatives?.find(a => a.buildingCount === optimizeAltView);
+  if (optimizeAltView != null && !activeAlt) optimizeAltView = null; // stale (e.g. stage/civ changed) — fall back to the real pick
+  const altTabs = sr => {
+    if (!sr.buildingCountAlternatives?.length) return '';
+    const tab = (label, isActive, buildingCount) => `<button type="button" class="alt-tab-btn" data-building-count="${buildingCount ?? ''}" style="flex:none;padding:5px 10px;font-size:11px;border-radius:var(--radius);cursor:pointer;font-family:inherit;${isActive ? 'border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);' : 'border:1px solid var(--border2);background:var(--bg);color:var(--text2);'}">${label}</button>`;
+    const bestLabel = `Best: ${sr.buildingCount}x ${sr.line.building} (${fmtClock(sr.finishTime)})`;
+    const buttons = [tab(bestLabel, optimizeAltView == null, null)]
+      .concat(sr.buildingCountAlternatives.map(a => tab(`${a.buildingCount}x ${sr.line.building} (${fmtClock(a.finishTime)})`, optimizeAltView === a.buildingCount, a.buildingCount)));
+    return `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">${buttons.join('')}</div>`;
+  };
   const planDesc = result.stageResults.length > 1
     ? result.stageResults.map(srDesc).join(' → switching to ')
     : srDesc(result.stageResults[0]);
@@ -4338,9 +4378,26 @@ function renderOptimizeResults() {
     ? `Fastest path to ${planDesc} — ready by ${fmtClock(result.finishTime)}, using ${result.tcCount} Town Center${result.tcCount === 1 ? '' : 's'}${styleNote}.`
     : `${planDesc} couldn't be reached within the 60-minute simulation cap — try fewer production buildings.`;
 
+  // Alt-tabs only ever swap the MAIN display below (bars/Setup Card/
+  // Step-by-Step), which always reflects the LAST stage's cumulative
+  // state — so only the last stage's alternatives get the interactive
+  // tabs; an earlier stage's own alternatives (a rarer case — a non-final
+  // quantity stage in a multi-stage plan) are informational only, since
+  // swapping the whole multi-stage view to "what if stage 1 used more
+  // Stables" isn't something this tab UI is built to show.
+  const topTabs = lastSr ? altTabs(lastSr) : '';
+
+  // displayResult drives bars/Setup Card/Step-by-Step — either the real,
+  // recommended plan, or (when a tab is active) that candidate's own
+  // result, synthesized once via withQuantityTail in the trial loop.
+  const displayResult = activeAlt ? activeAlt.result : result;
+  const viewingAltNote = activeAlt
+    ? `<p class="desc" style="color:var(--amberL);margin:-8px 0 14px;">Viewing the ${activeAlt.buildingCount}x ${lastSr.line.building} alternative below (${fmtClock(activeAlt.finishTime)}) — not the recommended pick.</p>`
+    : '';
+
   const statRow = `<div class="stat-row">
-    <div class="stat-tile"><div class="label">Total Villagers</div><div class="value">${result.totalVillCeil}</div></div>
-    <div class="stat-tile"><div class="label">Town Centers</div><div class="value">${result.tcCount}</div></div>
+    <div class="stat-tile"><div class="label">Total Villagers</div><div class="value">${displayResult.totalVillCeil}</div></div>
+    <div class="stat-tile"><div class="label">Town Centers</div><div class="value">${displayResult.tcCount}</div></div>
   </div>`;
 
   // A multi-stage plan gets one bar chart + stat line per stage (each
@@ -4349,17 +4406,21 @@ function renderOptimizeResults() {
   const stageBreakdown = result.stageResults.length <= 1 ? '' : result.stageResults.map((sr, i) => `
     <div class="pending-card">
       <h3>Stage ${i + 1}: ${srDesc(sr)}${sr.finishTime == null ? ' (blocked)' : ` — ${sr.goalType === 'quantity' ? 'done' : 'ready'} by ${fmtClock(sr.finishTime)}`}</h3>
-      ${altText(sr)}
       ${sr.finishTime == null ? '' : renderVillagerBars(sr.villagers, sr.rates, sr.totalIncome, sr.farmUpkeepWoodPerSec, sr.houseWoodPerSec)}
     </div>`).join('');
-  const singleStageAlt = result.stageResults.length === 1 ? altText(result.stageResults[0]) : '';
 
-  const bars = renderVillagerBars(result.villagers, result.rates, result.totalIncome, result.farmUpkeepWoodPerSec, result.houseWoodPerSec);
-  const buildingCounts = Object.fromEntries(result.haveSet.buildingCounts);
+  const bars = renderVillagerBars(displayResult.villagers, displayResult.rates, displayResult.totalIncome, displayResult.farmUpkeepWoodPerSec, displayResult.houseWoodPerSec);
+  const buildingCounts = Object.fromEntries(displayResult.haveSet.buildingCounts);
 
-  bodyEl.innerHTML = singleStageAlt + statRow + '<div style="margin-top:18px">' + bars + '</div>' + stageBreakdown
-    + renderSetupCard(result.villagers, civ, result.haveSet.has('Castle'), result.haveSet, buildingCounts)
-    + renderTimelineCard(result.checkpoints, result.villRate, civ);
+  bodyEl.innerHTML = topTabs + viewingAltNote + statRow + '<div style="margin-top:18px">' + bars + '</div>' + stageBreakdown
+    + renderSetupCard(displayResult.villagers, civ, displayResult.haveSet.has('Castle'), displayResult.haveSet, buildingCounts)
+    + renderTimelineCard(displayResult.checkpoints, displayResult.villRate, civ);
+
+  bodyEl.querySelectorAll('.alt-tab-btn').forEach(btn => btn.addEventListener('click', () => {
+    const bc = btn.dataset.buildingCount;
+    optimizeAltView = bc === '' ? null : Number(bc);
+    renderOptimizeResults();
+  }));
 }
 
 function renderCivBonusList() {
@@ -4379,6 +4440,7 @@ function renderCivBonusList() {
 // renderTechGrid already use, just covering N repeated stage boxes instead
 // of one fixed block.
 function renderOptimizeStages() {
+  optimizeAltView = null; // every caller here follows some change to the plan itself — see its own declaration for why this needs to reset
   const civ = selectedCiv();
   const lines = allLinesForCiv(civ);
   const container = document.getElementById('optimize-stages');
@@ -4457,6 +4519,7 @@ function renderOptimizeStages() {
   container.querySelectorAll('.stage-qty-input').forEach(inp => inp.addEventListener('input', e => {
     const i = Number(e.target.dataset.stageIdx);
     optimizeState.stages[i].qty = Math.max(1, Number(e.target.value) || 1);
+    optimizeAltView = null; // a different qty means different trial results entirely
     // Debounced — a quantity stage's search tries several buildingCount
     // candidates (each a full re-search) to find the true fastest one, so
     // it isn't instant; recomputing on every single keystroke would make
@@ -4480,10 +4543,12 @@ document.getElementById('optimize-add-stage').addEventListener('click', () => {
 });
 document.getElementById('optimize-loom').addEventListener('change', e => {
   optimizeState.loomOn = e.target.checked;
+  optimizeAltView = null;
   renderOptimizeResults();
 });
 document.getElementById('optimize-allin').addEventListener('change', e => {
   optimizeState.allIn = e.target.checked;
+  optimizeAltView = null;
   renderOptimizeResults();
 });
 
