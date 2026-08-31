@@ -108,6 +108,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 
 .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:4px;}
 .stat-tile{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;}
+.version{font-size:10px;color:var(--text3);margin-top:6px;}
 .stat-tile .label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:4px;}
 .stat-tile .value{font-size:19px;font-weight:800;}
 
@@ -196,6 +197,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
+  <div class="version">v0.01</div>
 </div>
 
 <script>
@@ -3087,7 +3089,19 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
     }
     RES.forEach(r => { if (assigned[r]) saved[r] += assigned[r] * rates[r] * dt; });
     saved.food -= villagerFoodDrainPerSec * dt;
-    if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) return { time: t + tcDelay, vills, pool, assigned, newVills: vills - startVills, firstAssignedAt, millAt };
+    if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) {
+      // The last dt tick almost always gathers slightly more than exactly
+      // needed (gather rate isn't evenly divisible into the remaining
+      // cost) — that overshoot is real banked surplus, not owed back to
+      // anyone, so it carries into the returned pool for the NEXT item to
+      // credit against. Previously discarded entirely, which is why
+      // "resources available" in the timeline never moved from whatever
+      // the starting stockpile happened to be — every item's own leftover
+      // was silently thrown away instead of accumulating.
+      const leftoverPool = { ...pool };
+      need.forEach(r => { leftoverPool[r] += saved[r] - item.cost[r]; });
+      return { time: t + tcDelay, vills, pool: leftoverPool, assigned, newVills: vills - startVills, firstAssignedAt, millAt };
+    }
     t += dt;
   }
   return null;
@@ -3624,7 +3638,13 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
         const gatherVills = Math.round(callStartVills + frac * (cursorVills - callStartVills));
         cumAlloc[res] += 1;
         remainingAssigned[res] = Math.max(0, remainingAssigned[res] - 1);
-        checkpoints.push({ label: s.name, time: gatherTime, vills: gatherVills, split: { food: 0, wood: 0, gold: 0, stone: 0, [res]: 1 }, houses: housesFor(gatherVills), alloc: { ...cumAlloc }, pool: { ...pool }, kind: 'gather' });
+        // No `pool` here on purpose: this checkpoint's `time` is an
+        // INTERPOLATED moment partway through the current (possibly
+        // merged/bundled) item's resolution, but `pool` only reflects
+        // resource state as of that whole item's END — attributing it to
+        // this earlier timestamp would show a much-later, often much
+        // bigger number next to a row that hasn't reached it yet.
+        checkpoints.push({ label: s.name, time: gatherTime, vills: gatherVills, split: { food: 0, wood: 0, gold: 0, stone: 0, [res]: 1 }, houses: housesFor(gatherVills), alloc: { ...cumAlloc }, kind: 'gather' });
       });
 
       // The scripted opening's own food-structure trigger: the moment (if
@@ -3637,7 +3657,9 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
           s.covers.forEach(r2 => { builtResources[r2] = true; });
           cumAlloc.food += 1;
           remainingAssigned.food = Math.max(0, remainingAssigned.food - 1);
-          checkpoints.push({ label: s.name, time: r.millAt, vills: OPENING_MILL_INDEX, split: { food: 1, wood: 0, gold: 0, stone: 0 }, houses: housesFor(OPENING_MILL_INDEX), alloc: { ...cumAlloc }, pool: { ...pool }, kind: 'gather' });
+          // No `pool` here either — same interpolated-timestamp reason as
+          // the gather checkpoint above.
+          checkpoints.push({ label: s.name, time: r.millAt, vills: OPENING_MILL_INDEX, split: { food: 1, wood: 0, gold: 0, stone: 0 }, houses: housesFor(OPENING_MILL_INDEX), alloc: { ...cumAlloc }, kind: 'gather' });
         } else {
           builtResources.food = true; // already covered by another resource's structure (e.g. Settlement)
         }
