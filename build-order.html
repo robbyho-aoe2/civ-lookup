@@ -3408,19 +3408,29 @@ function stageMandatoryItems(stage, civ, allIn, haveSet, fromAgeIdx, extraItems)
   // Cavalry then Knight, both at the Stable). Town Center is excluded —
   // every game already starts with one, and "N Town Centers" is a decision
   // the search itself makes (see MAX_EXTRA_TC), not implied by buildingCount.
-  // A 'quantity' stage doesn't have a fixed buildingCount at all — the
-  // search picks it (see the 'building' move in buildStagedOptimizeTimeline)
-  // — so only the one physical copy buildingChainItems already added above
-  // gets built here; every further copy is an in-search decision.
-  if (line.building !== 'Town Center' && stage.goalType !== 'quantity') {
+  // `stage.buildingCount` is always a concrete number by the time it gets
+  // here — for a 'quantity' stage, buildStagedOptimizeTimeline already
+  // resolved it (via trial runs of this whole function, picking whichever
+  // count finishes its target quantity fastest) before calling this.
+  if (line.building !== 'Town Center') {
     const already = haveSet.buildingCounts.get(line.building) || 0;
     if (buildingCount > already) {
       const def = line.building === 'Castle' ? DATA.castle : DATA.productionBuildings[line.building];
-      for (let i = already; i < buildingCount; i++) {
-        const extra = { name: line.building, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge };
-        deferIfEarly(extra);
-        items.push(extra);
-      }
+      const extraCount = buildingCount - already;
+      // N extra copies go up under N different idle villagers at the same
+      // time, not one after another — a single combined item (summed cost,
+      // ONE buildTimeSeconds floor) instead of N separate sequential items,
+      // matching how runSequential already merges simultaneous deferred
+      // items elsewhere (summed cost, MAX queueSeconds, never summed).
+      const perCost = costForCiv(def.cost, civ);
+      const extra = {
+        name: line.building,
+        cost: RES.reduce((c, r) => { c[r] = (perCost[r] || 0) * extraCount; return c; }, {}),
+        queueSeconds: def.buildTimeSeconds,
+        age: def.minAge,
+      };
+      deferIfEarly(extra);
+      items.push(extra);
       haveSet.buildingCounts.set(line.building, buildingCount);
     }
   }
@@ -3475,7 +3485,31 @@ function stageMandatoryItems(stage, civ, allIn, haveSet, fromAgeIdx, extraItems)
 // stage. That's a real, deliberate scope limit: a fully joint multi-stage
 // optimization would need to weigh cross-stage payback, which is a much
 // bigger search than running each stage's shortest-path search in sequence.
+//
+// Memoized: a 'quantity' stage resolves its buildingCount by recursively
+// re-running THIS function once per candidate count (see the trial loop
+// below) — and an EARLIER quantity stage in the same plan gets re-resolved
+// identically inside every one of those trials, since its own resolution
+// doesn't depend on a LATER stage's candidate. Without caching, two
+// quantity stages back to back means every trial of the second re-triggers
+// every trial of the first (confirmed: ~9.5s for a 2-stage quantity plan,
+// vs ~1.4s for one stage) — purely wasted repeat work, since this function
+// is a pure function of its arguments. Cache key is built from plain
+// values (line id, not the line object) so it stays cheap and correct
+// across the object-identity churn `allLinesForCiv` produces on rerender.
+const _optimizeMemo = new Map();
 function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
+  const memoKey = JSON.stringify([
+    stages.map(s => [s.line?.id, s.tierIdx, s.buildingCount ?? null, s.goalType || 'sustain', s.qty ?? null]),
+    loomOn, allIn, civ?.id ?? null,
+  ]);
+  if (_optimizeMemo.has(memoKey)) return _optimizeMemo.get(memoKey);
+  const result = buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ);
+  _optimizeMemo.set(memoKey, result);
+  return result;
+}
+
+function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ) {
   const free = freeTechIds(civ);
   const openingSequence = allIn ? null : OPENING_SEQUENCE;
   const sortedStages = [...stages].sort((a, b) => ageIndex(a.line.tiers[a.tierIdx].age) - ageIndex(b.line.tiers[b.tierIdx].age));
@@ -3624,24 +3658,52 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
 
   const stageResults = [];
 
-  for (const stage of sortedStages) {
-    const { line, tierIdx, buildingCount } = stage;
-    // A 'quantity' stage ("N total units, fastest") has no fixed
-    // buildingCount from the UI — the search below picks it, starting from
-    // wherever this exact building already stands (an earlier stage may
-    // have built copies of the same one) and growing it as a real move
-    // alongside eco-tech/extra-TC, instead of assuming "sustain forever"
-    // for a user-fixed count.
+  for (let stageIdx = 0; stageIdx < sortedStages.length; stageIdx++) {
+    const stage = sortedStages[stageIdx];
+    const { line, tierIdx } = stage;
     const isQuantity = stage.goalType === 'quantity';
     const qty = stage.qty || 9;
-    const initialBuildingCount = isQuantity ? (haveSet.buildingCounts.get(line.building) || 1) : buildingCount;
+
+    // A 'quantity' stage ("N total units, fastest") has no fixed
+    // buildingCount from the UI. Trying candidate counts by re-running
+    // THIS WHOLE FUNCTION from scratch — for every stage up to and
+    // including this one, with this one pinned to 'sustain' at that
+    // candidate count — is deliberate, not just convenient: it's the only
+    // way a bigger buildingCount can pull in MORE early wood investment
+    // during the mandatory prefix that precedes it (stageMandatoryItems
+    // already bakes a fixed buildingCount into that prefix correctly; a
+    // candidate discovered only AFTER a one-size-fits-all prefix already
+    // ran can never benefit from that — confirmed by testing: an in-search
+    // "add one more building" move landed on the SAME buildingCount
+    // regardless of all-in vs realistic pacing, because by the time the
+    // search saw it, the prefix's minimal 2-3 wood villagers were already
+    // locked in). Recursion, not a snapshot/rollback of this function's
+    // own mutable state, because every EARLIER stage's own goalType (which
+    // may itself be 'quantity') needs to resolve exactly the same way it
+    // would for real — re-running from stage 0 guarantees that for free.
+    let buildingCount = stage.buildingCount;
+    if (isQuantity) {
+      const initialBuildingCount = haveSet.buildingCounts.get(line.building) || 1;
+      const prefixStages = sortedStages.slice(0, stageIdx);
+      let bestK = initialBuildingCount, bestTotal = Infinity, worseStreak = 0;
+      for (let k = initialBuildingCount; k <= initialBuildingCount + MAX_EXTRA_BUILDINGS; k++) {
+        const trial = buildStagedOptimizeTimeline([...prefixStages, { ...stage, goalType: 'sustain', buildingCount: k }], loomOn, allIn, civ);
+        const trialResult = trial.stageResults[trial.stageResults.length - 1];
+        if (trialResult.finishTime == null) continue; // unreachable at this count — skip, don't let it win by default
+        const total = trialResult.finishTime + qty / (k / line.tiers[tierIdx].trainTime);
+        if (total < bestTotal) { bestTotal = total; bestK = k; worseStreak = 0; }
+        else if (++worseStreak >= 2) break; // more buildings only cost more once ramp-up starts dominating the tail savings — confirmed empirically unimodal (single dip), so 2 non-improving trials in a row means it won't get better; stop re-running full searches for nothing
+      }
+      buildingCount = bestK;
+    }
+
     const targetAgeIdx = ageIndex(line.tiers[tierIdx].age);
     const extraItems = [];
     if (stageResults.length === 0 && loomOn && !allIn && !free.has('loom')) {
       const loom = DATA.ecoTechs.find(t => t.id === 'loom');
       extraItems.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age });
     }
-    const mandatoryItems = stageMandatoryItems(stage, civ, allIn, haveSet, reachedAgeIdx, extraItems);
+    const mandatoryItems = stageMandatoryItems({ ...stage, buildingCount }, civ, allIn, haveSet, reachedAgeIdx, extraItems);
 
     // Instant-afford check runs fresh per stage against the CARRIED pool —
     // primeInstantGoals reports its own times relative to ITS OWN call
@@ -3664,7 +3726,7 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
     // resources than an earlier stage's) branch further from wherever
     // `levels`/tcExtra already are, to reach THIS stage's own sustain
     // target fastest. ──
-    const stageRows = [{ line, tier: line.tiers[tierIdx], buildings: initialBuildingCount }];
+    const stageRows = [{ line, tier: line.tiers[tierIdx], buildings: buildingCount }];
     const relevantLines = relevantEcoLines(stageRows, civ);
     relevantLines.forEach(id => {
       if (id in levels) return;
@@ -3673,15 +3735,10 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
       while (lvl < chain.length && free.has(chain[lvl].id)) lvl++;
       levels[id] = lvl;
     });
-    // buildingCount is a real dimension of the state now (not just tech
-    // levels + extra TCs) so a 'quantity' stage's search can weigh "build
-    // one more copy" against "research one more tech" on equal footing —
-    // for a 'sustain' stage this is always the same fixed number, so it
-    // rides along inertly in every key without changing anything.
-    function stateKey(lv, tc, bc) { return relevantLines.map(id => lv[id]).join(',') + '|' + tc + '|' + bc; }
+    function stateKey(lv, tc) { return relevantLines.map(id => lv[id]).join(',') + '|' + tc; }
 
-    const startState = { levels: { ...levels }, tcExtra, buildingCount: initialBuildingCount, time: cursorTime, vills: cursorVills, pool };
-    const startKey = stateKey(startState.levels, startState.tcExtra, startState.buildingCount);
+    const startState = { levels: { ...levels }, tcExtra, time: cursorTime, vills: cursorVills, pool };
+    const startKey = stateKey(startState.levels, startState.tcExtra);
     const finalized = new Map([[startKey, startState]]);
     const cameFrom = new Map();
     const frontier = [startState];
@@ -3689,7 +3746,7 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
 
     while (frontier.length) {
       const cur = popMinTime(frontier);
-      const curKey = stateKey(cur.levels, cur.tcExtra, cur.buildingCount);
+      const curKey = stateKey(cur.levels, cur.tcExtra);
       if (finalized.get(curKey) !== cur) continue;
       const rates = ratesFor(civ, techIdsFor(cur.levels));
       const villRate = villRateFor(cur.tcExtra);
@@ -3702,10 +3759,10 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
         const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence);
         if (!r) return;
         const nextLevels = { ...cur.levels, [id]: cur.levels[id] + 1 };
-        const key = stateKey(nextLevels, cur.tcExtra, cur.buildingCount);
+        const key = stateKey(nextLevels, cur.tcExtra);
         const existing = finalized.get(key);
         if (existing && existing.time <= r.time) return;
-        const next = { levels: nextLevels, tcExtra: cur.tcExtra, buildingCount: cur.buildingCount, time: r.time, vills: r.vills, pool: r.pool };
+        const next = { levels: nextLevels, tcExtra: cur.tcExtra, time: r.time, vills: r.vills, pool: r.pool };
         finalized.set(key, next);
         cameFrom.set(key, { fromKey: curKey, move: { type: 'tech', id, item } });
         frontier.push(next);
@@ -3715,43 +3772,24 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
         const item = { name: 'Town Center', cost: costForCiv(DATA.townCenter.cost, civ), queueSeconds: DATA.townCenter.buildTimeSeconds, age: DATA.townCenter.minAge };
         const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence);
         if (r) {
-          const key = stateKey(cur.levels, cur.tcExtra + 1, cur.buildingCount);
+          const key = stateKey(cur.levels, cur.tcExtra + 1);
           const existing = finalized.get(key);
           if (!existing || existing.time > r.time) {
-            const next = { levels: cur.levels, tcExtra: cur.tcExtra + 1, buildingCount: cur.buildingCount, time: r.time, vills: r.vills, pool: r.pool };
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra + 1, time: r.time, vills: r.vills, pool: r.pool };
             finalized.set(key, next);
             cameFrom.set(key, { fromKey: curKey, move: { type: 'tc', item } });
             frontier.push(next);
           }
         }
       }
-
-      // Only a 'quantity' stage lets the search grow buildingCount itself —
-      // a 'sustain' stage's count is a deliberate user choice, left alone.
-      if (isQuantity && cur.buildingCount < initialBuildingCount + MAX_EXTRA_BUILDINGS) {
-        const def = line.building === 'Castle' ? DATA.castle : DATA.productionBuildings[line.building];
-        const item = { name: line.building, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge };
-        const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence);
-        if (r) {
-          const key = stateKey(cur.levels, cur.tcExtra, cur.buildingCount + 1);
-          const existing = finalized.get(key);
-          if (!existing || existing.time > r.time) {
-            const next = { levels: cur.levels, tcExtra: cur.tcExtra, buildingCount: cur.buildingCount + 1, time: r.time, vills: r.vills, pool: r.pool };
-            finalized.set(key, next);
-            cameFrom.set(key, { fromKey: curKey, move: { type: 'building', item } });
-            frontier.push(next);
-          }
-        }
-      }
     }
 
-    let bestKey = null, bestTotal = Infinity, bestRamp = null, bestRates = null, bestVillagers = null, bestVillCeil = 0, bestIncome = null, bestUpkeep = null, bestBuildingCount = initialBuildingCount;
+    let bestKey = null, bestTotal = Infinity, bestRamp = null, bestRates = null, bestVillagers = null, bestVillCeil = 0, bestIncome = null, bestUpkeep = null;
     finalized.forEach((state, key) => {
       const techIds = techIdsFor(state.levels);
       const rates = ratesFor(civ, techIds);
       const villRate = villRateFor(state.tcExtra);
-      const rowsForState = isQuantity ? [{ line, tier: line.tiers[tierIdx], buildings: state.buildingCount }] : stageRows;
-      const incomeInfo = computeTotalIncome(rowsWithVillagers(rowsForState, 1 + state.tcExtra), civ, techIds);
+      const incomeInfo = computeTotalIncome(rowsWithVillagers(stageRows, 1 + state.tcExtra), civ, techIds);
       const { villagers, totalVillCeil } = villagersFromIncome(incomeInfo.totalIncome, rates);
       let total, ramp = null;
       if (state.vills >= totalVillCeil) {
@@ -3760,26 +3798,14 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
         ramp = simulateRampToSustain(rates, villRate, state.vills, villagers, totalVillCeil, state.time, openingSequence);
         total = ramp ? ramp.time : Infinity;
       }
-      // A 'quantity' stage isn't done once it can SUSTAIN the composition —
-      // it still has to actually produce `qty` of it. Once sustained,
-      // production runs at the building count's own full rate (resource
-      // income is no longer the bottleneck by definition of "sustained"),
-      // so this tail is independent of eco-tech and only shrinks with a
-      // bigger buildingCount — the real lever a finite goal has that an
-      // infinite sustain target doesn't. Deliberately ignores any partial
-      // output produced DURING the ramp itself (ramp time already counts
-      // toward `total`, so this is a conservative floor, not a loophole).
-      if (isQuantity) total += qty / (state.buildingCount / line.tiers[tierIdx].trainTime);
-      if (total < bestTotal) { bestTotal = total; bestKey = key; bestRamp = ramp; bestRates = rates; bestVillagers = villagers; bestVillCeil = totalVillCeil; bestIncome = incomeInfo.totalIncome; bestUpkeep = incomeInfo; bestBuildingCount = state.buildingCount; }
+      if (total < bestTotal) { bestTotal = total; bestKey = key; bestRamp = ramp; bestRates = rates; bestVillagers = villagers; bestVillCeil = totalVillCeil; bestIncome = incomeInfo.totalIncome; bestUpkeep = incomeInfo; }
     });
 
     if (bestKey == null) {
-      checkpoints.push({ label: `${bestBuildingCount}x ${line.tiers[tierIdx].name} — past 60 min, add more Town Centers`, blocked: true });
-      stageResults.push({ line, tierIdx, buildingCount: bestBuildingCount, goalType: stage.goalType, qty: stage.qty, villagers: {}, totalVillCeil: 0, rates: ratesFor(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
+      checkpoints.push({ label: `${buildingCount}x ${line.tiers[tierIdx].name} — past 60 min, add more Town Centers`, blocked: true });
+      stageResults.push({ line, tierIdx, buildingCount, goalType: stage.goalType, qty: stage.qty, villagers: {}, totalVillCeil: 0, rates: ratesFor(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
       break; // a later stage built on an unreachable one isn't meaningful either
     }
-
-    if (isQuantity) haveSet.buildingCounts.set(line.building, bestBuildingCount);
 
     const path = [];
     let k = bestKey;
@@ -3787,9 +3813,7 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
     path.forEach(move => {
       runSequential([move.item], ratesFor(civ, techIdsFor(levels)), villRateFor(tcExtra));
       if (move.type === 'tech') levels = { ...levels, [move.id]: levels[move.id] + 1 };
-      else if (move.type === 'tc') tcExtra += 1;
-      // 'building' moves don't affect levels/tcExtra — bestBuildingCount
-      // (already resolved above) is the only thing downstream needs.
+      else tcExtra += 1;
     });
 
     if (bestRamp) {
@@ -3803,13 +3827,19 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
       });
       RES.forEach(r => { cumAlloc[r] += bestRamp.assigned[r] || 0; });
       checkpoints.push({
-        label: `Reach sustain (${bestVillCeil} villagers for ${bestBuildingCount}x ${line.tiers[tierIdx].name})`,
+        label: `Reach sustain (${bestVillCeil} villagers for ${buildingCount}x ${line.tiers[tierIdx].name})`,
         time: cursorTime, vills: cursorVills, split: bestRamp.assigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, kind: 'sustain', buildNotes: rampBuildNotes,
       });
     }
 
+    // A 'quantity' stage isn't done once it can SUSTAIN the composition —
+    // it still has to actually produce `qty` of it. Once sustained,
+    // production runs at buildingCount's own full rate (resource income is
+    // no longer the bottleneck by definition of "sustained"), so this tail
+    // is independent of eco-tech — the trial loop above already picked
+    // whichever buildingCount minimizes THIS total, not just time-to-sustain.
     if (isQuantity) {
-      cursorTime += qty / (bestBuildingCount / line.tiers[tierIdx].trainTime);
+      cursorTime += qty / (buildingCount / line.tiers[tierIdx].trainTime);
       checkpoints.push({
         label: `${qty}x ${line.tiers[tierIdx].name} complete`,
         time: cursorTime, vills: cursorVills, split: null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, kind: 'complete',
@@ -3817,7 +3847,7 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ) {
     }
 
     stageResults.push({
-      line, tierIdx, buildingCount: bestBuildingCount, goalType: stage.goalType, qty: stage.qty,
+      line, tierIdx, buildingCount, goalType: stage.goalType, qty: stage.qty,
       villagers: bestVillagers, totalVillCeil: bestVillCeil, rates: bestRates, totalIncome: bestIncome,
       farmUpkeepWoodPerSec: bestUpkeep.farmUpkeepWoodPerSec, houseWoodPerSec: bestUpkeep.houseWoodPerSec,
       finishTime: cursorTime, tcCount: 1 + tcExtra,
@@ -3919,9 +3949,14 @@ function fillerBuildingsNeeded(targetAge, civ, villagers, haveSet) {
 // doesn't reassign villagers already working a resource.
 function actionParts(c, prevHouses) {
   const parts = [];
-  if (c.kind === 'age') parts.push(`Advance to ${c.ageName} Age`);
-  else if (c.kind === 'tech') parts.push(`${c.itemName === 'Castle' || c.itemName === 'Town Center' || DATA.productionBuildings[c.itemName] ? 'Build' : 'Research'} ${c.itemName}`);
-  else if (c.kind === 'unit') parts.push(`Train ${c.itemName}`);
+  // Past tense — this checkpoint's time IS the moment the item finishes
+  // (the Event column already says "X ready"), not the moment to start it,
+  // so the action text needs to agree instead of reading like a
+  // contradictory do-this-now instruction ("Stable ready" + "Build Stable"
+  // at the same timestamp genuinely looks like the timing is off).
+  if (c.kind === 'age') parts.push(`Advanced to ${c.ageName} Age`);
+  else if (c.kind === 'tech') parts.push(`${c.itemName === 'Castle' || c.itemName === 'Town Center' || DATA.productionBuildings[c.itemName] ? 'Built' : 'Researched'} ${c.itemName}`);
+  else if (c.kind === 'unit') parts.push(`Trained ${c.itemName}`);
   if (c.kind === 'house') {
     const n = c.houseDelta ?? c.houses;
     parts.push(`Build ${n} House${n === 1 ? '' : 's'}`);
@@ -4336,7 +4371,12 @@ function renderOptimizeStages() {
   container.querySelectorAll('.stage-qty-input').forEach(inp => inp.addEventListener('input', e => {
     const i = Number(e.target.dataset.stageIdx);
     optimizeState.stages[i].qty = Math.max(1, Number(e.target.value) || 1);
-    renderOptimizeResults();
+    // Debounced — a quantity stage's search tries several buildingCount
+    // candidates (each a full re-search) to find the true fastest one, so
+    // it isn't instant; recomputing on every single keystroke would make
+    // typing feel like it's fighting the input.
+    clearTimeout(window.__qtyDebounce);
+    window.__qtyDebounce = setTimeout(renderOptimizeResults, 400);
   }));
   container.querySelectorAll('.stage-remove').forEach(btn => btn.addEventListener('click', () => {
     optimizeState.stages.splice(Number(btn.dataset.stageIdx), 1);
