@@ -198,7 +198,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.11</div>
+  <div class="version">v0.12</div>
 </div>
 
 <script>
@@ -4195,6 +4195,24 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // tcExtra would need replaying that state's own path, not yet built.
     // Known, deliberate gap versus the old bespoke branch — flagged, not
     // silently dropped.
+    // For a Villager target, bestVillagers is still the RAW ratio from
+    // villagersFromIncome — "how many gatherers sustain ongoing villager
+    // training at this TC count forever," which is correct AS A RATIO for
+    // the ramp above (simulateRampToSustain only ever compares relative
+    // proportions, so the ramp's own math never needed this scaled) but
+    // wrong for DISPLAY: it doesn't sum anywhere near `qty`, e.g. showing
+    // "19 on food" for a 200-villager plan. Most of a big population isn't
+    // tied to any resource by a pure headcount goal — scale the ratio up
+    // to sum to the full qty so the bars/stat tile show an honest-enough
+    // split instead of a disconnected small number (same fix the original
+    // bespoke branch had before the eco-tech unification dropped it).
+    if (line.isVillager) {
+      const ratioSum = RES.reduce((s, r) => s + bestVillagers[r], 0) || 1;
+      const scaled = {};
+      RES.forEach(r => { scaled[r] = bestVillagers[r] * (qty / ratioSum); });
+      bestVillagers = scaled;
+    }
+
     stageResults.push({
       line, tierIdx, buildingCount: line.isVillager ? 1 + tcExtra : buildingCount, goalType: stage.goalType, qty: stage.qty,
       buildingCountAlternatives: line.isVillager ? null : buildingCountAlternatives,
