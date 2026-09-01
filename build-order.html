@@ -198,7 +198,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.04</div>
+  <div class="version">v0.05</div>
 </div>
 
 <script>
@@ -3568,6 +3568,12 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     RES.forEach(res => { r[res] *= effFactor; });
     return r;
   }
+  // Real AoE2:DE rule: extra Town Centers can't be constructed before
+  // Castle Age — Cumans' unique bonus lets them start in Feudal instead.
+  // The starting TC (every game already has one) is exempt; this only
+  // gates the 2nd TC onward, in both the tcExtra Dijkstra move below and
+  // the Villager-line branch's own TC-building loop.
+  const requiredExtraTcAgeIdx = ageIndex(civ?.id === 'cumans' ? 'Feudal' : 'Castle');
   function techIdsFor(levels) {
     const ids = new Set(free);
     Object.keys(levels).forEach(id => { for (let i = 0; i < levels[id]; i++) ids.add(ecoLineTechs[id][i].id); });
@@ -3763,6 +3769,44 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         let t = cursorTime, v = cursorVills, p = { ...pool };
         let tc = currentTcCount;
         const cp = [...checkpointsBeforeStage];
+        let ageUpFillers = null; // buildings added to satisfy the age-up gate below, committed to the real haveSet only if this candidate wins
+        let newAgeIdx = null;
+
+        // The starting TC has no extra cost (it's already there at game
+        // start) but every TC beyond it needs Castle Age (Feudal for
+        // Cumans) — unlike every other line, Villager-as-target has no
+        // other reason to ever age up, so this branch has to trigger and
+        // pay for that age-up itself before it can build a 2nd TC.
+        if (finalTc > currentTcCount && reachedAgeIdx < requiredExtraTcAgeIdx) {
+          ageUpFillers = new Set(haveSet);
+          ageUpFillers.buildingCounts = new Map(haveSet.buildingCounts);
+          // A generic "some food and wood gatherers exist" proxy — this
+          // branch never decides a real resource split until villagers are
+          // actually trained below, but the Feudal qualifying-building
+          // check only cares WHICH resources are touched, not by how much
+          // (see qualifyingBuildingCount), so this is enough to pick the
+          // same Mill+Lumber-Camp-style buildings a real food/wood opening
+          // would already have standing.
+          const genericVillagers = { food: 1, wood: 1, gold: 0, stone: 0 };
+          const fillerItems = [];
+          ['Feudal', 'Castle'].forEach(age => {
+            if (ageIndex(age) > requiredExtraTcAgeIdx || ageIndex(age) <= reachedAgeIdx) return;
+            fillerBuildingsNeeded(age, civ, genericVillagers, ageUpFillers).forEach(name => {
+              const def = DATA.productionBuildings[name];
+              fillerItems.push({ name, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge });
+            });
+          });
+          const ageItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], AGE_ORDER[requiredExtraTcAgeIdx], civ));
+          for (const item of ageItems) {
+            const villRate = villRateFor(tc - 1);
+            const r = simulateItemReady(item, rates, villRate, t, v, p, openingSequence);
+            if (!r) return null;
+            t = r.time; v = r.vills; p = r.pool;
+            cp.push({ label: `${item.name} ready`, time: t, vills: v, split: null, houses: housesFor(v), alloc: { ...cumAlloc }, pool: { ...p }, ...checkpointKindFor(item) });
+          }
+          newAgeIdx = requiredExtraTcAgeIdx;
+        }
+
         while (tc < finalTc) {
           const villRate = villRateFor(tc - 1);
           const item = { name: 'Town Center', cost: costForCiv(DATA.townCenter.cost, civ), queueSeconds: DATA.townCenter.buildTimeSeconds, age: DATA.townCenter.minAge };
@@ -3796,7 +3840,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           totalIncome = { food: 0, wood: 0, gold: 0, stone: 0 };
         }
         cp.push({ label: `${qty}x Villager complete`, time: t, vills: v, split: null, houses: housesFor(v), alloc: { ...cumAlloc }, pool: { ...p }, kind: 'complete' });
-        return { finishTime: t, endVills: v, endPool: p, tcCount: tc, checkpoints: cp, villagers, totalIncome, houseWoodPerSec };
+        return { finishTime: t, endVills: v, endPool: p, tcCount: tc, checkpoints: cp, villagers, totalIncome, houseWoodPerSec, ageUpFillers, newAgeIdx };
       }
 
       const MAX_TC_FOR_VILLAGER_TARGET = 20; // separate from MAX_EXTRA_TC, which stays untouched for military targets — real booms use far more TCs than a 3-TC cap makes sense for
@@ -3822,6 +3866,12 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       cursorVills = bestResult.endVills;
       pool = bestResult.endPool;
       tcExtra = bestTc - 1;
+      if (bestResult.newAgeIdx != null) reachedAgeIdx = Math.max(reachedAgeIdx, bestResult.newAgeIdx);
+      if (bestResult.ageUpFillers) {
+        bestResult.ageUpFillers.forEach(name => {
+          if (!haveSet.has(name)) { haveSet.add(name); haveSet.buildingCounts.set(name, 1); }
+        });
+      }
       // cumAlloc (the timeline's cumulative-allocation columns) intentionally
       // isn't touched here — bestResult.villagers is a target SPLIT for
       // display, not a record of individually-assigned villagers the way
@@ -3962,7 +4012,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         frontier.push(next);
       });
 
-      if (cur.tcExtra < MAX_EXTRA_TC) {
+      if (cur.tcExtra < MAX_EXTRA_TC && reachedAgeIdx >= requiredExtraTcAgeIdx) {
         const item = { name: 'Town Center', cost: costForCiv(DATA.townCenter.cost, civ), queueSeconds: DATA.townCenter.buildTimeSeconds, age: DATA.townCenter.minAge };
         const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence);
         if (r) {
@@ -4349,10 +4399,10 @@ function renderExtraResources(villagers, rates, totalIncome) {
 // you pay once, not an ongoing rate (unlike farm upkeep, which recurs).
 // Doesn't model relocating to a new camp when a deposit runs out — how
 // often that happens depends on the map, not anything this tool tracks.
-function renderSetupCard(villagers, civ, needsCastle, neededBuildings, buildingCounts) {
+function renderSetupCard(villagers, civ, needsCastle, neededBuildings, buildingCounts, extraTcCount) {
   const settlement = (civ?.ecoBonuses || []).find(b => b.type === 'settlement');
   const muleCart = (civ?.ecoBonuses || []).find(b => b.type === 'mule-cart');
-  const needsAny = villagers.food > 0 || villagers.gold > 0 || villagers.stone > 0 || villagers.wood > 0 || needsCastle || neededBuildings.size > 0;
+  const needsAny = villagers.food > 0 || villagers.gold > 0 || villagers.stone > 0 || villagers.wood > 0 || needsCastle || neededBuildings.size > 0 || extraTcCount > 0;
   if (!needsAny) return '';
 
   const pillsFor = cost => {
@@ -4409,6 +4459,15 @@ function renderSetupCard(villagers, civ, needsCastle, neededBuildings, buildingC
   if (needsCastle) {
     const n = countFor('Castle');
     items.push({ name: n > 1 ? `Castle ×${n}` : 'Castle', cost: timesCost(DATA.castle.cost, n) });
+  }
+
+  // Extra Town Centers (beyond the free starting one) — a real wood+stone
+  // cost this card never showed at all until now, civ vs civ; the search
+  // deciding they're worth it (either the tcExtra Dijkstra move, or a
+  // Villager-target quantity stage's own dedicated TC search) doesn't mean
+  // their cost was ever surfaced anywhere outside the Step-by-Step table.
+  if (extraTcCount > 0) {
+    items.push({ name: `Town Center ×${extraTcCount}`, cost: timesCost(DATA.townCenter.cost, extraTcCount) });
   }
 
   // Whichever training buildings the current Army Composition actually uses
@@ -4555,7 +4614,7 @@ function renderOptimizeResults() {
   const buildingCounts = Object.fromEntries(displayResult.haveSet.buildingCounts);
 
   bodyEl.innerHTML = topTabs + viewingAltNote + statRow + '<div style="margin-top:18px">' + bars + '</div>' + stageBreakdown
-    + renderSetupCard(displayResult.villagers, civ, displayResult.haveSet.has('Castle'), displayResult.haveSet, buildingCounts)
+    + renderSetupCard(displayResult.villagers, civ, displayResult.haveSet.has('Castle'), displayResult.haveSet, buildingCounts, displayResult.tcCount - 1)
     + renderTimelineCard(displayResult.checkpoints, displayResult.villRate, civ);
 
   bodyEl.querySelectorAll('.alt-tab-btn').forEach(btn => btn.addEventListener('click', () => {
@@ -4727,7 +4786,7 @@ const MODE_COPY = {
   },
   optimize: {
     introDesc: "Pick a unit to constantly produce, and this finds the fastest path there from a fresh Dark Age start (3 villagers, 1 Scout Cavalry) — automatically deciding which economy upgrades and extra Town Centers are worth building along the way, and which aren't.",
-    introAssumptions: "Explores every combination of eco-tech research and extra Town Centers exactly (not a guess or a single fixed build) and picks whichever reaches your target soonest. Villagers follow a realistic opening by default — 6 on sheep (no building needed), 2-3 on wood, then berries/hunt (needs a Mill) up to pop 20, only diverting to your actual target after that — and Barracks/Loom wait until right before advancing out of Dark Age, matching standard play; the \"Prioritize Military\" toggle skips all of that for an all-in rush instead. Your target unit's own training building, tier-upgrade chain, and any age-up (plus the buildings that age-up itself requires) are mandatory and always built first. Extra Town Centers are capped at 2 beyond the starting one, and civs that discount Town Centers specifically (Britons, Bulgarians, Incas, Malians) aren't modeled.",
+    introAssumptions: "Explores every combination of eco-tech research and extra Town Centers exactly (not a guess or a single fixed build) and picks whichever reaches your target soonest. Villagers follow a realistic opening by default — 6 on sheep (no building needed), 2-3 on wood, then berries/hunt (needs a Mill) up to pop 20, only diverting to your actual target after that — and Barracks/Loom wait until right before advancing out of Dark Age, matching standard play; the \"Prioritize Military\" toggle skips all of that for an all-in rush instead. Your target unit's own training building, tier-upgrade chain, and any age-up (plus the buildings that age-up itself requires) are mandatory and always built first. Extra Town Centers can't be built before Castle Age (Feudal Age for Cumans, matching their unique bonus) — for a Villager target this may mean aging up specifically to unlock them. Extra Town Centers are capped at 2 beyond the starting one for a non-Villager target, uncapped (up to 20 total) when Villager count is the target itself; civs that discount Town Centers specifically (Britons, Bulgarians, Incas, Malians) aren't modeled.",
     ecoDesc: '',
     armyDesc: '',
   },
