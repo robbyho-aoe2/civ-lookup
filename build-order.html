@@ -11,6 +11,8 @@
   --text:#ede5d8;--text2:#a8967e;--text3:#6b5840;
   --green:#4ade80;--greenBg:rgba(74,222,128,.07);--greenBd:rgba(74,222,128,.25);
   --red:#f87171;--redBg:rgba(248,113,113,.07);--redBd:rgba(248,113,113,.25);
+  --yellow:#fbbf24;--yellowBg:rgba(251,191,36,.08);
+  --blue:#60a5fa;--blueBg:rgba(96,165,250,.08);
   --food:#8fd15a;--wood:#c8922a;--gold:#f0d458;--stone:#9aa5b1;
   --ageDark:#8a7a68;--ageFeudal:#c08552;--ageCastle:#b8bec9;--ageImperial:#f0b458;
   --radius:8px;
@@ -198,7 +200,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.15</div>
+  <div class="version">v0.16</div>
 </div>
 
 <script>
@@ -4455,12 +4457,22 @@ function renderTimelineCard(checkpoints, villRate, civ) {
     const warnNote = c.warning ? `<div class="tl-warn">⚠ ${c.warning}</div>` : '';
     const action = actionParts(c, prevHouses);
     prevHouses = c.houses || 0;
-    // A production building (Barracks, Stable, Market, Castle, ...)
-    // finishing is a bigger deal than a tech or an age-up's own filler
-    // requirement — flags it with a left accent stripe so it stands out
-    // from the rest of that age's rows at a glance.
-    const isProdBuilding = c.kind === 'tech' && (c.itemName === 'Castle' || DATA.productionBuildings[c.itemName]);
-    const rowStyle = `background:color-mix(in srgb, var(--age${currentAge}) 11%, transparent);${isProdBuilding ? 'border-left:3px solid var(--amber);' : ''}`;
+    // A left accent stripe, colored by what KIND of event this row is —
+    // lets a player scan the table for "where are my eco upgrades" or
+    // "when does the next age-up land" without reading every label.
+    // `kind:'tech'` covers both a researched eco-tech AND a built
+    // building (Blacksmith, Castle, Town Center, camps/Mill) — split by
+    // the same test actionParts already uses to phrase "Researched" vs
+    // "Built", so the two only ever get colored one way, never both.
+    const isProdBuilding = c.kind === 'tech' && (c.itemName === 'Castle' || c.itemName === 'Town Center' || DATA.productionBuildings[c.itemName]);
+    const isEcoTech = c.kind === 'tech' && !isProdBuilding;
+    const kindColor = isEcoTech ? 'var(--green)' // researched eco upgrade
+      : (isProdBuilding || c.kind === 'gather') ? 'var(--amber)' // built something (production building, camp/Mill)
+      : c.kind === 'queue' ? 'var(--yellow)' // started queuing the target unit
+      : c.kind === 'age' ? 'var(--blue)' // advanced an age — the biggest milestone in the row
+      : (c.kind === 'complete' || c.kind === 'sustain') ? 'var(--green)' // goal reached
+      : null; // start/house/unit/gather-food-structure — left plain, too frequent/low-signal to color
+    const rowStyle = `background:color-mix(in srgb, var(--age${currentAge}) 11%, transparent);${kindColor ? `border-left:3px solid ${kindColor};` : ''}`;
     // Resources sitting banked-but-unspent at this moment — a rounded 0
     // means "nothing spare right now" (the common case: this model spends
     // resources the instant they're needed), not "never had any."
