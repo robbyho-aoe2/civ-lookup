@@ -200,7 +200,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.17</div>
+  <div class="version">v0.18</div>
 </div>
 
 <script>
@@ -3031,7 +3031,7 @@ function buildingChainItems(buildingName, civ, haveSet) {
     const def = name === 'Castle' ? DATA.castle : DATA.productionBuildings[name];
     if (!def) return;
     if (def.requires) add(def.requires);
-    items.push({ name, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge });
+    items.push({ name, cost: costForCiv(def.cost, civ), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name)), age: def.minAge });
     haveSet.add(name);
   }
   add(buildingName);
@@ -3439,19 +3439,25 @@ const MAX_PARALLEL_TC = 3;
 // actual formula is BuildTime = (3 * T) / (n + 2), where T is the
 // single-villager base time and n is the builder count (1 vill = 100%
 // speed/base time, 2 = 133%, 4 = 200%/half time, 7 = 300%/a third, 10 =
-// 400%/a quarter — user-provided, not derived). Only applied to the
-// Villager-line branch's own TC-building loop below, which previously
-// assumed a flat 150s per TC regardless of villager count — confirmed via
-// a real build-order comparison to be the dominant bottleneck in that
-// loop (successive "Town Center ready" checkpoints landed ~150-180s apart
-// even with 100+ villagers already established). TC_BUILDERS is a
-// placeholder for "how many already-working villagers get pulled onto a
-// TC" — the model has no concept of temporarily reassigning a villager
-// off gathering, so this is a fixed guess (the user's own example count),
-// not something the search picks. Not applied to the shared tcExtra
-// Dijkstra move (military targets) or any other building.
+// 400%/a quarter — user-provided, not derived). Originally added only for
+// the Villager-line branch's own TC-building loop (confirmed via a real
+// build-order comparison to be the dominant bottleneck there), then
+// extended to every other building's construction too (Castle,
+// Barracks/Stable/etc, and age-up filler buildings) once user-reported:
+// a Castle was taking its full flat 200s regardless of villager count,
+// same gap this mechanic already fixed for Town Centers. Builder counts
+// are fixed guesses (not something the search picks — same reasoning as
+// TC_BUILDERS: the model has no concept of temporarily reassigning an
+// already-working villager off gathering), CASTLE_BUILDERS calibrated to
+// the user's own stated number for Castle specifically, BUILDING_BUILDERS
+// a more conservative default for everything else (smaller/cheaper
+// buildings a real player is less likely to mob as hard) pending its own
+// calibration.
 const TC_BUILDERS = 6;
+const CASTLE_BUILDERS = 10;
+const BUILDING_BUILDERS = 6;
 function multiBuilderTime(baseSeconds, n) { return (3 * baseSeconds) / (n + 2); }
+function buildersForBuilding(name) { return name === 'Castle' ? CASTLE_BUILDERS : BUILDING_BUILDERS; }
 
 // For a 'quantity'-goal stage (see buildStagedOptimizeTimeline), the number
 // of production buildings isn't fixed by the user — the search picks it,
@@ -3527,7 +3533,7 @@ function stageMandatoryItems(stage, civ, allIn, haveSet, fromAgeIdx, extraItems)
       const extra = {
         name: line.building,
         cost: RES.reduce((c, r) => { c[r] = (perCost[r] || 0) * extraCount; return c; }, {}),
-        queueSeconds: def.buildTimeSeconds,
+        queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(line.building)),
         age: def.minAge,
       };
       // NOT deferred, unlike the first copy above — only that first copy
@@ -3556,7 +3562,7 @@ function stageMandatoryItems(stage, civ, allIn, haveSet, fromAgeIdx, extraItems)
     if (ageIndex(age) > targetAgeIdx || ageIndex(age) <= fromAgeIdx) return;
     fillerBuildingsNeeded(age, civ, baselineVillagers, haveSet).forEach(name => {
       const def = DATA.productionBuildings[name];
-      const item = { name, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge };
+      const item = { name, cost: costForCiv(def.cost, civ), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name)), age: def.minAge };
       deferIfEarly(item);
       items.push(item);
     });
@@ -4117,7 +4123,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           if (ageIndex(age) > requiredExtraTcAgeIdx || ageIndex(age) <= reachedAgeIdx) return;
           fillerBuildingsNeeded(age, civ, genericVillagers, scratchHaveSet).forEach(name => {
             const def = DATA.productionBuildings[name];
-            fillerItems.push({ name, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge, deferToEnd: true });
+            fillerItems.push({ name, cost: costForCiv(def.cost, civ), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name)), age: def.minAge, deferToEnd: true });
           });
         });
         const ageItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], AGE_ORDER[requiredExtraTcAgeIdx], civ));
