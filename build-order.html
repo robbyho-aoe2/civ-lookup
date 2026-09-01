@@ -198,7 +198,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.10</div>
+  <div class="version">v0.11</div>
 </div>
 
 <script>
@@ -3420,6 +3420,10 @@ const MAX_EXTRA_TC = 2;
 // far more TCs than a 3-TC cap makes sense for; MAX_EXTRA_TC above stays
 // untouched for every other (military-composition) target.
 const MAX_TC_FOR_VILLAGER_TARGET = 20;
+// How many TCs a single tc-move can build at once (concurrent builder
+// groups) — see the tc-move itself for the reasoning. A guess, not
+// calibrated to a specific real group count.
+const MAX_PARALLEL_TC = 3;
 
 // Real AoE2:DE mechanic: villagers building the same structure together
 // don't divide build time linearly (2 villagers isn't 2x speed) — the
@@ -4029,27 +4033,51 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       }
 
       if (cur.tcExtra < tcExtraCap && (line.isVillager ? cur.ageAdvanced : reachedAgeIdx >= requiredExtraTcAgeIdx)) {
-        const item = { name: 'Town Center', cost: costForCiv(DATA.townCenter.cost, civ), queueSeconds: line.isVillager ? multiBuilderTime(DATA.townCenter.buildTimeSeconds, TC_BUILDERS) : DATA.townCenter.buildTimeSeconds, age: DATA.townCenter.minAge };
-        const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc);
-        if (r) {
+        // Real boom play builds several TCs CONCURRENTLY — separate builder
+        // groups working different sites at once, funded together — not
+        // one at a time. Confirmed via milestone comparison against a real
+        // build: real play averaged ~41s/TC across an 11-TC stretch, faster
+        // than even this tool's own 56s single-TC construction floor, which
+        // only concurrent construction explains. Modeled as K TCs' combined
+        // cost funded together but timed as ONE construction floor (not
+        // summed) — reuses simulateItemReady's existing "afford a combined
+        // multi-resource cost, floored by queueSeconds" as-is, just a
+        // wider item. MAX_PARALLEL_TC=3 is a guess at how many builder
+        // groups could plausibly exist at once, not derived from the
+        // reference build's own group count — tune against more real data.
+        // Villager-only, same as the multi-builder formula itself; military
+        // targets keep the original one-at-a-time move (loop just runs
+        // once).
+        const maxParallelTc = line.isVillager ? MAX_PARALLEL_TC : 1;
+        const perCost = costForCiv(DATA.townCenter.cost, civ);
+        for (let k = 1; k <= maxParallelTc && cur.tcExtra + k <= tcExtraCap; k++) {
+          const item = {
+            name: k === 1 ? 'Town Center' : `${k}x Town Center`,
+            cost: RES.reduce((c, r) => { c[r] = perCost[r] * k; return c; }, {}),
+            queueSeconds: line.isVillager ? multiBuilderTime(DATA.townCenter.buildTimeSeconds, TC_BUILDERS) : DATA.townCenter.buildTimeSeconds,
+            age: DATA.townCenter.minAge,
+          };
+          const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc);
+          if (!r) break; // k TCs unaffordable within the sim cap means k+1 (strictly more expensive) can't be either
           // Tatars: every NEW Town Center (never the free starting one)
           // comes with 2 sheep, worth 50% more food than normal thanks to
-          // their livestock-longevity bonus (2 * 100 * 1.5 = 300) — user-
-          // confirmed count/longevity, 100 food/sheep is the standard game
-          // value. One-time pool credit: sheep are a finite, one-time food
-          // source in the real game, unlike this tool's other food income
-          // (a continuous per-second gather rate) — there's nowhere else in
-          // the model to represent a depleting resource, so this is modeled
-          // as a lump sum landing the moment the TC completes.
-          if (tcSheepBonus) r.pool.food += tcSheepBonus.perSheep * tcSheepBonus.count * (1 + tcSheepBonus.longevityPct / 100);
-          const key = stateKey(cur.levels, cur.tcExtra + 1, cur.ageAdvanced);
+          // their livestock-longevity bonus (2 * 100 * 1.5 = 300 each) —
+          // user-confirmed count/longevity, 100 food/sheep is the standard
+          // game value. One-time pool credit, scaled by how many TCs this
+          // move builds: sheep are a finite, one-time food source in the
+          // real game, unlike this tool's other food income (a continuous
+          // per-second gather rate) — there's nowhere else in the model to
+          // represent a depleting resource, so this is a lump sum landing
+          // the moment the TC(s) complete.
+          if (tcSheepBonus) r.pool.food += tcSheepBonus.perSheep * tcSheepBonus.count * (1 + tcSheepBonus.longevityPct / 100) * k;
+          const key = stateKey(cur.levels, cur.tcExtra + k, cur.ageAdvanced);
           const existing = finalized.get(key);
           if (!existing || existing.time > r.time) {
             const nextAlloc = { ...cur.alloc };
             RES.forEach(res => { nextAlloc[res] += r.assigned[res]; });
-            const next = { levels: cur.levels, tcExtra: cur.tcExtra + 1, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced };
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra + k, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced };
             finalized.set(key, next);
-            cameFrom.set(key, { fromKey: curKey, move: { type: 'tc', item } });
+            cameFrom.set(key, { fromKey: curKey, move: { type: 'tc', item, count: k } });
             frontier.push(next);
           }
         }
@@ -4100,7 +4128,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       }
       runSequential([move.item], ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra));
       if (move.type === 'tech') levels = { ...levels, [move.id]: levels[move.id] + 1 };
-      else tcExtra += 1;
+      else tcExtra += move.count || 1;
     });
 
     if (bestRamp) {
