@@ -200,7 +200,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.16</div>
+  <div class="version">v0.17</div>
 </div>
 
 <script>
@@ -4029,10 +4029,10 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // earlier stage already reached Castle) — otherwise the search has a
     // real, considered decision to make: pay for the age-up or don't.
     const startAgeAdvanced = !line.isVillager || reachedAgeIdx >= requiredExtraTcAgeIdx;
-    function stateKey(lv, tc, ageAdvanced) { return relevantLines.map(id => lv[id]).join(',') + '|' + tc + '|' + (ageAdvanced ? 1 : 0); }
+    function stateKey(lv, tc, ageAdvanced, trainingPaused) { return relevantLines.map(id => lv[id]).join(',') + '|' + tc + '|' + (ageAdvanced ? 1 : 0) + '|' + (trainingPaused ? 1 : 0); }
 
-    const startState = { levels: { ...levels }, tcExtra, time: cursorTime, vills: cursorVills, pool, alloc: { ...cumAlloc }, ageAdvanced: startAgeAdvanced };
-    const startKey = stateKey(startState.levels, startState.tcExtra, startState.ageAdvanced);
+    const startState = { levels: { ...levels }, tcExtra, time: cursorTime, vills: cursorVills, pool, alloc: { ...cumAlloc }, ageAdvanced: startAgeAdvanced, trainingPaused: false };
+    const startKey = stateKey(startState.levels, startState.tcExtra, startState.ageAdvanced, startState.trainingPaused);
     const finalized = new Map([[startKey, startState]]);
     const cameFrom = new Map();
     const frontier = [startState];
@@ -4040,10 +4040,22 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
 
     while (frontier.length) {
       const cur = popMinTime(frontier);
-      const curKey = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced);
+      const curKey = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused);
       if (finalized.get(curKey) !== cur) continue;
       const rates = ratesForOptimize(civ, techIdsFor(cur.levels));
-      const villRate = villRateFor(cur.tcExtra);
+      // Prioritize Military (all-in): once the mandatory prefix has
+      // already reached whatever this stage's own target needs (the
+      // prefix itself, above, is completely untouched — always trains at
+      // full rate), training more villagers isn't necessarily the fastest
+      // way to reach a SUSTAIN target's own requirement — an established
+      // economy might fund eco-tech (lowering that requirement) faster
+      // than it funds more population. Offered as a real, searched move
+      // below, not assumed — cur.trainingPaused only ever becomes true via
+      // that move, and only exists as an option at all when allIn is on
+      // (stays constant false otherwise, matching how ageAdvanced already
+      // stays constant for non-Villager lines — a true no-op for the
+      // default, realistic-economy pacing).
+      const villRate = cur.trainingPaused ? 0 : villRateFor(cur.tcExtra);
 
       relevantLines.forEach(id => {
         const chain = ecoLineTechs[id];
@@ -4053,16 +4065,33 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc);
         if (!r) return;
         const nextLevels = { ...cur.levels, [id]: cur.levels[id] + 1 };
-        const key = stateKey(nextLevels, cur.tcExtra, cur.ageAdvanced);
+        const key = stateKey(nextLevels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused);
         const existing = finalized.get(key);
         if (existing && existing.time <= r.time) return;
         const nextAlloc = { ...cur.alloc };
         RES.forEach(res => { nextAlloc[res] += r.assigned[res]; });
-        const next = { levels: nextLevels, tcExtra: cur.tcExtra, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced };
+        const next = { levels: nextLevels, tcExtra: cur.tcExtra, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
         finalized.set(key, next);
         cameFrom.set(key, { fromKey: curKey, move: { type: 'tech', id, item } });
         frontier.push(next);
       });
+
+      // The pause-training move itself: zero-cost, one-way (never un-
+      // pauses — going back to training more is never useful once you've
+      // decided an established economy funds the rest faster, since
+      // nothing about the state that would make it worth reversing).
+      // Non-Villager only, deliberately — the Villager-boom branch has its
+      // own, already-tested age-up/tcExtra moves below; not touching them.
+      if (allIn && !line.isVillager && !cur.trainingPaused) {
+        const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, true);
+        const existing = finalized.get(key);
+        if (!existing || existing.time > cur.time) {
+          const next = { ...cur, trainingPaused: true };
+          finalized.set(key, next);
+          cameFrom.set(key, { fromKey: curKey, move: { type: 'pause-training' } });
+          frontier.push(next);
+        }
+      }
 
       // Villager target: paying for Castle Age (Feudal for Cumans) is a
       // real, considered decision — not everything needs it (see the
@@ -4094,10 +4123,10 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         const ageItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], AGE_ORDER[requiredExtraTcAgeIdx], civ));
         const resolved = resolveSequential(ageItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence);
         if (resolved) {
-          const key = stateKey(cur.levels, cur.tcExtra, true);
+          const key = stateKey(cur.levels, cur.tcExtra, true, cur.trainingPaused);
           const existing = finalized.get(key);
           if (!existing || existing.time > resolved.time) {
-            const next = { levels: cur.levels, tcExtra: cur.tcExtra, time: resolved.time, vills: resolved.vills, pool: resolved.pool, alloc: resolved.alloc, ageAdvanced: true };
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra, time: resolved.time, vills: resolved.vills, pool: resolved.pool, alloc: resolved.alloc, ageAdvanced: true, trainingPaused: cur.trainingPaused };
             finalized.set(key, next);
             cameFrom.set(key, { fromKey: curKey, move: { type: 'age-up', items: ageItems } });
             frontier.push(next);
@@ -4143,12 +4172,12 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           // represent a depleting resource, so this is a lump sum landing
           // the moment the TC(s) complete.
           if (tcSheepBonus) r.pool.food += tcSheepBonus.perSheep * tcSheepBonus.count * (1 + tcSheepBonus.longevityPct / 100) * k;
-          const key = stateKey(cur.levels, cur.tcExtra + k, cur.ageAdvanced);
+          const key = stateKey(cur.levels, cur.tcExtra + k, cur.ageAdvanced, cur.trainingPaused);
           const existing = finalized.get(key);
           if (!existing || existing.time > r.time) {
             const nextAlloc = { ...cur.alloc };
             RES.forEach(res => { nextAlloc[res] += r.assigned[res]; });
-            const next = { levels: cur.levels, tcExtra: cur.tcExtra + k, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced };
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra + k, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
             finalized.set(key, next);
             cameFrom.set(key, { fromKey: curKey, move: { type: 'tc', item, count: k } });
             frontier.push(next);
@@ -4161,7 +4190,12 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     finalized.forEach((state, key) => {
       const techIds = techIdsFor(state.levels);
       const rates = ratesForOptimize(civ, techIds);
-      const villRate = villRateFor(state.tcExtra);
+      // Paused states must NOT quietly resume training for the ramp — a
+      // paused state whose population hasn't already reached totalVillCeil
+      // is a real dead end (simulateRampToSustain correctly returns null
+      // for villRate<=0), not something to silently rescue by ignoring the
+      // pause.
+      const villRate = state.trainingPaused ? 0 : villRateFor(state.tcExtra);
       const incomeInfo = computeTotalIncome(rowsWithVillagers(stageRows, 1 + state.tcExtra), civ, techIds);
       // For a Villager target the "sustain requirement" isn't a fixed
       // composition to support — it's the goal itself: villagersFromIncome
@@ -4190,16 +4224,18 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     const path = [];
     let k = bestKey;
     while (cameFrom.has(k)) { const { fromKey, move } = cameFrom.get(k); path.unshift(move); k = fromKey; }
+    let replayPaused = false;
     path.forEach(move => {
+      if (move.type === 'pause-training') { replayPaused = true; return; }
       if (move.type === 'age-up') {
-        runSequential(move.items, ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra));
+        runSequential(move.items, ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra));
         reachedAgeIdx = Math.max(reachedAgeIdx, requiredExtraTcAgeIdx);
         move.items.filter(it => !it.isAgeUp).forEach(it => {
           if (!haveSet.has(it.name)) { haveSet.add(it.name); haveSet.buildingCounts.set(it.name, 1); }
         });
         return;
       }
-      runSequential([move.item], ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra));
+      runSequential([move.item], ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra));
       if (move.type === 'tech') levels = { ...levels, [move.id]: levels[move.id] + 1 };
       else tcExtra += move.count || 1;
     });
