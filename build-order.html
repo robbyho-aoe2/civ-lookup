@@ -198,7 +198,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.05</div>
+  <div class="version">v0.06</div>
 </div>
 
 <script>
@@ -3771,6 +3771,13 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         const cp = [...checkpointsBeforeStage];
         let ageUpFillers = null; // buildings added to satisfy the age-up gate below, committed to the real haveSet only if this candidate wins
         let newAgeIdx = null;
+        // Per-resource cumulative villager counts for the Step-by-Step
+        // table's own columns — every checkpoint push below used to spread
+        // the OUTER cumAlloc (frozen at whatever it was before this branch
+        // ever ran, since nothing here touched it), so the table showed the
+        // same 3 starting villagers on every row all the way to 200. Local
+        // clone, only committed to the real cumAlloc if this candidate wins.
+        const localAlloc = { ...cumAlloc };
 
         // The starting TC has no extra cost (it's already there at game
         // start) but every TC beyond it needs Castle Age (Feudal for
@@ -3802,7 +3809,8 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
             const r = simulateItemReady(item, rates, villRate, t, v, p, openingSequence);
             if (!r) return null;
             t = r.time; v = r.vills; p = r.pool;
-            cp.push({ label: `${item.name} ready`, time: t, vills: v, split: null, houses: housesFor(v), alloc: { ...cumAlloc }, pool: { ...p }, ...checkpointKindFor(item) });
+            RES.forEach(res => { localAlloc[res] += r.assigned[res]; });
+            cp.push({ label: `${item.name} ready`, time: t, vills: v, split: null, houses: housesFor(v), alloc: { ...localAlloc }, pool: { ...p }, ...checkpointKindFor(item) });
           }
           newAgeIdx = requiredExtraTcAgeIdx;
         }
@@ -3814,7 +3822,8 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           if (!r) return null; // unreachable at this TC count within the sim cap
           t = r.time; v = r.vills; p = r.pool;
           tc++;
-          cp.push({ label: 'Town Center ready', time: t, vills: v, split: null, houses: housesFor(v), alloc: { ...cumAlloc }, pool: { ...p }, kind: 'tech', itemName: 'Town Center', ageName: null });
+          RES.forEach(res => { localAlloc[res] += r.assigned[res]; });
+          cp.push({ label: 'Town Center ready', time: t, vills: v, split: null, houses: housesFor(v), alloc: { ...localAlloc }, pool: { ...p }, kind: 'tech', itemName: 'Town Center', ageName: null });
         }
         const villRate = villRateFor(tc - 1);
         let villagers, totalIncome, houseWoodPerSec = 0;
@@ -3824,7 +3833,8 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           const ramp = simulateRampToSustain(rates, villRate, v, targetRatio, qty, t, openingSequence);
           if (!ramp) return null;
           t = ramp.time; v = ramp.vills;
-          cp.push({ label: 'Queue Villagers', time: t, vills: v, split: ramp.assigned, houses: housesFor(v), alloc: { ...cumAlloc }, pool: { ...p }, kind: 'queue', itemName: 'Villager' });
+          RES.forEach(res => { localAlloc[res] += ramp.assigned[res]; });
+          cp.push({ label: 'Queue Villagers', time: t, vills: v, split: ramp.assigned, houses: housesFor(v), alloc: { ...localAlloc }, pool: { ...p }, kind: 'queue', itemName: 'Villager' });
           // Scale the support ratio (food-for-training, wood-for-houses) up
           // to the full qty so the bars sum to what the stat tile shows —
           // most of a big population isn't tied to any resource by this
@@ -3839,8 +3849,8 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           villagers = { food: qty, wood: 0, gold: 0, stone: 0 };
           totalIncome = { food: 0, wood: 0, gold: 0, stone: 0 };
         }
-        cp.push({ label: `${qty}x Villager complete`, time: t, vills: v, split: null, houses: housesFor(v), alloc: { ...cumAlloc }, pool: { ...p }, kind: 'complete' });
-        return { finishTime: t, endVills: v, endPool: p, tcCount: tc, checkpoints: cp, villagers, totalIncome, houseWoodPerSec, ageUpFillers, newAgeIdx };
+        cp.push({ label: `${qty}x Villager complete`, time: t, vills: v, split: null, houses: housesFor(v), alloc: { ...localAlloc }, pool: { ...p }, kind: 'complete' });
+        return { finishTime: t, endVills: v, endPool: p, tcCount: tc, checkpoints: cp, villagers, totalIncome, houseWoodPerSec, ageUpFillers, newAgeIdx, finalAlloc: localAlloc };
       }
 
       const MAX_TC_FOR_VILLAGER_TARGET = 20; // separate from MAX_EXTRA_TC, which stays untouched for military targets — real booms use far more TCs than a 3-TC cap makes sense for
@@ -3872,10 +3882,13 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           if (!haveSet.has(name)) { haveSet.add(name); haveSet.buildingCounts.set(name, 1); }
         });
       }
-      // cumAlloc (the timeline's cumulative-allocation columns) intentionally
-      // isn't touched here — bestResult.villagers is a target SPLIT for
-      // display, not a record of individually-assigned villagers the way
-      // runSequential's real per-villager assignments are.
+      // cumAlloc (the timeline's Step-by-Step per-resource columns) is real
+      // here, unlike bestResult.villagers/totalIncome below (which are a
+      // target SPLIT for the stat tile/bars, not individually-assigned
+      // villagers) — every simulateItemReady/simulateRampToSustain call in
+      // tryTcCount tracked its own real `assigned` deltas into a local
+      // clone, committed here now that this candidate won.
+      RES.forEach(res => { cumAlloc[res] = bestResult.finalAlloc[res]; });
 
       const alternatives = tried.filter(t => t.buildingCount !== bestTc).sort((a, b) => a.finishTime - b.finishTime).slice(0, 2);
       stageResults.push({
