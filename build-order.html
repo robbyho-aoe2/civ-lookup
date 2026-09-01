@@ -198,7 +198,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.14</div>
+  <div class="version">v0.15</div>
 </div>
 
 <script>
@@ -3077,7 +3077,12 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
     return { time: Math.max(startTime, minTime) + tcDelay, vills: startVills, pool, assigned: { food: 0, wood: 0, gold: 0, stone: 0 }, newVills: 0, firstAssignedAt: {}, millAt: null };
   }
 
-  if (villRate <= 0) return null;
+  // Paused training (villRate=0) is still fundable purely from the
+  // existing population's ongoing income (see the tick loop below, which
+  // already credits existingAlloc regardless of new births) — only truly
+  // stuck if NEITHER new training NOR an existing workforce can ever move
+  // this forward.
+  if (villRate <= 0 && !RES.some(r => existingAlloc?.[r] > 0)) return null;
 
   // Training new villagers isn't free — villRate implies a constant stream
   // of 50-food villagers being born throughout, which competes with
@@ -3898,6 +3903,24 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       buildingCountAlternatives = tried.filter(t => t.buildingCount !== bestK).sort((a, b) => a.finishTime - b.finishTime).slice(0, 2);
     }
 
+    // Tried letting the search pick between full-rate and fully-paused
+    // (villRate=0) training for the WHOLE mandatory prefix on sustain-mode
+    // stages, hypothesizing that avoiding the usual population overshoot
+    // (see the "investigated, not a bug" note below — an unconditionally-
+    // growing prefix routinely exceeds a sustain target's own requirement
+    // before eco-tech ever gets a chance to look worthwhile) might let
+    // eco-tech pay off instead. TESTED, DISPROVEN, don't retry the same
+    // way: pausing from t=0 for the whole prefix makes the age-up
+    // literally unreachable within the 60-min cap (3 starting villagers
+    // alone can't fund 800 food + 200 gold for Castle in time) — confirmed
+    // on both a Castle-age target (Samurai) and a Feudal-age one (Scout
+    // Cavalry), never won a single trial. The underlying enabler
+    // (simulateItemReady now tolerates villRate<=0 as long as
+    // existingAlloc has ongoing income — see its own comment) stays, since
+    // it's harmless and correct on its own; a real fix here would need
+    // pausing only PART of the prefix (train normally to some baseline,
+    // pause only for the final age-up leg) — a materially bigger, separate
+    // feature, not a tweak to this coarse version.
     const targetAgeIdx = ageIndex(line.tiers[tierIdx].age);
     const extraItems = [];
     if (stageResults.length === 0 && loomOn && !allIn && !free.has('loom')) {
