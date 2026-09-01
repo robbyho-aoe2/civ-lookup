@@ -198,7 +198,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.13</div>
+  <div class="version">v0.14</div>
 </div>
 
 <script>
@@ -3923,6 +3923,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     cursorTime = stageStartTime + primed.tcBusyUntil;
     pool = primed.pool;
 
+    const stoneBefore = cumAlloc.stone;
     const prefixBlocked = runSequential(primed.remaining, ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra));
     if (prefixBlocked) {
       // Bail out the same way an unreachable Dijkstra state already does
@@ -3931,6 +3932,36 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       checkpoints.push({ label: `${line.isVillager ? `${qty}x Villager` : `${buildingCount}x ${line.tiers[tierIdx].name}`} — past 60 min, add more Town Centers`, blocked: true });
       stageResults.push({ line, tierIdx, buildingCount, goalType: stage.goalType, qty: stage.qty, buildingCountAlternatives, villagers: {}, totalVillCeil: 0, rates: ratesForOptimize(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
       break;
+    }
+    // Villagers permanently routed to stone during the mandatory prefix
+    // (typically a Castle's one-time 650-stone cost) have nothing further
+    // to do once that's paid — most unit training needs zero ongoing
+    // stone, so left as-is these villagers would sit "stuck" gathering
+    // stone forever in cumAlloc while food/gold stay understaffed relative
+    // to what training actually needs (confirmed real, user-reported: a
+    // Samurai/1-Castle target reported 44 total villagers correctly, but
+    // the real composition was food:18/gold:7/stone:11 against a target
+    // ratio of food:25/gold:11/stone:0 — 11 villagers doing nothing useful
+    // for ongoing production). A real player reassigns them the moment
+    // the one-time cost is paid; approximate that by relabeling them in
+    // cumAlloc toward the target's own cost ratio, BEFORE the Dijkstra
+    // search below reads cumAlloc as its starting point — this only
+    // corrects forward-looking bookkeeping (whose labor future income
+    // gets credited to), not the stone that was actually spent, which is
+    // real and unchanged. Total count is conserved (moved between
+    // buckets, not created/destroyed), so this doesn't touch the
+    // sum(alloc) === vills invariant.
+    const stoneGained = cumAlloc.stone - stoneBefore;
+    if (stoneGained > 0) {
+      const targetCost = costForCiv(line.cost, civ);
+      if (!targetCost.stone) {
+        const nonStoneRes = RES.filter(r => r !== 'stone' && targetCost[r] > 0);
+        const costSum = nonStoneRes.reduce((s, r) => s + targetCost[r], 0);
+        if (nonStoneRes.length && costSum > 0) {
+          cumAlloc.stone -= stoneGained;
+          nonStoneRes.forEach(r => { cumAlloc[r] += stoneGained * (targetCost[r] / costSum); });
+        }
+      }
     }
     // A Villager stage's own targetAgeIdx is always Dark (0) — never let
     // that regress reachedAgeIdx below whatever the age-up-to-Castle prefix
