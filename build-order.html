@@ -198,7 +198,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.06</div>
+  <div class="version">v0.07</div>
 </div>
 
 <script>
@@ -3367,6 +3367,25 @@ function relevantEcoLines(rows, civ) {
 // actually benefits from booming past 3 TCs this early.
 const MAX_EXTRA_TC = 2;
 
+// Real AoE2:DE mechanic: villagers building the same structure together
+// don't divide build time linearly (2 villagers isn't 2x speed) — the
+// actual formula is BuildTime = (3 * T) / (n + 2), where T is the
+// single-villager base time and n is the builder count (1 vill = 100%
+// speed/base time, 2 = 133%, 4 = 200%/half time, 7 = 300%/a third, 10 =
+// 400%/a quarter — user-provided, not derived). Only applied to the
+// Villager-line branch's own TC-building loop below, which previously
+// assumed a flat 150s per TC regardless of villager count — confirmed via
+// a real build-order comparison to be the dominant bottleneck in that
+// loop (successive "Town Center ready" checkpoints landed ~150-180s apart
+// even with 100+ villagers already established). TC_BUILDERS is a
+// placeholder for "how many already-working villagers get pulled onto a
+// TC" — the model has no concept of temporarily reassigning a villager
+// off gathering, so this is a fixed guess (the user's own example count),
+// not something the search picks. Not applied to the shared tcExtra
+// Dijkstra move (military targets) or any other building.
+const TC_BUILDERS = 6;
+function multiBuilderTime(baseSeconds, n) { return (3 * baseSeconds) / (n + 2); }
+
 // For a 'quantity'-goal stage (see buildStagedOptimizeTimeline), the number
 // of production buildings isn't fixed by the user — the search picks it,
 // same idea as MAX_EXTRA_TC: caps growth beyond wherever the stage started
@@ -3817,7 +3836,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
 
         while (tc < finalTc) {
           const villRate = villRateFor(tc - 1);
-          const item = { name: 'Town Center', cost: costForCiv(DATA.townCenter.cost, civ), queueSeconds: DATA.townCenter.buildTimeSeconds, age: DATA.townCenter.minAge };
+          const item = { name: 'Town Center', cost: costForCiv(DATA.townCenter.cost, civ), queueSeconds: multiBuilderTime(DATA.townCenter.buildTimeSeconds, TC_BUILDERS), age: DATA.townCenter.minAge };
           const r = simulateItemReady(item, rates, villRate, t, v, p, openingSequence);
           if (!r) return null; // unreachable at this TC count within the sim cap
           t = r.time; v = r.vills; p = r.pool;
