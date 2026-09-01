@@ -198,7 +198,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.12</div>
+  <div class="version">v0.13</div>
 </div>
 
 <script>
@@ -1491,7 +1491,9 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "no-age-up-building-req", "note": "No qualifying-building requirement to advance age (still needs Mill/Lumber Camp/Mining Camp to gather from a resource)" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -3771,11 +3773,23 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         const gatherVills = Math.round(callStartVills + frac * (cursorVills - callStartVills));
         cumAlloc[res] += 1;
         remainingAssigned[res] = Math.max(0, remainingAssigned[res] - 1);
-        // No `pool` here on purpose: this checkpoint's `time` is an
-        // INTERPOLATED moment partway through the current (possibly
-        // merged/bundled) item's resolution, but `pool` only reflects
-        // resource state as of that whole item's END — attributing it to
-        // this earlier timestamp would show a much-later, often much
+        // Real, one-time cost — a villager sent to gather a resource for
+        // the first time actually has to build its drop-off (Lumber Camp,
+        // Mining Camp, Mill) before working it, not gather for free the
+        // instant they're assigned. Deducted from the pool at the item's
+        // END (not the interpolated gatherTime below — same reasoning as
+        // the "no pool here" note already had: this checkpoint's own time
+        // is interpolated partway through the item, but pool only reflects
+        // state as of the item's real end). No construction-TIME delay
+        // modeled (matches how a House's cost is charged without one) —
+        // 35s for one villager is a small friction relative to the rest of
+        // the timeline; the wood cost is the part worth getting right.
+        RES.forEach(r2 => { pool[r2] -= (s.cost?.[r2] || 0); });
+        // No `pool` on the CHECKPOINT itself on purpose: this checkpoint's
+        // `time` is an INTERPOLATED moment partway through the current
+        // (possibly merged/bundled) item's resolution, but `pool` only
+        // reflects resource state as of that whole item's END — attributing
+        // it to this earlier timestamp would show a much-later, often much
         // bigger number next to a row that hasn't reached it yet.
         checkpoints.push({ label: s.name, time: gatherTime, vills: gatherVills, split: { food: 0, wood: 0, gold: 0, stone: 0, [res]: 1 }, houses: housesFor(gatherVills), alloc: { ...cumAlloc }, kind: 'gather' });
       });
@@ -3790,8 +3804,11 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           s.covers.forEach(r2 => { builtResources[r2] = true; });
           cumAlloc.food += 1;
           remainingAssigned.food = Math.max(0, remainingAssigned.food - 1);
-          // No `pool` here either — same interpolated-timestamp reason as
-          // the gather checkpoint above.
+          // Real cost, same reasoning as the generic reveal above — the
+          // Mill needed for berries/hunt isn't free either.
+          RES.forEach(r2 => { pool[r2] -= (s.cost?.[r2] || 0); });
+          // No `pool` on the checkpoint itself either — same interpolated-
+          // timestamp reason as the gather checkpoint above.
           checkpoints.push({ label: s.name, time: r.millAt, vills: OPENING_MILL_INDEX, split: { food: 1, wood: 0, gold: 0, stone: 0 }, houses: housesFor(OPENING_MILL_INDEX), alloc: { ...cumAlloc }, kind: 'gather' });
         } else {
           builtResources.food = true; // already covered by another resource's structure (e.g. Settlement)
@@ -4241,15 +4258,25 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
 // time that happens, instead of a trailing note on whatever goal happens to
 // complete later (e.g. stone genuinely has to be gathered before a Castle
 // finishes, not "at the same instant" it finishes).
+// `cost` here is real and used by runSequential to actually charge for
+// these structures the moment they're first needed (see the reveal logic
+// below) — matches renderSetupCard's own cost math (kept separate/
+// duplicated there rather than refactored to call this, to avoid touching
+// its own already-correct, tested rendering while adding this).
 function structureForResource(r, civ) {
   const settlement = (civ?.ecoBonuses || []).find(b => b.type === 'settlement');
   const muleCart = (civ?.ecoBonuses || []).find(b => b.type === 'mule-cart');
   const millName = civ?.millName || 'Mill';
-  if (settlement) return { name: 'Settlement', covers: RES };
-  if (muleCart && r !== 'food') return { name: 'Mule Cart', covers: ['wood', 'gold', 'stone'] };
-  if (r === 'food') return { name: millName, covers: ['food'] };
-  if (r === 'wood') return { name: 'Lumber Camp', covers: ['wood'] };
-  return { name: `Mining Camp (${RES_LABEL[r]})`, covers: [r] };
+  const campDiscount = (civ?.ecoBonuses || []).find(b => b.type === 'camp-cost-pct');
+  const discountMult = campDiscount ? 1 - campDiscount.value / 100 : 1;
+  if (settlement) return { name: 'Settlement', covers: RES, cost: { wood: settlement.cost } };
+  if (muleCart && r !== 'food') {
+    const cost = muleCart.freeStarting ? { food: 0, wood: 0 } : muleCart.cost;
+    return { name: 'Mule Cart', covers: ['wood', 'gold', 'stone'], cost };
+  }
+  if (r === 'food') return { name: millName, covers: ['food'], cost: { wood: Math.round(DATA.campCosts.mill * discountMult) } };
+  if (r === 'wood') return { name: 'Lumber Camp', covers: ['wood'], cost: { wood: Math.round(DATA.campCosts.lumberCamp * discountMult) } };
+  return { name: `Mining Camp (${RES_LABEL[r]})`, covers: [r], cost: { wood: Math.round(DATA.campCosts.miningCamp * discountMult) } };
 }
 
 function initialBuiltState(civ) {
@@ -4297,6 +4324,11 @@ function qualifyingBuildingCount(targetAge, civ, haveSet, villagers) {
 const FILLER_BUILDING_CANDIDATES = { Feudal: ['Barracks'], Castle: ['Market', 'Blacksmith'], Imperial: ['Monastery', 'University'] };
 
 function fillerBuildingsNeeded(targetAge, civ, villagers, haveSet) {
+  // Khmer: no qualifying-building requirement to advance age at all —
+  // real bonus, distinct from (and doesn't affect) the Mill/Lumber Camp/
+  // Mining Camp cost every civ still pays to gather a resource in the
+  // first place (see structureForResource/runSequential's reveal logic).
+  if ((civ?.ecoBonuses || []).some(b => b.type === 'no-age-up-building-req')) return [];
   const req = DATA.ageUpBuildingReqs[targetAge];
   if (!req) return [];
   let short = req.count - qualifyingBuildingCount(targetAge, civ, haveSet, villagers);
