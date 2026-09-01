@@ -198,7 +198,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.09</div>
+  <div class="version">v0.10</div>
 </div>
 
 <script>
@@ -2959,6 +2959,44 @@ function mergeWithAgeUps(goalItems, ageItems) {
     .map(({ item }) => item);
 }
 
+// Pure version of runSequential's own item-merging logic (a whole run of
+// consecutive deferToEnd items immediately followed by an age-up resolves
+// as ONE simultaneous transaction, not processed one at a time) — operates
+// on explicit state instead of runSequential's closure-mutated cursorTime/
+// cursorVills/pool/checkpoints, for callers that need to try this
+// SPECULATIVELY (without committing to real state or building checkpoints)
+// before knowing whether the result is even worth keeping. Was duplicated
+// as a plain per-item loop once already and cost ~2 real minutes of
+// accuracy for a Villager-boom age-up by not bundling filler buildings
+// with the age-up they were deferred for — don't re-duplicate this again,
+// reuse this instead.
+function resolveSequential(itemList, rates, villRate, startTime, startVills, pool, alloc, openingSequence) {
+  let t = startTime, v = startVills, p = pool, a = { ...alloc };
+  let ri = 0;
+  while (ri < itemList.length) {
+    let runEnd = ri;
+    while (itemList[runEnd]?.deferToEnd) runEnd++;
+    const deferCount = itemList[runEnd]?.isAgeUp ? runEnd - ri : 0;
+    const mergedItems = deferCount > 0 ? itemList.slice(ri, ri + deferCount + 1) : [itemList[ri]];
+    const simItem = deferCount > 0 ? (() => {
+      const ageUpItem = mergedItems[mergedItems.length - 1];
+      const deferred = mergedItems.slice(0, -1);
+      return {
+        name: ageUpItem.name, isAgeUp: true, age: ageUpItem.age, tcQueue: true,
+        cost: RES.reduce((c, r) => { c[r] = mergedItems.reduce((s, it) => s + (it.cost[r] || 0), 0); return c; }, {}),
+        researchTime: deferred.filter(it => it.tcQueue).reduce((s, it) => s + (it.researchTime || 0), 0) + (ageUpItem.researchTime || 0),
+        queueSeconds: Math.max(0, ...deferred.filter(it => !it.tcQueue).map(it => it.queueSeconds || 0)),
+      };
+    })() : mergedItems[0];
+    const r = simulateItemReady(simItem, rates, villRate, t, v, p, openingSequence, a);
+    if (!r) return null;
+    t = r.time; v = r.vills; p = r.pool;
+    RES.forEach(res => { a[res] += r.assigned[res]; });
+    ri += mergedItems.length;
+  }
+  return { time: t, vills: v, pool: p, alloc: a };
+}
+
 function effectiveGatherRate(resource, civ, techIds) {
   let rate = DATA.gatherRates[resource];
   // A tech that `supersedes` another (Hand Cart replacing Wheelbarrow's
@@ -3785,34 +3823,18 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // buildingCount machinery ("N Town Centers" is the tcExtra Dijkstra
     // dimension's job, see MAX_EXTRA_TC/MAX_TC_FOR_VILLAGER_TARGET below).
     // A Villager stage's own tier age is Dark, so it has no OTHER reason to
-    // ever age up — but a TC-boom needs Castle Age (Feudal for Cumans) to
-    // build extra TCs at all, so pay for that ONCE here, up front, before
-    // falling through into the SAME shared eco-tech+tcExtra Dijkstra search
-    // every other line already uses below (with a handful of isVillager
-    // conditionals) — this used to be a completely separate, bespoke walk
-    // (tryTcCount) that never tried researching any eco-tech at all, a real,
-    // confirmed gap (a real reference build used 5 eco-techs during exactly
-    // this phase) fixed by sharing the proven search instead of extending a
-    // second, weaker one.
-    if (isQuantity && line.isVillager && reachedAgeIdx < requiredExtraTcAgeIdx) {
-      const genericVillagers = { food: 1, wood: 1, gold: 0, stone: 0 };
-      const fillerItems = [];
-      ['Feudal', 'Castle'].forEach(age => {
-        if (ageIndex(age) > requiredExtraTcAgeIdx || ageIndex(age) <= reachedAgeIdx) return;
-        fillerBuildingsNeeded(age, civ, genericVillagers, haveSet).forEach(name => {
-          const def = DATA.productionBuildings[name];
-          fillerItems.push({ name, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge, deferToEnd: true });
-        });
-      });
-      const ageItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], AGE_ORDER[requiredExtraTcAgeIdx], civ));
-      const ageBlocked = runSequential(ageItems, ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra));
-      if (ageBlocked) {
-        checkpoints.push({ label: `${qty}x Villager — past 60 min, add more Town Centers`, blocked: true });
-        stageResults.push({ line, tierIdx, buildingCount: 1 + tcExtra, goalType: stage.goalType, qty: stage.qty, buildingCountAlternatives: null, villagers: {}, totalVillCeil: 0, rates: ratesForOptimize(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
-        break;
-      }
-      reachedAgeIdx = requiredExtraTcAgeIdx;
-    }
+    // ever age up — a TC-boom needs Castle Age (Feudal for Cumans) to build
+    // extra TCs at all, but whether that's actually WORTH paying for is a
+    // real question the search has to answer, not something to force
+    // unconditionally: an earlier version ran this age-up as a fixed prefix
+    // before the search even started, which overshot small targets badly
+    // (confirmed bug: a 19-villager target reported "complete" at 30 real
+    // villagers, because training never stops during the forced age-up and
+    // the search never got a chance to just skip it). Now handled entirely
+    // as a move inside the shared Dijkstra search below (see `ageAdvanced`
+    // on the state object) — the search picks whichever is actually
+    // faster: staying at Feudal and training from 1 TC, or paying for
+    // Castle first. No separate prefix needed.
 
     // A 'quantity' stage ("N total units, fastest") has no fixed
     // buildingCount from the UI. Trying candidate counts by re-running
@@ -3921,10 +3943,19 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       while (lvl < chain.length && free.has(chain[lvl].id)) lvl++;
       levels[id] = lvl;
     });
-    function stateKey(lv, tc) { return relevantLines.map(id => lv[id]).join(',') + '|' + tc; }
+    // ageAdvanced only means anything for a Villager target — held at a
+    // constant `true` for every other line so it never fragments their
+    // state space (their age is already unambiguously forced correct by
+    // the mandatory prefix above, via the untouched reachedAgeIdx check on
+    // the tc-move below). For Villager, starts true only if age is ALREADY
+    // sufficient (e.g. a later stage in a multi-stage plan, after an
+    // earlier stage already reached Castle) — otherwise the search has a
+    // real, considered decision to make: pay for the age-up or don't.
+    const startAgeAdvanced = !line.isVillager || reachedAgeIdx >= requiredExtraTcAgeIdx;
+    function stateKey(lv, tc, ageAdvanced) { return relevantLines.map(id => lv[id]).join(',') + '|' + tc + '|' + (ageAdvanced ? 1 : 0); }
 
-    const startState = { levels: { ...levels }, tcExtra, time: cursorTime, vills: cursorVills, pool, alloc: { ...cumAlloc } };
-    const startKey = stateKey(startState.levels, startState.tcExtra);
+    const startState = { levels: { ...levels }, tcExtra, time: cursorTime, vills: cursorVills, pool, alloc: { ...cumAlloc }, ageAdvanced: startAgeAdvanced };
+    const startKey = stateKey(startState.levels, startState.tcExtra, startState.ageAdvanced);
     const finalized = new Map([[startKey, startState]]);
     const cameFrom = new Map();
     const frontier = [startState];
@@ -3932,7 +3963,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
 
     while (frontier.length) {
       const cur = popMinTime(frontier);
-      const curKey = stateKey(cur.levels, cur.tcExtra);
+      const curKey = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced);
       if (finalized.get(curKey) !== cur) continue;
       const rates = ratesForOptimize(civ, techIdsFor(cur.levels));
       const villRate = villRateFor(cur.tcExtra);
@@ -3945,18 +3976,59 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc);
         if (!r) return;
         const nextLevels = { ...cur.levels, [id]: cur.levels[id] + 1 };
-        const key = stateKey(nextLevels, cur.tcExtra);
+        const key = stateKey(nextLevels, cur.tcExtra, cur.ageAdvanced);
         const existing = finalized.get(key);
         if (existing && existing.time <= r.time) return;
         const nextAlloc = { ...cur.alloc };
         RES.forEach(res => { nextAlloc[res] += r.assigned[res]; });
-        const next = { levels: nextLevels, tcExtra: cur.tcExtra, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc };
+        const next = { levels: nextLevels, tcExtra: cur.tcExtra, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced };
         finalized.set(key, next);
         cameFrom.set(key, { fromKey: curKey, move: { type: 'tech', id, item } });
         frontier.push(next);
       });
 
-      if (cur.tcExtra < tcExtraCap && reachedAgeIdx >= requiredExtraTcAgeIdx) {
+      // Villager target: paying for Castle Age (Feudal for Cumans) is a
+      // real, considered decision — not everything needs it (see the
+      // qty=19 overshoot bug this replaced: forcing it unconditionally
+      // before the search could decide overshot small targets badly).
+      // Non-Villager targets never take this move (ageAdvanced stays
+      // constant true for them) — their age is already unambiguously
+      // forced correct by the mandatory prefix, unchanged below.
+      if (line.isVillager && !cur.ageAdvanced && reachedAgeIdx < requiredExtraTcAgeIdx) {
+        // fillerBuildingsNeeded MUTATES the haveSet it's given (picks a
+        // filler, adds it, decrements how many more are short) — this move
+        // gets spqeculatively explored from many different frontier states
+        // before Dijkstra settles on the winning path, so it must never
+        // touch the REAL shared haveSet mid-search (every non-winning
+        // exploration would permanently pollute it for every other state,
+        // winning path included). Clone; the real haveSet is only updated
+        // during path replay, for the actual winning move.
+        const scratchHaveSet = new Set(haveSet);
+        scratchHaveSet.buildingCounts = new Map(haveSet.buildingCounts);
+        const genericVillagers = { food: 1, wood: 1, gold: 0, stone: 0 };
+        const fillerItems = [];
+        ['Feudal', 'Castle'].forEach(age => {
+          if (ageIndex(age) > requiredExtraTcAgeIdx || ageIndex(age) <= reachedAgeIdx) return;
+          fillerBuildingsNeeded(age, civ, genericVillagers, scratchHaveSet).forEach(name => {
+            const def = DATA.productionBuildings[name];
+            fillerItems.push({ name, cost: costForCiv(def.cost, civ), queueSeconds: def.buildTimeSeconds, age: def.minAge, deferToEnd: true });
+          });
+        });
+        const ageItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], AGE_ORDER[requiredExtraTcAgeIdx], civ));
+        const resolved = resolveSequential(ageItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence);
+        if (resolved) {
+          const key = stateKey(cur.levels, cur.tcExtra, true);
+          const existing = finalized.get(key);
+          if (!existing || existing.time > resolved.time) {
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra, time: resolved.time, vills: resolved.vills, pool: resolved.pool, alloc: resolved.alloc, ageAdvanced: true };
+            finalized.set(key, next);
+            cameFrom.set(key, { fromKey: curKey, move: { type: 'age-up', items: ageItems } });
+            frontier.push(next);
+          }
+        }
+      }
+
+      if (cur.tcExtra < tcExtraCap && (line.isVillager ? cur.ageAdvanced : reachedAgeIdx >= requiredExtraTcAgeIdx)) {
         const item = { name: 'Town Center', cost: costForCiv(DATA.townCenter.cost, civ), queueSeconds: line.isVillager ? multiBuilderTime(DATA.townCenter.buildTimeSeconds, TC_BUILDERS) : DATA.townCenter.buildTimeSeconds, age: DATA.townCenter.minAge };
         const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc);
         if (r) {
@@ -3970,12 +4042,12 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           // the model to represent a depleting resource, so this is modeled
           // as a lump sum landing the moment the TC completes.
           if (tcSheepBonus) r.pool.food += tcSheepBonus.perSheep * tcSheepBonus.count * (1 + tcSheepBonus.longevityPct / 100);
-          const key = stateKey(cur.levels, cur.tcExtra + 1);
+          const key = stateKey(cur.levels, cur.tcExtra + 1, cur.ageAdvanced);
           const existing = finalized.get(key);
           if (!existing || existing.time > r.time) {
             const nextAlloc = { ...cur.alloc };
             RES.forEach(res => { nextAlloc[res] += r.assigned[res]; });
-            const next = { levels: cur.levels, tcExtra: cur.tcExtra + 1, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc };
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra + 1, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced };
             finalized.set(key, next);
             cameFrom.set(key, { fromKey: curKey, move: { type: 'tc', item } });
             frontier.push(next);
@@ -4018,6 +4090,14 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     let k = bestKey;
     while (cameFrom.has(k)) { const { fromKey, move } = cameFrom.get(k); path.unshift(move); k = fromKey; }
     path.forEach(move => {
+      if (move.type === 'age-up') {
+        runSequential(move.items, ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra));
+        reachedAgeIdx = Math.max(reachedAgeIdx, requiredExtraTcAgeIdx);
+        move.items.filter(it => !it.isAgeUp).forEach(it => {
+          if (!haveSet.has(it.name)) { haveSet.add(it.name); haveSet.buildingCounts.set(it.name, 1); }
+        });
+        return;
+      }
       runSequential([move.item], ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra));
       if (move.type === 'tech') levels = { ...levels, [move.id]: levels[move.id] + 1 };
       else tcExtra += 1;
