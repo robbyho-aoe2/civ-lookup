@@ -198,7 +198,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.07</div>
+  <div class="version">v0.08</div>
 </div>
 
 <script>
@@ -3010,7 +3010,7 @@ function buildingChainItems(buildingName, civ, haveSet) {
 // Their labor still counts toward whatever they're assigned to (RES.forEach
 // below, not `need.forEach`) — it just may not help THIS item at all until
 // the script hands control back to the greedy algorithm.
-function simulateItemReady(item, rates, villRate, startTime, startVills, pool, openingSequence) {
+function simulateItemReady(item, rates, villRate, startTime, startVills, pool, openingSequence, existingAlloc) {
   const need = RES.filter(r => item.cost[r] > 0);
   const minTime = startTime + (item.queueSeconds || 0);
   // Town Center techs (tcQueue:true) block villager production for their
@@ -3088,7 +3088,17 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
       if (!(target in firstAssignedAt)) firstAssignedAt[target] = t;
       nextBirth += 1 / villRate;
     }
-    RES.forEach(r => { if (assigned[r]) saved[r] += assigned[r] * rates[r] * dt; });
+    RES.forEach(r => {
+      // Existing, already-working villagers (from before this call started)
+      // keep gathering throughout it, same as new births — previously only
+      // `assigned[r]` (births during THIS call) counted, so an established
+      // 100+-villager economy behaved as if only its newest trickle of
+      // villagers existed for funding purposes. No upkeep debit paired with
+      // this credit (see build-order.html plan history) — new-birth income
+      // isn't debited for upkeep either today, so this keeps both consistent.
+      const workers = (existingAlloc?.[r] || 0) + assigned[r];
+      if (workers) saved[r] += workers * rates[r] * dt;
+    });
     saved.food -= villagerFoodDrainPerSec * dt;
     if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) {
       // The last dt tick almost always gathers slightly more than exactly
@@ -3692,7 +3702,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       })() : mergedItems[0];
 
       const callStartTime = cursorTime, callStartVills = cursorVills;
-      const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence);
+      const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence, cumAlloc);
       if (!r) { checkpoints.push({ label: `${simItem.name} — past 60 min, add more Town Centers`, blocked: true }); anyBlocked = true; ri += mergedItems.length; continue; }
       cursorTime = r.time; cursorVills = r.vills; pool = r.pool;
 
@@ -3825,7 +3835,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           const ageItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], AGE_ORDER[requiredExtraTcAgeIdx], civ));
           for (const item of ageItems) {
             const villRate = villRateFor(tc - 1);
-            const r = simulateItemReady(item, rates, villRate, t, v, p, openingSequence);
+            const r = simulateItemReady(item, rates, villRate, t, v, p, openingSequence, localAlloc);
             if (!r) return null;
             t = r.time; v = r.vills; p = r.pool;
             RES.forEach(res => { localAlloc[res] += r.assigned[res]; });
@@ -3837,7 +3847,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         while (tc < finalTc) {
           const villRate = villRateFor(tc - 1);
           const item = { name: 'Town Center', cost: costForCiv(DATA.townCenter.cost, civ), queueSeconds: multiBuilderTime(DATA.townCenter.buildTimeSeconds, TC_BUILDERS), age: DATA.townCenter.minAge };
-          const r = simulateItemReady(item, rates, villRate, t, v, p, openingSequence);
+          const r = simulateItemReady(item, rates, villRate, t, v, p, openingSequence, localAlloc);
           if (!r) return null; // unreachable at this TC count within the sim cap
           t = r.time; v = r.vills; p = r.pool;
           tc++;
@@ -4013,7 +4023,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     });
     function stateKey(lv, tc) { return relevantLines.map(id => lv[id]).join(',') + '|' + tc; }
 
-    const startState = { levels: { ...levels }, tcExtra, time: cursorTime, vills: cursorVills, pool };
+    const startState = { levels: { ...levels }, tcExtra, time: cursorTime, vills: cursorVills, pool, alloc: { ...cumAlloc } };
     const startKey = stateKey(startState.levels, startState.tcExtra);
     const finalized = new Map([[startKey, startState]]);
     const cameFrom = new Map();
@@ -4032,13 +4042,15 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         if (cur.levels[id] >= chain.length) return;
         const tech = chain[cur.levels[id]];
         const item = { name: tech.name, cost: costForCiv(tech.cost, civ), tcQueue: tech.tcQueue, researchTime: tech.researchTime, age: tech.age };
-        const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence);
+        const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc);
         if (!r) return;
         const nextLevels = { ...cur.levels, [id]: cur.levels[id] + 1 };
         const key = stateKey(nextLevels, cur.tcExtra);
         const existing = finalized.get(key);
         if (existing && existing.time <= r.time) return;
-        const next = { levels: nextLevels, tcExtra: cur.tcExtra, time: r.time, vills: r.vills, pool: r.pool };
+        const nextAlloc = { ...cur.alloc };
+        RES.forEach(res => { nextAlloc[res] += r.assigned[res]; });
+        const next = { levels: nextLevels, tcExtra: cur.tcExtra, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc };
         finalized.set(key, next);
         cameFrom.set(key, { fromKey: curKey, move: { type: 'tech', id, item } });
         frontier.push(next);
@@ -4046,12 +4058,14 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
 
       if (cur.tcExtra < MAX_EXTRA_TC && reachedAgeIdx >= requiredExtraTcAgeIdx) {
         const item = { name: 'Town Center', cost: costForCiv(DATA.townCenter.cost, civ), queueSeconds: DATA.townCenter.buildTimeSeconds, age: DATA.townCenter.minAge };
-        const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence);
+        const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc);
         if (r) {
           const key = stateKey(cur.levels, cur.tcExtra + 1);
           const existing = finalized.get(key);
           if (!existing || existing.time > r.time) {
-            const next = { levels: cur.levels, tcExtra: cur.tcExtra + 1, time: r.time, vills: r.vills, pool: r.pool };
+            const nextAlloc = { ...cur.alloc };
+            RES.forEach(res => { nextAlloc[res] += r.assigned[res]; });
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra + 1, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc };
             finalized.set(key, next);
             cameFrom.set(key, { fromKey: curKey, move: { type: 'tc', item } });
             frontier.push(next);
