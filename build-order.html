@@ -200,7 +200,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.21</div>
+  <div class="version">v0.22</div>
 </div>
 
 <script>
@@ -4612,10 +4612,10 @@ function renderTimelineCard(checkpoints, villRate, civ) {
       <td>${i === 0 ? '0:00' : fmtClock(c.time)}</td>
       <td class="num">${c.vills + SCOUT_POP}</td>
       <td class="num">${c.vills}</td>
-      <td class="num res-food">${alloc.food}</td>
-      <td class="num res-wood">${alloc.wood}</td>
-      <td class="num res-gold">${alloc.gold}</td>
-      <td class="num res-stone">${alloc.stone}</td>
+      <td class="num res-food">${Math.max(0, Math.ceil(alloc.food))}</td>
+      <td class="num res-wood">${Math.max(0, Math.ceil(alloc.wood))}</td>
+      <td class="num res-gold">${Math.max(0, Math.ceil(alloc.gold))}</td>
+      <td class="num res-stone">${Math.max(0, Math.ceil(alloc.stone))}</td>
       <td class="num">${c.houses || 0}</td>
       <td style="white-space:nowrap;">${poolBits.length ? poolBits.join(' ') : '—'}</td>
       <td><b>${c.label}</b>${buildNote}${warnNote}</td>
