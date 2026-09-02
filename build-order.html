@@ -200,7 +200,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.20</div>
+  <div class="version">v0.21</div>
 </div>
 
 <script>
@@ -312,14 +312,25 @@ const DATA = {
     Imperial: { count: 2, buildings: ['Monastery', 'University'], castleAlt: true },
   },
   dataSourceNotes: 'Wood/gold/stone base gather rates are widely-cited community figures, not independently re-verified. Full 53-civ roster with unique units and unavailableUnitLines pulled programmatically from game data; ecoBonuses cover 11 civs whose bonuses cleanly matched this calculator\'s bonus shapes (see aoe2_civs_data.json sourceNotes for real bonuses that were excluded for not fitting, e.g. Portuguese -20% gold cost, Byzantines\' line-scoped discount).',
+  // queueSeconds below = real research duration (standard AoE2:DE 1v1 times,
+  // same "widely-cited community figures, not independently re-verified"
+  // caveat as the base gather rates above). Without this, simulateItemReady
+  // treats a tech as done the instant its cost is affordable — fine in
+  // isolation, but wrong for a same-line tier chain (Bow Saw needs Double-
+  // Bit Axe already researched first): with banked surplus covering both
+  // costs at once, the search showed them completing at the identical
+  // timestamp, which can't happen in the real game regardless of resources
+  // on hand — Bow Saw can't even START until Double-Bit Axe finishes. This
+  // floor (same mechanic buildings already use for construction time) forces
+  // that real minimum gap.
   ecoTechs: [
-    { id:'double-bit-axe', name:'Double-Bit Axe', age:'Feudal', resource:'wood', bonusPct:20, cost:{food:100,wood:50,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping' },
-    { id:'bow-saw',        name:'Bow Saw',         age:'Castle', resource:'wood', bonusPct:20, cost:{food:150,wood:100,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping' },
-    { id:'two-man-saw',    name:'Two-Man Saw',     age:'Imperial', resource:'wood', bonusPct:10, cost:{food:300,wood:200,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping' },
-    { id:'gold-mining',       name:'Gold Mining',       age:'Feudal', resource:'gold', bonusPct:15, cost:{food:100,wood:75,gold:0,stone:0}, line:'gold-mine', lineLabel:'Gold Mining' },
-    { id:'gold-shaft-mining', name:'Gold Shaft Mining', age:'Castle', resource:'gold', bonusPct:15, cost:{food:175,wood:75,gold:0,stone:0}, line:'gold-mine', lineLabel:'Gold Mining' },
-    { id:'stone-mining',       name:'Stone Mining',       age:'Feudal', resource:'stone', bonusPct:15, cost:{food:100,wood:75,gold:0,stone:0}, line:'stone-mine', lineLabel:'Stone Mining' },
-    { id:'stone-shaft-mining', name:'Stone Shaft Mining', age:'Castle', resource:'stone', bonusPct:15, cost:{food:175,wood:75,gold:0,stone:0}, line:'stone-mine', lineLabel:'Stone Mining' },
+    { id:'double-bit-axe', name:'Double-Bit Axe', age:'Feudal', resource:'wood', bonusPct:20, cost:{food:100,wood:50,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping', queueSeconds:20 },
+    { id:'bow-saw',        name:'Bow Saw',         age:'Castle', resource:'wood', bonusPct:20, cost:{food:150,wood:100,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping', queueSeconds:45 },
+    { id:'two-man-saw',    name:'Two-Man Saw',     age:'Imperial', resource:'wood', bonusPct:10, cost:{food:300,wood:200,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping', queueSeconds:75 },
+    { id:'gold-mining',       name:'Gold Mining',       age:'Feudal', resource:'gold', bonusPct:15, cost:{food:100,wood:75,gold:0,stone:0}, line:'gold-mine', lineLabel:'Gold Mining', queueSeconds:35 },
+    { id:'gold-shaft-mining', name:'Gold Shaft Mining', age:'Castle', resource:'gold', bonusPct:15, cost:{food:175,wood:75,gold:0,stone:0}, line:'gold-mine', lineLabel:'Gold Mining', queueSeconds:60 },
+    { id:'stone-mining',       name:'Stone Mining',       age:'Feudal', resource:'stone', bonusPct:15, cost:{food:100,wood:75,gold:0,stone:0}, line:'stone-mine', lineLabel:'Stone Mining', queueSeconds:35 },
+    { id:'stone-shaft-mining', name:'Stone Shaft Mining', age:'Castle', resource:'stone', bonusPct:15, cost:{food:175,wood:75,gold:0,stone:0}, line:'stone-mine', lineLabel:'Stone Mining', queueSeconds:55 },
     // Mill farm line (Horse Collar 175->250 food, Heavy Plow 250->375, Crop
     // Rotation 375->550) increases a farm's total YIELD, not the villager's
     // gather RATE — a farmer produces food at the same food/sec whether the
@@ -3391,7 +3402,17 @@ function expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, house
 // Mill farm-yield tier (horse-collar/heavy-plow/crop-rotation), which lowers
 // farm upkeep per food gathered — everything else that affects RATE (not
 // this per-second COST) lives in effectiveGatherRate instead.
-function computeTotalIncome(rows, civ, techIds) {
+// `assumeFarms` (default true) charges food income its farm-rebuild wood
+// upkeep — accurate for Constant Production's own steady-state framing
+// (an indefinite, ongoing economy, where farms are the only food source
+// that doesn't eventually run dry) but wrong for Optimize's sustain calc:
+// every Optimize target is reached within the first few tens of minutes,
+// while still comfortably on sheep/deer/boar/berries — natural food with
+// NO wood upkeep at all. Optimize's own call site passes false so it stops
+// budgeting (and, more subtly, stops investing eco-tech research time in
+// Horse Collar/Heavy Plow/Crop Rotation for) a farm-rebuild cost nothing
+// in that target's actual timeframe would ever incur.
+function computeTotalIncome(rows, civ, techIds, assumeFarms = true) {
   const totalIncome = { food: 0, wood: 0, gold: 0, stone: 0 };
   let popRate = 0;
   rows.forEach(({ line, tier, buildings }) => {
@@ -3403,7 +3424,7 @@ function computeTotalIncome(rows, civ, techIds) {
   const farmYield = techIds.has('crop-rotation') ? 550 : techIds.has('heavy-plow') ? 375 : techIds.has('horse-collar') ? 250 : 175;
   const folwarkBonus = (civ?.ecoBonuses || []).find(b => b.type === 'folwark-yield-bonus');
   const effectiveFarmYield = farmYield * (folwarkBonus ? 1 + folwarkBonus.value / 100 : 1);
-  const farmUpkeepWoodPerSec = totalIncome.food * DATA.farmBuildCost / effectiveFarmYield;
+  const farmUpkeepWoodPerSec = assumeFarms ? totalIncome.food * DATA.farmBuildCost / effectiveFarmYield : 0;
   totalIncome.wood += farmUpkeepWoodPerSec;
   const popSpaceOverride = (civ?.ecoBonuses || []).find(b => b.type === 'house-pop-space');
   const housePopSpace = popSpaceOverride ? popSpaceOverride.value : DATA.housePopSpace;
@@ -3456,12 +3477,16 @@ function rowsWithVillagers(targetRows, tcCount) {
 // training always costs food regardless of how many TCs are running, so a
 // representative single TC is enough to know farm-yield is relevant.
 function relevantEcoLines(rows, civ) {
-  const { totalIncome } = computeTotalIncome(rowsWithVillagers(rows, 1), civ, new Set());
+  const { totalIncome } = computeTotalIncome(rowsWithVillagers(rows, 1), civ, new Set(), false);
   const relevant = [];
   if (totalIncome.wood > 0) { relevant.push('wood-chop'); relevant.push('carry-capacity'); }
   if (totalIncome.gold > 0) relevant.push('gold-mine');
   if (totalIncome.stone > 0) relevant.push('stone-mine');
-  if (totalIncome.food > 0) relevant.push('farm-yield');
+  // No farm-yield: Optimize assumes natural food throughout (see
+  // computeTotalIncome's `assumeFarms`), so Horse Collar/Heavy Plow/Crop
+  // Rotation — which only ever reduce farm-rebuild wood cost, never the
+  // gather rate itself — have literally nothing to do for any Optimize
+  // target and aren't worth the search even considering them.
   return [...new Set(relevant)];
 }
 
@@ -4112,7 +4137,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         const chain = ecoLineTechs[id];
         if (cur.levels[id] >= chain.length) return;
         const tech = chain[cur.levels[id]];
-        const item = { name: tech.name, cost: costForCiv(tech.cost, civ), tcQueue: tech.tcQueue, researchTime: tech.researchTime, age: tech.age };
+        const item = { name: tech.name, cost: costForCiv(tech.cost, civ), tcQueue: tech.tcQueue, researchTime: tech.researchTime, queueSeconds: tech.queueSeconds, age: tech.age };
         const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc);
         if (!r) return;
         const nextLevels = { ...cur.levels, [id]: cur.levels[id] + 1 };
@@ -4247,7 +4272,16 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // for villRate<=0), not something to silently rescue by ignoring the
       // pause.
       const villRate = state.trainingPaused ? 0 : villRateFor(state.tcExtra);
-      const incomeInfo = computeTotalIncome(rowsWithVillagers(stageRows, 1 + state.tcExtra), civ, techIds);
+      // Realistic economy (allIn false) keeps villagers training forever
+      // alongside production, so the sustain TARGET rightly bakes in that
+      // ongoing food cost (see rowsWithVillagers' own comment). All-in's
+      // whole premise is the opposite — train just enough, then stop (the
+      // `trainingPaused` move exists specifically for that) — so its
+      // sustain target must NOT also assume perpetual training on top of
+      // the target composition, or the population it aims for would still
+      // silently include feeding a training stream all-in is meant to shut
+      // off. Passing tcCount 0 drops the villager row's income entirely.
+      const incomeInfo = computeTotalIncome(rowsWithVillagers(stageRows, allIn ? 0 : 1 + state.tcExtra), civ, techIds, false);
       // For a Villager target the "sustain requirement" isn't a fixed
       // composition to support — it's the goal itself: villagersFromIncome
       // would give the ratio needed to sustain ongoing villager training at
