@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.91</div>
+    <div class="version">v1.92</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1021,6 +1021,20 @@ const SLINGER_ID = 185;                // Bonus ranged unit for Incas/Mapuche/Mu
    scoring for these three civs specifically. */
 const CHAMPI_IDS = [2552, 2554];       // Champi Warrior + Elite Champi Warrior
 
+/* Longship is Danes/Saxons(/Varangians)' shared Dock warship (The Viking
+   Sagas DLC, launches 2026-09-22) — a real, distinctive unit in their own
+   tech tree, same conceptual role as Fire Lancer for Wei/Shu/Wu (its own
+   standalone Naval-archetype item below, not folded into an existing
+   item's `extra`). Unlike Fire Lancer, though, it has no real numeric ID
+   anywhere yet (SiegeEngineers/aoe2techtree doesn't have these civs — see
+   MANUAL CIV DATA below), so this is a placeholder sentinel, deliberately
+   far outside any real AoE2 ID range to guarantee it can never collide —
+   added directly to civData['Danes'/'Saxons'].units (NOT to UNIT_IDS, so
+   it never shows up in search/tooltips expecting real stats data) purely
+   so it can be referenced as a normal item id here. Replace with the real
+   ID once SiegeEngineers assigns one. */
+const LONGSHIP_SENTINEL_ID = 900001;
+
 /* Khitans replace Farms with Pastures, which have their own 3-tier upgrade
    chain (Livestock Husbandry / Enclosures / Grazing Grasslands) matching the
    cost/tier progression of Horse Collar / Heavy Plow / Crop Rotation exactly —
@@ -1471,6 +1485,7 @@ const CIV_ARCHETYPES = [
   ]},
   {emoji:'⛵',label:'Naval',bonusKey:'Naval',items:[
     {t:'unit',id:691,extra:[2633]},{t:'unit',id:420},{t:'unit',id:528},{t:'unit',id:539},{t:'unit',id:2628},
+    {t:'unit',id:LONGSHIP_SENTINEL_ID}, // Longship (Danes/Saxons/Varangians) — see its own comment above
     {t:'tech',id:35},{t:'tech',id:34},{t:'tech',id:375},{t:'tech',id:374},{t:'tech',id:373},{t:'tech',id:47},
     {t:'tech',id:201},{t:'tech',id:68},{t:'tech',id:75},{t:'tech',id:907},
   ]},
@@ -2040,6 +2055,8 @@ function applyManualNewCivData() {
       units: new Set([...allUnits].filter(id => !uniqueUnitIds.has(id) && !VIKING_SAGAS_EXCLUDE.units.includes(id))),
       techs: new Set([...allTechs].filter(id => !VIKING_SAGAS_EXCLUDE.techs.includes(id))),
     };
+    // Real unit, no real ID yet — see LONGSHIP_SENTINEL_ID's own comment.
+    civData[civ].units.add(LONGSHIP_SENTINEL_ID);
   });
 }
 
