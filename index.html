@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.90</div>
+    <div class="version">v1.91</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -258,13 +258,20 @@ header{
 /* ================================================================
    ALL 53 CIVS
    ================================================================ */
+// Danes and Saxons (The Viking Sagas DLC, launching 2026-09-22) added ahead
+// of release — SiegeEngineers/aoe2techtree doesn't have their tech-tree data
+// yet, so civData for these two is hand-built below (see
+// MANUAL_NEW_CIV_DATA) from the in-game civ cards/tech trees directly,
+// rather than the live fetch. Varangians (the DLC's third civ) isn't in its
+// own card yet — add once it is. Delete MANUAL_NEW_CIV_DATA and just leave
+// the names here once SiegeEngineers' data.json catches up.
 const ALL_CIVS = [
   "Armenians","Aztecs","Bengalis","Berbers","Bohemians","Britons","Bulgarians","Burgundians",
-  "Burmese","Byzantines","Celts","Chinese","Cumans","Dravidians","Ethiopians","Franks",
+  "Burmese","Byzantines","Celts","Chinese","Cumans","Danes","Dravidians","Ethiopians","Franks",
   "Georgians","Goths","Gurjaras","Hindustanis","Huns","Incas","Italians","Japanese",
   "Jurchens","Khitans","Khmer","Koreans","Lithuanians","Malay","Malians","Magyars",
   "Mapuche","Maya","Mongols","Muisca","Persians","Poles","Portuguese","Romans",
-  "Saracens","Shu","Sicilians","Slavs","Spanish","Tatars","Teutons","Tupi",
+  "Saracens","Saxons","Shu","Sicilians","Slavs","Spanish","Tatars","Teutons","Tupi",
   "Turks","Vietnamese","Vikings","Wei","Wu"
 ];
 
@@ -324,6 +331,7 @@ const CB = {
   Celts:["Lumberjacks work +15% faster","Livestock animals within Celt unit line of sight cannot be stolen","Infantry moves +5/10/15/20% faster in Dark/Feudal/Castle/Imperial Age","Siege Weapons attack +25% faster"],
   Chinese:["Start with +3 Villagers, but -50 wood and -200 food","Technologies cost -5/10/15% in Feudal/Castle/Imperial Age","Town Centers +7 line of sight and provide +15 population space","Fire Lancers and Fire Ships move +5/10% faster in Castle/Imperial Age"],
   Cumans:["One additional Town Center can be built in Feudal Age","Mounted Units move +5/10/15% faster in Feudal/Castle/Imperial Age","Archery Ranges and Stables cost -75 wood","Siege Workshop and Battering Ram available in Feudal Age; Capped Ram available in Castle Age"],
+  Danes:["Villagers and Fishing Ships drop off +5% food","Military units loot 25 gold and 15% of the resource cost of destroyed buildings","Barracks and Siege Workshop upgrades cost -66% gold","Varangian Guards and Longships move +10% faster"],
   Dravidians:["Fishermen and Fishing Ships carry +15","Receive +200 wood when advancing to the next Age","Skirmishers and Elephant Archers attack +25% faster","Barracks technologies cost -50%","Siege Weapons cost -33% wood"],
   Ethiopians:["Receive +100 gold and +100 food when advancing to the next Age","Foot Archers attack +18% faster","Pikeman upgrade free"],
   Franks:["Foragers work +15% faster","Mill technologies free","Mounted Units +20% HP starting in Feudal Age","Castles cost -15/25% in Castle/Imperial Age"],
@@ -352,6 +360,7 @@ const CB = {
   Portuguese:["Foragers generate wood in addition to food","All units cost -20% gold","Can build Feitoria in Imperial Age","Ships +10/15/20% HP in Feudal/Castle/Imperial Age"],
   Romans:["Villagers gather, build, and repair +5% faster","Infantry armor upgrade effects are doubled","Scorpions cost -50% gold","Galley-line and Dromons +1 melee/+1 pierce armor"],
   Saracens:["Market trading fee only 5%; Markets cost -100 wood","Camel Units +25% HP","Galley-line attacks +25% faster","Transport Ships +100% HP, +20 carry capacity"],
+  Saxons:["Mills, Lumber Camps, and Mining Camps provide +50 food and +10 stone when built","Foot Soldiers cost -5% per Town Center or Castle controlled (maximum -20%)","Towers and Castles fire +100% base arrows starting in Castle Age","Longships and Catapult Galleons +20% HP"],
   Shu:["Lumberjacks generate food in addition to wood","Archery Unit technologies at the Archery Range and Blacksmith cost -25%","Siege Weapons and Siege Warships move +10/15% faster in Castle/Imperial Age"],
   Sicilians:["Start with +100 stone","Farm upgrades provide +125% additional food","Soldiers receive -40% bonus damage","Can build Donjon in Dark Age, replaces Watch Tower-line","Fortifications built +50% faster; Town Centers built +100% faster"],
   Slavs:["Farmers work +15% faster","Arson, Gambesons free","Siege Workshop Units cost -15%","Monks move +20% faster"],
@@ -373,7 +382,8 @@ const CIV_FOCUS = {
   Bulgarians:"Infantry and Cavalry", Burgundians:"Cavalry",
   Burmese:"Infantry and Cavalry", Byzantines:"Defensive",
   Celts:"Infantry and Siege", Chinese:"Archer and Gunpowder",
-  Cumans:"Cavalry", Dravidians:"Infantry and Naval",
+  Cumans:"Cavalry", Danes:"Infantry and Siege",
+  Dravidians:"Infantry and Naval",
   Ethiopians:"Archer", Franks:"Cavalry",
   Georgians:"Defensive and Cavalry", Goths:"Infantry",
   Gurjaras:"Cavalry and Camel", Hindustanis:"Camel and Gunpowder",
@@ -387,7 +397,8 @@ const CIV_FOCUS = {
   Mongols:"Cavalry Archer", Muisca:"Archer and Monk",
   Persians:"Cavalry", Poles:"Cavalry",
   Portuguese:"Naval and Gunpowder", Romans:"Infantry and Cavalry",
-  Saracens:"Camel and Naval", Shu:"Archer and Siege",
+  Saracens:"Camel and Naval", Saxons:"Infantry and Defensive",
+  Shu:"Archer and Siege",
   Sicilians:"Infantry and Cavalry", Slavs:"Infantry and Siege",
   Spanish:"Gunpowder and Monk", Tatars:"Cavalry Archer",
   Teutons:"Infantry and Defensive", Tupi:"Archer and Infantry",
@@ -409,6 +420,7 @@ const UNIQUE_UNITS = {
   Celts:"Woad Raider",
   Chinese:"Chu Ko Nu, Dragon Ship",
   Cumans:"Kipchak",
+  Danes:"Jomsviking",
   Dravidians:"Urumi Swordsman, Thirisadai",
   Ethiopians:"Shotel Warrior",
   Franks:"Throwing Axeman",
@@ -437,6 +449,7 @@ const UNIQUE_UNITS = {
   Portuguese:"Organ Gun, Caravel",
   Romans:"Centurion, Legionary",
   Saracens:"Mameluke",
+  Saxons:"Hearth Troop",
   Shu:"White Feather Guard, War Chariot",
   Sicilians:"Serjeant",
   Slavs:"Boyar",
@@ -465,6 +478,7 @@ const UNIQUE_TECHS = {
   Celts:["Stronghold","Furor Celtica"],
   Chinese:["Great Wall","Rocketry"],
   Cumans:["Steppe Husbandry","Cuman Mercenaries"],
+  Danes:["Hamask","Northmen's Fury"],
   Dravidians:["Medical Corps","Wootz Steel"],
   Ethiopians:["Royal Heirs","Torsion Engines"],
   Franks:["Bearded Axe","Chivalry"],
@@ -493,6 +507,7 @@ const UNIQUE_TECHS = {
   Portuguese:["Circumnavigation","Arquebus"],
   Romans:["Ballistas","Comitatenses"],
   Saracens:["Bimaristan","Counterweights"],
+  Saxons:["Clerical Recruitment","Shield Wall"],
   Shu:["Coiled Serpent Array","Bolt Magazine"],
   Sicilians:["First Crusade","Hauberk"],
   Slavs:["Detinets","Druzhina"],
@@ -535,6 +550,7 @@ const UU_CIV_MAP = {
   'Ghulam':'Hindustanis',
   'Grenadier':'Jurchens',
   'Guecha Warrior':'Muisca',
+  'Hearth Troop':'Saxons',
   'Houfnice':'Bohemians',
   'Huskarl':'Goths',
   'Hussite Wagon':'Bohemians',
@@ -545,6 +561,7 @@ const UU_CIV_MAP = {
   'Jaguar Warrior':'Aztecs',
   'Janissary':'Turks',
   'Jian Swordsman':'Wu',
+  'Jomsviking':'Danes',
   'Kamayuk':'Incas',
   'Karambit Warrior':'Malay',
   'Keshik':'Tatars',
@@ -612,6 +629,7 @@ const UNIQUE_TECH_DESCRIPTIONS = {
   "Cilician Fleet":"Demolition Ships +20% blast radius; Galley-line and Dromons +1 range",
   "Circumnavigation":"Sets the entire map to explored; Ships train +33% faster",
   "Citadels":"Castles +4 attack, +3 vs. Rams, +3 vs. Infantry and receive -25% bonus damage",
+  "Clerical Recruitment":"Monks +1 conversion range; train +33% faster",
   "Coiled Serpent Array":"Spearman-line and White Feather Guards gain additional HP when near each other",
   "Comitatenses":"Militia-line, Knight-line, and Centurions train +50% faster and receive a charge attack",
   "Corvinian Army":"Magyar Huszar gold cost is replaced by additional food cost",
@@ -637,6 +655,7 @@ const UNIQUE_TECH_DESCRIPTIONS = {
   "Grand Trunk Road":"All gold income +10% faster; Market trading fee reduced to 10%",
   "Great Wall":"Walls, Watch Tower-line and Bombard Towers +30% HP",
   "Greek Fire":"Fire Ships +1 range; Dromons and Bombard Towers increased blast radius",
+  "Hamask":"Infantry deal increased damage as they lose HP",
   "Hauberk":"Knight-line +1 melee/+2 pierce armor",
   "Herbalism":"Archer-line and Champi Warriors move +15% faster",
   "Hill Forts":"Town Centers +3 range",
@@ -662,6 +681,7 @@ const UNIQUE_TECH_DESCRIPTIONS = {
   "Medical Corps":"Elephant Units regenerate 30 HP per minute",
   "Ming Guang Armor":"Mounted Units +4 melee armor",
   "Nomads":"Lost Houses do not decrease population space",
+  "Northmen's Fury":"Siege Weapons and Siege Warships +40% attack vs. buildings; Mangonel-line and Catapult Galleons +1 range",
   "Ordo Cavalry":"Cavalry regenerates HP in combat",
   "Paiks":"Rathas and Elephant Units attack +20% faster",
   "Paper Money":"Lumberjacks slowly generate gold in addition to wood",
@@ -672,6 +692,7 @@ const UNIQUE_TECH_DESCRIPTIONS = {
   "Rocketry":"Scorpions, Rocket Carts and Lou Chuans +25% attack; Lou Chuans fire rockets",
   "Royal Heirs":"Shotel Warriors and Camel Riders receive -3 damage from Mounted Units",
   "Shatagni":"Hand Cannoneers +2 range",
+  "Shield Wall":"Infantry gain additional armor when massed",
   "Shinkichon":"Rocket Carts and Turtle Ships +1 range, fire additional projectiles",
   "Silk Armor":"Scout Cavalry-line, Steppe Lancers and Cavalry Archers +1 melee/+1 pierce armor",
   "Silk Road":"Trade Units cost -50%",
@@ -717,6 +738,7 @@ const TEAM_BONUS = {
   Celts: "Siege Workshops work +20% faster",
   Chinese: "Farms +10% food",
   Cumans: "Palisade Walls +33% HP",
+  Danes: "Siege Weapons +2 line of sight",
   Dravidians: "Docks provide +5 population space",
   Ethiopians: "Outposts +3 line of sight and cost no stone",
   Franks: "Knight-line +2 line of sight",
@@ -745,6 +767,7 @@ const TEAM_BONUS = {
   Portuguese: "Technologies research +25% faster",
   Romans: "Scorpions minimum range reduced",
   Saracens: "Foot Archers and Skirmishers +2 attack vs. buildings",
+  Saxons: "Repairers work +25% faster",
   Shu: "Foot Archers +2 line of sight",
   Sicilians: "Transport Ships +5 line of sight and cost -50%",
   Slavs: "Military buildings (except Castles) provide +5 population space",
@@ -1693,6 +1716,7 @@ async function loadData() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const raw = await res.json();
     parseRaw(raw);
+    applyManualNewCivData();
     dataLoaded = true;
     invalidateGradeCaches();
     render();
@@ -1917,6 +1941,106 @@ function parseRaw(raw) {
     ...Object.entries(TECH_IDS).map(([name, id]) => ({ id, ids: [id], name, itemType: 'tech', data: techsById[id] || null })),
   ].sort((a, b) => a.name.localeCompare(b.name));
   searchIdx = list;
+}
+
+/* ================================================================
+   MANUAL CIV DATA — The Viking Sagas (Danes, Saxons; launches 2026-09-22)
+   ================================================================
+   SiegeEngineers/aoe2techtree (DATA_URL above) doesn't have these civs'
+   tech trees yet, so civData for them can't come from the live fetch like
+   every other civ. Built here instead, straight from the in-game civ
+   cards/tech trees, as a "real IDs only" set: start from the UNION of every
+   ID any already-fetched civ has access to (i.e. every standard, non-civ-
+   specific unit/tech that exists in the game), then subtract this civ's own
+   specific exclusions. Their brand-new content (Jomsviking, Hearth Troop,
+   Varangian Guard, Mounted Crossbowman, the new Longship) has no real ID
+   yet either — it's simply absent from both the union and civData, same
+   as it would be from a real fetch that hasn't caught up yet.
+
+   Danes and Saxons share the DLC's exclusion list — the official
+   announcement explicitly describes the three new civs as having "their
+   own unique units, technologies, and SHARED architecture," and Saxons'
+   own tech tree (verified directly against screenshots of every page —
+   Barracks/Archery/Stable, Blacksmith/Siege/Dock, University,
+   Castle/Monastery, Economy) confirmed exactly this exclusion set. Danes'
+   tree wasn't legible in enough detail to re-derive independently, so it's
+   inferred from the shared-architecture statement rather than re-verified
+   pixel-by-pixel — flag it if something looks wrong once real data lands.
+
+   DELETE this whole block (and the 3 names in ALL_CIVS' comment) once
+   SiegeEngineers/aoe2techtree adds real Danes/Saxons(/Varangians) entries —
+   parseRaw will then populate civData for them for free, like every other
+   civ, and this manual version would just be silently stale in the way.
+*/
+// Names, not raw IDs — resolved through UNIT_IDS/TECH_IDS below so nothing
+// here depends on hand-copied numbers staying in sync with those dicts.
+const VIKING_SAGAS_EXCLUDE_NAMES = {
+  // Confirmed absent from Saxons' own tech tree (Archery Range/Barracks/
+  // Stable, Blacksmith/Siege Workshop/Dock, University, Castle/Monastery —
+  // every page screenshotted and checked directly), and inferred for Danes
+  // via the DLC's stated shared architecture (see block comment above).
+  units: [
+    'Cavalry Archer', 'Heavy Cavalry Archer', 'Hand Cannoneer', 'Bombard Cannon',
+    'Demolition Ship', 'Heavy Demolition Ship', 'Fast Fire Ship',
+    'Cannon Galleon', 'Elite Cannon Galleon', 'Paladin',
+    // No Stable row for these at all — not just missing an upgrade tier.
+    'Steppe Lancer', 'Elite Steppe Lancer',
+    'Camel Rider', 'Heavy Camel Rider', 'Imperial Camel Rider',
+    'Battle Elephant', 'Elite Battle Elephant', 'Armored Elephant', 'Elite Armored Elephant',
+    'Elephant Archer', 'Elite Elephant Archer',
+    'Eagle Scout', 'Eagle Warrior', 'Elite Eagle Warrior', 'Slinger',
+  ],
+  techs: ['Parthian Tactics', 'Blast Furnace', 'Carvel Hull', 'Bombard Tower', 'Fervor'],
+};
+function resolveIds(names, idMap) {
+  const out = [];
+  names.forEach(name => {
+    const id = idMap[name];
+    if (id == null) return; // not tracked at all — nothing to exclude
+    (Array.isArray(id) ? id : [id]).forEach(x => out.push(x));
+  });
+  return out;
+}
+const VIKING_SAGAS_EXCLUDE = {
+  units: resolveIds(VIKING_SAGAS_EXCLUDE_NAMES.units, UNIT_IDS),
+  techs: resolveIds(VIKING_SAGAS_EXCLUDE_NAMES.techs, TECH_IDS),
+};
+function applyManualNewCivData() {
+  const realCivs = Object.keys(civData).filter(c => c !== 'Danes' && c !== 'Saxons');
+  if (!realCivs.length) return; // fetch failed/empty — nothing to build a union from
+  const allUnits = new Set(), allTechs = new Set();
+  realCivs.forEach(c => {
+    civData[c].units.forEach(id => allUnits.add(id));
+    civData[c].techs.forEach(id => allTechs.add(id));
+  });
+  // civData[c].units is a per-civ ACCESS set, not an ownership set — every
+  // civ's own unique unit(s) are IN that set (that's the whole point of the
+  // fetched data), so naively unioning across all 53 civs would hand Danes/
+  // Saxons every OTHER civ's unique unit too (Samurai, Huskarl, ...), which
+  // is exactly backwards. Filtered out here using UU_CIV_MAP — the existing,
+  // already-complete unit-name → owning-civ map — rather than guessing from
+  // UNIT_IDS' object layout (its "standard" and "unique" sections aren't
+  // actually cleanly separated; several unique units like Ballista Elephant
+  // are interspersed early, and Elite-tier unique units have no separate
+  // UU_CIV_MAP entry of their own). unitsById supplies each ID's OWN name
+  // so an Elite-tier or civ-family-replacement unit (Elite Longbowman, Elite
+  // Ballista Elephant, Champi Warrior, Hei Guang Cavalry, Traction
+  // Trebuchet, Xianbei Raider, ...) can be caught even without its exact
+  // name hardcoded — it's excluded whenever ITS OWN base id or name traces
+  // back to a name UU_CIV_MAP recognizes as somebody's unique unit.
+  const uniqueUnitIds = new Set();
+  Object.entries(UNIT_IDS).forEach(([name, id]) => {
+    const base = name.replace(/^Elite /, ''); // catches Elite-tier UUs UU_CIV_MAP only keys by base name
+    if (UU_CIV_MAP[name] || UU_CIV_MAP[base]) (Array.isArray(id) ? id : [id]).forEach(x => uniqueUnitIds.add(x));
+  });
+  ['Traction Trebuchet', 'Xianbei Raider', 'Champi Warrior', 'Elite Champi Warrior', 'Fire Lancer', 'Elite Fire Lancer', 'Hei Guang Cavalry', 'Heavy Hei Guang Cavalry']
+    .forEach(name => { const id = UNIT_IDS[name]; if (id != null) (Array.isArray(id) ? id : [id]).forEach(x => uniqueUnitIds.add(x)); });
+  ['Danes', 'Saxons'].forEach(civ => {
+    civData[civ] = {
+      units: new Set([...allUnits].filter(id => !uniqueUnitIds.has(id) && !VIKING_SAGAS_EXCLUDE.units.includes(id))),
+      techs: new Set([...allTechs].filter(id => !VIKING_SAGAS_EXCLUDE.techs.includes(id))),
+    };
+  });
 }
 
 /* ================================================================
@@ -2395,6 +2519,27 @@ const UNIQUE_TECH_CATEGORY_OVERRIDE = {
 
   // ── Mapuche ──
   'Malon': { exclude:['Archer'], include:['Defensive','Cavalry Archer'] },
+
+  // ── Danes ── (The Viking Sagas, 2026-09-22)
+  'Villagers and Fishing Ships drop off +5% food': { exclude:['Naval'], include:['Eco'] },
+  // "Building" false-triggers Defensive on a raiding/looting bonus, not a
+  // defensive one; the loot itself is Siege-flavored (buildings are mainly
+  // destroyed by siege equipment) on top of the Eco gold gain.
+  'Military units loot 25 gold and 15% of the resource cost of destroyed buildings': { exclude:['Defensive'], include:['Eco','Siege'] },
+  // "Gold" false-triggers Eco on what's really a Barracks/Siege Workshop
+  // strength discount; classifier also misses Infantry since "Barracks"
+  // itself isn't a recognized unit-type keyword.
+  'Barracks and Siege Workshop upgrades cost -66% gold': { exclude:['Eco'], include:['Infantry','Siege'] },
+  // "Varangian Guards" is a proper noun the classifier can't tell is infantry.
+  'Varangian Guards and Longships move +10% faster': { include:['Infantry'] },
+
+  // ── Saxons ── (The Viking Sagas, 2026-09-22)
+  // "Castle" false-triggers Defensive on a per-building cost DISCOUNT (not a
+  // combat bonus); "Foot Soldiers" isn't a recognized Infantry keyword.
+  'Foot Soldiers cost -5% per Town Center or Castle controlled (maximum -20%)': { exclude:['Defensive'], include:['Infantry'] },
+  // No keyword hits at all — repairing mainly matters for walls/towers
+  // (Defensive) and siege equipment/ships in the field (Siege).
+  'Repairers work +25% faster': { include:['Defensive','Siege'] },
 };
 
 
@@ -4357,6 +4502,7 @@ function classifyBonusText(text) {
    contain useful keywords (e.g. "Konnik" tells you nothing programmatically),
    so this is curated from known unit roles rather than auto-classified. */
 const UNIQUE_UNIT_CATEGORY = {
+  'Jomsviking':['Infantry'], 'Hearth Troop':['Infantry'],
   'Composite Bowman':['Archer'], 'Warrior Priest':['Monk'],
   'Jaguar Warrior':['Infantry'],
   'Ratha':['Cavalry Archer','Cavalry'],
