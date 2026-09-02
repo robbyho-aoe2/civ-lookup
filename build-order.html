@@ -200,7 +200,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.18</div>
+  <div class="version">v0.19</div>
 </div>
 
 <script>
@@ -3120,7 +3120,7 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
       let target;
       if (openingSequence && vills < openingSequence.length) {
         target = openingSequence[vills];
-        if (target === 'food' && vills === OPENING_MILL_INDEX) millAt = t;
+        if (target === 'food' && vills === openingSequence.millIndex) millAt = t;
       } else {
         target = need[0];
         let worstEta = -Infinity;
@@ -3158,8 +3158,15 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
       // "resources available" in the timeline never moved from whatever
       // the starting stockpile happened to be — every item's own leftover
       // was silently thrown away instead of accumulating.
+      // Broadened from `need` to every resource: the scripted opening (see
+      // BG_STONE_SEQUENCE) can now route villagers to a resource this
+      // particular item never asked for (stone, banked early for a LATER
+      // Castle item) — that gathered amount is real and must carry forward
+      // into the next item's pool the same way genuine `need` leftovers do,
+      // not get silently discarded because this item's own `need` never
+      // included it.
       const leftoverPool = { ...pool };
-      need.forEach(r => { leftoverPool[r] += saved[r] - item.cost[r]; });
+      RES.forEach(r => { leftoverPool[r] += saved[r] - (item.cost[r] || 0); });
       return { time: t + tcDelay, vills, pool: leftoverPool, assigned, newVills: vills - startVills, firstAssignedAt, millAt };
     }
     t += dt;
@@ -3187,12 +3194,50 @@ const OPENING_SEQUENCE = [
   'wood', 'wood', 'wood', // 2-3 on wood
   'food', 'food', 'food', 'food', 'food', 'food', 'food', 'food', 'food', 'food', // berries/hunt until pop 20
 ];
-// The villager count (0-indexed, matching OPENING_SEQUENCE's own indexing)
-// at which the scripted opening first sends a NEW villager to food after the
+// The villager count (0-indexed, matching a sequence's own indexing) at
+// which the scripted opening first sends a NEW villager to food after the
 // sheep sub-phase ends — i.e. the point a Mill is actually needed (sheep are
 // walked straight to the TC, no building required; berries/hunt do need
-// one). Sheep sub-phase is indices 0-5, wood is 6-8, so berries starts at 9.
-const OPENING_MILL_INDEX = 9;
+// one). Computed generically (not hardcoded to 9) so BG_STONE_SEQUENCE below
+// — which inserts extra slots between wood and berries — still finds the
+// right index instead of silently reusing the plain sequence's.
+function openingMillIndex(seq) {
+  let i = 0;
+  while (seq[i] === 'food') i++; // skip the initial sheep run
+  while (i < seq.length && seq[i] !== 'food') i++; // skip wood (and stone, if inserted)
+  return i;
+}
+const OPENING_MILL_INDEX = openingMillIndex(OPENING_SEQUENCE);
+OPENING_SEQUENCE.millIndex = OPENING_MILL_INDEX;
+
+// Real players sending 2-3 villagers to a Castle's 650 stone don't wait
+// until Castle Age hits to start — they peel a few off right after the
+// initial wood run so stone is already banking well before it's the
+// simulation's OWN "worst ETA" target, matching a report from direct
+// play: 6 food + 3 wood + 3 stone (no more) was already enough to have the
+// Castle's stone ready by Castle Age. Without this, simulateItemReady's
+// greedy per-item routing (see its own comment) never sends a single
+// villager to stone until the Castle building itself becomes the active
+// item — i.e. only AFTER Castle Age is already reached — so the whole 650
+// stone gets gathered from a standing start by whatever trickle of new
+// villagers is born during that one item's own funding window, which is
+// far slower than gathering it in parallel with the age-ups leading up to
+// it. Capped at 3 (not scaled with population) — a fixed, one-time
+// detachment, same as the real recipe this was verified against.
+const BG_STONE_SLOTS = 3;
+const BG_STONE_SEQUENCE = [
+  ...OPENING_SEQUENCE.slice(0, 9), // 6 food (sheep) + 3 wood, unchanged
+  ...Array(BG_STONE_SLOTS).fill('stone'),
+  ...OPENING_SEQUENCE.slice(9), // berries/hunt tail, unchanged, just shifted later
+];
+BG_STONE_SEQUENCE.millIndex = openingMillIndex(BG_STONE_SEQUENCE);
+// Only worth the extra 3 scripted slots when the plan actually needs a
+// stone-costing building somewhere (Castle, currently the only one) — every
+// other target keeps the plain OPENING_SEQUENCE, byte-for-byte unchanged.
+function chooseOpeningSequence(stages, civ) {
+  const needsStone = stages.some(s => buildingChainItems(s.line.building, civ, new Set()).some(it => (it.cost?.stone || 0) > 0));
+  return needsStone ? BG_STONE_SEQUENCE : OPENING_SEQUENCE;
+}
 
 // Population-cap constants shared by buildTimeline's own housesFor and
 // expandHouseCheckpoints below. The starting Scout Cavalry occupies a
@@ -3645,7 +3690,7 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ, efficiency) {
 
 function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficiency) {
   const free = freeTechIds(civ);
-  const openingSequence = allIn ? null : OPENING_SEQUENCE;
+  const openingSequence = allIn ? null : chooseOpeningSequence(stages, civ);
   const sortedStages = [...stages].sort((a, b) => ageIndex(a.line.tiers[a.tierIdx].age) - ageIndex(b.line.tiers[b.tierIdx].age));
   const effFactor = (efficiency ?? 100) / 100;
   // A single "how efficiently is this economy actually running vs. the
