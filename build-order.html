@@ -200,7 +200,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.22</div>
+  <div class="version">v0.23</div>
 </div>
 
 <script>
@@ -4593,13 +4593,19 @@ function renderTimelineCard(checkpoints, villRate, civ) {
     // (those are tuned for large card backgrounds, not a single table row
     // that needs to read as "colored" next to plain rows) and each paired
     // with a matching, still-visible left border for a crisper edge.
-    const kind = isEcoTech ? 'green' // researched eco upgrade
+    // The very last row is the plan's whole reason for being — "reached
+    // sustain" / "Nx built" — so it gets its own gold treatment regardless
+    // of its own kind, standing apart from every other color as the one
+    // that means "done," not just "something happened."
+    const isFinalRow = i === checkpoints.length - 1;
+    const kind = isFinalRow ? 'gold'
+      : isEcoTech ? 'green' // researched eco upgrade
       : (isProdBuilding || c.kind === 'gather') ? 'amber' // built something (production building, camp/Mill)
       : c.kind === 'queue' ? 'yellow' // started queuing the target unit
       : c.kind === 'age' ? 'blue' // advanced an age — the biggest milestone in the row
       : (c.kind === 'complete' || c.kind === 'sustain') ? 'green' // goal reached
       : null; // start/house/unit/gather-food-structure — left plain, too frequent/low-signal to color
-    const KIND_BG = { green: 'rgba(74,222,128,.22)', amber: 'rgba(200,146,42,.24)', yellow: 'rgba(251,191,36,.22)', blue: 'rgba(96,165,250,.22)' };
+    const KIND_BG = { green: 'rgba(74,222,128,.22)', amber: 'rgba(200,146,42,.24)', yellow: 'rgba(251,191,36,.22)', blue: 'rgba(96,165,250,.22)', gold: 'rgba(240,212,88,.28)' };
     const rowStyle = kind
       ? `background:${KIND_BG[kind]};border-left:3px solid var(--${kind === 'amber' ? 'amber' : kind});`
       : `background:color-mix(in srgb, var(--age${currentAge}) 11%, transparent);`;
