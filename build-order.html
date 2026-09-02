@@ -200,7 +200,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.23</div>
+  <div class="version">v0.24</div>
 </div>
 
 <script>
@@ -3361,6 +3361,34 @@ function checkpointKindFor(item) {
   return { kind: 'tech', itemName: item.name, ageName: null };
 }
 
+function isBuildingItem(name) {
+  return name === 'Castle' || name === 'Town Center' || !!DATA.productionBuildings[name];
+}
+
+// How long the actual click-to-finish action takes for this item — the gap
+// a player would otherwise have no way to see between "I have the resources"
+// and "it's done". tcQueue items (age-ups, Loom, Wheelbarrow-line techs)
+// occupy the Town Center's own queue and use researchTime for that; every
+// other tracked item (buildings, non-TC techs) uses queueSeconds, already
+// normalized onto the item object wherever it's constructed (see the
+// `queueSeconds: multiBuilderTime(...)` / `queueSeconds: tech.queueSeconds`
+// call sites). Falls back to researchTime/trainTime for anything unusual.
+function itemDuration(it) {
+  if (it.tcQueue) return it.researchTime || 0;
+  return it.queueSeconds || it.researchTime || it.trainTime || 0;
+}
+
+// The imperative instruction for the MOMENT resources/prerequisites are
+// ready and the player should actually click — as opposed to the completion
+// checkpoint pushed alongside it, whose label/action describe what just
+// finished. Age-up item names are already phrased this way ("Advance to
+// Castle Age"); everything else needs a verb prepended.
+function startLabelFor(it) {
+  if (it.isAgeUp) return it.name;
+  if (/^\d+x /.test(it.name)) return `Train ${it.name}`;
+  return `${isBuildingItem(it.name) ? 'Build' : 'Research'} ${it.name}`;
+}
+
 // Spreads a lump "Build N Houses" total across N separate checkpoints, one
 // per house, each at the (interpolated) moment population actually crosses
 // that house's pop-space threshold — real AoE2 build orders build houses
@@ -3905,7 +3933,16 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // combined transaction would actually read to a player.
       mergedItems.forEach((it, idx) => {
         const isLast = idx === mergedItems.length - 1;
-        checkpoints.push({ label: `${it.name} ready`, time: cursorTime, vills: cursorVills, split: isLast ? remainingAssigned : null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, pool: { ...pool }, ...checkpointKindFor(it) });
+        const dur = itemDuration(it);
+        // A separate "click this now" row before the completion checkpoint,
+        // only when there's an actual gap worth showing — otherwise a
+        // near-instant item would just clutter the table with two
+        // back-to-back rows a second apart.
+        if (dur > 1) {
+          checkpoints.push({ label: startLabelFor(it), time: Math.max(0, cursorTime - dur), vills: cursorVills, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, kind: 'start' });
+        }
+        const completeLabel = it.isAgeUp ? `Reached ${it.age} Age` : `${it.name} complete`;
+        checkpoints.push({ label: completeLabel, time: cursorTime, vills: cursorVills, split: isLast ? remainingAssigned : null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, pool: { ...pool }, ...checkpointKindFor(it) });
       });
       ri += mergedItems.length;
     }
@@ -4019,7 +4056,13 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // pool state) — close enough since these all clear at effectively
       // the same moment (instantly affordable from the stockpile already
       // on hand), unlike the spread-out checkpoints elsewhere in this table.
-      checkpoints.push({ label: `${item.name} ready`, time: stageStartTime + time, vills: stageStartVills, split: null, houses: housesFor(stageStartVills), alloc: { ...cumAlloc }, pool: { ...primed.pool }, ...checkpointKindFor(item) });
+      const readyTime = stageStartTime + time;
+      const dur = itemDuration(item);
+      if (dur > 1) {
+        checkpoints.push({ label: startLabelFor(item), time: Math.max(0, readyTime - dur), vills: stageStartVills, houses: housesFor(stageStartVills), alloc: { ...cumAlloc }, kind: 'start' });
+      }
+      const completeLabel = item.isAgeUp ? `Reached ${item.age} Age` : `${item.name} complete`;
+      checkpoints.push({ label: completeLabel, time: readyTime, vills: stageStartVills, split: null, houses: housesFor(stageStartVills), alloc: { ...cumAlloc }, pool: { ...primed.pool }, ...checkpointKindFor(item) });
     });
     cursorTime = stageStartTime + primed.tcBusyUntil;
     pool = primed.pool;
@@ -4417,6 +4460,18 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
   }
 
   const lastStage = stageResults[stageResults.length - 1];
+  // The new "start" checkpoint for a duration-bearing item is pushed with an
+  // earlier time than its own "complete" checkpoint, but insertion order
+  // otherwise still reflects each item's completion sequence — e.g. a
+  // bundle of simultaneously-finishing items pushes item A's start, then
+  // A's complete, then B's start, then B's complete, even when B's start
+  // actually falls chronologically before A's. A stable sort (ties keep
+  // their original relative order, so same-instant completions stay in the
+  // order they were resolved) puts every row back into real time order
+  // before expandHouseCheckpoints' own adjacent-pair interpolation runs,
+  // which assumes non-decreasing time between neighbors. Sentinel `blocked`
+  // checkpoints carry no `time` — treated as +Infinity so they stay last.
+  checkpoints.sort((a, b) => (a.time ?? Infinity) - (b.time ?? Infinity));
   return {
     checkpoints: expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, housePopSpace, hasNoHouses),
     haveSet, stageResults,
@@ -4533,18 +4588,16 @@ function fillerBuildingsNeeded(targetAge, civ, villagers, haveSet) {
 // doesn't reassign villagers already working a resource.
 function actionParts(c, prevHouses) {
   const parts = [];
-  // Past tense — this checkpoint's time IS the moment the item finishes
-  // (the Event column already says "X ready"), not the moment to start it,
-  // so the action text needs to agree instead of reading like a
-  // contradictory do-this-now instruction ("Stable ready" + "Build Stable"
-  // at the same timestamp genuinely looks like the timing is off).
-  if (c.kind === 'age') parts.push(`Advanced to ${c.ageName} Age`);
-  else if (c.kind === 'tech') parts.push(`${c.itemName === 'Castle' || c.itemName === 'Town Center' || DATA.productionBuildings[c.itemName] ? 'Built' : 'Researched'} ${c.itemName}`);
-  else if (c.kind === 'unit') parts.push(`Trained ${c.itemName}`);
-  // The one genuine exception to the past-tense rule above — a 'quantity'
-  // stage's "Queue X" checkpoint really is the start of something (see
-  // buildStagedOptimizeTimeline), not the end, so it stays imperative.
-  else if (c.kind === 'queue') parts.push(`Queue ${c.itemName}`);
+  // kind age/tech/unit completion checkpoints don't repeat their own fact
+  // here — the Event column already says it ("Reached Castle Age",
+  // "Blacksmith complete"), now that each has its own separate imperative
+  // "start" row (see startLabelFor) for the actual click. Only genuinely
+  // NEW information belongs in this column: villager routing (split) and
+  // house thresholds, below. A 'quantity' stage's "Queue X" checkpoint is
+  // the one exception that still needs its own text here — it's the start
+  // of something (see buildStagedOptimizeTimeline), not a completion, and
+  // has no separate imperative row of its own.
+  if (c.kind === 'queue') parts.push(`Queue ${c.itemName}`);
   if (c.kind === 'house') {
     const n = c.houseDelta ?? c.houses;
     parts.push(`Build ${n} House${n === 1 ? '' : 's'}`);
@@ -4641,7 +4694,7 @@ function renderTimelineCard(checkpoints, villRate, civ) {
       <tbody>${rows}</tbody>
     </table>
     </div>
-    <p class="assumptions">Row shading = current age (Dark/Feudal/Castle/Imperial); a gold left edge = a production building just finished. Pop includes the starting Scout Cavalry (Vills + 1), which occupies population space this tool doesn't otherwise track. Food/Wood/Gold/Stone columns are cumulative villagers on that resource so far, not just this step's change. Available is whatever's banked but unspent at that moment — usually "—" (0), since this model spends resources the instant something needs them, not what's ever been collected in total. "+ Building" in Event marks the moment a resource's drop-off building is first needed, shown as its own step at the time gathering actually starts (not lumped in with whatever goal happens to finish later). Every row's TIME is when that row's own item finishes — its "start" is whatever the row above already reads. Action only ever routes newly-trained villagers to a resource — it doesn't model reassigning villagers already working one. Assumes ${villRate > 0 ? 'constant villager production' : 'no ongoing villager production'} and fully automatic allocation — a planning estimate, not a literal script of which building to click first.</p>
+    <p class="assumptions">Row shading = current age (Dark/Feudal/Castle/Imperial); a gold left edge = a production building just finished. Pop includes the starting Scout Cavalry (Vills + 1), which occupies population space this tool doesn't otherwise track. Food/Wood/Gold/Stone columns are cumulative villagers on that resource so far, not just this step's change. Available is whatever's banked but unspent at that moment — usually "—" (0), since this model spends resources the instant something needs them, not what's ever been collected in total. "+ Building" in Event marks the moment a resource's drop-off building is first needed, shown as its own step at the time gathering actually starts (not lumped in with whatever goal happens to finish later). A building, tech, or age-up that takes meaningful time gets TWO rows: an imperative one ("Build Market", "Advance to Castle Age") at the moment you'd actually click it, then a plain "X complete" row once its construction/research time has elapsed — click-to-finish duration only, not a model of when resources for it were gathered. Rows that resolve near-instantly skip the click row since there's no meaningful gap to show. Action only ever routes newly-trained villagers to a resource — it doesn't model reassigning villagers already working one. Assumes ${villRate > 0 ? 'constant villager production' : 'no ongoing villager production'} and fully automatic allocation — a planning estimate, not a literal script of which building to click first.</p>
   </div>`;
 }
 
