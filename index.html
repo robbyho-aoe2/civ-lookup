@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.92</div>
+    <div class="version">v1.93</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1035,6 +1035,19 @@ const CHAMPI_IDS = [2552, 2554];       // Champi Warrior + Elite Champi Warrior
    ID once SiegeEngineers assigns one. */
 const LONGSHIP_SENTINEL_ID = 900001;
 
+/* Mounted Crossbowman — Danes/Saxons(/Varangians)' shared Archery Range
+   regional unit (The Viking Sagas, 2026-09-22). Same placeholder-sentinel
+   situation as Longship above (no real ID yet) — but per the user, this
+   one is ALSO being added to a number of EXISTING civs on release day,
+   not just the three new ones, unlike Longship/Varangian Guard which stay
+   Viking-Sagas-exclusive. Which existing civs isn't confirmed yet — only
+   wired up for Danes/Saxons below for now; extend
+   MOUNTED_CROSSBOWMAN_EXTRA_CIVS (and re-run the civData wiring for those,
+   once real — they won't come from applyManualNewCivData, which only
+   touches Danes/Saxons) once the list is known. */
+const MOUNTED_CROSSBOWMAN_SENTINEL_ID = 900002;
+const MOUNTED_CROSSBOWMAN_EXTRA_CIVS = []; // TODO: fill in once known
+
 /* Khitans replace Farms with Pastures, which have their own 3-tier upgrade
    chain (Livestock Husbandry / Enclosures / Grazing Grasslands) matching the
    cost/tier progression of Horse Collar / Heavy Plow / Crop Rotation exactly —
@@ -1452,8 +1465,9 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:437},{t:'tech',id:201},{t:'tech',id:200},{t:'tech',id:199},{t:'tech',id:47},
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
-  {emoji:'🎯',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras'],items:[
+  {emoji:'🎯',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras',...MOUNTED_CROSSBOWMAN_EXTRA_CIVS],items:[
     {t:'unit',id:474,extra:[...XIANBEI_IDS,...ELE_ARCHER_IDS,2569,2571]},
+    {t:'unit',id:MOUNTED_CROSSBOWMAN_SENTINEL_ID}, // Mounted Crossbowman (Danes/Saxons/Varangians + TBD existing civs) — see its own comment above
     {t:'tech',id:435},{t:'tech',id:39},{t:'tech',id:437},{t:'tech',id:436},{t:'tech',id:47},
     {t:'tech',id:199},{t:'tech',id:200},{t:'tech',id:201},
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
@@ -2055,8 +2069,9 @@ function applyManualNewCivData() {
       units: new Set([...allUnits].filter(id => !uniqueUnitIds.has(id) && !VIKING_SAGAS_EXCLUDE.units.includes(id))),
       techs: new Set([...allTechs].filter(id => !VIKING_SAGAS_EXCLUDE.techs.includes(id))),
     };
-    // Real unit, no real ID yet — see LONGSHIP_SENTINEL_ID's own comment.
+    // Real units, no real IDs yet — see each sentinel's own comment above.
     civData[civ].units.add(LONGSHIP_SENTINEL_ID);
+    civData[civ].units.add(MOUNTED_CROSSBOWMAN_SENTINEL_ID);
   });
 }
 
