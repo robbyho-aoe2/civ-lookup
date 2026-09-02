@@ -200,7 +200,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.19</div>
+  <div class="version">v0.20</div>
 </div>
 
 <script>
@@ -4553,13 +4553,22 @@ function renderTimelineCard(checkpoints, villRate, civ) {
     // "Built", so the two only ever get colored one way, never both.
     const isProdBuilding = c.kind === 'tech' && (c.itemName === 'Castle' || c.itemName === 'Town Center' || DATA.productionBuildings[c.itemName]);
     const isEcoTech = c.kind === 'tech' && !isProdBuilding;
-    const kindColor = isEcoTech ? 'var(--green)' // researched eco upgrade
-      : (isProdBuilding || c.kind === 'gather') ? 'var(--amber)' // built something (production building, camp/Mill)
-      : c.kind === 'queue' ? 'var(--yellow)' // started queuing the target unit
-      : c.kind === 'age' ? 'var(--blue)' // advanced an age — the biggest milestone in the row
-      : (c.kind === 'complete' || c.kind === 'sustain') ? 'var(--green)' // goal reached
+    // A row's KIND (not just a thin accent stripe) now sets the whole row's
+    // background — the previous border-only version was too subtle to scan
+    // at a glance. Colors picked well above the *Bg CSS vars' own alpha
+    // (those are tuned for large card backgrounds, not a single table row
+    // that needs to read as "colored" next to plain rows) and each paired
+    // with a matching, still-visible left border for a crisper edge.
+    const kind = isEcoTech ? 'green' // researched eco upgrade
+      : (isProdBuilding || c.kind === 'gather') ? 'amber' // built something (production building, camp/Mill)
+      : c.kind === 'queue' ? 'yellow' // started queuing the target unit
+      : c.kind === 'age' ? 'blue' // advanced an age — the biggest milestone in the row
+      : (c.kind === 'complete' || c.kind === 'sustain') ? 'green' // goal reached
       : null; // start/house/unit/gather-food-structure — left plain, too frequent/low-signal to color
-    const rowStyle = `background:color-mix(in srgb, var(--age${currentAge}) 11%, transparent);${kindColor ? `border-left:3px solid ${kindColor};` : ''}`;
+    const KIND_BG = { green: 'rgba(74,222,128,.22)', amber: 'rgba(200,146,42,.24)', yellow: 'rgba(251,191,36,.22)', blue: 'rgba(96,165,250,.22)' };
+    const rowStyle = kind
+      ? `background:${KIND_BG[kind]};border-left:3px solid var(--${kind === 'amber' ? 'amber' : kind});`
+      : `background:color-mix(in srgb, var(--age${currentAge}) 11%, transparent);`;
     // Resources sitting banked-but-unspent at this moment — a rounded 0
     // means "nothing spare right now" (the common case: this model spends
     // resources the instant they're needed), not "never had any."
