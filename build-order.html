@@ -108,6 +108,22 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 .tl-build{color:var(--text3);font-weight:400;}
 .tl-warn{color:var(--red);font-weight:400;font-size:11px;margin-top:2px;}
 
+/* Available column defaults to hidden — it's usually "—" (this model
+   spends resources the instant they're needed) and costs real width on a
+   narrow screen for a column that rarely has anything to show. Toggled via
+   .avail-expanded on the table itself, not a per-cell inline style, so one
+   class flip shows/hides every row's cell at once. */
+.timeline-table .col-available{display:none;}
+.timeline-table.avail-expanded .col-available{display:table-cell;}
+@media (max-width:560px){
+  /* Pop is always Vills+1 (the starting Scout Cavalry) — genuinely
+     redundant with the adjacent Vills column, so it's the first thing to
+     drop when space is tight rather than something worth its own toggle. */
+  .timeline-table .col-pop{display:none;}
+  .timeline-table th,.timeline-table td{padding:5px 6px;font-size:11px;}
+  table{font-size:11px;}
+}
+
 .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:4px;}
 .stat-tile{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;}
 .version{font-size:10px;color:var(--text3);margin-top:6px;}
@@ -143,7 +159,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 
   <nav class="page-tabs">
     <a href="index.html">🏠 Auto Scout</a>
-    <a href="insights.html">📊 Insights</a>
+    <a href="insights.html">📊 Console Insights</a>
     <a href="build-order.html" class="on">🛠️ Build Order</a>
   </nav>
 
@@ -200,7 +216,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.28</div>
+  <div class="version">v0.29</div>
 </div>
 
 <script>
@@ -4652,13 +4668,17 @@ function actionParts(c, prevHouses) {
 function renderTimelineCard(checkpoints, villRate, civ) {
   if (checkpoints.length <= 1) return '';
   let prevHouses = 0;
+  // 11 columns total (Time, Pop, Vills, Food, Wood, Gold, Stone, Houses,
+  // Available, Event, Action) minus the leading Time cell a blocked row
+  // still renders on its own.
+  const blockedColspan = 10;
   // Every row until the next age-up belongs to whichever age the LAST
   // "Advance to X Age" checkpoint (or Dark, at the very start) put us in —
   // tinting each row by that gives the table an at-a-glance sense of "this
   // whole stretch is still Feudal" without reading every single timestamp.
   let currentAge = 'Dark';
   const rows = checkpoints.map((c, i) => {
-    if (c.blocked) return `<tr class="blocked"><td>—</td><td colspan="9"><b>${c.label}</b></td></tr>`;
+    if (c.blocked) return `<tr class="blocked"><td>—</td><td colspan="${blockedColspan}"><b>${c.label}</b></td></tr>`;
     if (c.kind === 'age') currentAge = c.ageName;
     const alloc = c.alloc || { food: 0, wood: 0, gold: 0, stone: 0 };
     const buildNote = c.buildNotes?.length ? ` <span class="tl-build">+ ${c.buildNotes.join(', + ')}</span>` : '';
@@ -4703,14 +4723,14 @@ function renderTimelineCard(checkpoints, villRate, civ) {
     const poolBits = RES.filter(r => Math.round(pool[r]) > 0).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${Math.round(pool[r])}</span>`);
     return `<tr style="${rowStyle}">
       <td>${i === 0 ? '0:00' : fmtClock(c.time)}</td>
-      <td class="num">${c.vills + SCOUT_POP}</td>
+      <td class="num col-pop">${c.vills + SCOUT_POP}</td>
       <td class="num">${c.vills}</td>
       <td class="num res-food">${Math.max(0, Math.ceil(alloc.food))}</td>
       <td class="num res-wood">${Math.max(0, Math.ceil(alloc.wood))}</td>
       <td class="num res-gold">${Math.max(0, Math.ceil(alloc.gold))}</td>
       <td class="num res-stone">${Math.max(0, Math.ceil(alloc.stone))}</td>
       <td class="num">${c.houses || 0}</td>
-      <td style="white-space:nowrap;">${poolBits.length ? poolBits.join(' ') : '—'}</td>
+      <td class="col-available" style="white-space:nowrap;">${poolBits.length ? poolBits.join(' ') : '—'}</td>
       <td><b>${c.label}</b>${buildNote}${warnNote}</td>
       <td>${action.length ? action.join(' · ') : '—'}</td>
     </tr>`;
@@ -4718,16 +4738,17 @@ function renderTimelineCard(checkpoints, villRate, civ) {
   return `<div class="pending-card">
     <h3>Step-by-Step</h3>
     <div style="overflow-x:auto;">
-    <table class="timeline-table">
+    <table class="timeline-table${timelineAvailExpanded ? ' avail-expanded' : ''}">
       <thead><tr>
-        <th>Time</th><th class="num">Pop</th><th class="num">Vills</th>
+        <th>Time</th><th class="num col-pop">Pop</th><th class="num">Vills</th>
         <th class="num res-food">${RES_ICON.food}</th><th class="num res-wood">${RES_ICON.wood}</th>
         <th class="num res-gold">${RES_ICON.gold}</th><th class="num res-stone">${RES_ICON.stone}</th>
-        <th class="num">🏠</th><th>Available</th><th>Event</th><th>Action</th>
+        <th class="num">🏠</th><th class="col-available">Available</th><th>Event</th><th>Action</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
     </div>
+    <p class="desc" style="margin:6px 0 0;"><a href="#" id="avail-toggle-link" style="color:var(--amberL);text-decoration:none;">${timelineAvailExpanded ? '▾ Hide' : '▸ Show'} the Available column</a></p>
     <p class="assumptions">Row shading = current age (Dark/Feudal/Castle/Imperial); a gold left edge = a production building just finished. Pop includes the starting Scout Cavalry (Vills + 1), which occupies population space this tool doesn't otherwise track. Food/Wood/Gold/Stone columns are cumulative villagers on that resource so far, not just this step's change. Available is whatever's banked but unspent at that moment — usually "—" (0), since this model spends resources the instant something needs them, not what's ever been collected in total. "+ Building" in Event marks the moment a resource's drop-off building is first needed, shown as its own step at the time gathering actually starts (not lumped in with whatever goal happens to finish later). A building, tech, or age-up that takes meaningful time gets TWO rows: an imperative one ("Build Market", "Advance to Castle Age") at the moment you'd actually click it, then a plain "X complete" row once its construction/research time has elapsed — click-to-finish duration only, not a model of when resources for it were gathered. Rows that resolve near-instantly skip the click row since there's no meaningful gap to show. Action only ever routes newly-trained villagers to a resource — it doesn't model reassigning villagers already working one. Assumes ${villRate > 0 ? 'constant villager production' : 'no ongoing villager production'} and fully automatic allocation — a planning estimate, not a literal script of which building to click first.</p>
   </div>`;
 }
@@ -4965,6 +4986,11 @@ let optimizeState = { stages: [{ lineId: null, tierIdx: 0, buildingCount: 1, goa
 // anything about the plan changes, so a stale alternative never lingers
 // looking like it's still describing the current setup.
 let optimizeAltView = null;
+// Whether the Step-by-Step table's Available column is showing — defaults
+// closed (it's almost always "—", and costs real width on a narrow
+// screen) and, unlike optimizeAltView, deliberately persists across
+// re-renders of the same plan (a display preference, not plan state).
+let timelineAvailExpanded = false;
 
 // The single closest-in-time "what if I ran more production buildings"
 // alternative for the LAST stage — tries current+1 and current+2, keeps
@@ -5262,6 +5288,12 @@ function renderOptimizeResults() {
     optimizeAltView = v === '' ? null : (v === 'more-buildings' || v === 'more-eco') ? v : Number(v);
     renderOptimizeResults();
   }));
+  const availToggle = document.getElementById('avail-toggle-link');
+  if (availToggle) availToggle.addEventListener('click', e => {
+    e.preventDefault();
+    timelineAvailExpanded = !timelineAvailExpanded;
+    renderOptimizeResults();
+  });
 }
 
 function renderCivBonusList() {
