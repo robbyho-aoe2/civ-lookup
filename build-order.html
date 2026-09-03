@@ -136,6 +136,16 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 .alloc-bar{height:100%;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:11px;font-weight:700;color:#1a0a00;transition:width .25s;white-space:nowrap;min-width:2px;}
 .alloc-row .rvills{width:190px;text-align:right;font-size:12px;color:var(--text2);flex-shrink:0;}
 .alloc-row .rvills b{color:var(--text);}
+/* Fixed-scale cell grid, replacing the old proportional bar — each row's
+   fill count is real villagers (whole cells, not a continuously-resizing
+   width), and the grid's own total slot count (the "tier") is shared by
+   every row in the card so a 30-tier grid never silently becomes a
+   90-tier grid just because one resource's count changed; see
+   ALLOC_TIERS/allocTierFor. auto-fill + a fixed minmax width wraps into
+   however many rows fit the card, staying roughly square instead of one
+   very thin strip once the tier gets into the hundreds. */
+.alloc-cells{flex:1;background:var(--bg);border-radius:6px;padding:3px;border:1px solid var(--border);display:grid;grid-template-columns:repeat(auto-fill,minmax(9px,1fr));gap:2px;}
+.alloc-cell{aspect-ratio:1;border-radius:2px;background:var(--border2);}
 
 .empty-hint{font-size:12px;color:var(--text3);padding:14px 0;text-align:center;}
 .assumptions{font-size:11px;color:var(--text3);line-height:1.6;margin-top:4px;}
@@ -216,7 +226,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.29</div>
+  <div class="version">v0.30</div>
 </div>
 
 <script>
@@ -3487,7 +3497,16 @@ function computeTotalIncome(rows, civ, techIds, assumeFarms = true) {
 function villagersFromIncome(totalIncome, rates) {
   const villagers = {}; let total = 0;
   RES.forEach(r => { const v = rates[r] > 0 ? totalIncome[r] / rates[r] : 0; villagers[r] = v; total += v; });
-  return { villagers, totalVillCeil: Math.ceil(total) };
+  // Sum of each resource's own CEILED count, not ceil of the raw sum — a
+  // real player can't split one villager's labor across two resources, so
+  // e.g. 6.2 food + 9.3 wood + 7.6 gold genuinely needs 7+10+8=25 whole
+  // villagers, not ceil(23.1)=24. The old ceil-of-sum was quietly
+  // undercounting by up to RES.length-1 and, worse, disagreeing with the
+  // per-resource breakdown shown right next to it (renderVillagerBars
+  // already ceils each resource individually) — caught by the site owner
+  // noticing Total Villagers didn't match its own breakdown add up.
+  const totalVillCeil = RES.reduce((sum, r) => sum + Math.ceil(villagers[r]), 0);
+  return { villagers, totalVillCeil };
 }
 
 function ratesFor(civ, techIds) {
@@ -4802,7 +4821,10 @@ function renderProductionBody() {
     villagers.stone += castleStoneState.vills;
     totalIncome.stone += castleStoneState.vills * rates.stone;
   }
-  const totalVillCeil = Math.ceil(RES.reduce((sum, r) => sum + villagers[r], 0));
+  // Sum of each resource's own ceiled count — see villagersFromIncome's own
+  // comment for why ceil-of-sum disagreed with the per-resource breakdown
+  // shown right below it.
+  const totalVillCeil = RES.reduce((sum, r) => sum + Math.ceil(villagers[r]), 0);
 
   descEl.textContent = rows.length
     ? `Continuous production across ${rows.length} building type${rows.length === 1 ? '' : 's'} — population growing ~${(popRate * 60).toFixed(1)}/min.`
@@ -4947,20 +4969,45 @@ function renderSetupCard(villagers, civ, needsCastle, neededBuildings, buildingC
 // Optimize, which both end up needing the exact same "N vills on each
 // resource, at this rate, plus upkeep note" visualization for whatever
 // composition/rates they've each worked out.
+// Fixed scale tiers for the cell grid below — the smallest one that fits
+// the card's own largest single-resource count, shared across every row
+// in that card. Picking from a small fixed set (rather than continuously
+// scaling to whatever the current max happens to be) is the whole point:
+// a build that needs 24 food villagers and one that needs 31 render at
+// visibly different densities within the SAME 30-cell grid, instead of
+// each getting its own bar rescaled to its own max — a continuously
+// rescaling bar makes two different moments look deceptively similar
+// (each maxes out its own bar) even when the real counts differ a lot.
+const ALLOC_TIERS = [30, 60, 90, 120, 200];
+function allocTierFor(maxCount) {
+  return ALLOC_TIERS.find(t => t >= maxCount) ?? ALLOC_TIERS[ALLOC_TIERS.length - 1];
+}
+
 function renderVillagerBars(villagers, rates, totalIncome, farmUpkeepWoodPerSec, houseWoodPerSec) {
   const farmUpkeepVills = rates.wood > 0 ? farmUpkeepWoodPerSec / rates.wood : 0;
   const houseUpkeepVills = rates.wood > 0 ? houseWoodPerSec / rates.wood : 0;
-  const maxV = Math.max(1, ...RES.map(r => villagers[r]));
-  return RES.filter(r => totalIncome[r] > 0).map(r => {
-    const pct = Math.max(4, (villagers[r] / maxV) * 100);
+  const shown = RES.filter(r => totalIncome[r] > 0);
+  // Whole villagers only — matches totalVillCeil (see villagersFromIncome)
+  // so this grid's own fill counts always sum to the same Total Villagers
+  // stat shown above it.
+  const counts = {};
+  shown.forEach(r => { counts[r] = Math.ceil(villagers[r]); });
+  const tier = allocTierFor(Math.max(1, ...shown.map(r => counts[r])));
+  return shown.map(r => {
+    const n = counts[r];
+    const filled = Math.min(n, tier);
+    const cells = Array.from({ length: tier }, (_, i) => `<span class="alloc-cell"${i < filled ? ` style="background:var(--${r})"` : ''}></span>`).join('');
     const upkeepParts = [];
     if (r === 'wood' && farmUpkeepVills >= 0.05) upkeepParts.push(`${Math.ceil(farmUpkeepVills)} farms`);
     if (r === 'wood' && houseUpkeepVills >= 0.05) upkeepParts.push(`${Math.ceil(houseUpkeepVills)} houses`);
     const upkeepNote = upkeepParts.length ? ` (${upkeepParts.join(', ')})` : '';
+    // Only reachable past the top ALLOC_TIERS cap (200) — the grid maxes
+    // out full rather than silently understating a genuinely huge count.
+    const overflowNote = n > tier ? ` — grid capped at ${tier}` : '';
     return `<div class="alloc-row">
       <div class="rname">${RES_ICON[r]} ${RES_LABEL[r]}</div>
-      <div class="alloc-bar-wrap"><div class="alloc-bar" style="width:${pct}%;background:var(--${r})">${villagers[r] >= 0.5 ? Math.ceil(villagers[r]) : ''}</div></div>
-      <div class="rvills"><b>${Math.ceil(villagers[r])}</b> vills · ${rates[r].toFixed(2)}/s each${upkeepNote}</div>
+      <div class="alloc-cells">${cells}</div>
+      <div class="rvills"><b>${n}</b> vills · ${rates[r].toFixed(2)}/s each${upkeepNote}${overflowNote}</div>
     </div>`;
   }).join('');
 }
