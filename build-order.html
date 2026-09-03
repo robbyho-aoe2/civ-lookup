@@ -200,7 +200,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.26</div>
+  <div class="version">v0.27</div>
 </div>
 
 <script>
@@ -304,13 +304,19 @@ const DATA = {
   // floor (same mechanic buildings already use for construction time) forces
   // that real minimum gap.
   ecoTechs: [
-    { id:'double-bit-axe', name:'Double-Bit Axe', age:'Feudal', resource:'wood', bonusPct:20, cost:{food:100,wood:50,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping', queueSeconds:20 },
-    { id:'bow-saw',        name:'Bow Saw',         age:'Castle', resource:'wood', bonusPct:20, cost:{food:150,wood:100,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping', queueSeconds:45 },
-    { id:'two-man-saw',    name:'Two-Man Saw',     age:'Imperial', resource:'wood', bonusPct:10, cost:{food:300,wood:200,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping', queueSeconds:75 },
-    { id:'gold-mining',       name:'Gold Mining',       age:'Feudal', resource:'gold', bonusPct:15, cost:{food:100,wood:75,gold:0,stone:0}, line:'gold-mine', lineLabel:'Gold Mining', queueSeconds:35 },
-    { id:'gold-shaft-mining', name:'Gold Shaft Mining', age:'Castle', resource:'gold', bonusPct:15, cost:{food:175,wood:75,gold:0,stone:0}, line:'gold-mine', lineLabel:'Gold Mining', queueSeconds:60 },
-    { id:'stone-mining',       name:'Stone Mining',       age:'Feudal', resource:'stone', bonusPct:15, cost:{food:100,wood:75,gold:0,stone:0}, line:'stone-mine', lineLabel:'Stone Mining', queueSeconds:35 },
-    { id:'stone-shaft-mining', name:'Stone Shaft Mining', age:'Castle', resource:'stone', bonusPct:15, cost:{food:175,wood:75,gold:0,stone:0}, line:'stone-mine', lineLabel:'Stone Mining', queueSeconds:55 },
+    // queueSeconds cross-checked against the cached SiegeEngineers/
+    // aoe2techtree data.json (data.Tech[].ResearchTime) — corrected from
+    // this file's earlier guessed values (Double-Bit Axe 20->25, Bow Saw
+    // 45->50, Two-Man Saw 75->100, Gold/Stone Mining 35->30, Gold/Stone
+    // Shaft Mining 60/55->75) during a wider pass fixing the same gaps in
+    // the new combat-tech entries below.
+    { id:'double-bit-axe', name:'Double-Bit Axe', age:'Feudal', resource:'wood', bonusPct:20, cost:{food:100,wood:50,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping', queueSeconds:25 },
+    { id:'bow-saw',        name:'Bow Saw',         age:'Castle', resource:'wood', bonusPct:20, cost:{food:150,wood:100,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping', queueSeconds:50 },
+    { id:'two-man-saw',    name:'Two-Man Saw',     age:'Imperial', resource:'wood', bonusPct:10, cost:{food:300,wood:200,gold:0,stone:0}, line:'wood-chop', lineLabel:'Wood Chopping', queueSeconds:100 },
+    { id:'gold-mining',       name:'Gold Mining',       age:'Feudal', resource:'gold', bonusPct:15, cost:{food:100,wood:75,gold:0,stone:0}, line:'gold-mine', lineLabel:'Gold Mining', queueSeconds:30 },
+    { id:'gold-shaft-mining', name:'Gold Shaft Mining', age:'Castle', resource:'gold', bonusPct:15, cost:{food:175,wood:75,gold:0,stone:0}, line:'gold-mine', lineLabel:'Gold Mining', queueSeconds:75 },
+    { id:'stone-mining',       name:'Stone Mining',       age:'Feudal', resource:'stone', bonusPct:15, cost:{food:100,wood:75,gold:0,stone:0}, line:'stone-mine', lineLabel:'Stone Mining', queueSeconds:30 },
+    { id:'stone-shaft-mining', name:'Stone Shaft Mining', age:'Castle', resource:'stone', bonusPct:15, cost:{food:175,wood:75,gold:0,stone:0}, line:'stone-mine', lineLabel:'Stone Mining', queueSeconds:75 },
     // Mill farm line (Horse Collar 175->250 food, Heavy Plow 250->375, Crop
     // Rotation 375->550) increases a farm's total YIELD, not the villager's
     // gather RATE — a farmer produces food at the same food/sec whether the
@@ -363,55 +369,49 @@ const DATA = {
     { id:'wheelbarrow', name:'Wheelbarrow', age:'Feudal', resource:'all', bonusByResource:{food:12,wood:3,gold:2,stone:2}, cost:{food:175,wood:50,gold:0,stone:0}, group:'tc', line:'carry-capacity', lineLabel:'Carry Capacity', tcQueue:true, researchTime:75 },
     { id:'hand-cart',    name:'Hand Cart',    age:'Castle', resource:'all', bonusByResource:{food:20,wood:6,gold:4,stone:4}, cost:{food:300,wood:200,gold:0,stone:0}, group:'tc', supersedes:'wheelbarrow', line:'carry-capacity', lineLabel:'Carry Capacity', tcQueue:true, researchTime:55 },
     // Purely-combat techs — zero gather-rate/cost effect (resource:null, so
-    // effectiveGatherRate/costForCiv never touch them). Originally added
-    // only as saveable goals for Constant Production's steady-state math,
-    // which never needed a real duration — queueSeconds below is NEW,
-    // added so the Optimize tool's "with upgrades" checkboxes can model
-    // real research time in the timeline. Best-effort standard AoE2:DE
-    // values from memory, not independently re-verified against the wiki
-    // the way the eco-tech numbers elsewhere in this file were — flagged
-    // to the site owner as needing a check, same as the costs already
-    // here (unchanged, these were already verified previously).
-    { id:'forging', name:'Forging', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, queueSeconds:45, group:'blacksmith', line:'melee-attack', lineLabel:'Melee/Cavalry Attack' },
-    { id:'iron-casting', name:'Iron Casting', age:'Castle', resource:null, bonusPct:0, cost:{food:220,wood:0,gold:120,stone:0}, queueSeconds:55, group:'blacksmith', line:'melee-attack', lineLabel:'Melee/Cavalry Attack' },
-    { id:'blast-furnace', name:'Blast Furnace', age:'Imperial', resource:null, bonusPct:0, cost:{food:275,wood:0,gold:225,stone:0}, queueSeconds:65, group:'blacksmith', line:'melee-attack', lineLabel:'Melee/Cavalry Attack' },
-    { id:'fletching', name:'Fletching', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:50,stone:0}, queueSeconds:35, group:'blacksmith', line:'archer-attack', lineLabel:'Archer Attack' },
-    { id:'bodkin-arrow', name:'Bodkin Arrow', age:'Castle', resource:null, bonusPct:0, cost:{food:200,wood:0,gold:100,stone:0}, queueSeconds:45, group:'blacksmith', line:'archer-attack', lineLabel:'Archer Attack' },
-    { id:'bracer', name:'Bracer', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, queueSeconds:55, group:'blacksmith', line:'archer-attack', lineLabel:'Archer Attack' },
+    // effectiveGatherRate/costForCiv never touch them). Cost/queueSeconds
+    // below cross-checked against the cached SiegeEngineers/aoe2techtree
+    // data.json (data.Tech[].Cost/.ResearchTime by internal_name) — the
+    // same source this file's civ roster was pulled from — not a guess.
+    { id:'forging', name:'Forging', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, queueSeconds:50, group:'blacksmith', line:'melee-attack', lineLabel:'Melee/Cavalry Attack' },
+    { id:'iron-casting', name:'Iron Casting', age:'Castle', resource:null, bonusPct:0, cost:{food:220,wood:0,gold:120,stone:0}, queueSeconds:75, group:'blacksmith', line:'melee-attack', lineLabel:'Melee/Cavalry Attack' },
+    { id:'blast-furnace', name:'Blast Furnace', age:'Imperial', resource:null, bonusPct:0, cost:{food:275,wood:0,gold:225,stone:0}, queueSeconds:100, group:'blacksmith', line:'melee-attack', lineLabel:'Melee/Cavalry Attack' },
+    { id:'fletching', name:'Fletching', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:50,stone:0}, queueSeconds:30, group:'blacksmith', line:'archer-attack', lineLabel:'Archer Attack' },
+    { id:'bodkin-arrow', name:'Bodkin Arrow', age:'Castle', resource:null, bonusPct:0, cost:{food:200,wood:0,gold:100,stone:0}, queueSeconds:35, group:'blacksmith', line:'archer-attack', lineLabel:'Archer Attack' },
+    { id:'bracer', name:'Bracer', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, queueSeconds:40, group:'blacksmith', line:'archer-attack', lineLabel:'Archer Attack' },
     // Infantry-only armor (Scale/Chain/Plate MAIL Armor) — split out from
     // Cavalry's own Barding Armor line below per the site owner's
     // correction; these two were previously (wrongly) modeled as one
     // shared line.
-    { id:'scale-mail-armor', name:'Scale Mail Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, queueSeconds:35, group:'blacksmith', line:'melee-armor', lineLabel:'Infantry Armor' },
-    { id:'chain-mail-armor', name:'Chain Mail Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:200,wood:0,gold:100,stone:0}, queueSeconds:45, group:'blacksmith', line:'melee-armor', lineLabel:'Infantry Armor' },
-    { id:'plate-mail-armor', name:'Plate Mail Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:150,stone:0}, queueSeconds:55, group:'blacksmith', line:'melee-armor', lineLabel:'Infantry Armor' },
+    { id:'scale-mail-armor', name:'Scale Mail Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, queueSeconds:40, group:'blacksmith', line:'melee-armor', lineLabel:'Infantry Armor' },
+    { id:'chain-mail-armor', name:'Chain Mail Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:200,wood:0,gold:100,stone:0}, queueSeconds:55, group:'blacksmith', line:'melee-armor', lineLabel:'Infantry Armor' },
+    { id:'plate-mail-armor', name:'Plate Mail Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:150,stone:0}, queueSeconds:70, group:'blacksmith', line:'melee-armor', lineLabel:'Infantry Armor' },
     // Cavalry's own armor line (Scale/Chain/Plate BARDING Armor) — real,
     // separate tech from Infantry's Mail Armor above, different costs.
-    // Costs/times below are best-effort estimates, not yet verified.
-    { id:'scale-barding-armor', name:'Scale Barding Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, queueSeconds:35, group:'stable', line:'cavalry-armor', lineLabel:'Cavalry Armor' },
-    { id:'chain-barding-armor', name:'Chain Barding Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:100,stone:0}, queueSeconds:45, group:'stable', line:'cavalry-armor', lineLabel:'Cavalry Armor' },
-    { id:'plate-barding-armor', name:'Plate Barding Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, queueSeconds:55, group:'stable', line:'cavalry-armor', lineLabel:'Cavalry Armor' },
-    { id:'padded-archer-armor', name:'Padded Archer Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, queueSeconds:25, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
-    { id:'leather-archer-armor', name:'Leather Archer Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:150,stone:0}, queueSeconds:40, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
-    { id:'ring-archer-armor', name:'Ring Archer Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:250,wood:0,gold:250,stone:0}, queueSeconds:50, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
-    { id:'bloodlines', name:'Bloodlines', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:100,stone:0}, queueSeconds:55, group:'stable', saveOnly:true },
-    { id:'husbandry', name:'Husbandry', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, queueSeconds:35, group:'stable', saveOnly:true },
+    { id:'scale-barding-armor', name:'Scale Barding Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, queueSeconds:45, group:'stable', line:'cavalry-armor', lineLabel:'Cavalry Armor' },
+    { id:'chain-barding-armor', name:'Chain Barding Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:250,wood:0,gold:150,stone:0}, queueSeconds:60, group:'stable', line:'cavalry-armor', lineLabel:'Cavalry Armor' },
+    { id:'plate-barding-armor', name:'Plate Barding Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:350,wood:0,gold:200,stone:0}, queueSeconds:75, group:'stable', line:'cavalry-armor', lineLabel:'Cavalry Armor' },
+    { id:'padded-archer-armor', name:'Padded Archer Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, queueSeconds:40, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
+    { id:'leather-archer-armor', name:'Leather Archer Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:150,stone:0}, queueSeconds:55, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
+    { id:'ring-archer-armor', name:'Ring Archer Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:250,wood:0,gold:250,stone:0}, queueSeconds:70, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
+    { id:'bloodlines', name:'Bloodlines', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:100,stone:0}, queueSeconds:50, group:'stable', saveOnly:true },
+    { id:'husbandry', name:'Husbandry', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, queueSeconds:40, group:'stable', saveOnly:true },
     // Researched at the Barracks in-game — Villager/Infantry attack bonus
     // vs Buildings only (no effect on unit-vs-unit combat), added per the
     // site owner's own example of an "other tech" worth surfacing.
-    { id:'arson', name:'Arson', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, queueSeconds:50, group:'blacksmith', saveOnly:true },
+    { id:'arson', name:'Arson', age:'Feudal', resource:null, bonusPct:0, cost:{food:75,wood:0,gold:25,stone:0}, queueSeconds:25, group:'blacksmith', saveOnly:true },
     // Foot-archer-only accuracy/anti-Standing-Ground tech (Archery Range).
-    { id:'thumb-ring', name:'Thumb Ring', age:'Castle', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:150,stone:0}, queueSeconds:50, group:'blacksmith', saveOnly:true },
+    { id:'thumb-ring', name:'Thumb Ring', age:'Castle', resource:null, bonusPct:0, cost:{food:300,wood:250,gold:0,stone:0}, queueSeconds:45, group:'blacksmith', saveOnly:true },
     // Cavalry Archer's OWN armor tech — real replacement for the foot-
     // archer Pierce Armor line above, which doesn't apply to mounted
     // archers (Archery Range).
-    { id:'parthian-tactics', name:'Parthian Tactics', age:'Imperial', resource:null, bonusPct:0, cost:{food:250,wood:0,gold:230,stone:0}, queueSeconds:50, group:'blacksmith', saveOnly:true },
+    { id:'parthian-tactics', name:'Parthian Tactics', age:'Imperial', resource:null, bonusPct:0, cost:{food:200,wood:0,gold:250,stone:0}, queueSeconds:65, group:'blacksmith', saveOnly:true },
     // Researched at the University in-game, but grouped here under Siege
     // Workshop since that's the production building they buff and this
     // tool organizes by building, not literal research location.
-    { id:'ballistics', name:'Ballistics', age:'Castle', resource:null, bonusPct:0, cost:{food:0,wood:300,gold:175,stone:0}, queueSeconds:70, group:'siege', saveOnly:true },
-    { id:'siege-engineers', name:'Siege Engineers', age:'Imperial', resource:null, bonusPct:0, cost:{food:500,wood:600,gold:0,stone:0}, queueSeconds:55, group:'siege', saveOnly:true },
-    { id:'chemistry', name:'Chemistry', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, queueSeconds:70, group:'siege', saveOnly:true },
+    { id:'ballistics', name:'Ballistics', age:'Castle', resource:null, bonusPct:0, cost:{food:0,wood:300,gold:175,stone:0}, queueSeconds:60, group:'siege', saveOnly:true },
+    { id:'siege-engineers', name:'Siege Engineers', age:'Imperial', resource:null, bonusPct:0, cost:{food:500,wood:600,gold:0,stone:0}, queueSeconds:45, group:'siege', saveOnly:true },
+    { id:'chemistry', name:'Chemistry', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, queueSeconds:100, group:'siege', saveOnly:true },
   ],
   unitLines: [
     { id:'militia-line', name:'Militia', building:'Barracks', cost:{food:50,wood:0,gold:20,stone:0}, pop:1, tiers:[
@@ -3027,7 +3027,12 @@ function effectiveGatherRate(resource, civ, techIds) {
   const superseded = new Set(DATA.ecoTechs.filter(t => t.supersedes && techIds.has(t.id)).map(t => t.supersedes));
   DATA.ecoTechs.filter(t => techIds.has(t.id) && !superseded.has(t.id) && (t.resource === resource || t.resource === 'all'))
     .forEach(t => { const pct = t.bonusByResource ? (t.bonusByResource[resource] || 0) : t.bonusPct; rate *= 1 + pct / 100; });
-  (civ?.ecoBonuses || []).filter(b => b.resource === resource && b.type === 'pct')
+  // `resource: 'all'` (e.g. Romans' +5% every resource) needs the same
+  // fallback the ecoTechs filter above already has — without it, an
+  // all-resource pct bonus never matches any single-resource call here and
+  // silently never applies. Confirmed bug, not hypothetical: Romans was
+  // the one civ using this shape and its whole +5% was being dropped.
+  (civ?.ecoBonuses || []).filter(b => (b.resource === resource || b.resource === 'all') && b.type === 'pct')
     .forEach(b => { rate *= 1 + b.value / 100; });
   return rate;
 }
