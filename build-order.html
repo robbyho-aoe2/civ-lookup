@@ -200,7 +200,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.27</div>
+  <div class="version">v0.28</div>
 </div>
 
 <script>
@@ -4990,7 +4990,10 @@ function moreProductionBuildingsAlt(prefixStages, stage, civ, loomOn, allIn, eff
     if (trialLast.finishTime == null) return;
     if (isQty) trial = withQuantityTail(trial, stage.qty, k, stage.line.tiers[stage.tierIdx].name, stage.line.tiers[stage.tierIdx].trainTime);
     const delta = Math.abs(trial.finishTime - currentFinishTime);
-    if (!best || delta < best.delta) best = { buildingCount: k, finishTime: trial.finishTime, delta };
+    // `result` carries the full trial (checkpoints/villagers/etc.) so this
+    // alternative can be clicked into and actually explored, same as the
+    // existing buildingCountAlternatives tabs.
+    if (!best || delta < best.delta) best = { buildingCount: k, finishTime: trial.finishTime, delta, result: trial };
   });
   return best;
 }
@@ -5000,11 +5003,14 @@ function moreProductionBuildingsAlt(prefixStages, stage, civ, loomOn, allIn, eff
 // increase researching it would add), via the same effectiveGatherRate the
 // search itself uses, so `supersedes` suppression (Hand Cart replacing
 // Wheelbarrow, etc.) is automatically respected. Lightweight by design: no
-// new search, just names the one tech and estimates the extra research time
-// via a single simulateItemReady call appended after the winning finish —
-// not a re-run of the whole combinatorial search the way the buildings
-// alternative above is.
-function mostImpactfulSkippedEcoTech(sr, civ, checkpoints, villRate) {
+// new search, just names the one tech, estimates the extra research time
+// via a single simulateItemReady call appended after the winning finish,
+// and splices a start+complete checkpoint pair onto a COPY of the real
+// result so it's clickable/explorable — not a re-run of the whole
+// combinatorial search the way the buildings alternative above is (the
+// rest of the plan's own numbers don't change, since this tech is tacked
+// onto the very end rather than fed back into the search's own economy).
+function mostImpactfulSkippedEcoTech(result, sr, civ) {
   if (!sr.techIds) return null;
   // A Villager target's own "tier" is permanently tagged age:'Dark' — real
   // for a small qty (a 9-villager goal genuinely never leaves Dark Age),
@@ -5030,11 +5036,26 @@ function mostImpactfulSkippedEcoTech(sr, civ, checkpoints, villRate) {
   });
   if (!best) return null;
   const item = { name: best.tech.name, cost: costForCiv(best.tech.cost, civ), tcQueue: best.tech.tcQueue, researchTime: best.tech.researchTime, queueSeconds: best.tech.queueSeconds, age: best.tech.age };
-  const lastCp = checkpoints?.[checkpoints.length - 1];
+  const lastCp = result.checkpoints?.[result.checkpoints.length - 1];
   const pool = lastCp?.pool || { food: 0, wood: 0, gold: 0, stone: 0 };
-  const r = simulateItemReady(item, sr.rates, villRate, sr.finishTime, sr.totalVillCeil, pool, null, sr.villagers);
+  const villRate = result.villRate;
+  // startVills must be the REAL villager count the timeline actually ended
+  // on (lastCp.vills) — sr.totalVillCeil is the abstract steady-state
+  // TARGET, which a realistic-economy run routinely overshoots (documented
+  // elsewhere in this file), so using it here made population visibly
+  // drop in the Step-by-Step table between the real finish and this
+  // synthetic tail. Caught by testing this exact alternative in-browser.
+  const startVills = lastCp?.vills ?? sr.totalVillCeil;
+  const r = simulateItemReady(item, sr.rates, villRate, sr.finishTime, startVills, pool, null, sr.villagers);
   if (!r) return null;
-  return { tech: best.tech, extraSeconds: r.time - sr.finishTime };
+  const dur = itemDuration(item);
+  const houses = lastCp?.houses || 0;
+  const startCp = { label: startLabelFor(item), time: Math.max(sr.finishTime, r.time - dur), vills: startVills, houses, alloc: lastCp?.alloc, kind: 'start' };
+  const completeCp = { label: `${item.name} complete`, time: r.time, vills: r.vills, houses, split: r.newVills ? r.assigned : null, alloc: lastCp?.alloc, pool: r.pool, kind: 'tech', itemName: item.name, ageName: null };
+  return {
+    tech: best.tech, extraSeconds: r.time - sr.finishTime,
+    result: { ...result, checkpoints: [...result.checkpoints, startCp, completeCp], finishTime: r.time },
+  };
 }
 
 // Which combat techs are real, applicable upgrades for a given unit line —
@@ -5079,9 +5100,13 @@ function renderCombatTechCheckboxes(stageIdx, line) {
   techs.forEach(t => { if (t.line) (lineGroups[t.line] = lineGroups[t.line] || []).push(t); else standalone.push(t); });
   const checked = optimizeState.stages[stageIdx].combatTechIds || new Set();
 
+  // data-age hooks into the SAME .tier-dot.filled[data-age="..."] CSS
+  // already used for the unit-tier dots elsewhere in this tool (Dark/
+  // Feudal/Castle/Imperial colors) — reused here rather than inventing a
+  // new palette, per the site owner's own request.
   const dotRow = (label, lineTechs) => {
     const level = lineTechs.reduce((lv, t, i) => checked.has(t.id) ? i + 1 : lv, 0);
-    const dots = lineTechs.map((t, i) => `<span class="tier-dot${i < level ? ' filled' : ''}" data-combat-tech-dot="${t.id}" data-stage-idx="${stageIdx}" data-tier="${i}" data-line-ids="${lineTechs.map(x => x.id).join(',')}" title="${t.name} (${t.age})" style="cursor:pointer;"></span>`).join('');
+    const dots = lineTechs.map((t, i) => `<span class="tier-dot${i < level ? ' filled' : ''}" data-age="${t.age}" data-combat-tech-dot="${t.id}" data-stage-idx="${stageIdx}" data-tier="${i}" data-line-ids="${lineTechs.map(x => x.id).join(',')}" title="${t.name} (${t.age})" style="cursor:pointer;"></span>`).join('');
     return `<div class="tech-line-row"><span class="tname">${label}</span><div class="tier-dots">${dots}</div></div>`;
   };
   const checkboxRow = t => `<label class="tech-line-row" style="cursor:pointer;">
@@ -5091,7 +5116,7 @@ function renderCombatTechCheckboxes(stageIdx, line) {
 
   const rows = Object.entries(lineGroups).map(([, lineTechs]) => dotRow(lineTechs[0].lineLabel, lineTechs))
     .concat(standalone.map(checkboxRow));
-  return `<div class="pending-card" style="margin-top:10px;">
+  return `<div class="pending-card">
     <h3 style="font-size:12px;margin-bottom:6px;">With Upgrades</h3>
     ${rows.join('')}
   </div>`;
@@ -5153,15 +5178,35 @@ function renderOptimizeResults() {
   // Card/Step-by-Step below, costs nothing extra and lets a player see the
   // real trade-off in full instead of a terse one-line time comparison.
   const lastSr = result.stageResults[result.stageResults.length - 1];
-  const activeAlt = lastSr?.buildingCountAlternatives?.find(a => a.buildingCount === optimizeAltView);
+
+  // Three kinds of alternative, all swappable into the SAME `optimizeAltView`
+  // state (a buildingCount number for the first, or the string sentinels
+  // below for the other two — they can never collide since buildingCount
+  // is always numeric) so only one can ever be "active" at a time and
+  // there's a single place that decides what displayResult actually is.
+  // moreBuildings/moreEco are real alternatives now (not just an info
+  // line) — computed unconditionally whenever the plan is reachable, same
+  // scoping as buildingCountAlternatives itself, so clicking into either
+  // works regardless of which view is currently showing.
+  let moreBuildings = null, moreEco = null;
+  if (lastSr?.finishTime != null) {
+    const prefixStages = stages.slice(0, -1);
+    const lastStageInput = stages[stages.length - 1];
+    moreBuildings = moreProductionBuildingsAlt(prefixStages, lastStageInput, civ, optimizeState.loomOn, optimizeState.allIn, optimizeState.efficiency, lastSr.buildingCount, lastSr.finishTime);
+    moreEco = mostImpactfulSkippedEcoTech(result, lastSr, civ);
+  }
+  const activeAlt = optimizeAltView === 'more-buildings' ? moreBuildings
+    : optimizeAltView === 'more-eco' ? moreEco
+    : lastSr?.buildingCountAlternatives?.find(a => a.buildingCount === optimizeAltView);
   if (optimizeAltView != null && !activeAlt) optimizeAltView = null; // stale (e.g. stage/civ changed) — fall back to the real pick
   const altTabs = sr => {
-    if (!sr.buildingCountAlternatives?.length) return '';
-    const tab = (label, isActive, buildingCount) => `<button type="button" class="alt-tab-btn" data-building-count="${buildingCount ?? ''}" style="flex:none;padding:5px 10px;font-size:11px;border-radius:var(--radius);cursor:pointer;font-family:inherit;${isActive ? 'border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);' : 'border:1px solid var(--border2);background:var(--bg);color:var(--text2);'}">${label}</button>`;
+    const tab = (label, isActive, view) => `<button type="button" class="alt-tab-btn" data-alt-view="${view ?? ''}" style="flex:none;padding:5px 10px;font-size:11px;border-radius:var(--radius);cursor:pointer;font-family:inherit;${isActive ? 'border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);' : 'border:1px solid var(--border2);background:var(--bg);color:var(--text2);'}">${label}</button>`;
     const bestLabel = `Best: ${sr.buildingCount}x ${sr.line.building} (${fmtClock(sr.finishTime)})`;
     const buttons = [tab(bestLabel, optimizeAltView == null, null)]
-      .concat(sr.buildingCountAlternatives.map(a => tab(`${a.buildingCount}x ${sr.line.building} (${fmtClock(a.finishTime)})`, optimizeAltView === a.buildingCount, a.buildingCount)));
-    return `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">${buttons.join('')}</div>`;
+      .concat((sr.buildingCountAlternatives || []).map(a => tab(`${a.buildingCount}x ${sr.line.building} (${fmtClock(a.finishTime)})`, optimizeAltView === a.buildingCount, a.buildingCount)))
+      .concat(moreBuildings ? [tab(`+ ${moreBuildings.buildingCount}x ${sr.line.building} (${fmtClock(moreBuildings.finishTime)})`, optimizeAltView === 'more-buildings', 'more-buildings')] : [])
+      .concat(moreEco ? [tab(`+ ${moreEco.tech.name} (${fmtClock(moreEco.result.finishTime)})`, optimizeAltView === 'more-eco', 'more-eco')] : []);
+    return buttons.length > 1 ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">${buttons.join('')}</div>` : '';
   };
   const planDesc = result.stageResults.length > 1
     ? result.stageResults.map(srDesc).join(' → switching to ')
@@ -5181,37 +5226,15 @@ function renderOptimizeResults() {
 
   // displayResult drives bars/Setup Card/Step-by-Step — either the real,
   // recommended plan, or (when a tab is active) that candidate's own
-  // result, synthesized once via withQuantityTail in the trial loop.
+  // result, synthesized once via withQuantityTail (buildingCount tabs) or
+  // mostImpactfulSkippedEcoTech/moreProductionBuildingsAlt (the two new ones).
   const displayResult = activeAlt ? activeAlt.result : result;
+  const viewingAltLabel = optimizeAltView === 'more-buildings' ? `${activeAlt.buildingCount}x ${lastSr.line.building}`
+    : optimizeAltView === 'more-eco' ? `+ ${activeAlt.tech.name}`
+    : activeAlt ? `${activeAlt.buildingCount}x ${lastSr.line.building}` : null;
   const viewingAltNote = activeAlt
-    ? `<p class="desc" style="color:var(--amberL);margin:-8px 0 14px;">Viewing the ${activeAlt.buildingCount}x ${lastSr.line.building} alternative below (${fmtClock(activeAlt.finishTime)}) — not the recommended pick.</p>`
+    ? `<p class="desc" style="color:var(--amberL);margin:-8px 0 14px;">Viewing the ${viewingAltLabel} alternative below (${fmtClock(displayResult.finishTime)}) — not the recommended pick.</p>`
     : '';
-
-  // Two informational alternates to the recommended plan — always computed
-  // against the real result/lastSr (not whichever alt-tab is active above,
-  // same scoping as buildingCountAlternatives itself). Read-only notes, not
-  // swappable tabs: unlike buildingCountAlternatives (which reuses a full
-  // timeline the search already built), these run their own small one-off
-  // trials/estimates purely to inform, not to drive the Setup Card/
-  // Step-by-Step below.
-  let altNotes = '';
-  if (lastSr?.finishTime != null) {
-    const prefixStages = stages.slice(0, -1);
-    const lastStageInput = stages[stages.length - 1];
-    const moreBuildings = moreProductionBuildingsAlt(prefixStages, lastStageInput, civ, optimizeState.loomOn, optimizeState.allIn, optimizeState.efficiency, lastSr.buildingCount, lastSr.finishTime);
-    const moreEco = mostImpactfulSkippedEcoTech(lastSr, civ, result.checkpoints, result.villRate);
-    const lines = [];
-    if (moreBuildings) {
-      const sign = moreBuildings.finishTime >= lastSr.finishTime ? '+' : '-';
-      lines.push(`<b>More production buildings:</b> ${moreBuildings.buildingCount}x ${lastSr.line.building} would be ready by ${fmtClock(moreBuildings.finishTime)} (${sign}${fmtClock(Math.abs(moreBuildings.finishTime - lastSr.finishTime))})`);
-    }
-    if (moreEco) {
-      lines.push(`<b>More eco upgrades:</b> ${moreEco.tech.name} is the biggest one skipped — adding it costs ~${fmtClock(moreEco.extraSeconds)} but keeps paying off after`);
-    }
-    if (lines.length) {
-      altNotes = `<div class="pending-card"><h3>Alternatives to Consider</h3><p class="desc" style="margin:0 0 6px;">${lines.join('</p><p class="desc" style="margin:0 0 6px;">')}</p></div>`;
-    }
-  }
 
   const statRow = `<div class="stat-row">
     <div class="stat-tile"><div class="label">Total Villagers</div><div class="value">${displayResult.totalVillCeil}</div></div>
@@ -5230,13 +5253,13 @@ function renderOptimizeResults() {
   const bars = renderVillagerBars(displayResult.villagers, displayResult.rates, displayResult.totalIncome, displayResult.farmUpkeepWoodPerSec, displayResult.houseWoodPerSec);
   const buildingCounts = Object.fromEntries(displayResult.haveSet.buildingCounts);
 
-  bodyEl.innerHTML = topTabs + viewingAltNote + statRow + '<div style="margin-top:18px">' + bars + '</div>' + stageBreakdown + altNotes
+  bodyEl.innerHTML = topTabs + viewingAltNote + statRow + '<div style="margin-top:18px">' + bars + '</div>' + stageBreakdown
     + renderSetupCard(displayResult.villagers, civ, displayResult.haveSet.has('Castle'), displayResult.haveSet, buildingCounts, displayResult.tcCount - 1)
     + renderTimelineCard(displayResult.checkpoints, displayResult.villRate, civ);
 
   bodyEl.querySelectorAll('.alt-tab-btn').forEach(btn => btn.addEventListener('click', () => {
-    const bc = btn.dataset.buildingCount;
-    optimizeAltView = bc === '' ? null : Number(bc);
+    const v = btn.dataset.altView;
+    optimizeAltView = v === '' ? null : (v === 'more-buildings' || v === 'more-eco') ? v : Number(v);
     renderOptimizeResults();
   }));
 }
@@ -5277,12 +5300,16 @@ function renderOptimizeStages() {
         <span class="tname">${optimizeState.stages.length > 1 ? `Stage ${i + 1}` : 'Target'}</span>
         ${removeBtn}
       </div>
-      <select class="stage-unit-select" data-stage-idx="${i}" style="margin-top:6px;">${lines.map(l => `<option value="${l.id}" ${l.id === stage.lineId ? 'selected' : ''}>${l.name}</option>`).join('')}</select>
-      <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;">
-        <div class="tier-dots stage-tier-dots" data-stage-idx="${i}">${tierDots}</div>
-        <span class="tname">${line.tiers[stage.tierIdx].name}</span>
+      <div style="display:flex;gap:16px;margin-top:6px;flex-wrap:wrap;">
+        <div style="flex:1 1 160px;min-width:140px;">
+          <select class="stage-unit-select" data-stage-idx="${i}">${lines.map(l => `<option value="${l.id}" ${l.id === stage.lineId ? 'selected' : ''}>${l.name}</option>`).join('')}</select>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;">
+            <div class="tier-dots stage-tier-dots" data-stage-idx="${i}">${tierDots}</div>
+            <span class="tname">${line.tiers[stage.tierIdx].name}</span>
+          </div>
+        </div>
+        <div style="flex:1 1 160px;min-width:160px;">${renderCombatTechCheckboxes(i, line)}</div>
       </div>
-      ${renderCombatTechCheckboxes(i, line)}
       <div style="margin-top:8px;">
         <span class="tname">Goal</span><br>
         <div class="goal-type-toggle" data-stage-idx="${i}" style="display:flex;gap:6px;margin-top:6px;">
