@@ -172,6 +172,7 @@ th.num,td.num{text-align:center;}
 
   <nav class="insights-nav">
     <a href="#weekly">📅 Weekly Recap</a>
+    <a href="#snl">🌙 Saturday Night Live</a>
     <a href="#distribution">Rating Distribution</a>
     <a href="#intensity">Play Intensity</a>
     <a href="#civs">Civ Leaderboard</a>
@@ -193,6 +194,8 @@ const CONSOLE_CIVS_URL = `${PLAYER_DATA_BASE}/insights-console-civs.json`;
 const CONSOLE_SQUADS_URL = `${PLAYER_DATA_BASE}/insights-console-squads.json`;
 const WEEKLY_INDEX_URL = `${PLAYER_DATA_BASE}/weekly-reports/index.json`;
 const weeklyReportUrl = date => `${PLAYER_DATA_BASE}/weekly-reports/console-${date}.json`;
+const SNL_INDEX_URL = `${PLAYER_DATA_BASE}/snl-reports/index.json`;
+const snlReportUrl = date => `${PLAYER_DATA_BASE}/snl-reports/snl-${date}.json`;
 const svgNS = 'http://www.w3.org/2000/svg';
 
 const brackets = [
@@ -375,6 +378,12 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       <p class="desc" id="weekly-desc">What happened in the console scene this week.</p>
       <select id="weekly-archive-select" style="display:none"></select>
       <div id="weekly-content"><div class="loading">Loading weekly recap…</div></div>
+    </section>
+
+    <section id="snl" class="card">
+      <h2>🌙 Saturday Night Live</h2>
+      <p class="desc" id="snl-desc">Team Console 3v3/4v4 games, Saturday 6pm EDT through Sunday 3am EDT — a report lands here every Sunday morning.</p>
+      <div id="snl-content"><div class="loading">Loading…</div></div>
     </section>
 
     <section id="distribution" class="card">
@@ -1053,6 +1062,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
   }
   renderCvpTable();
   loadAndRenderWeekly();
+  loadAndRenderSnl();
 }
 
 // ---- weekly recap ----
@@ -1206,6 +1216,86 @@ async function loadAndRenderWeekly() {
     showWeek(dates[0]);
   } catch (e) {
     contentEl.innerHTML = '<p class="weekly-empty">First weekly recap is coming soon — check back after the next Monday update.</p>';
+  }
+}
+
+// ---- saturday night live ----
+// Same shape of section as Weekly Recap above (index.json -> latest dated
+// report), but with no archive dropdown — SNL is a single "most recent
+// weekend" snapshot, not something anyone needs to page back through yet.
+// The report itself doesn't exist until the routine's first-ever fire
+// (Sunday 2026-09-06, ~6am EDT) — until then (and on any fetch failure)
+// this renders the real section labels/layout with placeholder content
+// rather than hiding the section, so the site owner can see the shape of
+// it land immediately instead of waiting for real data.
+function snlEmptyState() {
+  const soon = 'No report yet — the first Saturday Night Live report lands Sunday morning (~6am EDT), a few hours after the window closes.';
+  return `
+    <div class="stat-row">
+      <div class="stat-tile"><div class="label">Games Tracked</div><div class="value">—</div></div>
+      <div class="stat-tile"><div class="label">3v3</div><div class="value">—</div></div>
+      <div class="stat-tile"><div class="label">4v4</div><div class="value">—</div></div>
+    </div>
+    <div class="weekly-section">
+      <h3>Most Games Played</h3>
+      <p class="weekly-empty">${soon}</p>
+    </div>
+    <div class="weekly-section">
+      <h3>Ratstacks — Repeat Squads</h3>
+      <p class="sub-desc">Duos, trios, and full-team stacks that queued together most this weekend.</p>
+      <p class="weekly-empty">${soon}</p>
+    </div>`;
+}
+
+function renderSnlReport(report) {
+  const g = report.gamesTracked || {};
+  const caveat = report.dataComplete === false
+    ? `<p class="sub-desc" style="margin:-8px 0 14px;color:var(--amberL);">⚠ Some of this window's games only had a date (not an exact timestamp) to go on, so this reading is real but approximate — precision improves as more matches carry full timestamps.</p>`
+    : '';
+  const headline = `
+    <div class="stat-row">
+      <div class="stat-tile"><div class="label">Games Tracked</div><div class="value">${(g.total || 0).toLocaleString()}</div></div>
+      <div class="stat-tile"><div class="label">3v3</div><div class="value">${(g.threeVThree || 0).toLocaleString()}</div></div>
+      <div class="stat-tile"><div class="label">4v4</div><div class="value">${(g.fourVFour || 0).toLocaleString()}</div></div>
+    </div>`;
+  const mostGames = `
+    <div class="weekly-section">
+      <h3>Most Games Played</h3>
+      ${weeklyTable(
+        [{ label: 'Player' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }],
+        (report.mostGames || []).map(p => [wLink(p.name, p.profileId), p.games.toLocaleString(), weeklyPct(p.winRate)])
+      )}
+    </div>`;
+  const rs = report.ratstacks || {};
+  const squadTable = (label, rows) => `
+      <p class="sub-desc" style="margin-top:12px">${label}</p>
+      ${weeklyTable([{ label: 'Squad' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }], (rows || []).map(r => [r.names.map((n, i) => wLink(n, r.profileIds?.[i])).join(' + '), r.games.toLocaleString(), weeklyPct(r.winRate)]))}`;
+  const ratstacks = `
+    <div class="weekly-section">
+      <h3>Ratstacks — Repeat Squads</h3>
+      <p class="sub-desc">Duos, trios, and full-team stacks that queued together most this weekend.</p>
+      ${squadTable('Duos', rs.duos)}
+      ${squadTable('Trios', rs.trios)}
+      ${squadTable('Quads', rs.quads)}
+    </div>`;
+  return caveat + headline + mostGames + ratstacks;
+}
+
+async function loadAndRenderSnl() {
+  const descEl = document.getElementById('snl-desc');
+  const contentEl = document.getElementById('snl-content');
+  try {
+    const idxRes = await fetch(`${SNL_INDEX_URL}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!idxRes.ok) throw new Error('no index yet');
+    const dates = await idxRes.json();
+    if (!dates.length) throw new Error('index empty');
+    const res = await fetch(`${snlReportUrl(dates[0])}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const report = await res.json();
+    descEl.textContent = `Team Console 3v3/4v4, ${report.windowStart} → ${report.windowEnd}.`;
+    contentEl.innerHTML = renderSnlReport(report);
+  } catch (e) {
+    contentEl.innerHTML = snlEmptyState();
   }
 }
 
