@@ -228,7 +228,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.32</div>
+  <div class="version">v0.33</div>
 </div>
 
 <script>
@@ -5180,15 +5180,16 @@ function applicableCombatTechIds(line) {
   // to every Siege Workshop line and Bombard Cannon.
   const footArchers = ['archer-line', 'skirmisher-line'];
   const meleeCavalry = ['scout-cavalry-line', 'knight-line', 'camel-line', 'battle-elephant-line'];
+  // Husbandry: every mounted line gets it (site owner's own correction —
+  // originally modeled as Scout-Cavalry-only). Doesn't apply to unique
+  // units at all here since this tool's Optimize/Constant Production
+  // targets are the standard unitLines only, no civ-specific UU training
+  // target exists to attach it to.
   if (infantry.includes(line.id)) return ['forging', 'iron-casting', 'blast-furnace', 'scale-mail-armor', 'chain-mail-armor', 'plate-mail-armor', 'arson'];
   if (footArchers.includes(line.id)) return ['fletching', 'bodkin-arrow', 'bracer', 'padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor', 'thumb-ring', 'ballistics'];
-  if (line.id === 'cavalry-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'parthian-tactics', 'bloodlines', 'ballistics'];
-  if (line.id === 'elephant-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'scale-barding-armor', 'chain-barding-armor', 'plate-barding-armor', 'bloodlines'];
-  if (meleeCavalry.includes(line.id)) {
-    const ids = ['forging', 'iron-casting', 'blast-furnace', 'scale-barding-armor', 'chain-barding-armor', 'plate-barding-armor', 'bloodlines'];
-    if (line.id === 'scout-cavalry-line') ids.push('husbandry'); // real effect is Scout Cavalry line speed only
-    return ids;
-  }
+  if (line.id === 'cavalry-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'parthian-tactics', 'bloodlines', 'ballistics', 'husbandry'];
+  if (line.id === 'elephant-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'scale-barding-armor', 'chain-barding-armor', 'plate-barding-armor', 'bloodlines', 'husbandry'];
+  if (meleeCavalry.includes(line.id)) return ['forging', 'iron-casting', 'blast-furnace', 'scale-barding-armor', 'chain-barding-armor', 'plate-barding-armor', 'bloodlines', 'husbandry'];
   if (line.id === 'scorpion-line') return ['ballistics', 'siege-engineers'];
   if (['mangonel-line', 'ram-line', 'trebuchet', 'petard'].includes(line.id)) return ['siege-engineers'];
   if (line.id === 'hand-cannoneer') return ['chemistry'];
