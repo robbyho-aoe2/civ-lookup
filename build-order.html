@@ -137,14 +137,12 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 .alloc-row .rvills{width:190px;text-align:right;font-size:12px;color:var(--text2);flex-shrink:0;}
 .alloc-row .rvills b{color:var(--text);}
 /* Fixed-scale cell grid, replacing the old proportional bar — each row's
-   fill count is real villagers (whole cells, not a continuously-resizing
-   width), and the grid's own total slot count (the "tier") is shared by
-   every row in the card so a 30-tier grid never silently becomes a
-   90-tier grid just because one resource's count changed; see
-   ALLOC_TIERS/allocTierFor. auto-fill + a fixed minmax width wraps into
-   however many rows fit the card, staying roughly square instead of one
-   very thin strip once the tier gets into the hundreds. */
-.alloc-cells{flex:1;background:var(--bg);border-radius:6px;padding:3px;border:1px solid var(--border);display:grid;grid-template-columns:repeat(auto-fill,minmax(9px,1fr));gap:2px;}
+   fill count is real whole villagers, not a continuously-resizing width.
+   Always exactly ALLOC_GRID_SIZE cells, evenly filling the row's full
+   width (a fixed column COUNT, not auto-fill/wrap) — a resource over that
+   count just shows every cell filled rather than the grid growing, so
+   the row width and cell size never change from one build to the next. */
+.alloc-cells{flex:1;background:var(--bg);border-radius:6px;padding:3px;border:1px solid var(--border);display:grid;grid-template-columns:repeat(60,1fr);gap:2px;}
 .alloc-cell{aspect-ratio:1;border-radius:2px;background:var(--border2);}
 
 .empty-hint{font-size:12px;color:var(--text3);padding:14px 0;text-align:center;}
@@ -226,7 +224,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.30</div>
+  <div class="version">v0.31</div>
 </div>
 
 <script>
@@ -414,9 +412,12 @@ const DATA = {
     { id:'plate-mail-armor', name:'Plate Mail Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:150,stone:0}, queueSeconds:70, group:'blacksmith', line:'melee-armor', lineLabel:'Infantry Armor' },
     // Cavalry's own armor line (Scale/Chain/Plate BARDING Armor) — real,
     // separate tech from Infantry's Mail Armor above, different costs.
-    { id:'scale-barding-armor', name:'Scale Barding Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, queueSeconds:45, group:'stable', line:'cavalry-armor', lineLabel:'Cavalry Armor' },
-    { id:'chain-barding-armor', name:'Chain Barding Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:250,wood:0,gold:150,stone:0}, queueSeconds:60, group:'stable', line:'cavalry-armor', lineLabel:'Cavalry Armor' },
-    { id:'plate-barding-armor', name:'Plate Barding Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:350,wood:0,gold:200,stone:0}, queueSeconds:75, group:'stable', line:'cavalry-armor', lineLabel:'Cavalry Armor' },
+    // Barding Armor is a BLACKSMITH tech (like Mail Armor above), not a
+    // Stable one — corrected mislabel; only Bloodlines/Husbandry below are
+    // genuinely researched at the Stable.
+    { id:'scale-barding-armor', name:'Scale Barding Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, queueSeconds:45, group:'blacksmith', line:'cavalry-armor', lineLabel:'Cavalry Armor' },
+    { id:'chain-barding-armor', name:'Chain Barding Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:250,wood:0,gold:150,stone:0}, queueSeconds:60, group:'blacksmith', line:'cavalry-armor', lineLabel:'Cavalry Armor' },
+    { id:'plate-barding-armor', name:'Plate Barding Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:350,wood:0,gold:200,stone:0}, queueSeconds:75, group:'blacksmith', line:'cavalry-armor', lineLabel:'Cavalry Armor' },
     { id:'padded-archer-armor', name:'Padded Archer Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, queueSeconds:40, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
     { id:'leather-archer-armor', name:'Leather Archer Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:150,stone:0}, queueSeconds:55, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
     { id:'ring-archer-armor', name:'Ring Archer Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:250,wood:0,gold:250,stone:0}, queueSeconds:70, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
@@ -4103,6 +4104,36 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       const t = DATA.ecoTechs.find(e => e.id === id);
       if (!t) return;
       alreadyAddedCombatTechs.add(id);
+      // Gate the tech behind its own building actually existing first — a
+      // Blacksmith tech researched before the Blacksmith is built can't
+      // happen in a real game. buildingChainItems is haveSet-deduped, so
+      // this is a no-op whenever the building's already going up anyway
+      // (e.g. Bloodlines needing a Stable that Knight/Scout Cavalry's own
+      // training building call already covers). PUSHED BEFORE the tech
+      // itself so the shared deferToEnd sort (stable, orders by original
+      // push index within the deferred bucket — see stageMandatoryItems)
+      // keeps the building ahead of the tech that needs it. Same
+      // build-it-late laziness as any other deferred building: only
+      // deferred if its own age is earlier than this stage's target age.
+      // Deliberately NEVER deferToEnd, unlike a building added for the
+      // unit's own normal training chain — a tech and its own building can
+      // land in the SAME deferred bundle (both tagged the same early age,
+      // both delayed toward the same upcoming age-up), and runSequential
+      // resolves an entire bundle as one simultaneous transaction with a
+      // shared cost pool, no ordering within it. In real AoE2 you can't
+      // even open a building's tech menu until it exists, so "researched
+      // at the same instant the building finishes" is wrong, not just a
+      // display quirk — confirmed by testing Bloodlines + a Stable that
+      // Knight's own training-building call would otherwise have deferred
+      // right alongside it. Keeping this non-deferred forces it out of
+      // that bundle entirely: non-deferred items always resolve before
+      // every deferred item (see stageMandatoryItems' own presort), so the
+      // building is guaranteed to genuinely finish first.
+      const requiredBuilding = COMBAT_TECH_BUILDING[id] || line.building;
+      buildingChainItems(requiredBuilding, civ, haveSet).forEach(bi => {
+        if (!haveSet.buildingCounts.has(bi.name)) haveSet.buildingCounts.set(bi.name, 1);
+        extraItems.push(bi);
+      });
       extraItems.push({ name: t.name, cost: costForCiv(t.cost, civ), queueSeconds: t.queueSeconds, deferToEnd: true, age: t.age });
     });
     const mandatoryItems = stageMandatoryItems({ ...stage, buildingCount }, civ, allIn, haveSet, reachedAgeIdx, extraItems);
@@ -4969,41 +5000,31 @@ function renderSetupCard(villagers, civ, needsCastle, neededBuildings, buildingC
 // Optimize, which both end up needing the exact same "N vills on each
 // resource, at this rate, plus upkeep note" visualization for whatever
 // composition/rates they've each worked out.
-// Fixed scale tiers for the cell grid below — the smallest one that fits
-// the card's own largest single-resource count, shared across every row
-// in that card. Picking from a small fixed set (rather than continuously
-// scaling to whatever the current max happens to be) is the whole point:
-// a build that needs 24 food villagers and one that needs 31 render at
-// visibly different densities within the SAME 30-cell grid, instead of
-// each getting its own bar rescaled to its own max — a continuously
-// rescaling bar makes two different moments look deceptively similar
-// (each maxes out its own bar) even when the real counts differ a lot.
-const ALLOC_TIERS = [30, 60, 90, 120, 200];
-function allocTierFor(maxCount) {
-  return ALLOC_TIERS.find(t => t >= maxCount) ?? ALLOC_TIERS[ALLOC_TIERS.length - 1];
-}
+// Always exactly this many cells, evenly filling the row's full width —
+// a fixed scale shared by every row in every card, not a bar rescaled to
+// its own max (which made two builds with very different real counts
+// look deceptively similar, since each bar always maxed out its own
+// width). A resource needing more than this just shows fully filled
+// rather than the grid growing — the row width/cell size never change
+// from one build to the next, by design.
+const ALLOC_GRID_SIZE = 60;
 
 function renderVillagerBars(villagers, rates, totalIncome, farmUpkeepWoodPerSec, houseWoodPerSec) {
   const farmUpkeepVills = rates.wood > 0 ? farmUpkeepWoodPerSec / rates.wood : 0;
   const houseUpkeepVills = rates.wood > 0 ? houseWoodPerSec / rates.wood : 0;
   const shown = RES.filter(r => totalIncome[r] > 0);
-  // Whole villagers only — matches totalVillCeil (see villagersFromIncome)
-  // so this grid's own fill counts always sum to the same Total Villagers
-  // stat shown above it.
-  const counts = {};
-  shown.forEach(r => { counts[r] = Math.ceil(villagers[r]); });
-  const tier = allocTierFor(Math.max(1, ...shown.map(r => counts[r])));
   return shown.map(r => {
-    const n = counts[r];
-    const filled = Math.min(n, tier);
-    const cells = Array.from({ length: tier }, (_, i) => `<span class="alloc-cell"${i < filled ? ` style="background:var(--${r})"` : ''}></span>`).join('');
+    // Whole villagers only — matches totalVillCeil (see villagersFromIncome)
+    // so these fill counts always sum to the same Total Villagers stat
+    // shown above them.
+    const n = Math.ceil(villagers[r]);
+    const filled = Math.min(n, ALLOC_GRID_SIZE);
+    const cells = Array.from({ length: ALLOC_GRID_SIZE }, (_, i) => `<span class="alloc-cell"${i < filled ? ` style="background:var(--${r})"` : ''}></span>`).join('');
     const upkeepParts = [];
     if (r === 'wood' && farmUpkeepVills >= 0.05) upkeepParts.push(`${Math.ceil(farmUpkeepVills)} farms`);
     if (r === 'wood' && houseUpkeepVills >= 0.05) upkeepParts.push(`${Math.ceil(houseUpkeepVills)} houses`);
     const upkeepNote = upkeepParts.length ? ` (${upkeepParts.join(', ')})` : '';
-    // Only reachable past the top ALLOC_TIERS cap (200) — the grid maxes
-    // out full rather than silently understating a genuinely huge count.
-    const overflowNote = n > tier ? ` — grid capped at ${tier}` : '';
+    const overflowNote = n > ALLOC_GRID_SIZE ? ` — grid maxed at ${ALLOC_GRID_SIZE}` : '';
     return `<div class="alloc-row">
       <div class="rname">${RES_ICON[r]} ${RES_LABEL[r]}</div>
       <div class="alloc-cells">${cells}</div>
@@ -5141,22 +5162,52 @@ function mostImpactfulSkippedEcoTech(result, sr, civ) {
 function applicableCombatTechIds(line) {
   if (!line) return [];
   const infantry = ['militia-line', 'spearman-line', 'eagle-line'];
+  // Ballistics (projectile accuracy vs moving targets) is real for foot
+  // Archers/Skirmishers, Cavalry Archer, and Scorpion — NOT Mangonel
+  // (already area-effect) and NOT Bombard Cannon (Portuguese get a unique
+  // civ bonus for that specifically, not modeled here) — corrected per
+  // the site owner's own correction; the original version wrongly gave it
+  // to every Siege Workshop line and Bombard Cannon.
   const footArchers = ['archer-line', 'skirmisher-line'];
   const meleeCavalry = ['scout-cavalry-line', 'knight-line', 'camel-line', 'battle-elephant-line'];
-  const siegeWorkshop = ['mangonel-line', 'scorpion-line', 'ram-line', 'bombard-cannon', 'trebuchet', 'petard'];
   if (infantry.includes(line.id)) return ['forging', 'iron-casting', 'blast-furnace', 'scale-mail-armor', 'chain-mail-armor', 'plate-mail-armor', 'arson'];
-  if (footArchers.includes(line.id)) return ['fletching', 'bodkin-arrow', 'bracer', 'padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor', 'thumb-ring'];
-  if (line.id === 'cavalry-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'parthian-tactics', 'bloodlines'];
+  if (footArchers.includes(line.id)) return ['fletching', 'bodkin-arrow', 'bracer', 'padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor', 'thumb-ring', 'ballistics'];
+  if (line.id === 'cavalry-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'parthian-tactics', 'bloodlines', 'ballistics'];
   if (line.id === 'elephant-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'scale-barding-armor', 'chain-barding-armor', 'plate-barding-armor', 'bloodlines'];
   if (meleeCavalry.includes(line.id)) {
     const ids = ['forging', 'iron-casting', 'blast-furnace', 'scale-barding-armor', 'chain-barding-armor', 'plate-barding-armor', 'bloodlines'];
     if (line.id === 'scout-cavalry-line') ids.push('husbandry'); // real effect is Scout Cavalry line speed only
     return ids;
   }
-  if (siegeWorkshop.includes(line.id)) return ['ballistics', 'siege-engineers'];
-  if (line.id === 'hand-cannoneer' || line.id === 'bombard-cannon') return ['chemistry', ...(line.id === 'bombard-cannon' ? ['ballistics', 'siege-engineers'] : [])];
+  if (line.id === 'scorpion-line') return ['ballistics', 'siege-engineers'];
+  if (['mangonel-line', 'ram-line', 'trebuchet', 'petard'].includes(line.id)) return ['siege-engineers'];
+  if (line.id === 'hand-cannoneer') return ['chemistry'];
+  if (line.id === 'bombard-cannon') return ['chemistry'];
   return []; // Villager, Monk: no applicable combat techs here
 }
+
+// Which building a combat tech is actually researched at — used to gate
+// it behind that building actually existing first (see the extraItems
+// loop in stageMandatoryItems' caller). Real AoE2:DE research locations,
+// confirmed against the same aoe2techtree data used to verify costs/
+// times (see [[reference_aoe2techtree_data]]): every attack/armor line is
+// Blacksmith (including Barding Armor — a mislabel this file had until
+// now), Bloodlines/Husbandry are Stable, Arson is Barracks, Thumb Ring/
+// Parthian Tactics are Archery Range. Ballistics/Siege Engineers/
+// Chemistry are really University, which this tool doesn't model as a
+// buildable structure at all (pre-existing scope limit, not new) — gated
+// against the checking stage's own training building instead, since
+// that's the closest real building this abstraction has.
+const COMBAT_TECH_BUILDING = {
+  forging: 'Blacksmith', 'iron-casting': 'Blacksmith', 'blast-furnace': 'Blacksmith',
+  'scale-mail-armor': 'Blacksmith', 'chain-mail-armor': 'Blacksmith', 'plate-mail-armor': 'Blacksmith',
+  'scale-barding-armor': 'Blacksmith', 'chain-barding-armor': 'Blacksmith', 'plate-barding-armor': 'Blacksmith',
+  fletching: 'Blacksmith', 'bodkin-arrow': 'Blacksmith', bracer: 'Blacksmith',
+  'padded-archer-armor': 'Blacksmith', 'leather-archer-armor': 'Blacksmith', 'ring-archer-armor': 'Blacksmith',
+  bloodlines: 'Stable', husbandry: 'Stable',
+  arson: 'Barracks',
+  'thumb-ring': 'Archery Range', 'parthian-tactics': 'Archery Range',
+};
 
 // Renders the "with upgrades" checkboxes for one stage — same cascading
 // tier-dot pattern as Constant Production's tech grid (see
