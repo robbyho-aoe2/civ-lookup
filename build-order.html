@@ -200,7 +200,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.24</div>
+  <div class="version">v0.25</div>
 </div>
 
 <script>
@@ -242,34 +242,14 @@ const DATA = {
   // never a new prerequisite; Castle is handled separately above since it
   // already has its own richer mechanic (Castle-unit gating everywhere).
   //
-  // `requires` is a SEPARATE, genuinely real mechanic from the age-up
-  // building-COUNT rule above (any 2 Dark buildings, etc.) — some buildings
-  // can't be built at all without a specific OTHER building already
-  // standing, regardless of Age: confirmed via the Fandom wiki's per-
-  // building "Requires" infobox field AND independently via each civ's
-  // tech-tree file (`link_id`, pointing Archery Range/Stable at Barracks'
-  // building id, Siege Workshop at Blacksmith's) — two sources agreeing.
-  // Civ-specific alternates exist (Sicilians' Donjon substitutes for
-  // Barracks; Poles' Folwark / Inca-family's Settlement substitute for Mill
-  // on the Market requirement) but aren't modeled here — Market itself has
-  // no mechanic in this tool at all (no trade/currency-exchange feature),
-  // so its Mill requirement is moot; the Sicilians/Donjon exception is a
-  // known, deliberately unmodeled simplification (Sicilians will show an
-  // extra Barracks requirement this tool can't waive).
   productionBuildings: {
     'Barracks': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Dark' },
     'Dock': { cost: { wood: 150 }, buildTimeSeconds: 35, minAge: 'Dark' },
     'Blacksmith': { cost: { wood: 150 }, buildTimeSeconds: 40, minAge: 'Feudal' },
-    // Market really does require a Mill (or Folwark/Settlement) too, but
-    // Mill isn't tracked in this dict at all (its own drop-off/gather
-    // mechanic lives in structureForResource instead) — omitted here since
-    // it'd be a no-op `requires` link; a Mill is virtually always already
-    // present anyway (needed for any food gathering) so this doesn't
-    // meaningfully undercount.
     'Market': { cost: { wood: 175 }, buildTimeSeconds: 60, minAge: 'Feudal' },
-    'Archery Range': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Feudal', requires: 'Barracks' },
-    'Stable': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Feudal', requires: 'Barracks' },
-    'Siege Workshop': { cost: { wood: 200 }, buildTimeSeconds: 40, minAge: 'Castle', requires: 'Blacksmith' },
+    'Archery Range': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Feudal' },
+    'Stable': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Feudal' },
+    'Siege Workshop': { cost: { wood: 200 }, buildTimeSeconds: 40, minAge: 'Castle' },
     'Monastery': { cost: { wood: 175 }, buildTimeSeconds: 40, minAge: 'Castle' },
     // No unit trains here, but it's a real Imperial-Age-qualifying building
     // (see ageUpBuildingReqs) and a legitimate filler pick for it.
@@ -3025,28 +3005,22 @@ function effectiveGatherRate(resource, civ, techIds) {
   return rate;
 }
 
-// Some buildings also need a specific OTHER building already standing
-// (Archery Range/Stable need a Barracks, Siege Workshop a Blacksmith —
-// `requires` on the productionBuildings entry) — a separate, real mechanic
-// from the age-up building-COUNT rule elsewhere in this tool, so the
-// prerequisite is walked and inserted first, recursively. `haveSet` is
-// shared/mutated across calls so a building is only ever inserted once even
-// when multiple callers need it (e.g. a filler pick later reusing a building
-// a unit line's own chain already added) — it becomes the authoritative
-// record of which buildings are real, reused by qualifyingBuildingCount/
-// renderSetupCard instead of each recomputing their own version of this set.
+// A single production building's own mandatory item — no other building is
+// a real prerequisite for it in AoE2:DE (Archery Range/Stable/Siege Workshop
+// are all independently constructible once their age is reached). `haveSet`
+// is shared/mutated across calls so a building is only ever inserted once
+// even when multiple callers need it (e.g. a filler pick later reusing a
+// building a unit line's own chain already added) — it becomes the
+// authoritative record of which buildings are real, reused by
+// qualifyingBuildingCount/renderSetupCard instead of each recomputing their
+// own version of this set. Still returns an array (not a single item) since
+// callers expect that shape.
 function buildingChainItems(buildingName, civ, haveSet) {
-  const items = [];
-  function add(name) {
-    if (haveSet.has(name) || name === 'Town Center') return; // every game starts with one
-    const def = name === 'Castle' ? DATA.castle : DATA.productionBuildings[name];
-    if (!def) return;
-    if (def.requires) add(def.requires);
-    items.push({ name, cost: costForCiv(def.cost, civ), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name)), age: def.minAge });
-    haveSet.add(name);
-  }
-  add(buildingName);
-  return items;
+  if (haveSet.has(buildingName) || buildingName === 'Town Center') return []; // every game starts with one
+  const def = buildingName === 'Castle' ? DATA.castle : DATA.productionBuildings[buildingName];
+  if (!def) return [];
+  haveSet.add(buildingName);
+  return [{ name: buildingName, cost: costForCiv(def.cost, civ), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(buildingName)), age: def.minAge }];
 }
 
 // Simulates constant villager production: new villagers are born at a fixed
@@ -3565,8 +3539,7 @@ function buildersForBuilding(name) { return name === 'Castle' ? CASTLE_BUILDERS 
 const MAX_EXTRA_BUILDINGS = 5;
 
 // The mandatory items ONE STAGE needs beyond what earlier stages already
-// established: its training building (+ requires-chain, e.g. an Archery
-// Range needs a Barracks first) and buildingCount-1 extra physical copies
+// established: its training building and buildingCount-1 extra physical copies
 // of it — both walked against a SHARED haveSet, so a building an earlier
 // stage already built is never re-added — its tier-upgrade chain up to the
 // picked tier, and whichever age-up-qualifying filler buildings are needed
@@ -4453,6 +4426,13 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     stageResults.push({
       line, tierIdx, buildingCount: line.isVillager ? 1 + tcExtra : buildingCount, goalType: stage.goalType, qty: stage.qty,
       buildingCountAlternatives: line.isVillager ? null : buildingCountAlternatives,
+      // The winning path's own final tech state — captured here (not
+      // recomputed later) since `levels` is this function's own mutable
+      // closure variable, only meaningful at the exact point the winning
+      // path's replay above finished updating it. Used by the "more eco
+      // upgrades" alternative in the render layer to know which eco-techs
+      // the search considered and passed on.
+      techIds: techIdsFor(levels),
       villagers: bestVillagers, totalVillCeil: bestVillCeil, rates: bestRates, totalIncome: bestIncome,
       farmUpkeepWoodPerSec: bestUpkeep.farmUpkeepWoodPerSec, houseWoodPerSec: bestUpkeep.houseWoodPerSec,
       finishTime: cursorTime, tcCount: 1 + tcExtra,
@@ -4519,9 +4499,8 @@ function initialBuiltState(civ) {
 }
 
 // How many age-up-qualifying buildings exist, given `haveSet` — the
-// authoritative set of real buildings buildingChainItems' recursive walk
-// already produced (expanded through `requires` chains, e.g. an Archery
-// Range goal already means Barracks is in there too). Feudal is the one
+// authoritative set of real buildings buildingChainItems already produced.
+// Feudal is the one
 // exception: its qualifying buildings (Mill/Lumber Camp/Mining Camp/Mule
 // Cart/Settlement) are gather-based, tracked via structureForResource
 // instead of haveSet, since nothing "adds" a Mill the way addBuildingItem
@@ -4932,6 +4911,77 @@ let optimizeState = { stages: [{ lineId: null, tierIdx: 0, buildingCount: 1, goa
 // looking like it's still describing the current setup.
 let optimizeAltView = null;
 
+// The single closest-in-time "what if I ran more production buildings"
+// alternative for the LAST stage — tries current+1 and current+2, keeps
+// whichever lands closer to the actual result's finish time (per the site
+// owner's own framing: "the best of +1 and +2, whichever is closer to
+// competitive"). Not available for a Villager target — there "buildingCount"
+// means Town Centers, already searched by the Dijkstra tcExtra dimension
+// itself, not a fixed input to try alternates against.
+// Quantity-mode stages need the SAME trick the real search uses to pin a
+// buildingCount (force goalType:'sustain' to bypass the auto-search, then
+// re-append the queue tail via withQuantityTail) — see stageMandatoryItems'
+// own trial loop, which this mirrors. Cheap: the real search already tried
+// most of these same (prefixStages, k, 'sustain') combinations while
+// finding its own optimum, so `_optimizeMemo` usually makes this a cache
+// hit rather than a fresh search.
+function moreProductionBuildingsAlt(prefixStages, stage, civ, loomOn, allIn, efficiency, currentBuildingCount, currentFinishTime) {
+  if (stage.line.isVillager) return null;
+  const isQty = stage.goalType === 'quantity';
+  let best = null;
+  [currentBuildingCount + 1, currentBuildingCount + 2].forEach(k => {
+    let trial = buildStagedOptimizeTimeline([...prefixStages, { ...stage, goalType: 'sustain', buildingCount: k }], loomOn, allIn, civ, efficiency);
+    const trialLast = trial.stageResults[trial.stageResults.length - 1];
+    if (trialLast.finishTime == null) return;
+    if (isQty) trial = withQuantityTail(trial, stage.qty, k, stage.line.tiers[stage.tierIdx].name, stage.line.tiers[stage.tierIdx].trainTime);
+    const delta = Math.abs(trial.finishTime - currentFinishTime);
+    if (!best || delta < best.delta) best = { buildingCount: k, finishTime: trial.finishTime, delta };
+  });
+  return best;
+}
+
+// The single highest-impact eco-tech the winning path passed on — real
+// marginal income gain (villagers already on that resource × the rate
+// increase researching it would add), via the same effectiveGatherRate the
+// search itself uses, so `supersedes` suppression (Hand Cart replacing
+// Wheelbarrow, etc.) is automatically respected. Lightweight by design: no
+// new search, just names the one tech and estimates the extra research time
+// via a single simulateItemReady call appended after the winning finish —
+// not a re-run of the whole combinatorial search the way the buildings
+// alternative above is.
+function mostImpactfulSkippedEcoTech(sr, civ, checkpoints, villRate) {
+  if (!sr.techIds) return null;
+  // A Villager target's own "tier" is permanently tagged age:'Dark' — real
+  // for a small qty (a 9-villager goal genuinely never leaves Dark Age),
+  // but wrong once TC-booming is worth it (tcCount > 1 requires Castle Age
+  // — see the tool's own extra-TC rule) or the search researched a
+  // higher-age tech along the way. Derive the real reached age from that
+  // evidence instead of trusting the static tier age for this one case.
+  const targetAgeIdx = sr.line.isVillager
+    ? Math.max(ageIndex('Dark'), sr.tcCount > 1 ? ageIndex('Castle') : 0,
+        ...[...sr.techIds].map(id => { const t = DATA.ecoTechs.find(e => e.id === id); return t ? ageIndex(t.age) : 0; }))
+    : ageIndex(sr.line.tiers[sr.tierIdx].age);
+  let best = null;
+  DATA.ecoTechs.forEach(t => {
+    if (sr.techIds.has(t.id) || ageIndex(t.age) > targetAgeIdx) return;
+    const withT = new Set(sr.techIds).add(t.id);
+    const resources = t.bonusByResource ? Object.keys(t.bonusByResource) : [t.resource];
+    let impact = 0;
+    resources.forEach(r => {
+      if (!RES.includes(r)) return;
+      impact += (sr.villagers[r] || 0) * (effectiveGatherRate(r, civ, withT) - effectiveGatherRate(r, civ, sr.techIds));
+    });
+    if (impact > 0.0005 && (!best || impact > best.impact)) best = { tech: t, impact };
+  });
+  if (!best) return null;
+  const item = { name: best.tech.name, cost: costForCiv(best.tech.cost, civ), tcQueue: best.tech.tcQueue, researchTime: best.tech.researchTime, queueSeconds: best.tech.queueSeconds, age: best.tech.age };
+  const lastCp = checkpoints?.[checkpoints.length - 1];
+  const pool = lastCp?.pool || { food: 0, wood: 0, gold: 0, stone: 0 };
+  const r = simulateItemReady(item, sr.rates, villRate, sr.finishTime, sr.totalVillCeil, pool, null, sr.villagers);
+  if (!r) return null;
+  return { tech: best.tech, extraSeconds: r.time - sr.finishTime };
+}
+
 function renderOptimizeResults() {
   const civ = selectedCiv();
   const lines = allLinesForCiv(civ);
@@ -4992,6 +5042,32 @@ function renderOptimizeResults() {
     ? `<p class="desc" style="color:var(--amberL);margin:-8px 0 14px;">Viewing the ${activeAlt.buildingCount}x ${lastSr.line.building} alternative below (${fmtClock(activeAlt.finishTime)}) — not the recommended pick.</p>`
     : '';
 
+  // Two informational alternates to the recommended plan — always computed
+  // against the real result/lastSr (not whichever alt-tab is active above,
+  // same scoping as buildingCountAlternatives itself). Read-only notes, not
+  // swappable tabs: unlike buildingCountAlternatives (which reuses a full
+  // timeline the search already built), these run their own small one-off
+  // trials/estimates purely to inform, not to drive the Setup Card/
+  // Step-by-Step below.
+  let altNotes = '';
+  if (lastSr?.finishTime != null) {
+    const prefixStages = stages.slice(0, -1);
+    const lastStageInput = stages[stages.length - 1];
+    const moreBuildings = moreProductionBuildingsAlt(prefixStages, lastStageInput, civ, optimizeState.loomOn, optimizeState.allIn, optimizeState.efficiency, lastSr.buildingCount, lastSr.finishTime);
+    const moreEco = mostImpactfulSkippedEcoTech(lastSr, civ, result.checkpoints, result.villRate);
+    const lines = [];
+    if (moreBuildings) {
+      const sign = moreBuildings.finishTime >= lastSr.finishTime ? '+' : '-';
+      lines.push(`<b>More production buildings:</b> ${moreBuildings.buildingCount}x ${lastSr.line.building} would be ready by ${fmtClock(moreBuildings.finishTime)} (${sign}${fmtClock(Math.abs(moreBuildings.finishTime - lastSr.finishTime))})`);
+    }
+    if (moreEco) {
+      lines.push(`<b>More eco upgrades:</b> ${moreEco.tech.name} is the biggest one skipped — adding it costs ~${fmtClock(moreEco.extraSeconds)} but keeps paying off after`);
+    }
+    if (lines.length) {
+      altNotes = `<div class="pending-card"><h3>Alternatives to Consider</h3><p class="desc" style="margin:0 0 6px;">${lines.join('</p><p class="desc" style="margin:0 0 6px;">')}</p></div>`;
+    }
+  }
+
   const statRow = `<div class="stat-row">
     <div class="stat-tile"><div class="label">Total Villagers</div><div class="value">${displayResult.totalVillCeil}</div></div>
     <div class="stat-tile"><div class="label">Town Centers</div><div class="value">${displayResult.tcCount}</div></div>
@@ -5009,7 +5085,7 @@ function renderOptimizeResults() {
   const bars = renderVillagerBars(displayResult.villagers, displayResult.rates, displayResult.totalIncome, displayResult.farmUpkeepWoodPerSec, displayResult.houseWoodPerSec);
   const buildingCounts = Object.fromEntries(displayResult.haveSet.buildingCounts);
 
-  bodyEl.innerHTML = topTabs + viewingAltNote + statRow + '<div style="margin-top:18px">' + bars + '</div>' + stageBreakdown
+  bodyEl.innerHTML = topTabs + viewingAltNote + statRow + '<div style="margin-top:18px">' + bars + '</div>' + stageBreakdown + altNotes
     + renderSetupCard(displayResult.villagers, civ, displayResult.haveSet.has('Castle'), displayResult.haveSet, buildingCounts, displayResult.tcCount - 1)
     + renderTimelineCard(displayResult.checkpoints, displayResult.villRate, civ);
 
