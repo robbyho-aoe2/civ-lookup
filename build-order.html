@@ -200,7 +200,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.25</div>
+  <div class="version">v0.26</div>
 </div>
 
 <script>
@@ -363,28 +363,55 @@ const DATA = {
     { id:'wheelbarrow', name:'Wheelbarrow', age:'Feudal', resource:'all', bonusByResource:{food:12,wood:3,gold:2,stone:2}, cost:{food:175,wood:50,gold:0,stone:0}, group:'tc', line:'carry-capacity', lineLabel:'Carry Capacity', tcQueue:true, researchTime:75 },
     { id:'hand-cart',    name:'Hand Cart',    age:'Castle', resource:'all', bonusByResource:{food:20,wood:6,gold:4,stone:4}, cost:{food:300,wood:200,gold:0,stone:0}, group:'tc', supersedes:'wheelbarrow', line:'carry-capacity', lineLabel:'Carry Capacity', tcQueue:true, researchTime:55 },
     // Purely-combat techs — zero gather-rate/cost effect (resource:null, so
-    // effectiveGatherRate/costForCiv never touch them), included only so
-    // they're saveable as goals like Loom already is.
-    { id:'forging', name:'Forging', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, group:'blacksmith', line:'melee-attack', lineLabel:'Melee/Cavalry Attack' },
-    { id:'iron-casting', name:'Iron Casting', age:'Castle', resource:null, bonusPct:0, cost:{food:220,wood:0,gold:120,stone:0}, group:'blacksmith', line:'melee-attack', lineLabel:'Melee/Cavalry Attack' },
-    { id:'blast-furnace', name:'Blast Furnace', age:'Imperial', resource:null, bonusPct:0, cost:{food:275,wood:0,gold:225,stone:0}, group:'blacksmith', line:'melee-attack', lineLabel:'Melee/Cavalry Attack' },
-    { id:'fletching', name:'Fletching', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:50,stone:0}, group:'blacksmith', line:'archer-attack', lineLabel:'Archer Attack' },
-    { id:'bodkin-arrow', name:'Bodkin Arrow', age:'Castle', resource:null, bonusPct:0, cost:{food:200,wood:0,gold:100,stone:0}, group:'blacksmith', line:'archer-attack', lineLabel:'Archer Attack' },
-    { id:'bracer', name:'Bracer', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, group:'blacksmith', line:'archer-attack', lineLabel:'Archer Attack' },
-    { id:'scale-mail-armor', name:'Scale Mail Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, group:'blacksmith', line:'melee-armor', lineLabel:'Melee/Cavalry Armor' },
-    { id:'chain-mail-armor', name:'Chain Mail Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:200,wood:0,gold:100,stone:0}, group:'blacksmith', line:'melee-armor', lineLabel:'Melee/Cavalry Armor' },
-    { id:'plate-mail-armor', name:'Plate Mail Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:150,stone:0}, group:'blacksmith', line:'melee-armor', lineLabel:'Melee/Cavalry Armor' },
-    { id:'padded-archer-armor', name:'Padded Archer Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
-    { id:'leather-archer-armor', name:'Leather Archer Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:150,stone:0}, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
-    { id:'ring-archer-armor', name:'Ring Archer Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:250,wood:0,gold:250,stone:0}, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
-    { id:'bloodlines', name:'Bloodlines', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:100,stone:0}, group:'stable', saveOnly:true },
-    { id:'husbandry', name:'Husbandry', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, group:'stable', saveOnly:true },
+    // effectiveGatherRate/costForCiv never touch them). Originally added
+    // only as saveable goals for Constant Production's steady-state math,
+    // which never needed a real duration — queueSeconds below is NEW,
+    // added so the Optimize tool's "with upgrades" checkboxes can model
+    // real research time in the timeline. Best-effort standard AoE2:DE
+    // values from memory, not independently re-verified against the wiki
+    // the way the eco-tech numbers elsewhere in this file were — flagged
+    // to the site owner as needing a check, same as the costs already
+    // here (unchanged, these were already verified previously).
+    { id:'forging', name:'Forging', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, queueSeconds:45, group:'blacksmith', line:'melee-attack', lineLabel:'Melee/Cavalry Attack' },
+    { id:'iron-casting', name:'Iron Casting', age:'Castle', resource:null, bonusPct:0, cost:{food:220,wood:0,gold:120,stone:0}, queueSeconds:55, group:'blacksmith', line:'melee-attack', lineLabel:'Melee/Cavalry Attack' },
+    { id:'blast-furnace', name:'Blast Furnace', age:'Imperial', resource:null, bonusPct:0, cost:{food:275,wood:0,gold:225,stone:0}, queueSeconds:65, group:'blacksmith', line:'melee-attack', lineLabel:'Melee/Cavalry Attack' },
+    { id:'fletching', name:'Fletching', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:50,stone:0}, queueSeconds:35, group:'blacksmith', line:'archer-attack', lineLabel:'Archer Attack' },
+    { id:'bodkin-arrow', name:'Bodkin Arrow', age:'Castle', resource:null, bonusPct:0, cost:{food:200,wood:0,gold:100,stone:0}, queueSeconds:45, group:'blacksmith', line:'archer-attack', lineLabel:'Archer Attack' },
+    { id:'bracer', name:'Bracer', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, queueSeconds:55, group:'blacksmith', line:'archer-attack', lineLabel:'Archer Attack' },
+    // Infantry-only armor (Scale/Chain/Plate MAIL Armor) — split out from
+    // Cavalry's own Barding Armor line below per the site owner's
+    // correction; these two were previously (wrongly) modeled as one
+    // shared line.
+    { id:'scale-mail-armor', name:'Scale Mail Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, queueSeconds:35, group:'blacksmith', line:'melee-armor', lineLabel:'Infantry Armor' },
+    { id:'chain-mail-armor', name:'Chain Mail Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:200,wood:0,gold:100,stone:0}, queueSeconds:45, group:'blacksmith', line:'melee-armor', lineLabel:'Infantry Armor' },
+    { id:'plate-mail-armor', name:'Plate Mail Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:150,stone:0}, queueSeconds:55, group:'blacksmith', line:'melee-armor', lineLabel:'Infantry Armor' },
+    // Cavalry's own armor line (Scale/Chain/Plate BARDING Armor) — real,
+    // separate tech from Infantry's Mail Armor above, different costs.
+    // Costs/times below are best-effort estimates, not yet verified.
+    { id:'scale-barding-armor', name:'Scale Barding Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, queueSeconds:35, group:'stable', line:'cavalry-armor', lineLabel:'Cavalry Armor' },
+    { id:'chain-barding-armor', name:'Chain Barding Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:100,stone:0}, queueSeconds:45, group:'stable', line:'cavalry-armor', lineLabel:'Cavalry Armor' },
+    { id:'plate-barding-armor', name:'Plate Barding Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, queueSeconds:55, group:'stable', line:'cavalry-armor', lineLabel:'Cavalry Armor' },
+    { id:'padded-archer-armor', name:'Padded Archer Armor', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, queueSeconds:25, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
+    { id:'leather-archer-armor', name:'Leather Archer Armor', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:150,stone:0}, queueSeconds:40, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
+    { id:'ring-archer-armor', name:'Ring Archer Armor', age:'Imperial', resource:null, bonusPct:0, cost:{food:250,wood:0,gold:250,stone:0}, queueSeconds:50, group:'blacksmith', line:'archer-armor', lineLabel:'Archer Pierce Armor' },
+    { id:'bloodlines', name:'Bloodlines', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:100,stone:0}, queueSeconds:55, group:'stable', saveOnly:true },
+    { id:'husbandry', name:'Husbandry', age:'Castle', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, queueSeconds:35, group:'stable', saveOnly:true },
+    // Researched at the Barracks in-game — Villager/Infantry attack bonus
+    // vs Buildings only (no effect on unit-vs-unit combat), added per the
+    // site owner's own example of an "other tech" worth surfacing.
+    { id:'arson', name:'Arson', age:'Feudal', resource:null, bonusPct:0, cost:{food:150,wood:0,gold:0,stone:0}, queueSeconds:50, group:'blacksmith', saveOnly:true },
+    // Foot-archer-only accuracy/anti-Standing-Ground tech (Archery Range).
+    { id:'thumb-ring', name:'Thumb Ring', age:'Castle', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:150,stone:0}, queueSeconds:50, group:'blacksmith', saveOnly:true },
+    // Cavalry Archer's OWN armor tech — real replacement for the foot-
+    // archer Pierce Armor line above, which doesn't apply to mounted
+    // archers (Archery Range).
+    { id:'parthian-tactics', name:'Parthian Tactics', age:'Imperial', resource:null, bonusPct:0, cost:{food:250,wood:0,gold:230,stone:0}, queueSeconds:50, group:'blacksmith', saveOnly:true },
     // Researched at the University in-game, but grouped here under Siege
     // Workshop since that's the production building they buff and this
     // tool organizes by building, not literal research location.
-    { id:'ballistics', name:'Ballistics', age:'Castle', resource:null, bonusPct:0, cost:{food:0,wood:300,gold:175,stone:0}, group:'siege', saveOnly:true },
-    { id:'siege-engineers', name:'Siege Engineers', age:'Imperial', resource:null, bonusPct:0, cost:{food:500,wood:600,gold:0,stone:0}, group:'siege', saveOnly:true },
-    { id:'chemistry', name:'Chemistry', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, group:'siege', saveOnly:true },
+    { id:'ballistics', name:'Ballistics', age:'Castle', resource:null, bonusPct:0, cost:{food:0,wood:300,gold:175,stone:0}, queueSeconds:70, group:'siege', saveOnly:true },
+    { id:'siege-engineers', name:'Siege Engineers', age:'Imperial', resource:null, bonusPct:0, cost:{food:500,wood:600,gold:0,stone:0}, queueSeconds:55, group:'siege', saveOnly:true },
+    { id:'chemistry', name:'Chemistry', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, queueSeconds:70, group:'siege', saveOnly:true },
   ],
   unitLines: [
     { id:'militia-line', name:'Militia', building:'Barracks', cost:{food:50,wood:0,gold:20,stone:0}, pop:1, tiers:[
@@ -3705,7 +3732,7 @@ function withQuantityTail(trial, qty, buildingCount, tierName, trainTime) {
 const _optimizeMemo = new Map();
 function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ, efficiency) {
   const memoKey = JSON.stringify([
-    stages.map(s => [s.line?.id, s.tierIdx, s.buildingCount ?? null, s.goalType || 'sustain', s.qty ?? null]),
+    stages.map(s => [s.line?.id, s.tierIdx, s.buildingCount ?? null, s.goalType || 'sustain', s.qty ?? null, s.combatTechIds ? [...s.combatTechIds].sort() : null]),
     loomOn, allIn, civ?.id ?? null, efficiency ?? 100,
   ]);
   if (_optimizeMemo.has(memoKey)) return _optimizeMemo.get(memoKey);
@@ -3923,6 +3950,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
   }
 
   const stageResults = [];
+  const alreadyAddedCombatTechs = new Set();
 
   for (let stageIdx = 0; stageIdx < sortedStages.length; stageIdx++) {
     const stage = sortedStages[stageIdx];
@@ -4015,6 +4043,28 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       const loom = DATA.ecoTechs.find(t => t.id === 'loom');
       extraItems.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age });
     }
+    // "With Upgrades" checkboxes (see applicableCombatTechIds/
+    // renderCombatTechCheckboxes) — made genuinely mandatory once checked,
+    // same as the unit's own tier-upgrade chain, not something the search
+    // gets to skip. Researched at their own building (Blacksmith/Stable/
+    // Archery Range/University), NOT the Town Center, so unlike Loom these
+    // don't set tcQueue — villager production keeps running while they
+    // research. deferToEnd, same reasoning as Loom: not urgent, so delay
+    // to whichever age-up transition comes next rather than pausing
+    // anything more time-sensitive to research them immediately.
+    // alreadyAddedCombatTechs guards against a multi-stage plan checking
+    // the same tech on two different stages (e.g. Bloodlines on both a
+    // Scout Cavalry stage and a later Knight stage) — the search has no
+    // other way to know it's already been researched, since these bypass
+    // the `levels` tech-tracking `stageMandatoryItems` uses.
+    const applicableIds = new Set(applicableCombatTechIds(line));
+    (stage.combatTechIds || []).forEach(id => {
+      if (!applicableIds.has(id) || free.has(id) || alreadyAddedCombatTechs.has(id)) return;
+      const t = DATA.ecoTechs.find(e => e.id === id);
+      if (!t) return;
+      alreadyAddedCombatTechs.add(id);
+      extraItems.push({ name: t.name, cost: costForCiv(t.cost, civ), queueSeconds: t.queueSeconds, deferToEnd: true, age: t.age });
+    });
     const mandatoryItems = stageMandatoryItems({ ...stage, buildingCount }, civ, allIn, haveSet, reachedAgeIdx, extraItems);
 
     // Instant-afford check runs fresh per stage against the CARRIED pool —
@@ -4982,13 +5032,103 @@ function mostImpactfulSkippedEcoTech(sr, civ, checkpoints, villRate) {
   return { tech: best.tech, extraSeconds: r.time - sr.finishTime };
 }
 
+// Which combat techs are real, applicable upgrades for a given unit line —
+// used to build the "with upgrades" checkboxes next to each stage's Target
+// picker. Grouped so infantry/cavalry share Melee Attack (a real shared
+// tech) but NOT armor (Infantry's Mail Armor and Cavalry's own Barding
+// Armor are genuinely separate techs, split out per the site owner's
+// correction — see the DATA.ecoTechs entries themselves). Monastery techs
+// (Redemption, Faith, etc.) are a different category, out of scope here.
+function applicableCombatTechIds(line) {
+  if (!line) return [];
+  const infantry = ['militia-line', 'spearman-line', 'eagle-line'];
+  const footArchers = ['archer-line', 'skirmisher-line'];
+  const meleeCavalry = ['scout-cavalry-line', 'knight-line', 'camel-line', 'battle-elephant-line'];
+  const siegeWorkshop = ['mangonel-line', 'scorpion-line', 'ram-line', 'bombard-cannon', 'trebuchet', 'petard'];
+  if (infantry.includes(line.id)) return ['forging', 'iron-casting', 'blast-furnace', 'scale-mail-armor', 'chain-mail-armor', 'plate-mail-armor', 'arson'];
+  if (footArchers.includes(line.id)) return ['fletching', 'bodkin-arrow', 'bracer', 'padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor', 'thumb-ring'];
+  if (line.id === 'cavalry-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'parthian-tactics', 'bloodlines'];
+  if (line.id === 'elephant-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'scale-barding-armor', 'chain-barding-armor', 'plate-barding-armor', 'bloodlines'];
+  if (meleeCavalry.includes(line.id)) {
+    const ids = ['forging', 'iron-casting', 'blast-furnace', 'scale-barding-armor', 'chain-barding-armor', 'plate-barding-armor', 'bloodlines'];
+    if (line.id === 'scout-cavalry-line') ids.push('husbandry'); // real effect is Scout Cavalry line speed only
+    return ids;
+  }
+  if (siegeWorkshop.includes(line.id)) return ['ballistics', 'siege-engineers'];
+  if (line.id === 'hand-cannoneer' || line.id === 'bombard-cannon') return ['chemistry', ...(line.id === 'bombard-cannon' ? ['ballistics', 'siege-engineers'] : [])];
+  return []; // Villager, Monk: no applicable combat techs here
+}
+
+// Renders the "with upgrades" checkboxes for one stage — same cascading
+// tier-dot pattern as Constant Production's tech grid (see
+// renderTierLinesHtml/wireTierLines above), reimplemented against
+// `optimizeState.stages[i].combatTechIds` instead of raw DOM checkboxes,
+// since Optimize re-renders its whole result on every state change rather
+// than mutating checkboxes in place.
+function renderCombatTechCheckboxes(stageIdx, line) {
+  const ids = applicableCombatTechIds(line);
+  if (!ids.length) return '';
+  const techs = ids.map(id => DATA.ecoTechs.find(t => t.id === id)).filter(Boolean);
+  const lineGroups = {};
+  const standalone = [];
+  techs.forEach(t => { if (t.line) (lineGroups[t.line] = lineGroups[t.line] || []).push(t); else standalone.push(t); });
+  const checked = optimizeState.stages[stageIdx].combatTechIds || new Set();
+
+  const dotRow = (label, lineTechs) => {
+    const level = lineTechs.reduce((lv, t, i) => checked.has(t.id) ? i + 1 : lv, 0);
+    const dots = lineTechs.map((t, i) => `<span class="tier-dot${i < level ? ' filled' : ''}" data-combat-tech-dot="${t.id}" data-stage-idx="${stageIdx}" data-tier="${i}" data-line-ids="${lineTechs.map(x => x.id).join(',')}" title="${t.name} (${t.age})" style="cursor:pointer;"></span>`).join('');
+    return `<div class="tech-line-row"><span class="tname">${label}</span><div class="tier-dots">${dots}</div></div>`;
+  };
+  const checkboxRow = t => `<label class="tech-line-row" style="cursor:pointer;">
+    <input type="checkbox" data-combat-tech-single="${t.id}" data-stage-idx="${stageIdx}" ${checked.has(t.id) ? 'checked' : ''}>
+    <span class="tname">${t.name}</span>
+  </label>`;
+
+  const rows = Object.entries(lineGroups).map(([, lineTechs]) => dotRow(lineTechs[0].lineLabel, lineTechs))
+    .concat(standalone.map(checkboxRow));
+  return `<div class="pending-card" style="margin-top:10px;">
+    <h3 style="font-size:12px;margin-bottom:6px;">With Upgrades</h3>
+    ${rows.join('')}
+  </div>`;
+}
+
+// Cascading dot-click (fills tiers 0..i, click the current max again to
+// step back down — identical UX to wireTierLines) and single-checkbox
+// toggle, both writing into optimizeState and re-rendering.
+function wireCombatTechCheckboxes(container) {
+  container.querySelectorAll('[data-combat-tech-dot]').forEach(dot => {
+    dot.addEventListener('click', () => {
+      const stageIdx = Number(dot.dataset.stageIdx);
+      const tier = Number(dot.dataset.tier);
+      const lineIds = dot.dataset.lineIds.split(',');
+      const stage = optimizeState.stages[stageIdx];
+      stage.combatTechIds = stage.combatTechIds || new Set();
+      const curLevel = lineIds.reduce((lv, id, i) => stage.combatTechIds.has(id) ? i + 1 : lv, 0);
+      const nextLevel = curLevel === tier + 1 ? tier : tier + 1;
+      lineIds.forEach((id, i) => { if (i < nextLevel) stage.combatTechIds.add(id); else stage.combatTechIds.delete(id); });
+      renderOptimizeStages();
+      renderOptimizeResults();
+    });
+  });
+  container.querySelectorAll('[data-combat-tech-single]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const stageIdx = Number(cb.dataset.stageIdx);
+      const stage = optimizeState.stages[stageIdx];
+      stage.combatTechIds = stage.combatTechIds || new Set();
+      if (cb.checked) stage.combatTechIds.add(cb.dataset.combatTechSingle); else stage.combatTechIds.delete(cb.dataset.combatTechSingle);
+      renderOptimizeStages();
+      renderOptimizeResults();
+    });
+  });
+}
+
 function renderOptimizeResults() {
   const civ = selectedCiv();
   const lines = allLinesForCiv(civ);
   const descEl = document.getElementById('results-desc');
   const bodyEl = document.getElementById('results-body');
   const stages = optimizeState.stages
-    .map(s => ({ line: lines.find(l => l.id === s.lineId), tierIdx: s.tierIdx, buildingCount: s.buildingCount, goalType: s.goalType, qty: s.qty }))
+    .map(s => ({ line: lines.find(l => l.id === s.lineId), tierIdx: s.tierIdx, buildingCount: s.buildingCount, goalType: s.goalType, qty: s.qty, combatTechIds: s.combatTechIds }))
     .filter(s => s.line);
   if (!stages.length) { descEl.textContent = 'Pick a unit above to optimize for.'; bodyEl.innerHTML = ''; return; }
 
@@ -5137,6 +5277,7 @@ function renderOptimizeStages() {
         <div class="tier-dots stage-tier-dots" data-stage-idx="${i}">${tierDots}</div>
         <span class="tname">${line.tiers[stage.tierIdx].name}</span>
       </div>
+      ${renderCombatTechCheckboxes(i, line)}
       <div style="margin-top:8px;">
         <span class="tname">Goal</span><br>
         <div class="goal-type-toggle" data-stage-idx="${i}" style="display:flex;gap:6px;margin-top:6px;">
@@ -5164,6 +5305,11 @@ function renderOptimizeStages() {
     const i = Number(e.target.dataset.stageIdx);
     optimizeState.stages[i].lineId = e.target.value;
     optimizeState.stages[i].tierIdx = 0;
+    // A different unit line means a different applicable-techs set (see
+    // applicableCombatTechIds) — clear rather than leave stale, invisible
+    // selections (e.g. Melee Attack checked for a Knight) silently still
+    // feeding the search after switching to an Archer, which doesn't use it.
+    optimizeState.stages[i].combatTechIds = new Set();
     renderOptimizeStages();
     renderOptimizeResults();
   }));
@@ -5205,6 +5351,7 @@ function renderOptimizeStages() {
     renderOptimizeStages();
     renderOptimizeResults();
   }));
+  wireCombatTechCheckboxes(container);
 }
 
 document.getElementById('optimize-add-stage').addEventListener('click', () => {
