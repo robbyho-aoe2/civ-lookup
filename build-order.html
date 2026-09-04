@@ -234,7 +234,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.54</div>
+  <div class="version">v0.55</div>
 </div>
 
 <script>
@@ -472,6 +472,22 @@ const DATA = {
     { id:'ballistics', name:'Ballistics', age:'Castle', resource:null, bonusPct:0, cost:{food:0,wood:300,gold:175,stone:0}, queueSeconds:60, group:'siege', saveOnly:true },
     { id:'siege-engineers', name:'Siege Engineers', age:'Imperial', resource:null, bonusPct:0, cost:{food:500,wood:600,gold:0,stone:0}, queueSeconds:45, group:'siege', saveOnly:true },
     { id:'chemistry', name:'Chemistry', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, queueSeconds:100, group:'siege', saveOnly:true },
+    // Monastery techs (10 real, independent options — not a tier line, no
+    // one supersedes another) — cost/research time cross-checked against
+    // the cached aoe2techtree data.json (see
+    // [[reference_aoe2techtree_data]]), not guessed. The Monastery itself
+    // is Castle-Age-only (see DATA.buildings.Monastery), so every one of
+    // these is Castle or Imperial, never Feudal.
+    { id:'redemption', name:'Redemption', age:'Castle', resource:null, bonusPct:0, cost:{food:0,wood:0,gold:475,stone:0}, queueSeconds:50, group:'monastery', saveOnly:true },
+    { id:'atonement', name:'Atonement', age:'Castle', resource:null, bonusPct:0, cost:{food:0,wood:0,gold:325,stone:0}, queueSeconds:40, group:'monastery', saveOnly:true },
+    { id:'herbal-medicine', name:'Herbal Medicine', age:'Castle', resource:null, bonusPct:0, cost:{food:0,wood:0,gold:200,stone:0}, queueSeconds:35, group:'monastery', saveOnly:true },
+    { id:'heresy', name:'Heresy', age:'Castle', resource:null, bonusPct:0, cost:{food:0,wood:0,gold:1000,stone:0}, queueSeconds:60, group:'monastery', saveOnly:true },
+    { id:'sanctity', name:'Sanctity', age:'Castle', resource:null, bonusPct:0, cost:{food:0,wood:0,gold:175,stone:0}, queueSeconds:60, group:'monastery', saveOnly:true },
+    { id:'fervor', name:'Fervor', age:'Castle', resource:null, bonusPct:0, cost:{food:0,wood:0,gold:140,stone:0}, queueSeconds:50, group:'monastery', saveOnly:true },
+    { id:'illumination', name:'Illumination', age:'Castle', resource:null, bonusPct:0, cost:{food:0,wood:0,gold:120,stone:0}, queueSeconds:65, group:'monastery', saveOnly:true },
+    { id:'block-printing', name:'Block Printing', age:'Imperial', resource:null, bonusPct:0, cost:{food:0,wood:0,gold:200,stone:0}, queueSeconds:55, group:'monastery', saveOnly:true },
+    { id:'theocracy', name:'Theocracy', age:'Imperial', resource:null, bonusPct:0, cost:{food:0,wood:0,gold:200,stone:0}, queueSeconds:75, group:'monastery', saveOnly:true },
+    { id:'faith', name:'Faith', age:'Imperial', resource:null, bonusPct:0, cost:{food:550,wood:0,gold:750,stone:0}, queueSeconds:60, group:'monastery', saveOnly:true },
   ],
   unitLines: [
     { id:'militia-line', name:'Militia', building:'Barracks', cost:{food:50,wood:0,gold:20,stone:0}, pop:1, tiers:[
@@ -5557,18 +5573,27 @@ function applicableCombatTechIds(line) {
   // targets are the standard unitLines only, no civ-specific UU training
   // target exists to attach it to.
   if (infantry.includes(line.id)) return ['forging', 'iron-casting', 'blast-furnace', 'scale-mail-armor', 'chain-mail-armor', 'plate-mail-armor', 'arson', 'squires', 'gambesons'];
-  if (footArchers.includes(line.id)) return ['fletching', 'bodkin-arrow', 'bracer', 'padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor', 'thumb-ring', 'ballistics'];
-  if (line.id === 'cavalry-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'parthian-tactics', 'bloodlines', 'ballistics', 'husbandry'];
+  if (footArchers.includes(line.id)) return ['fletching', 'bodkin-arrow', 'bracer', 'padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor', 'thumb-ring', 'ballistics', 'chemistry'];
+  if (line.id === 'cavalry-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'parthian-tactics', 'bloodlines', 'ballistics', 'husbandry', 'chemistry'];
   // Elephant Archer uses the same armor/upgrade set as Cavalry Archer
   // (Parthian Tactics, not Barding Armor) — site owner's correction, was
   // previously wrongly modeled on Battle Elephant's own Barding Armor line.
-  if (line.id === 'elephant-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'parthian-tactics', 'bloodlines', 'ballistics', 'husbandry'];
+  if (line.id === 'elephant-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'parthian-tactics', 'bloodlines', 'ballistics', 'husbandry', 'chemistry'];
   if (meleeCavalry.includes(line.id)) return ['forging', 'iron-casting', 'blast-furnace', 'scale-barding-armor', 'chain-barding-armor', 'plate-barding-armor', 'bloodlines', 'husbandry'];
   if (line.id === 'scorpion-line') return ['ballistics', 'siege-engineers'];
   if (['mangonel-line', 'ram-line', 'trebuchet', 'petard'].includes(line.id)) return ['siege-engineers'];
-  if (line.id === 'hand-cannoneer') return ['chemistry'];
+  // Chemistry UNLOCKS Hand Cannoneer (a hard prerequisite, not an optional
+  // combat upgrade this checkbox mechanism is for) — site owner's
+  // correction, previously wrongly listed here as if it were one. Hand
+  // Cannoneers DO get the foot-archer Pierce Armor line, though (same
+  // "Archer" armor class as Archer/Skirmisher for armor purposes).
+  if (line.id === 'hand-cannoneer') return ['padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor'];
   if (line.id === 'bombard-cannon') return ['chemistry'];
-  return []; // Villager, Monk: no applicable combat techs here
+  // All 10 real Monastery techs — independent options, not a tier line
+  // (see the DATA.ecoTechs entries themselves), so every one renders as
+  // its own standalone checkbox rather than a cascading dot row.
+  if (line.id === 'monk') return ['redemption', 'atonement', 'herbal-medicine', 'heresy', 'sanctity', 'fervor', 'illumination', 'block-printing', 'theocracy', 'faith'];
+  return []; // Villager: no applicable combat techs here
 }
 
 // Which building a combat tech is actually researched at — used to gate
@@ -5593,6 +5618,10 @@ const COMBAT_TECH_BUILDING = {
   arson: 'Barracks', squires: 'Barracks',
   gambesons: 'Blacksmith',
   'thumb-ring': 'Archery Range', 'parthian-tactics': 'Archery Range',
+  redemption: 'Monastery', atonement: 'Monastery', 'herbal-medicine': 'Monastery',
+  heresy: 'Monastery', sanctity: 'Monastery', fervor: 'Monastery',
+  illumination: 'Monastery', 'block-printing': 'Monastery', theocracy: 'Monastery',
+  faith: 'Monastery',
 };
 
 // Renders the "with upgrades" checkboxes for one stage — same cascading
