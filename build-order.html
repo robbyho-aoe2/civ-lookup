@@ -206,10 +206,11 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
       <label class="save-check" style="font-size:12px;"><input type="checkbox" id="optimize-allin"> Prioritize Military (all-in)</label>
       <label class="save-check" style="font-size:12px;">Efficiency <input type="number" id="optimize-efficiency" min="1" max="100" value="85" style="width:48px;padding:3px 5px;font-size:12px;margin-left:4px;">%</label>
     </div>
-    <div style="display:flex;align-items:center;gap:16px;margin-top:10px;flex-wrap:wrap;">
-      <label class="save-check" style="font-size:12px;">Deer (berries always assumed) <select id="optimize-deer-strategy" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
+    <p class="desc" style="margin-top:12px;margin-bottom:4px;">Deer/Chicken Preferences (berries are always assumed)</p>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <label class="save-check" style="font-size:12px;">Deer <select id="optimize-deer-strategy" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
       <label class="save-check" style="font-size:12px;">Wild Chickens <select id="optimize-chicken-strategy" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
-      <label class="save-check" style="font-size:12px;">Spawn size <select id="optimize-hunt-level" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
+      <label class="save-check" style="font-size:12px;">Map Generation <select id="optimize-hunt-level" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
     </div>
     <p class="assumptions" style="margin-top:10px;margin-bottom:0;">Off (default): a realistic economy — sheep, then wood, then berries/hunt up to pop 20, no Barracks before Feudal, Loom right before advancing. On: skip all of that and build everything the instant it's affordable, prioritizing the target unit above all else. A later stage REPLACES the earlier one's production once its age is reached, it doesn't run alongside it. Efficiency scales down gather AND villager-training rate together — a rough stand-in for real-play friction (idle time, imperfect pathing, reaction delay) this idealized math otherwise ignores entirely. 100% = no friction; not a researched default, meant to be tuned against real games.</p>
   </div>
@@ -233,7 +234,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.48</div>
+  <div class="version">v0.49</div>
 </div>
 
 <script>
@@ -3396,12 +3397,13 @@ const CHICKEN_STRATEGIES = {
   // "Funnel" (walk the live chickens under the TC instead of building a
   // Mill — a real, distinct technique per the user, NOT the same as long-
   // carrying dead ones) has no researched rate anywhere in the source
-  // material — user explicitly said to estimate: ~10 wood (vs a Mill's
-  // 100) for "less decay" comparable to a Mill's own efficiency, so this
-  // uses the same count's Mill RATE as the estimate while (elsewhere, see
-  // FUNNEL_WOOD_COST) charging far less to get it. Flagged as an estimate,
+  // material. User-confirmed: this should ALWAYS be the best of the three
+  // chicken strategies at any given spawn size (avoids a Mill's own walk
+  // distance/decay overhead entirely) — so unlike the earlier "same as
+  // Mill" guess, this is set to clearly beat both Mill AND long-carry
+  // (15.5) at every level, not just match Mill. Flagged as an estimate,
   // not a researched number — revisit if a real figure ever surfaces.
-  funnel: { rate: level => ({ 2: 14.7 / 60, 3: 15.5 / 60, 4: 16.0 / 60 }[level]), workers: () => 2 },
+  funnel: { rate: level => ({ 2: 17.0 / 60, 3: 17.5 / 60, 4: 18.0 / 60 }[level]), workers: () => 2 },
 };
 const FUNNEL_WOOD_COST = 10; // vs a Mill's 100 — user estimate, not researched
 const DEER_STRATEGY_LABELS = { none: "Don't take", push: 'Push with Scout', mill: 'Mill' };
@@ -5378,7 +5380,11 @@ function renderVillagerBars(villagers, rates, totalIncome, farmUpkeepWoodPerSec,
 // theoretical max gather/training rate (idle time, imperfect pathing,
 // reaction delay), and this model had no way to account for that at all.
 // Not a researched number — meant to be tuned down from real games.
-let optimizeState = { stages: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }], loomOn: true, allIn: false, efficiency: 85, foodStrategy: { deer: 'none', chicken: 'none', level: 2 } };
+// Defaults assume a skilled player DOES pursue whichever hunt source the
+// map has (push for deer, Mill for chickens) — "worst case" per the user's
+// own framing applies only to the map-luck spawn size (level:2, the
+// smallest real spawn), not to whether the food source gets taken at all.
+let optimizeState = { stages: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }], loomOn: true, allIn: false, efficiency: 85, foodStrategy: { deer: 'push', chicken: 'mill', level: 2 } };
 // Pure UI/display state, not part of the plan itself — which buildingCount
 // alternative (if any) the last stage's tabs are currently showing instead
 // of the recommended pick. Reset to null (back to the real pick) whenever
