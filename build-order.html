@@ -234,7 +234,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.53</div>
+  <div class="version">v0.54</div>
 </div>
 
 <script>
@@ -454,6 +454,12 @@ const DATA = {
     // vs Buildings only (no effect on unit-vs-unit combat), added per the
     // site owner's own example of an "other tech" worth surfacing.
     { id:'arson', name:'Arson', age:'Feudal', resource:null, bonusPct:0, cost:{food:75,wood:0,gold:25,stone:0}, queueSeconds:25, group:'blacksmith', saveOnly:true },
+    // Infantry movement speed (Barracks, Feudal) and Infantry/Villager
+    // armor (Blacksmith, Castle) — cost/research time cross-checked against
+    // the cached aoe2techtree data.json (see
+    // [[reference_aoe2techtree_data]]), not guessed.
+    { id:'squires', name:'Squires', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, queueSeconds:40, group:'blacksmith', saveOnly:true },
+    { id:'gambesons', name:'Gambesons', age:'Castle', resource:null, bonusPct:0, cost:{food:50,wood:0,gold:100,stone:0}, queueSeconds:25, group:'blacksmith', saveOnly:true },
     // Foot-archer-only accuracy/anti-Standing-Ground tech (Archery Range).
     { id:'thumb-ring', name:'Thumb Ring', age:'Castle', resource:null, bonusPct:0, cost:{food:300,wood:250,gold:0,stone:0}, queueSeconds:45, group:'blacksmith', saveOnly:true },
     // Cavalry Archer's OWN armor tech — real replacement for the foot-
@@ -5550,10 +5556,13 @@ function applicableCombatTechIds(line) {
   // units at all here since this tool's Optimize/Constant Production
   // targets are the standard unitLines only, no civ-specific UU training
   // target exists to attach it to.
-  if (infantry.includes(line.id)) return ['forging', 'iron-casting', 'blast-furnace', 'scale-mail-armor', 'chain-mail-armor', 'plate-mail-armor', 'arson'];
+  if (infantry.includes(line.id)) return ['forging', 'iron-casting', 'blast-furnace', 'scale-mail-armor', 'chain-mail-armor', 'plate-mail-armor', 'arson', 'squires', 'gambesons'];
   if (footArchers.includes(line.id)) return ['fletching', 'bodkin-arrow', 'bracer', 'padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor', 'thumb-ring', 'ballistics'];
   if (line.id === 'cavalry-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'parthian-tactics', 'bloodlines', 'ballistics', 'husbandry'];
-  if (line.id === 'elephant-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'scale-barding-armor', 'chain-barding-armor', 'plate-barding-armor', 'bloodlines', 'husbandry'];
+  // Elephant Archer uses the same armor/upgrade set as Cavalry Archer
+  // (Parthian Tactics, not Barding Armor) — site owner's correction, was
+  // previously wrongly modeled on Battle Elephant's own Barding Armor line.
+  if (line.id === 'elephant-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'parthian-tactics', 'bloodlines', 'ballistics', 'husbandry'];
   if (meleeCavalry.includes(line.id)) return ['forging', 'iron-casting', 'blast-furnace', 'scale-barding-armor', 'chain-barding-armor', 'plate-barding-armor', 'bloodlines', 'husbandry'];
   if (line.id === 'scorpion-line') return ['ballistics', 'siege-engineers'];
   if (['mangonel-line', 'ram-line', 'trebuchet', 'petard'].includes(line.id)) return ['siege-engineers'];
@@ -5581,7 +5590,8 @@ const COMBAT_TECH_BUILDING = {
   fletching: 'Blacksmith', 'bodkin-arrow': 'Blacksmith', bracer: 'Blacksmith',
   'padded-archer-armor': 'Blacksmith', 'leather-archer-armor': 'Blacksmith', 'ring-archer-armor': 'Blacksmith',
   bloodlines: 'Stable', husbandry: 'Stable',
-  arson: 'Barracks',
+  arson: 'Barracks', squires: 'Barracks',
+  gambesons: 'Blacksmith',
   'thumb-ring': 'Archery Range', 'parthian-tactics': 'Archery Range',
 };
 
