@@ -206,6 +206,9 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
       <label class="save-check" style="font-size:12px;"><input type="checkbox" id="optimize-allin"> Prioritize Military (all-in)</label>
       <label class="save-check" style="font-size:12px;">Efficiency <input type="number" id="optimize-efficiency" min="1" max="100" value="85" style="width:48px;padding:3px 5px;font-size:12px;margin-left:4px;">%</label>
     </div>
+    <div style="margin-top:10px;">
+      <label class="save-check" style="font-size:12px;">Food Source (after sheep + boar) <select id="optimize-food-strategy" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
+    </div>
     <p class="assumptions" style="margin-top:10px;margin-bottom:0;">Off (default): a realistic economy — sheep, then wood, then berries/hunt up to pop 20, no Barracks before Feudal, Loom right before advancing. On: skip all of that and build everything the instant it's affordable, prioritizing the target unit above all else. A later stage REPLACES the earlier one's production once its age is reached, it doesn't run alongside it. Efficiency scales down gather AND villager-training rate together — a rough stand-in for real-play friction (idle time, imperfect pathing, reaction delay) this idealized math otherwise ignores entirely. 100% = no friction; not a researched default, meant to be tuned against real games.</p>
   </div>
 
@@ -228,7 +231,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.41</div>
+  <div class="version">v0.42</div>
 </div>
 
 <script>
@@ -252,8 +255,8 @@ const DATA = {
   // instead of the flat generic one — deer/wild-chickens (a 50/50 roll on
   // Arabia as of the same patch) aren't modeled yet, tracked as follow-up
   // work in the same memory entry.
-  arabiaBoarRate: 22 / 60,
-  arabiaBerryRate: 15 / 60,
+  arabiaBoarRate: 22.2 / 60,
+  arabiaBerryRate: 15.4 / 60,
   villager: { cost:{food:50,wood:0,gold:0,stone:0}, trainTime:25 },
   farmBuildCost: 60, // wood — standard across editions, a farm needs rebuilding once its yield is used up
   campCosts: { mill: 100, miningCamp: 100, lumberCamp: 100 }, // wood — one-time; Japanese -50%, Incas' Settlement replaces all three (see civ ecoBonuses)
@@ -3260,7 +3263,7 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
           if (eta > worstEta) { worstEta = eta; target = r; }
         });
       }
-      const workerRate = (target === 'food' && openingSequence) ? foodPhaseRateForWorkerIndex(assigned.food) : rates[target];
+      const workerRate = (target === 'food' && openingSequence) ? foodPhaseRateForWorkerIndex(assigned.food, openingSequence.postBoarRate) : rates[target];
       vills++;
       assigned[target]++;
       assignedRate[target] += workerRate;
@@ -3341,11 +3344,46 @@ const OPENING_SEQUENCE = [
 // gets modeled moving on to farms once their own source is worked out,
 // which slightly over/undershoots a VERY long call, but matches how short
 // this scripted window already is (bounded by OPENING_SEQUENCE.length).
-function foodPhaseRateForWorkerIndex(i) {
+function foodPhaseRateForWorkerIndex(i, postBoarRate) {
   if (i < 2) return DATA.gatherRates.food; // sheep
   if (i < 6) return DATA.arabiaBoarRate; // 2 lured boars, ~4 workers
-  return DATA.arabiaBerryRate; // milled berries, everyone else
+  return postBoarRate ?? DATA.arabiaBerryRate; // configurable — berries by default
 }
+// Real per-villager food/min rates for everything past the 2-sheep+4-boar
+// window, converted to food/sec (÷60) — source: the same current-patch
+// AoE2:DE video, refined with a follow-up chart the user posted directly
+// (deer-map vs. chicken-map rankings) — see
+// [[project_build_order_optimize_mode]] memory for the full table. Deer and
+// wild chickens are a 50/50 roll on Arabia as of this patch (replacing the
+// old fixed-hunt assumption); walk-out rates aren't broken down by count
+// (real play keeps ~2 vills/chicken or ~4 vills/deer regardless of exactly
+// how many are in the group) but mill rates are, since one Mill's fixed
+// 100-wood cost amortizes differently depending on how much total food is
+// behind it.
+const ARABIA_FOOD_STRATEGIES = {
+  berries: DATA.arabiaBerryRate,
+  'deer-push': 24.2 / 60,
+  'deer-walk': 13.7 / 60,
+  'deer-mill-2': 12.8 / 60,
+  'deer-mill-3': 14.6 / 60,
+  'deer-mill-4': 16.4 / 60,
+  'chicken-walk': 15.5 / 60,
+  'chicken-mill-6': 14.7 / 60,
+  'chicken-mill-7': 15.5 / 60,
+  'chicken-mill-8': 16.0 / 60,
+};
+const ARABIA_FOOD_STRATEGY_LABELS = {
+  berries: 'Berries only (default)',
+  'deer-push': 'Deer — push with Scout',
+  'deer-walk': 'Deer — walk out, no Mill',
+  'deer-mill-2': 'Deer — Mill (2 deer)',
+  'deer-mill-3': 'Deer — Mill (3 deer)',
+  'deer-mill-4': 'Deer — Mill (4 deer)',
+  'chicken-walk': 'Wild Chickens — walk out, no Mill',
+  'chicken-mill-6': 'Wild Chickens — Mill (6 chickens)',
+  'chicken-mill-7': 'Wild Chickens — Mill (7 chickens)',
+  'chicken-mill-8': 'Wild Chickens — Mill (8 chickens)',
+};
 // The villager count (0-indexed, matching a sequence's own indexing) at
 // which the scripted opening first sends a NEW villager to food after the
 // sheep sub-phase ends — i.e. the point a Mill is actually needed (sheep are
@@ -3386,9 +3424,18 @@ BG_STONE_SEQUENCE.millIndex = openingMillIndex(BG_STONE_SEQUENCE);
 // Only worth the extra 3 scripted slots when the plan actually needs a
 // stone-costing building somewhere (Castle, currently the only one) — every
 // other target keeps the plain OPENING_SEQUENCE, byte-for-byte unchanged.
-function chooseOpeningSequence(stages, civ) {
+function chooseOpeningSequence(stages, civ, foodStrategy) {
   const needsStone = stages.some(s => buildingChainItems(s.line.building, civ, new Set()).some(it => (it.cost?.stone || 0) > 0));
-  return needsStone ? BG_STONE_SEQUENCE : OPENING_SEQUENCE;
+  const base = needsStone ? BG_STONE_SEQUENCE : OPENING_SEQUENCE;
+  // A shallow copy, not the shared module-level constant directly — every
+  // call can have its own `foodStrategy`, and mutating the constant itself
+  // would leak one call's choice into every other call sharing the same
+  // base sequence (this function's own memoized caller runs many of these
+  // back to back with different strategies).
+  const seq = [...base];
+  seq.millIndex = base.millIndex;
+  seq.postBoarRate = foodStrategy ? ARABIA_FOOD_STRATEGIES[foodStrategy] : undefined;
+  return seq;
 }
 
 // Population-cap constants shared by buildTimeline's own housesFor and
@@ -3893,20 +3940,20 @@ function withQuantityTail(trial, qty, buildingCount, tierName, trainTime) {
 }
 
 const _optimizeMemo = new Map();
-function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ, efficiency) {
+function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ, efficiency, foodStrategy) {
   const memoKey = JSON.stringify([
     stages.map(s => [s.line?.id, s.tierIdx, s.buildingCount ?? null, s.goalType || 'sustain', s.qty ?? null, s.combatTechIds ? [...s.combatTechIds].sort() : null]),
-    loomOn, allIn, civ?.id ?? null, efficiency ?? 100,
+    loomOn, allIn, civ?.id ?? null, efficiency ?? 100, foodStrategy ?? 'berries',
   ]);
   if (_optimizeMemo.has(memoKey)) return _optimizeMemo.get(memoKey);
-  const result = buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficiency ?? 100);
+  const result = buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficiency ?? 100, foodStrategy);
   _optimizeMemo.set(memoKey, result);
   return result;
 }
 
-function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficiency) {
+function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficiency, foodStrategy) {
   const free = freeTechIds(civ);
-  const openingSequence = allIn ? null : chooseOpeningSequence(stages, civ);
+  const openingSequence = allIn ? null : chooseOpeningSequence(stages, civ, foodStrategy);
   const sortedStages = [...stages].sort((a, b) => ageIndex(a.line.tiers[a.tierIdx].age) - ageIndex(b.line.tiers[b.tierIdx].age));
   const effFactor = (efficiency ?? 100) / 100;
   // A single "how efficiently is this economy actually running vs. the
@@ -4180,7 +4227,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       let bestK = initialBuildingCount, bestTotal = Infinity, worseStreak = 0;
       const tried = []; // every candidate actually evaluated — cheap to keep, lets the UI show runner-ups (full timeline included) instead of throwing this away
       for (let k = initialBuildingCount; k <= initialBuildingCount + MAX_EXTRA_BUILDINGS; k++) {
-        const trial = buildStagedOptimizeTimeline([...prefixStages, { ...stage, goalType: 'sustain', buildingCount: k }], loomOn, allIn, civ, efficiency);
+        const trial = buildStagedOptimizeTimeline([...prefixStages, { ...stage, goalType: 'sustain', buildingCount: k }], loomOn, allIn, civ, efficiency, foodStrategy);
         const trialResult = trial.stageResults[trial.stageResults.length - 1];
         if (trialResult.finishTime == null) continue; // unreachable at this count — skip, don't let it win by default
         const total = trialResult.finishTime + qty / (k / line.tiers[tierIdx].trainTime);
@@ -5222,7 +5269,7 @@ function renderVillagerBars(villagers, rates, totalIncome, farmUpkeepWoodPerSec,
 // theoretical max gather/training rate (idle time, imperfect pathing,
 // reaction delay), and this model had no way to account for that at all.
 // Not a researched number — meant to be tuned down from real games.
-let optimizeState = { stages: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }], loomOn: true, allIn: false, efficiency: 85 };
+let optimizeState = { stages: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }], loomOn: true, allIn: false, efficiency: 85, foodStrategy: 'berries' };
 // Pure UI/display state, not part of the plan itself — which buildingCount
 // alternative (if any) the last stage's tabs are currently showing instead
 // of the recommended pick. Reset to null (back to the real pick) whenever
@@ -5249,12 +5296,12 @@ let timelineAvailExpanded = false;
 // most of these same (prefixStages, k, 'sustain') combinations while
 // finding its own optimum, so `_optimizeMemo` usually makes this a cache
 // hit rather than a fresh search.
-function moreProductionBuildingsAlt(prefixStages, stage, civ, loomOn, allIn, efficiency, currentBuildingCount, currentFinishTime) {
+function moreProductionBuildingsAlt(prefixStages, stage, civ, loomOn, allIn, efficiency, currentBuildingCount, currentFinishTime, foodStrategy) {
   if (stage.line.isVillager) return null;
   const isQty = stage.goalType === 'quantity';
   let best = null;
   [currentBuildingCount + 1, currentBuildingCount + 2].forEach(k => {
-    let trial = buildStagedOptimizeTimeline([...prefixStages, { ...stage, goalType: 'sustain', buildingCount: k }], loomOn, allIn, civ, efficiency);
+    let trial = buildStagedOptimizeTimeline([...prefixStages, { ...stage, goalType: 'sustain', buildingCount: k }], loomOn, allIn, civ, efficiency, foodStrategy);
     const trialLast = trial.stageResults[trial.stageResults.length - 1];
     if (trialLast.finishTime == null) return;
     if (isQty) trial = withQuantityTail(trial, stage.qty, k, stage.line.tiers[stage.tierIdx].name, stage.line.tiers[stage.tierIdx].trainTime);
@@ -5462,7 +5509,7 @@ function renderOptimizeResults() {
     .filter(s => s.line);
   if (!stages.length) { descEl.textContent = 'Pick a unit above to optimize for.'; bodyEl.innerHTML = ''; return; }
 
-  const result = buildStagedOptimizeTimeline(stages, optimizeState.loomOn, optimizeState.allIn, civ, optimizeState.efficiency);
+  const result = buildStagedOptimizeTimeline(stages, optimizeState.loomOn, optimizeState.allIn, civ, optimizeState.efficiency, optimizeState.foodStrategy);
   const styleNote = optimizeState.allIn ? ' — all-in, no realistic-economy pacing' : ' — realistic economy (sheep → berries/hunt → farms, no early Barracks)';
   // Built from result.stageResults (not the input `stages`) since a
   // 'quantity' stage's actual buildingCount is only known once the search
@@ -5492,7 +5539,7 @@ function renderOptimizeResults() {
   if (lastSr?.finishTime != null) {
     const prefixStages = stages.slice(0, -1);
     const lastStageInput = stages[stages.length - 1];
-    moreBuildings = moreProductionBuildingsAlt(prefixStages, lastStageInput, civ, optimizeState.loomOn, optimizeState.allIn, optimizeState.efficiency, lastSr.buildingCount, lastSr.finishTime);
+    moreBuildings = moreProductionBuildingsAlt(prefixStages, lastStageInput, civ, optimizeState.loomOn, optimizeState.allIn, optimizeState.efficiency, lastSr.buildingCount, lastSr.finishTime, optimizeState.foodStrategy);
     moreEco = mostImpactfulSkippedEcoTech(result, lastSr, civ);
   }
   const activeAlt = optimizeAltView === 'more-buildings' ? moreBuildings
@@ -5723,6 +5770,15 @@ document.getElementById('optimize-efficiency').addEventListener('input', e => {
   clearTimeout(window.__efficiencyDebounce);
   window.__efficiencyDebounce = setTimeout(renderOptimizeResults, 400);
 });
+{
+  const sel = document.getElementById('optimize-food-strategy');
+  sel.innerHTML = Object.entries(ARABIA_FOOD_STRATEGY_LABELS).map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
+  sel.addEventListener('change', e => {
+    optimizeState.foodStrategy = e.target.value;
+    optimizeAltView = null;
+    renderOptimizeResults();
+  });
+}
 
 civSelect.addEventListener('change', () => {
   renderTechGrid();
@@ -5779,6 +5835,7 @@ function setMode(mode) {
     document.getElementById('optimize-loom').checked = optimizeState.loomOn;
     document.getElementById('optimize-allin').checked = optimizeState.allIn;
     document.getElementById('optimize-efficiency').value = optimizeState.efficiency;
+    document.getElementById('optimize-food-strategy').value = optimizeState.foodStrategy;
   }
   renderCivBonusList();
   renderCurrentModeResults();
