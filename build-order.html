@@ -228,7 +228,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.34</div>
+  <div class="version">v0.35</div>
 </div>
 
 <script>
@@ -5422,7 +5422,14 @@ function renderCivBonusList() {
   const bonuses = civ?.ecoBonuses || [];
   if (!civ) { list.innerHTML = ''; return; }
   if (!bonuses.length) { list.innerHTML = `<div class="civ-bonus-none">No economy bonuses that affect this calculator's numbers.</div>`; return; }
-  list.innerHTML = bonuses.map(b => `<div class="civ-bonus-item">${b.note || b.type}</div>`).join('');
+  // Some civs grant several mechanically-separate free-tech entries under
+  // one narrative bonus (e.g. Franks' 3 Mill techs all read "Mill
+  // technologies free") — dedupe by display text so the list shows each
+  // real bonus once, even though the underlying grants stay separate for
+  // the search logic.
+  const seen = new Set();
+  const uniqueBonuses = bonuses.filter(b => { const key = b.note || b.type; if (seen.has(key)) return false; seen.add(key); return true; });
+  list.innerHTML = uniqueBonuses.map(b => `<div class="civ-bonus-item">${b.note || b.type}</div>`).join('');
 }
 
 // ─── Optimize mode's own UI (a list of stages, each: target unit, tier,
