@@ -231,7 +231,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.42</div>
+  <div class="version">v0.43</div>
 </div>
 
 <script>
@@ -4151,22 +4151,50 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       }
 
       RES.forEach(res => { cumAlloc[res] += remainingAssigned[res] || 0; });
-      // Every merged item lands at this same final moment — only the LAST
-      // one (the age-up itself, or the item alone when nothing was merged)
-      // carries the "new villagers sent to X" split, matching how a single
-      // combined transaction would actually read to a player.
+      // Only the LAST item (the age-up itself, or the item alone when
+      // nothing was merged) carries the "new villagers sent to X" split,
+      // matching how a single combined transaction would actually read to a
+      // player. Per-item TIMESTAMPS, though, are NOT all the bundle's final
+      // moment — see the real-scheduling comment just below.
+      // A bundle's items share ONE funding pool (gathered together) but do
+      // NOT all complete simultaneously once funded: a building (non-
+      // tcQueue) is under construction by its own separate villager the
+      // whole time, done the moment funding/construction is reached — it
+      // never touches the Town Center at all. TC-queue items (Loom-like
+      // techs, then the age-up last) DO share one real queue and can only
+      // process one at a time, in array order, back to back, starting from
+      // that same funded moment. `simItem.researchTime` already sums that
+      // whole TC-queue chain (see its own construction above) — subtracting
+      // it back out of the already-computed `cursorTime` recovers the
+      // shared "funded" instant every item's own timing is anchored to.
+      const bundleFundedTime = deferCount > 0 ? cursorTime - (simItem.tcQueue ? (simItem.researchTime || 0) : 0) : null;
+      let tcChainOffset = 0;
       mergedItems.forEach((it, idx) => {
         const isLast = idx === mergedItems.length - 1;
         const dur = itemDuration(it);
+        let itemCompleteTime, itemStartTime;
+        if (bundleFundedTime != null) {
+          if (it.tcQueue) {
+            itemStartTime = bundleFundedTime + tcChainOffset;
+            itemCompleteTime = itemStartTime + dur;
+            tcChainOffset += dur;
+          } else {
+            itemCompleteTime = bundleFundedTime;
+            itemStartTime = Math.max(0, bundleFundedTime - dur);
+          }
+        } else {
+          itemCompleteTime = cursorTime;
+          itemStartTime = Math.max(0, cursorTime - dur);
+        }
         // A separate "click this now" row before the completion checkpoint,
         // only when there's an actual gap worth showing — otherwise a
         // near-instant item would just clutter the table with two
         // back-to-back rows a second apart.
         if (dur > 1) {
-          checkpoints.push({ label: startLabelFor(it), time: Math.max(0, cursorTime - dur), vills: cursorVills, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, kind: 'start' });
+          checkpoints.push({ label: startLabelFor(it), time: itemStartTime, vills: cursorVills, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, kind: 'start' });
         }
         const completeLabel = it.isAgeUp ? `Reached ${it.age} Age` : `${it.name} complete`;
-        checkpoints.push({ label: completeLabel, time: cursorTime, vills: cursorVills, split: isLast ? remainingAssigned : null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, pool: { ...pool }, ...checkpointKindFor(it) });
+        checkpoints.push({ label: completeLabel, time: itemCompleteTime, vills: cursorVills, split: isLast ? remainingAssigned : null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, pool: { ...pool }, ...checkpointKindFor(it) });
       });
       ri += mergedItems.length;
     }
