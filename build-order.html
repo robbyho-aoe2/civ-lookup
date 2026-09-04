@@ -234,7 +234,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.49</div>
+  <div class="version">v0.50</div>
 </div>
 
 <script>
@@ -3389,23 +3389,32 @@ const DEER_STRATEGIES = {
   push: { rate: 24.2 / 60, workers: level => level },
   mill: { rate: level => ({ 2: 12.8 / 60, 3: 14.6 / 60, 4: 16.4 / 60 }[level]), workers: () => 4 },
 };
-// `level` is shared with deer (2/3/4) — converted to the matching real
-// chicken count (6/7/8, i.e. level+4) for the Mill rate lookup.
+// User-corrected understanding of "chicken mill": NOT a real 100-wood Mill
+// like berries/deer use — it's a cheap "gates"/pen structure (~10 wood, 1
+// villager to build) that herds the flock to one spot, so its real rate
+// should land close to deer-push (24.2), just slightly slower to account
+// for that villager's setup time — a big correction from the original
+// video chart's own "chicken mill" numbers (14.7-16.0), which apparently
+// described a heavier setup than what real players actually do. Made
+// constant across levels (not amortized-by-count like a real Mill) since
+// the gate cost/technique doesn't meaningfully change with flock size,
+// same reasoning as push. GATE_WOOD_COST is documented but not separately
+// deducted in the simulation (a few seconds of wood income, negligible
+// against the whole timeline) — same treatment as FUNNEL_WOOD_COST below.
+const GATE_WOOD_COST = 10;
 const CHICKEN_STRATEGIES = {
-  mill: { rate: level => ({ 2: 14.7 / 60, 3: 15.5 / 60, 4: 16.0 / 60 }[level]), workers: () => 4 },
+  mill: { rate: () => 23.0 / 60, workers: level => level },
   walk: { rate: () => 15.5 / 60, workers: () => 2 },
-  // "Funnel" (walk the live chickens under the TC instead of building a
-  // Mill — a real, distinct technique per the user, NOT the same as long-
-  // carrying dead ones) has no researched rate anywhere in the source
+  // "Funnel" (walk the live chickens under the TC instead of building
+  // gates — a real, distinct technique per the user, NOT the same as
+  // long-carrying dead ones) has no researched rate anywhere in the source
   // material. User-confirmed: this should ALWAYS be the best of the three
-  // chicken strategies at any given spawn size (avoids a Mill's own walk
-  // distance/decay overhead entirely) — so unlike the earlier "same as
-  // Mill" guess, this is set to clearly beat both Mill AND long-carry
-  // (15.5) at every level, not just match Mill. Flagged as an estimate,
-  // not a researched number — revisit if a real figure ever surfaces.
-  funnel: { rate: level => ({ 2: 17.0 / 60, 3: 17.5 / 60, 4: 18.0 / 60 }[level]), workers: () => 2 },
+  // chicken strategies — set here to clearly beat the corrected Mill rate
+  // (23.0) and long-carry (15.5). Flagged as an estimate, not a researched
+  // number — revisit if a real figure ever surfaces.
+  funnel: { rate: () => 25.0 / 60, workers: level => level },
 };
-const FUNNEL_WOOD_COST = 10; // vs a Mill's 100 — user estimate, not researched
+const FUNNEL_WOOD_COST = 10; // vs GATE_WOOD_COST's same ~10 — user estimate, not researched
 const DEER_STRATEGY_LABELS = { none: "Don't take", push: 'Push with Scout', mill: 'Mill' };
 const CHICKEN_STRATEGY_LABELS = { none: "Don't take", mill: 'Mill', walk: 'Long-carry (no Mill)', funnel: 'Funnel under TC (~10 wood, no Mill)' };
 // Resolves the two independent dropdowns + shared level into the one
