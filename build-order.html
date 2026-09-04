@@ -231,7 +231,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.43</div>
+  <div class="version">v0.44</div>
 </div>
 
 <script>
@@ -3157,7 +3157,7 @@ function buildingChainItems(buildingName, civ, haveSet) {
   const def = buildingName === 'Castle' ? DATA.castle : DATA.productionBuildings[buildingName];
   if (!def) return [];
   haveSet.add(buildingName);
-  return [{ name: buildingName, cost: costForCiv(def.cost, civ, buildingName), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(buildingName)), age: def.minAge }];
+  return [{ name: buildingName, cost: costForCiv(def.cost, civ, buildingName), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(buildingName)), age: def.minAge, builders: buildersForBuilding(buildingName) }];
 }
 
 // Simulates constant villager production: new villagers are born at a fixed
@@ -3574,7 +3574,12 @@ function itemDuration(it) {
 function startLabelFor(it) {
   if (it.isAgeUp) return it.name;
   if (/^\d+x /.test(it.name)) return `Train ${it.name}`;
-  return `${isBuildingItem(it.name) ? 'Build' : 'Research'} ${it.name}`;
+  // Surface the assumed builder count whenever it's more than the routine
+  // single villager — silently assuming extra builders (Market's 2,
+  // Castle's 10) without saying so was the actual bug behind a build
+  // showing as unrealistically fast with no way to tell why.
+  const buildersNote = it.builders > 1 ? ` (${it.builders} villagers)` : '';
+  return `${isBuildingItem(it.name) ? 'Build' : 'Research'} ${it.name}${buildersNote}`;
 }
 
 // Spreads a lump "Build N Houses" total across N separate checkpoints, one
@@ -3764,9 +3769,21 @@ const MAX_PARALLEL_TC = 3;
 // calibration.
 const TC_BUILDERS = 6;
 const CASTLE_BUILDERS = 10;
-const BUILDING_BUILDERS = 6;
+// Routine production buildings (Blacksmith, Barracks, Archery Range, Stable,
+// etc.) normally get exactly 1 builder in real play — user-confirmed,
+// replacing an earlier guessed default of 6 that made every building finish
+// unrealistically fast (Blacksmith's real 40s at 1 villager was showing as
+// 15s). Market is the one confirmed exception — real FC play typically
+// sends 2 villagers to it (timed to finish together with the 1-villager
+// Blacksmith) — see MARKET_BUILDERS below and buildersForBuilding.
+const BUILDING_BUILDERS = 1;
+const MARKET_BUILDERS = 2;
 function multiBuilderTime(baseSeconds, n) { return (3 * baseSeconds) / (n + 2); }
-function buildersForBuilding(name) { return name === 'Castle' ? CASTLE_BUILDERS : BUILDING_BUILDERS; }
+function buildersForBuilding(name) {
+  if (name === 'Castle') return CASTLE_BUILDERS;
+  if (name === 'Market') return MARKET_BUILDERS;
+  return BUILDING_BUILDERS;
+}
 
 // For a 'quantity'-goal stage (see buildStagedOptimizeTimeline), the number
 // of production buildings isn't fixed by the user — the search picks it,
@@ -3843,6 +3860,7 @@ function stageMandatoryItems(stage, civ, allIn, haveSet, fromAgeIdx, extraItems)
         cost: RES.reduce((c, r) => { c[r] = (perCost[r] || 0) * extraCount; return c; }, {}),
         queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(line.building)),
         age: def.minAge,
+        builders: buildersForBuilding(line.building),
       };
       // NOT deferred, unlike the first copy above — only that first copy
       // actually counts toward the age-up-qualifying-building requirement;
@@ -3870,7 +3888,7 @@ function stageMandatoryItems(stage, civ, allIn, haveSet, fromAgeIdx, extraItems)
     if (ageIndex(age) > targetAgeIdx || ageIndex(age) <= fromAgeIdx) return;
     fillerBuildingsNeeded(age, civ, baselineVillagers, haveSet).forEach(name => {
       const def = DATA.productionBuildings[name];
-      const item = { name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name)), age: def.minAge };
+      const item = { name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name)), age: def.minAge, builders: buildersForBuilding(name) };
       deferIfEarly(item);
       items.push(item);
     });
@@ -4574,7 +4592,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           if (ageIndex(age) > requiredExtraTcAgeIdx || ageIndex(age) <= reachedAgeIdx) return;
           fillerBuildingsNeeded(age, civ, genericVillagers, scratchHaveSet).forEach(name => {
             const def = DATA.productionBuildings[name];
-            fillerItems.push({ name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name)), age: def.minAge, deferToEnd: true });
+            fillerItems.push({ name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name)), age: def.minAge, deferToEnd: true, builders: buildersForBuilding(name) });
           });
         });
         const ageItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], AGE_ORDER[requiredExtraTcAgeIdx], civ));
@@ -4615,6 +4633,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
             cost: RES.reduce((c, r) => { c[r] = perCost[r] * k; return c; }, {}),
             queueSeconds: line.isVillager ? multiBuilderTime(DATA.townCenter.buildTimeSeconds, TC_BUILDERS) : DATA.townCenter.buildTimeSeconds,
             age: DATA.townCenter.minAge,
+            builders: line.isVillager ? TC_BUILDERS : 1,
           };
           const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc);
           if (!r) break; // k TCs unaffordable within the sim cap means k+1 (strictly more expensive) can't be either
