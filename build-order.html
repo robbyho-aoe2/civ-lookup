@@ -228,7 +228,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.35</div>
+  <div class="version">v0.36</div>
 </div>
 
 <script>
@@ -830,7 +830,9 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "tech-age-override", "unitTier": "Cavalier", "newAge": "Castle", "note": "Cavalier upgrade available in Castle Age" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -2828,6 +2830,16 @@ function renderCastleStoneCalc() {
 
 const AGE_ORDER = ['Dark', 'Feudal', 'Castle', 'Imperial'];
 function ageIndex(age) { return AGE_ORDER.indexOf(age); }
+
+// A civ-specific "available one age earlier" override for a unit-line
+// tier's upgrade (e.g. Burgundians' Cavalier, normally Imperial, available
+// in Castle Age instead) — matched by tier name since tiers don't carry a
+// stable id of their own. Falls back to the tier's own real age when the
+// civ has no override, so every existing call site stays unaffected.
+function effectiveTierAge(tier, civ) {
+  const override = (civ?.ecoBonuses || []).find(b => b.type === 'tech-age-override' && b.unitTier === tier.name);
+  return override ? override.newAge : tier.age;
+}
 function currentAgeIndex() { return 0; } // every build now starts in Dark Age
 
 function allLinesForCiv(civ) {
@@ -3635,7 +3647,7 @@ const MAX_EXTRA_BUILDINGS = 5;
 // same as before this behavior existed.
 function stageMandatoryItems(stage, civ, allIn, haveSet, fromAgeIdx, extraItems) {
   const { line, tierIdx, buildingCount } = stage;
-  const targetAgeIdx = ageIndex(line.tiers[tierIdx].age);
+  const targetAgeIdx = ageIndex(effectiveTierAge(line.tiers[tierIdx], civ));
   const deferIfEarly = it => { if (!allIn && ageIndex(it.age) < targetAgeIdx) it.deferToEnd = true; };
   const items = [...extraItems];
 
@@ -3692,7 +3704,7 @@ function stageMandatoryItems(stage, civ, allIn, haveSet, fromAgeIdx, extraItems)
 
   for (let i = 1; i <= tierIdx; i++) {
     const t = line.tiers[i];
-    if (t?.upgradeCost) items.push({ name: `${line.tiers[i - 1].name} → ${t.name}`, cost: costForCiv(t.upgradeCost, civ), age: t.age });
+    if (t?.upgradeCost) items.push({ name: `${line.tiers[i - 1].name} → ${t.name}`, cost: costForCiv(t.upgradeCost, civ), age: effectiveTierAge(t, civ) });
   }
 
   // Filler-building choice only depends on WHICH resources the composition
@@ -3809,8 +3821,14 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
   // gates the 2nd TC onward, in both the tcExtra Dijkstra move below and
   // the Villager-line branch's own TC-building loop.
   const requiredExtraTcAgeIdx = ageIndex(civ?.id === 'cumans' ? 'Feudal' : 'Castle');
+  // NOT `new Set(free)` — a free tech only actually takes effect once its
+  // own tiered-line move has been taken (now properly age-gated, see the
+  // tech-move loop below), never unconditionally from t=0. Loom (the one
+  // free-tech id with no `line`/no gather-rate effect at all) doesn't need
+  // to be in here either — it's handled entirely separately, skipped from
+  // the mandatory prefix outright via `!free.has('loom')` below.
   function techIdsFor(levels) {
-    const ids = new Set(free);
+    const ids = new Set();
     Object.keys(levels).forEach(id => { for (let i = 0; i < levels[id]; i++) ids.add(ecoLineTechs[id][i].id); });
     return ids;
   }
@@ -4082,7 +4100,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // pausing only PART of the prefix (train normally to some baseline,
     // pause only for the final age-up leg) — a materially bigger, separate
     // feature, not a tweak to this coarse version.
-    const targetAgeIdx = ageIndex(line.tiers[tierIdx].age);
+    const targetAgeIdx = ageIndex(effectiveTierAge(line.tiers[tierIdx], civ));
     const extraItems = [];
     if (stageResults.length === 0 && loomOn && !allIn && !free.has('loom')) {
       const loom = DATA.ecoTechs.find(t => t.id === 'loom');
@@ -4230,13 +4248,12 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       : relevantEcoLines(stageRows, civ);
     const tcExtraCap = line.isVillager ? MAX_TC_FOR_VILLAGER_TARGET : MAX_EXTRA_TC;
     const tcSheepBonus = (civ?.ecoBonuses || []).find(b => b.type === 'tc-sheep-food');
-    relevantLines.forEach(id => {
-      if (id in levels) return;
-      const chain = ecoLineTechs[id];
-      let lvl = 0;
-      while (lvl < chain.length && free.has(chain[lvl].id)) lvl++;
-      levels[id] = lvl;
-    });
+    // Free techs are no longer pre-leveled here regardless of age (that was
+    // the bug — see the age-gated free-tech branch in the tech-move loop
+    // below, which now handles them as an instant, zero-cost move exactly
+    // like any other tech move, just unlocked the moment its own age is
+    // reached rather than from t=0 unconditionally).
+    relevantLines.forEach(id => { if (!(id in levels)) levels[id] = 0; });
     // ageAdvanced only means anything for a Villager target — held at a
     // constant `true` for every other line so it never fragments their
     // state space (their age is already unambiguously forced correct by
@@ -4289,7 +4306,18 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         if (cur.levels[id] >= chain.length) return;
         const tech = chain[cur.levels[id]];
         if (ageIndex(tech.age) > effectiveAgeIdx) return;
-        const item = { name: tech.name, cost: costForCiv(tech.cost, civ), tcQueue: tech.tcQueue, researchTime: tech.researchTime, queueSeconds: tech.queueSeconds, age: tech.age };
+        // A free tech (Turks' Chemistry, Franks' Mill techs, Goths' Loom,
+        // etc.) is genuinely instant and zero-cost the moment its own age is
+        // reached — no building requirement, no research delay (user-
+        // confirmed real mechanic). Zeroing cost/time here lets it flow
+        // through the exact same simulateItemReady/runSequential machinery
+        // as any other tech move — the empty-cost early-return in
+        // simulateItemReady already resolves it at the current time with no
+        // special-casing needed.
+        const isFree = free.has(tech.id);
+        const item = isFree
+          ? { name: tech.name, cost: { food: 0, wood: 0, gold: 0, stone: 0 }, tcQueue: false, researchTime: 0, queueSeconds: 0, age: tech.age }
+          : { name: tech.name, cost: costForCiv(tech.cost, civ), tcQueue: tech.tcQueue, researchTime: tech.researchTime, queueSeconds: tech.queueSeconds, age: tech.age };
         const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc);
         if (!r) return;
         const nextLevels = { ...cur.levels, [id]: cur.levels[id] + 1 };
@@ -5136,7 +5164,7 @@ function mostImpactfulSkippedEcoTech(result, sr, civ) {
   const targetAgeIdx = sr.line.isVillager
     ? Math.max(ageIndex('Dark'), sr.tcCount > 1 ? ageIndex('Castle') : 0,
         ...[...sr.techIds].map(id => { const t = DATA.ecoTechs.find(e => e.id === id); return t ? ageIndex(t.age) : 0; }))
-    : ageIndex(sr.line.tiers[sr.tierIdx].age);
+    : ageIndex(effectiveTierAge(sr.line.tiers[sr.tierIdx], civ));
   let best = null;
   DATA.ecoTechs.forEach(t => {
     if (sr.techIds.has(t.id) || ageIndex(t.age) > targetAgeIdx) return;
