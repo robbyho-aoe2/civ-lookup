@@ -228,7 +228,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.39</div>
+  <div class="version">v0.40</div>
 </div>
 
 <script>
@@ -2233,6 +2233,11 @@ const DATA = {
           "type": "pct",
           "value": 15,
           "note": "Farmers work 15% faster"
+        },
+        {
+          "type": "free-tech",
+          "techId": "arson",
+          "note": "Arson free"
         }
       ],
       "unavailableUnitLines": [
@@ -2315,7 +2320,9 @@ const DATA = {
         }
       ],
       "ecoBonuses": [
-        { "type": "tc-sheep-food", "perSheep": 100, "count": 2, "longevityPct": 50, "note": "Each new Town Center comes with 2 sheep; livestock lasts 50% longer" }
+        { "type": "tc-sheep-food", "perSheep": 100, "count": 2, "longevityPct": 50, "note": "Each new Town Center comes with 2 sheep; livestock lasts 50% longer" },
+        { "type": "free-tech", "techId": "thumb-ring", "note": "Thumb Ring free" },
+        { "type": "free-tech", "techId": "parthian-tactics", "note": "Parthian Tactics free" }
       ],
       "unavailableUnitLines": [
         "eagle-line",
@@ -2430,6 +2437,11 @@ const DATA = {
           "type": "pct",
           "value": 25,
           "note": "Gold miners work 25% faster"
+        },
+        {
+          "type": "free-tech",
+          "techId": "chemistry",
+          "note": "Chemistry free"
         }
       ],
       "unavailableUnitLines": [
@@ -4174,10 +4186,22 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // the `levels` tech-tracking `stageMandatoryItems` uses.
     const applicableIds = new Set(applicableCombatTechIds(line));
     (stage.combatTechIds || []).forEach(id => {
-      if (!applicableIds.has(id) || free.has(id) || alreadyAddedCombatTechs.has(id)) return;
+      if (!applicableIds.has(id) || alreadyAddedCombatTechs.has(id)) return;
       const t = DATA.ecoTechs.find(e => e.id === id);
       if (!t) return;
       alreadyAddedCombatTechs.add(id);
+      // A free combat tech (Turks' Chemistry, Tatars' Thumb Ring/Parthian
+      // Tactics, etc.) is the same "instant, zero-cost, no building needed"
+      // real mechanic as a free eco-tech (user-confirmed) — skip the
+      // building requirement entirely and push a zero-cost/zero-time item,
+      // still bucketed (deferToEnd) into its own age's transaction so it
+      // completes exactly when that age is reached, same as any other
+      // deferred item. This used to be silently skipped whenever `free`
+      // matched, never modeled at all even when checked — fixed here.
+      if (free.has(id)) {
+        extraItems.push({ name: t.name, cost: { food: 0, wood: 0, gold: 0, stone: 0 }, queueSeconds: 0, deferToEnd: true, age: t.age });
+        return;
+      }
       // Gate the tech behind its own building actually existing first — a
       // Blacksmith tech researched before the Blacksmith is built can't
       // happen in a real game. buildingChainItems is haveSet-deduped, so
