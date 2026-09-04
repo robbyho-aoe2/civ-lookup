@@ -234,7 +234,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.51</div>
+  <div class="version">v0.52</div>
 </div>
 
 <script>
@@ -3400,10 +3400,13 @@ const CHICKEN_STRATEGIES = {
   // has no researched rate anywhere in the source material. User-confirmed:
   // this should ALWAYS be the best of the three chicken strategies at any
   // given spawn size (avoids a Mill's own walk distance/decay overhead
-  // entirely) — so this is set to clearly beat both Mill AND long-carry
-  // (15.5) at every level, not just match Mill. Flagged as an estimate,
+  // entirely) — closer to deer-push's 24.2 than to Mill/long-carry, since
+  // funneling live chickens straight to the TC is the same basic idea as
+  // pushing deer under the TC, just for a smaller animal. Flat across
+  // levels, matching push's own flat rate (a cheap gate's throughput
+  // doesn't meaningfully scale with flock size). Flagged as an estimate,
   // not a researched number — revisit if a real figure ever surfaces.
-  funnel: { rate: level => ({ 2: 17.0 / 60, 3: 17.5 / 60, 4: 18.0 / 60 }[level]), workers: () => 2 },
+  funnel: { rate: () => 22.0 / 60, workers: () => 2 },
 };
 const FUNNEL_WOOD_COST = 10; // vs a Mill's 100 — user estimate, not researched
 const DEER_STRATEGY_LABELS = { none: "Don't take", push: 'Push with Scout', mill: 'Mill' };
