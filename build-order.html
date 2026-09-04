@@ -228,7 +228,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.38</div>
+  <div class="version">v0.39</div>
 </div>
 
 <script>
@@ -2033,7 +2033,9 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "dual-resource-generation", "primary": "food", "secondary": "wood", "ratio": 0.33, "note": "Foragers generate wood in addition to food" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -2158,7 +2160,9 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "dual-resource-generation", "primary": "wood", "secondary": "food", "ratio": 0.07, "note": "Lumberjacks generate food in addition to wood" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "knight-line",
@@ -3534,6 +3538,20 @@ function computeTotalIncome(rows, civ, techIds, assumeFarms = true) {
   const hasNoHouses = (civ?.ecoBonuses || []).some(b => b.type === 'no-houses');
   const houseWoodPerSec = hasNoHouses ? 0 : popRate * DATA.houseCost / housePopSpace;
   totalIncome.wood += houseWoodPerSec;
+  // A villager gathering `primary` passively supplies `secondary` too
+  // (Portuguese: foragers also generate wood off their food gathering;
+  // Shu: lumberjacks also generate food off their wood gathering) — this
+  // model has no separate "forager"/"lumberjack" villager count from its
+  // general food/wood totals, so the ratio is applied against the whole
+  // resource's total demand as a reasonable approximation (same
+  // simplification the tool already makes treating berries/hunt/farm as
+  // one undifferentiated "food"). Reduces how much of `secondary` still
+  // needs its OWN dedicated villagers, applied after farm/house upkeep so
+  // the free supply can offset those too, same as any other wood income.
+  (civ?.ecoBonuses || []).forEach(b => {
+    if (b.type !== 'dual-resource-generation') return;
+    totalIncome[b.secondary] = Math.max(0, totalIncome[b.secondary] - totalIncome[b.primary] * b.ratio);
+  });
   return { totalIncome, popRate, farmUpkeepWoodPerSec, houseWoodPerSec, housePopSpace, hasNoHouses };
 }
 
