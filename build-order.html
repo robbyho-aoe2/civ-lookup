@@ -231,7 +231,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.46</div>
+  <div class="version">v0.47</div>
 </div>
 
 <script>
@@ -3970,18 +3970,18 @@ function withQuantityTail(trial, qty, buildingCount, tierName, trainTime) {
 }
 
 const _optimizeMemo = new Map();
-function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ, efficiency, foodStrategy) {
+function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ, efficiency, foodStrategy, forcedEarlyEcoTechId) {
   const memoKey = JSON.stringify([
     stages.map(s => [s.line?.id, s.tierIdx, s.buildingCount ?? null, s.goalType || 'sustain', s.qty ?? null, s.combatTechIds ? [...s.combatTechIds].sort() : null]),
-    loomOn, allIn, civ?.id ?? null, efficiency ?? 100, foodStrategy ?? 'berries',
+    loomOn, allIn, civ?.id ?? null, efficiency ?? 100, foodStrategy ?? 'none', forcedEarlyEcoTechId ?? null,
   ]);
   if (_optimizeMemo.has(memoKey)) return _optimizeMemo.get(memoKey);
-  const result = buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficiency ?? 100, foodStrategy);
+  const result = buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficiency ?? 100, foodStrategy, forcedEarlyEcoTechId);
   _optimizeMemo.set(memoKey, result);
   return result;
 }
 
-function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficiency, foodStrategy) {
+function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficiency, foodStrategy, forcedEarlyEcoTechId) {
   const free = freeTechIds(civ);
   const openingSequence = allIn ? null : chooseOpeningSequence(stages, civ, foodStrategy);
   const sortedStages = [...stages].sort((a, b) => ageIndex(a.line.tiers[a.tierIdx].age) - ageIndex(b.line.tiers[b.tierIdx].age));
@@ -4324,6 +4324,30 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     if (stageResults.length === 0 && loomOn && !allIn && !free.has('loom')) {
       const loom = DATA.ecoTechs.find(t => t.id === 'loom');
       extraItems.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age });
+    }
+    // A genuinely alternate path with one specific eco-tech forced in early
+    // (see mostImpactfulSkippedEcoTech's caller) — NOT tacked onto the end
+    // of the already-optimal plan, which a player could always trivially do
+    // themselves; this actually re-runs the search with the tech mandatory
+    // from the start, the same way Loom/combat-tech checkboxes already
+    // work. No separate building-construction item injected here (unlike
+    // combat techs, which need COMBAT_TECH_BUILDING) — an eco-line tech is
+    // only ever offered for a line the composition already gathers (see
+    // relevantEcoLines), so its drop-off building is already on track to
+    // exist via the normal first-villager-assignment reveal regardless.
+    if (stageResults.length === 0 && forcedEarlyEcoTechId && !free.has(forcedEarlyEcoTechId)) {
+      const forced = DATA.ecoTechs.find(t => t.id === forcedEarlyEcoTechId);
+      if (forced) {
+        extraItems.push({ name: forced.name, cost: costForCiv(forced.cost, civ), tcQueue: forced.tcQueue, researchTime: forced.researchTime, queueSeconds: forced.queueSeconds, deferToEnd: true, age: forced.age });
+        // Mark this tier as already-researched for the LATER eco-tech
+        // search (which tracks its own levels[line] independently) — else
+        // it would offer this exact same tier again as a move, researching
+        // it twice.
+        if (forced.line && ecoLineTechs[forced.line]) {
+          const myIdx = ecoLineTechs[forced.line].findIndex(x => x.id === forced.id);
+          if (myIdx >= 0) levels[forced.line] = Math.max(levels[forced.line] || 0, myIdx + 1);
+        }
+      }
     }
     // "With Upgrades" checkboxes (see applicableCombatTechIds/
     // renderCombatTechCheckboxes) — made genuinely mandatory once checked,
@@ -5385,7 +5409,13 @@ function moreProductionBuildingsAlt(prefixStages, stage, civ, loomOn, allIn, eff
 // combinatorial search the way the buildings alternative above is (the
 // rest of the plan's own numbers don't change, since this tech is tacked
 // onto the very end rather than fed back into the search's own economy).
-function mostImpactfulSkippedEcoTech(result, sr, civ) {
+// Finds the single highest-impact eco-tech the winning path passed on, then
+// shows a GENUINE alternate build with it forced in early (re-running the
+// real search, same mechanism Loom/combat-tech checkboxes already use) —
+// NOT tacked onto the end of the already-optimal plan, which a player could
+// always trivially do themselves and isn't a meaningful "alternative path"
+// at all (user's own correction — the earlier version did exactly that).
+function bestEarlyEcoTechAlt(stages, result, sr, civ, loomOn, allIn, efficiency, foodStrategy) {
   if (!sr.techIds) return null;
   // A Villager target's own "tier" is permanently tagged age:'Dark' — real
   // for a small qty (a 9-villager goal genuinely never leaves Dark Age),
@@ -5421,27 +5451,10 @@ function mostImpactfulSkippedEcoTech(result, sr, civ) {
     if (impact > 0.0005 && (!best || impact > best.impact)) best = { tech: t, impact };
   });
   if (!best) return null;
-  const item = { name: best.tech.name, cost: costForCiv(best.tech.cost, civ), tcQueue: best.tech.tcQueue, researchTime: best.tech.researchTime, queueSeconds: best.tech.queueSeconds, age: best.tech.age };
-  const lastCp = result.checkpoints?.[result.checkpoints.length - 1];
-  const pool = lastCp?.pool || { food: 0, wood: 0, gold: 0, stone: 0 };
-  const villRate = result.villRate;
-  // startVills must be the REAL villager count the timeline actually ended
-  // on (lastCp.vills) — sr.totalVillCeil is the abstract steady-state
-  // TARGET, which a realistic-economy run routinely overshoots (documented
-  // elsewhere in this file), so using it here made population visibly
-  // drop in the Step-by-Step table between the real finish and this
-  // synthetic tail. Caught by testing this exact alternative in-browser.
-  const startVills = lastCp?.vills ?? sr.totalVillCeil;
-  const r = simulateItemReady(item, sr.rates, villRate, sr.finishTime, startVills, pool, null, sr.villagers);
-  if (!r) return null;
-  const dur = itemDuration(item);
-  const houses = lastCp?.houses || 0;
-  const startCp = { label: startLabelFor(item), time: Math.max(sr.finishTime, r.time - dur), vills: startVills, houses, alloc: lastCp?.alloc, kind: 'start' };
-  const completeCp = { label: `${item.name} complete`, time: r.time, vills: r.vills, houses, split: r.newVills ? r.assigned : null, alloc: lastCp?.alloc, pool: r.pool, kind: 'tech', itemName: item.name, ageName: null };
-  return {
-    tech: best.tech, extraSeconds: r.time - sr.finishTime,
-    result: { ...result, checkpoints: [...result.checkpoints, startCp, completeCp], finishTime: r.time },
-  };
+  const trial = buildStagedOptimizeTimeline(stages, loomOn, allIn, civ, efficiency, foodStrategy, best.tech.id);
+  const trialLastSr = trial.stageResults?.[trial.stageResults.length - 1];
+  if (trialLastSr?.finishTime == null) return null;
+  return { tech: best.tech, extraSeconds: trialLastSr.finishTime - sr.finishTime, result: trial };
 }
 
 // Which combat techs are real, applicable upgrades for a given unit line —
@@ -5610,7 +5623,7 @@ function renderOptimizeResults() {
     const prefixStages = stages.slice(0, -1);
     const lastStageInput = stages[stages.length - 1];
     moreBuildings = moreProductionBuildingsAlt(prefixStages, lastStageInput, civ, optimizeState.loomOn, optimizeState.allIn, optimizeState.efficiency, lastSr.buildingCount, lastSr.finishTime, optimizeState.foodStrategy);
-    moreEco = mostImpactfulSkippedEcoTech(result, lastSr, civ);
+    moreEco = bestEarlyEcoTechAlt(stages, result, lastSr, civ, optimizeState.loomOn, optimizeState.allIn, optimizeState.efficiency, optimizeState.foodStrategy);
   }
   const activeAlt = optimizeAltView === 'more-buildings' ? moreBuildings
     : optimizeAltView === 'more-eco' ? moreEco
