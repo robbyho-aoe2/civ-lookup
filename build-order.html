@@ -206,8 +206,10 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
       <label class="save-check" style="font-size:12px;"><input type="checkbox" id="optimize-allin"> Prioritize Military (all-in)</label>
       <label class="save-check" style="font-size:12px;">Efficiency <input type="number" id="optimize-efficiency" min="1" max="100" value="85" style="width:48px;padding:3px 5px;font-size:12px;margin-left:4px;">%</label>
     </div>
-    <div style="margin-top:10px;">
-      <label class="save-check" style="font-size:12px;">Deer/Chickens This Game (berries are always assumed) <select id="optimize-food-strategy" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
+    <div style="display:flex;align-items:center;gap:16px;margin-top:10px;flex-wrap:wrap;">
+      <label class="save-check" style="font-size:12px;">Deer (berries always assumed) <select id="optimize-deer-strategy" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
+      <label class="save-check" style="font-size:12px;">Wild Chickens <select id="optimize-chicken-strategy" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
+      <label class="save-check" style="font-size:12px;">Spawn size <select id="optimize-hunt-level" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
     </div>
     <p class="assumptions" style="margin-top:10px;margin-bottom:0;">Off (default): a realistic economy — sheep, then wood, then berries/hunt up to pop 20, no Barracks before Feudal, Loom right before advancing. On: skip all of that and build everything the instant it's affordable, prioritizing the target unit above all else. A later stage REPLACES the earlier one's production once its age is reached, it doesn't run alongside it. Efficiency scales down gather AND villager-training rate together — a rough stand-in for real-play friction (idle time, imperfect pathing, reaction delay) this idealized math otherwise ignores entirely. 100% = no friction; not a researched default, meant to be tuned against real games.</p>
   </div>
@@ -231,7 +233,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.47</div>
+  <div class="version">v0.48</div>
 </div>
 
 <script>
@@ -3263,7 +3265,7 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
           if (eta > worstEta) { worstEta = eta; target = r; }
         });
       }
-      const workerRate = (target === 'food' && openingSequence) ? foodPhaseRateForWorkerIndex(assigned.food, openingSequence.huntRate) : rates[target];
+      const workerRate = (target === 'food' && openingSequence) ? foodPhaseRateForWorkerIndex(assigned.food, openingSequence.huntRate, openingSequence.huntWorkers) : rates[target];
       vills++;
       assigned[target]++;
       assignedRate[target] += workerRate;
@@ -3348,54 +3350,76 @@ const OPENING_SEQUENCE = [
 // player builds a Mill on them regardless), NOT a selectable strategy —
 // user-corrected: the food-source choice below is ADDITIVE (deer/chickens
 // alongside berries, a real map fact plus a playstyle choice on top of it),
-// never a replacement for berries. `huntRate` (null when no hunt/chicken
-// source is being pursued this game) only ever affects a small dedicated
-// block of workers (indices 6-9, matching deer's own real ~4-worker norm);
-// everyone else — including all of index 6+ when no hunt is selected — is
-// on berries, same as before this existed.
-function foodPhaseRateForWorkerIndex(i, huntRate) {
+// never a replacement for berries. `huntRate` (null when neither deer nor
+// chickens are being pursued this game) only ever affects a dedicated block
+// of `huntWorkers` workers (default 4 if not given, matching deer/chicken
+// Mill's own real norm); everyone else — including all of index 6+ when no
+// hunt is selected — is on berries, same as before this existed.
+function foodPhaseRateForWorkerIndex(i, huntRate, huntWorkers) {
   if (i < 2) return DATA.gatherRates.food; // sheep
   if (i < 6) return DATA.arabiaBoarRate; // 2 lured boars, ~4 workers
-  if (huntRate != null && i < 10) return huntRate; // dedicated deer/chicken block, ~4 workers
+  const hw = huntWorkers ?? 4;
+  if (huntRate != null && i < 6 + hw) return huntRate; // dedicated deer/chicken block
   return DATA.arabiaBerryRate; // milled berries — always the baseline for everyone else
 }
-// Real per-villager food/min rates for a deer/wild-chicken source pursued
-// ALONGSIDE the always-on berries Mill, converted to food/sec (÷60) —
-// source: the same current-patch AoE2:DE video, refined with a follow-up
-// chart the user posted directly (deer-map vs. chicken-map rankings) — see
-// [[project_build_order_optimize_mode]] memory for the full table. Deer and
-// wild chickens are a 50/50 roll on Arabia as of this patch (replacing the
-// old fixed-hunt assumption); walk-out rates aren't broken down by count
-// (real play keeps ~2 vills/chicken or ~4 vills/deer regardless of exactly
-// how many are in the group) but mill rates are, since one Mill's fixed
-// 100-wood cost amortizes differently depending on how much total food is
-// behind it. "Funnel" (chickens near a wood line, drop the food off while
-// building a Lumber Camp instead of a Mill) doesn't have its own distinct
-// rate from the source material — treated as the same as walk-out for now,
-// flagged rather than guessed as a genuinely different number.
-const HUNT_STRATEGIES = {
-  'deer-push': 24.2 / 60,
-  'deer-walk': 13.7 / 60,
-  'deer-mill-2': 12.8 / 60,
-  'deer-mill-3': 14.6 / 60,
-  'deer-mill-4': 16.4 / 60,
-  'chicken-walk': 15.5 / 60, // also stands in for "funnel" — see comment above
-  'chicken-mill-6': 14.7 / 60,
-  'chicken-mill-7': 15.5 / 60,
-  'chicken-mill-8': 16.0 / 60,
+// Deer and wild chickens are mutually exclusive on a real Arabia map (a
+// 50/50 roll as of the current patch), but modeled as two INDEPENDENT
+// choices (deerStrategy/chickenStrategy) rather than one combined dropdown
+// — user's own preferred UI shape. Only one is ever expected to be
+// something other than 'none' at a time; if both are somehow set, deer
+// takes priority (see huntRateAndWorkers below) — an edge case, not a real
+// scenario. `level` (2/3/4, shared between deer count and chicken count —
+// they're paired: 2 deer/6 chickens, 3/7, 4/8, matching how generous the
+// map roll was) selects which real number applies; defaults to the lowest
+// (2/6, the "worst case" spawn) per the user's own request — the search
+// should never assume a better-than-guaranteed map roll unless told to.
+// Real per-villager food/min rates, converted to food/sec (÷60) — source:
+// a detailed current-patch AoE2:DE video plus a follow-up chart the user
+// posted directly (deer-map vs. chicken-map rankings) — see
+// [[project_build_order_optimize_mode]] memory for the full table. Push/
+// walk rates aren't broken down by count (real play keeps ~2 vills/chicken
+// or a push crew regardless of exactly how many animals are in the group)
+// but Mill rates are, since one Mill's fixed 100-wood cost amortizes
+// differently depending on how much total food is behind it.
+const DEER_STRATEGIES = {
+  // Push doesn't need a dedicated crew scaled to a fixed norm the way a
+  // Mill does — roughly one pusher per deer actually being worked, so the
+  // block size scales with `level` instead of staying fixed at 4.
+  push: { rate: 24.2 / 60, workers: level => level },
+  mill: { rate: level => ({ 2: 12.8 / 60, 3: 14.6 / 60, 4: 16.4 / 60 }[level]), workers: () => 4 },
 };
-const HUNT_STRATEGY_LABELS = {
-  none: 'None (berries only — default)',
-  'deer-push': 'Deer — push with Scout',
-  'deer-walk': 'Deer — long-carry, no Mill',
-  'deer-mill-2': 'Deer — Mill (2 deer)',
-  'deer-mill-3': 'Deer — Mill (3 deer)',
-  'deer-mill-4': 'Deer — Mill (4 deer)',
-  'chicken-walk': 'Wild Chickens — funnel / long-carry, no Mill',
-  'chicken-mill-6': 'Wild Chickens — Mill (6 chickens)',
-  'chicken-mill-7': 'Wild Chickens — Mill (7 chickens)',
-  'chicken-mill-8': 'Wild Chickens — Mill (8 chickens)',
+// `level` is shared with deer (2/3/4) — converted to the matching real
+// chicken count (6/7/8, i.e. level+4) for the Mill rate lookup.
+const CHICKEN_STRATEGIES = {
+  mill: { rate: level => ({ 2: 14.7 / 60, 3: 15.5 / 60, 4: 16.0 / 60 }[level]), workers: () => 4 },
+  walk: { rate: () => 15.5 / 60, workers: () => 2 },
+  // "Funnel" (walk the live chickens under the TC instead of building a
+  // Mill — a real, distinct technique per the user, NOT the same as long-
+  // carrying dead ones) has no researched rate anywhere in the source
+  // material — user explicitly said to estimate: ~10 wood (vs a Mill's
+  // 100) for "less decay" comparable to a Mill's own efficiency, so this
+  // uses the same count's Mill RATE as the estimate while (elsewhere, see
+  // FUNNEL_WOOD_COST) charging far less to get it. Flagged as an estimate,
+  // not a researched number — revisit if a real figure ever surfaces.
+  funnel: { rate: level => ({ 2: 14.7 / 60, 3: 15.5 / 60, 4: 16.0 / 60 }[level]), workers: () => 2 },
 };
+const FUNNEL_WOOD_COST = 10; // vs a Mill's 100 — user estimate, not researched
+const DEER_STRATEGY_LABELS = { none: "Don't take", push: 'Push with Scout', mill: 'Mill' };
+const CHICKEN_STRATEGY_LABELS = { none: "Don't take", mill: 'Mill', walk: 'Long-carry (no Mill)', funnel: 'Funnel under TC (~10 wood, no Mill)' };
+// Resolves the two independent dropdowns + shared level into the one
+// {rate, workers} the opening sequence actually needs — deer takes
+// priority in the (unreal) case both are somehow set at once.
+function huntRateAndWorkers(deerStrategy, chickenStrategy, level) {
+  if (deerStrategy && deerStrategy !== 'none') {
+    const s = DEER_STRATEGIES[deerStrategy];
+    return s ? { rate: typeof s.rate === 'function' ? s.rate(level) : s.rate, workers: s.workers(level) } : null;
+  }
+  if (chickenStrategy && chickenStrategy !== 'none') {
+    const s = CHICKEN_STRATEGIES[chickenStrategy];
+    return s ? { rate: typeof s.rate === 'function' ? s.rate(level) : s.rate, workers: s.workers(level) } : null;
+  }
+  return null;
+}
 // The villager count (0-indexed, matching a sequence's own indexing) at
 // which the scripted opening first sends a NEW villager to food after the
 // sheep sub-phase ends — i.e. the point a Mill is actually needed (sheep are
@@ -3436,17 +3460,19 @@ BG_STONE_SEQUENCE.millIndex = openingMillIndex(BG_STONE_SEQUENCE);
 // Only worth the extra 3 scripted slots when the plan actually needs a
 // stone-costing building somewhere (Castle, currently the only one) — every
 // other target keeps the plain OPENING_SEQUENCE, byte-for-byte unchanged.
-function chooseOpeningSequence(stages, civ, foodStrategy) {
+function chooseOpeningSequence(stages, civ, huntConfig) {
   const needsStone = stages.some(s => buildingChainItems(s.line.building, civ, new Set()).some(it => (it.cost?.stone || 0) > 0));
   const base = needsStone ? BG_STONE_SEQUENCE : OPENING_SEQUENCE;
   // A shallow copy, not the shared module-level constant directly — every
-  // call can have its own `foodStrategy`, and mutating the constant itself
+  // call can have its own `huntConfig`, and mutating the constant itself
   // would leak one call's choice into every other call sharing the same
   // base sequence (this function's own memoized caller runs many of these
   // back to back with different strategies).
   const seq = [...base];
   seq.millIndex = base.millIndex;
-  seq.huntRate = foodStrategy && foodStrategy !== 'none' ? HUNT_STRATEGIES[foodStrategy] : undefined;
+  const hunt = huntConfig ? huntRateAndWorkers(huntConfig.deer, huntConfig.chicken, huntConfig.level) : null;
+  seq.huntRate = hunt?.rate;
+  seq.huntWorkers = hunt?.workers;
   return seq;
 }
 
@@ -5352,7 +5378,7 @@ function renderVillagerBars(villagers, rates, totalIncome, farmUpkeepWoodPerSec,
 // theoretical max gather/training rate (idle time, imperfect pathing,
 // reaction delay), and this model had no way to account for that at all.
 // Not a researched number — meant to be tuned down from real games.
-let optimizeState = { stages: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }], loomOn: true, allIn: false, efficiency: 85, foodStrategy: 'none' };
+let optimizeState = { stages: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }], loomOn: true, allIn: false, efficiency: 85, foodStrategy: { deer: 'none', chicken: 'none', level: 2 } };
 // Pure UI/display state, not part of the plan itself — which buildingCount
 // alternative (if any) the last stage's tabs are currently showing instead
 // of the recommended pick. Reset to null (back to the real pick) whenever
@@ -5854,10 +5880,28 @@ document.getElementById('optimize-efficiency').addEventListener('input', e => {
   window.__efficiencyDebounce = setTimeout(renderOptimizeResults, 400);
 });
 {
-  const sel = document.getElementById('optimize-food-strategy');
-  sel.innerHTML = Object.entries(HUNT_STRATEGY_LABELS).map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
-  sel.addEventListener('change', e => {
-    optimizeState.foodStrategy = e.target.value;
+  const deerSel = document.getElementById('optimize-deer-strategy');
+  const chickenSel = document.getElementById('optimize-chicken-strategy');
+  const levelSel = document.getElementById('optimize-hunt-level');
+  deerSel.innerHTML = Object.entries(DEER_STRATEGY_LABELS).map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
+  chickenSel.innerHTML = Object.entries(CHICKEN_STRATEGY_LABELS).map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
+  // Level is shared (deer count / chicken count are paired real spawns —
+  // 2/6, 3/7, 4/8) and defaults to the lowest, worst-case roll — user's own
+  // explicit request: never assume a better-than-guaranteed map generosity
+  // unless the user opts into it.
+  levelSel.innerHTML = [2, 3, 4].map(lv => `<option value="${lv}">${lv} deer / ${lv + 4} chickens</option>`).join('');
+  deerSel.addEventListener('change', e => {
+    optimizeState.foodStrategy.deer = e.target.value;
+    optimizeAltView = null;
+    renderOptimizeResults();
+  });
+  chickenSel.addEventListener('change', e => {
+    optimizeState.foodStrategy.chicken = e.target.value;
+    optimizeAltView = null;
+    renderOptimizeResults();
+  });
+  levelSel.addEventListener('change', e => {
+    optimizeState.foodStrategy.level = Number(e.target.value);
     optimizeAltView = null;
     renderOptimizeResults();
   });
@@ -5918,7 +5962,9 @@ function setMode(mode) {
     document.getElementById('optimize-loom').checked = optimizeState.loomOn;
     document.getElementById('optimize-allin').checked = optimizeState.allIn;
     document.getElementById('optimize-efficiency').value = optimizeState.efficiency;
-    document.getElementById('optimize-food-strategy').value = optimizeState.foodStrategy;
+    document.getElementById('optimize-deer-strategy').value = optimizeState.foodStrategy.deer;
+    document.getElementById('optimize-chicken-strategy').value = optimizeState.foodStrategy.chicken;
+    document.getElementById('optimize-hunt-level').value = optimizeState.foodStrategy.level;
   }
   renderCivBonusList();
   renderCurrentModeResults();
