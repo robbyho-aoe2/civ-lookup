@@ -228,7 +228,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.36</div>
+  <div class="version">v0.37</div>
 </div>
 
 <script>
@@ -3837,7 +3837,15 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
   // opening/prime logic, just not scoped to one composition's income. ──
   const { hasNoHouses, housePopSpace } = computeTotalIncome([], civ, free);
   const cumAlloc = { food: 0, wood: 0, gold: 0, stone: 0 };
-  const startVills = 3;
+  // Chinese (+3) and Mayans (+1) start with more villagers than the
+  // standard 3 — not a separate pop-space stat, just more bodies against
+  // the same shared starting pop cap, so they need a House sooner relative
+  // to their villager count (via the existing houseBaseline formula below,
+  // now correctly seeded from their real starting count). Conveniently,
+  // OPENING_SEQUENCE's first 6 slots are already all 'food' (the sheep
+  // sub-phase), so Chinese's extra 3 villagers land on real starting sheep
+  // exactly as they would in the actual game, with no special-casing needed.
+  const startVills = 3 + ((civ?.ecoBonuses || []).find(b => b.type === 'starting-resources')?.villagerDelta || 0);
   for (let i = 0; i < startVills; i++) cumAlloc[OPENING_SEQUENCE[i] || 'food']++;
   const builtResources = initialBuiltState(civ);
   const startBuildNotes = [];
