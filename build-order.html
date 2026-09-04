@@ -228,7 +228,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.33</div>
+  <div class="version">v0.34</div>
 </div>
 
 <script>
@@ -4274,10 +4274,21 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // default, realistic-economy pacing).
       const villRate = cur.trainingPaused ? 0 : villRateFor(cur.tcExtra);
 
+      // A tech gated to e.g. Castle Age can't be researched before that age
+      // is actually reached — cost/queue-time affordability alone (what
+      // simulateItemReady checks) isn't enough, real AoE2 locks the tech
+      // tree by era. Non-Villager lines have a fixed effective age for their
+      // whole search (the mandatory prefix above already reached whatever
+      // the target needs, and never changes mid-search); a Villager line's
+      // effective age bumps to requiredExtraTcAgeIdx once its own age-up
+      // move has been taken (cur.ageAdvanced), matching the same age that
+      // move's own gating gate gates.
+      const effectiveAgeIdx = Math.max(reachedAgeIdx, (line.isVillager && cur.ageAdvanced) ? requiredExtraTcAgeIdx : -Infinity);
       relevantLines.forEach(id => {
         const chain = ecoLineTechs[id];
         if (cur.levels[id] >= chain.length) return;
         const tech = chain[cur.levels[id]];
+        if (ageIndex(tech.age) > effectiveAgeIdx) return;
         const item = { name: tech.name, cost: costForCiv(tech.cost, civ), tcQueue: tech.tcQueue, researchTime: tech.researchTime, queueSeconds: tech.queueSeconds, age: tech.age };
         const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc);
         if (!r) return;
