@@ -228,7 +228,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.37</div>
+  <div class="version">v0.38</div>
 </div>
 
 <script>
@@ -789,7 +789,9 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "building-cost-pct", "building": "Town Center", "resource": "stone", "value": 50, "note": "Town Centers cost -50% stone" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -1353,6 +1355,13 @@ const DATA = {
           "type": "house-pop-space",
           "value": 10,
           "note": "Houses and Settlements provide +10 population space instead of the usual +5"
+        },
+        {
+          "type": "building-cost-pct",
+          "building": "all",
+          "resource": "stone",
+          "value": 15,
+          "note": "Buildings cost -15% stone"
         }
       ],
       "unavailableUnitLines": [
@@ -1720,6 +1729,13 @@ const DATA = {
           "type": "pct",
           "value": 10,
           "note": "Villagers drop off 10% more gold"
+        },
+        {
+          "type": "building-cost-pct",
+          "building": "all",
+          "resource": "wood",
+          "value": 15,
+          "note": "Buildings cost -15% wood"
         }
       ],
       "unavailableUnitLines": [
@@ -2946,13 +2962,23 @@ function startingPoolForCiv(civ) {
   return pool;
 }
 
-function costForCiv(cost, civ) {
+// `buildingName`, when passed, additionally applies any `building-cost-pct`
+// bonus scoped to that building (by exact name, or `building:'all'` for a
+// blanket discount like Malians'/Incas') — optionally narrowed to one
+// `resource` (Bulgarians' Town Centers, stone only) and/or gated to not
+// apply before an `age` is reached (Britons' Town Centers, Castle Age+).
+// Only building-construction call sites pass this; tech/unit-upgrade costs
+// (which never pass a buildingName) are unaffected.
+function costForCiv(cost, civ, buildingName) {
   const out = { ...cost };
   (civ?.ecoBonuses || []).forEach(b => {
     if (b.type === 'flat' && out[b.resource] != null) {
       out[b.resource] = Math.max(0, out[b.resource] - b.value);
     } else if (b.type === 'pct-cost') {
       RES.forEach(r => { out[r] = out[r] * (1 - b.value / 100); });
+    } else if (b.type === 'building-cost-pct' && buildingName && (b.building === 'all' || b.building === buildingName)) {
+      const resources = b.resource ? [b.resource] : RES;
+      resources.forEach(r => { if (out[r]) out[r] = Math.round(out[r] * (1 - b.value / 100)); });
     }
   });
   return out;
@@ -3095,7 +3121,7 @@ function buildingChainItems(buildingName, civ, haveSet) {
   const def = buildingName === 'Castle' ? DATA.castle : DATA.productionBuildings[buildingName];
   if (!def) return [];
   haveSet.add(buildingName);
-  return [{ name: buildingName, cost: costForCiv(def.cost, civ), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(buildingName)), age: def.minAge }];
+  return [{ name: buildingName, cost: costForCiv(def.cost, civ, buildingName), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(buildingName)), age: def.minAge }];
 }
 
 // Simulates constant villager production: new villagers are born at a fixed
@@ -3684,7 +3710,7 @@ function stageMandatoryItems(stage, civ, allIn, haveSet, fromAgeIdx, extraItems)
       // ONE buildTimeSeconds floor) instead of N separate sequential items,
       // matching how runSequential already merges simultaneous deferred
       // items elsewhere (summed cost, MAX queueSeconds, never summed).
-      const perCost = costForCiv(def.cost, civ);
+      const perCost = costForCiv(def.cost, civ, line.building);
       const extra = {
         name: line.building,
         cost: RES.reduce((c, r) => { c[r] = (perCost[r] || 0) * extraCount; return c; }, {}),
@@ -3717,7 +3743,7 @@ function stageMandatoryItems(stage, civ, allIn, haveSet, fromAgeIdx, extraItems)
     if (ageIndex(age) > targetAgeIdx || ageIndex(age) <= fromAgeIdx) return;
     fillerBuildingsNeeded(age, civ, baselineVillagers, haveSet).forEach(name => {
       const def = DATA.productionBuildings[name];
-      const item = { name, cost: costForCiv(def.cost, civ), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name)), age: def.minAge };
+      const item = { name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name)), age: def.minAge };
       deferIfEarly(item);
       items.push(item);
     });
@@ -4381,7 +4407,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           if (ageIndex(age) > requiredExtraTcAgeIdx || ageIndex(age) <= reachedAgeIdx) return;
           fillerBuildingsNeeded(age, civ, genericVillagers, scratchHaveSet).forEach(name => {
             const def = DATA.productionBuildings[name];
-            fillerItems.push({ name, cost: costForCiv(def.cost, civ), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name)), age: def.minAge, deferToEnd: true });
+            fillerItems.push({ name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name)), age: def.minAge, deferToEnd: true });
           });
         });
         const ageItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], AGE_ORDER[requiredExtraTcAgeIdx], civ));
@@ -4415,7 +4441,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         // targets keep the original one-at-a-time move (loop just runs
         // once).
         const maxParallelTc = line.isVillager ? MAX_PARALLEL_TC : 1;
-        const perCost = costForCiv(DATA.townCenter.cost, civ);
+        const perCost = costForCiv(DATA.townCenter.cost, civ, 'Town Center');
         for (let k = 1; k <= maxParallelTc && cur.tcExtra + k <= tcExtraCap; k++) {
           const item = {
             name: k === 1 ? 'Town Center' : `${k}x Town Center`,
@@ -4715,7 +4741,7 @@ function fillerBuildingsNeeded(targetAge, civ, villagers, haveSet) {
   const req = DATA.ageUpBuildingReqs[targetAge];
   if (!req) return [];
   let short = req.count - qualifyingBuildingCount(targetAge, civ, haveSet, villagers);
-  const totalCost = name => RES.reduce((s, r) => s + (costForCiv(DATA.productionBuildings[name].cost, civ)[r] || 0), 0);
+  const totalCost = name => RES.reduce((s, r) => s + (costForCiv(DATA.productionBuildings[name].cost, civ, name)[r] || 0), 0);
   const candidates = (FILLER_BUILDING_CANDIDATES[targetAge] || [])
     .filter(name => !haveSet.has(name))
     .sort((a, b) => totalCost(a) - totalCost(b));
