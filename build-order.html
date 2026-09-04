@@ -231,7 +231,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.44</div>
+  <div class="version">v0.45</div>
 </div>
 
 <script>
@@ -5385,9 +5385,20 @@ function mostImpactfulSkippedEcoTech(result, sr, civ) {
     ? Math.max(ageIndex('Dark'), sr.tcCount > 1 ? ageIndex('Castle') : 0,
         ...[...sr.techIds].map(id => { const t = DATA.ecoTechs.find(e => e.id === id); return t ? ageIndex(t.age) : 0; }))
     : ageIndex(effectiveTierAge(sr.line.tiers[sr.tierIdx], civ));
+  // A tech isn't reachable at all if it's further down its own tiered line
+  // than `techIds` has actually gotten (Hand Cart needs Wheelbarrow first,
+  // same as the real search's own level-index gating) — this loop iterates
+  // every ecoTech flatly, so without this check it could suggest Hand Cart
+  // as the "best" skip even when Wheelbarrow was never researched.
+  const reachable = t => {
+    const chain = t.line ? ecoLineTechs[t.line] : null;
+    if (!chain) return true; // not one of the 5 gather-rate lines this gate applies to (e.g. a combat-tech line)
+    const myIdx = chain.findIndex(x => x.id === t.id);
+    return myIdx <= 0 || chain.slice(0, myIdx).every(prior => sr.techIds.has(prior.id));
+  };
   let best = null;
   DATA.ecoTechs.forEach(t => {
-    if (sr.techIds.has(t.id) || ageIndex(t.age) > targetAgeIdx) return;
+    if (sr.techIds.has(t.id) || ageIndex(t.age) > targetAgeIdx || !reachable(t)) return;
     const withT = new Set(sr.techIds).add(t.id);
     const resources = t.bonusByResource ? Object.keys(t.bonusByResource) : [t.resource];
     let impact = 0;
