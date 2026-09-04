@@ -207,7 +207,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
       <label class="save-check" style="font-size:12px;">Efficiency <input type="number" id="optimize-efficiency" min="1" max="100" value="85" style="width:48px;padding:3px 5px;font-size:12px;margin-left:4px;">%</label>
     </div>
     <div style="margin-top:10px;">
-      <label class="save-check" style="font-size:12px;">Food Source (after sheep + boar) <select id="optimize-food-strategy" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
+      <label class="save-check" style="font-size:12px;">Deer/Chickens This Game (berries are always assumed) <select id="optimize-food-strategy" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
     </div>
     <p class="assumptions" style="margin-top:10px;margin-bottom:0;">Off (default): a realistic economy — sheep, then wood, then berries/hunt up to pop 20, no Barracks before Feudal, Loom right before advancing. On: skip all of that and build everything the instant it's affordable, prioritizing the target unit above all else. A later stage REPLACES the earlier one's production once its age is reached, it doesn't run alongside it. Efficiency scales down gather AND villager-training rate together — a rough stand-in for real-play friction (idle time, imperfect pathing, reaction delay) this idealized math otherwise ignores entirely. 100% = no friction; not a researched default, meant to be tuned against real games.</p>
   </div>
@@ -231,7 +231,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.45</div>
+  <div class="version">v0.46</div>
 </div>
 
 <script>
@@ -3263,7 +3263,7 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
           if (eta > worstEta) { worstEta = eta; target = r; }
         });
       }
-      const workerRate = (target === 'food' && openingSequence) ? foodPhaseRateForWorkerIndex(assigned.food, openingSequence.postBoarRate) : rates[target];
+      const workerRate = (target === 'food' && openingSequence) ? foodPhaseRateForWorkerIndex(assigned.food, openingSequence.huntRate) : rates[target];
       vills++;
       assigned[target]++;
       assignedRate[target] += workerRate;
@@ -3344,42 +3344,54 @@ const OPENING_SEQUENCE = [
 // gets modeled moving on to farms once their own source is worked out,
 // which slightly over/undershoots a VERY long call, but matches how short
 // this scripted window already is (bounded by OPENING_SEQUENCE.length).
-function foodPhaseRateForWorkerIndex(i, postBoarRate) {
+// Berries are an always-on baseline (same footing as sheep/boar — a real
+// player builds a Mill on them regardless), NOT a selectable strategy —
+// user-corrected: the food-source choice below is ADDITIVE (deer/chickens
+// alongside berries, a real map fact plus a playstyle choice on top of it),
+// never a replacement for berries. `huntRate` (null when no hunt/chicken
+// source is being pursued this game) only ever affects a small dedicated
+// block of workers (indices 6-9, matching deer's own real ~4-worker norm);
+// everyone else — including all of index 6+ when no hunt is selected — is
+// on berries, same as before this existed.
+function foodPhaseRateForWorkerIndex(i, huntRate) {
   if (i < 2) return DATA.gatherRates.food; // sheep
   if (i < 6) return DATA.arabiaBoarRate; // 2 lured boars, ~4 workers
-  return postBoarRate ?? DATA.arabiaBerryRate; // configurable — berries by default
+  if (huntRate != null && i < 10) return huntRate; // dedicated deer/chicken block, ~4 workers
+  return DATA.arabiaBerryRate; // milled berries — always the baseline for everyone else
 }
-// Real per-villager food/min rates for everything past the 2-sheep+4-boar
-// window, converted to food/sec (÷60) — source: the same current-patch
-// AoE2:DE video, refined with a follow-up chart the user posted directly
-// (deer-map vs. chicken-map rankings) — see
+// Real per-villager food/min rates for a deer/wild-chicken source pursued
+// ALONGSIDE the always-on berries Mill, converted to food/sec (÷60) —
+// source: the same current-patch AoE2:DE video, refined with a follow-up
+// chart the user posted directly (deer-map vs. chicken-map rankings) — see
 // [[project_build_order_optimize_mode]] memory for the full table. Deer and
 // wild chickens are a 50/50 roll on Arabia as of this patch (replacing the
 // old fixed-hunt assumption); walk-out rates aren't broken down by count
 // (real play keeps ~2 vills/chicken or ~4 vills/deer regardless of exactly
 // how many are in the group) but mill rates are, since one Mill's fixed
 // 100-wood cost amortizes differently depending on how much total food is
-// behind it.
-const ARABIA_FOOD_STRATEGIES = {
-  berries: DATA.arabiaBerryRate,
+// behind it. "Funnel" (chickens near a wood line, drop the food off while
+// building a Lumber Camp instead of a Mill) doesn't have its own distinct
+// rate from the source material — treated as the same as walk-out for now,
+// flagged rather than guessed as a genuinely different number.
+const HUNT_STRATEGIES = {
   'deer-push': 24.2 / 60,
   'deer-walk': 13.7 / 60,
   'deer-mill-2': 12.8 / 60,
   'deer-mill-3': 14.6 / 60,
   'deer-mill-4': 16.4 / 60,
-  'chicken-walk': 15.5 / 60,
+  'chicken-walk': 15.5 / 60, // also stands in for "funnel" — see comment above
   'chicken-mill-6': 14.7 / 60,
   'chicken-mill-7': 15.5 / 60,
   'chicken-mill-8': 16.0 / 60,
 };
-const ARABIA_FOOD_STRATEGY_LABELS = {
-  berries: 'Berries only (default)',
+const HUNT_STRATEGY_LABELS = {
+  none: 'None (berries only — default)',
   'deer-push': 'Deer — push with Scout',
-  'deer-walk': 'Deer — walk out, no Mill',
+  'deer-walk': 'Deer — long-carry, no Mill',
   'deer-mill-2': 'Deer — Mill (2 deer)',
   'deer-mill-3': 'Deer — Mill (3 deer)',
   'deer-mill-4': 'Deer — Mill (4 deer)',
-  'chicken-walk': 'Wild Chickens — walk out, no Mill',
+  'chicken-walk': 'Wild Chickens — funnel / long-carry, no Mill',
   'chicken-mill-6': 'Wild Chickens — Mill (6 chickens)',
   'chicken-mill-7': 'Wild Chickens — Mill (7 chickens)',
   'chicken-mill-8': 'Wild Chickens — Mill (8 chickens)',
@@ -3434,7 +3446,7 @@ function chooseOpeningSequence(stages, civ, foodStrategy) {
   // back to back with different strategies).
   const seq = [...base];
   seq.millIndex = base.millIndex;
-  seq.postBoarRate = foodStrategy ? ARABIA_FOOD_STRATEGIES[foodStrategy] : undefined;
+  seq.huntRate = foodStrategy && foodStrategy !== 'none' ? HUNT_STRATEGIES[foodStrategy] : undefined;
   return seq;
 }
 
@@ -5316,7 +5328,7 @@ function renderVillagerBars(villagers, rates, totalIncome, farmUpkeepWoodPerSec,
 // theoretical max gather/training rate (idle time, imperfect pathing,
 // reaction delay), and this model had no way to account for that at all.
 // Not a researched number — meant to be tuned down from real games.
-let optimizeState = { stages: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }], loomOn: true, allIn: false, efficiency: 85, foodStrategy: 'berries' };
+let optimizeState = { stages: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }], loomOn: true, allIn: false, efficiency: 85, foodStrategy: 'none' };
 // Pure UI/display state, not part of the plan itself — which buildingCount
 // alternative (if any) the last stage's tabs are currently showing instead
 // of the recommended pick. Reset to null (back to the real pick) whenever
@@ -5830,7 +5842,7 @@ document.getElementById('optimize-efficiency').addEventListener('input', e => {
 });
 {
   const sel = document.getElementById('optimize-food-strategy');
-  sel.innerHTML = Object.entries(ARABIA_FOOD_STRATEGY_LABELS).map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
+  sel.innerHTML = Object.entries(HUNT_STRATEGY_LABELS).map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
   sel.addEventListener('change', e => {
     optimizeState.foodStrategy = e.target.value;
     optimizeAltView = null;
