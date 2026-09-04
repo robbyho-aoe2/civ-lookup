@@ -228,7 +228,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.40</div>
+  <div class="version">v0.41</div>
 </div>
 
 <script>
@@ -237,6 +237,23 @@ const DATA = {
   // Verified against current AoE2:DE game data (Update 177723) — see
   // dataSourceNotes below for confidence levels and known gaps.
   gatherRates: { wood: 0.32, food: 0.33, gold: 0.30, stone: 0.30 },
+  // Real early-food-source rates on Arabia (source: a detailed current-patch
+  // AoE2:DE analysis video the user provided 2026-09-04 — see
+  // [[project_build_order_optimize_mode]] memory for the full sourcing and
+  // the fuller phase table). Already-effective rates (net of real decay/walk
+  // time/Mill-cost amortization), food per second per villager:
+  // - Sheep: matches the flat `gatherRates.food` above already (~19.8/min,
+  //   coincidentally close to real sheep) — no separate constant needed.
+  // - 2 lured boars (gathered like sheep, no Mill): ~22 food/min/vill.
+  // - Berries with a Mill (standard play): ~15 food/min/vill, already netting
+  //   out the Mill's 100 wood cost.
+  // Used by `foodPhaseRateForWorkerIndex` below to give the scripted
+  // opening's early food-assigned villagers their real, phase-specific rate
+  // instead of the flat generic one — deer/wild-chickens (a 50/50 roll on
+  // Arabia as of the same patch) aren't modeled yet, tracked as follow-up
+  // work in the same memory entry.
+  arabiaBoarRate: 22 / 60,
+  arabiaBerryRate: 15 / 60,
   villager: { cost:{food:50,wood:0,gold:0,stone:0}, trainTime:25 },
   farmBuildCost: 60, // wood — standard across editions, a farm needs rebuilding once its yield is used up
   campCosts: { mill: 100, miningCamp: 100, lumberCamp: 100 }, // wood — one-time; Japanese -50%, Incas' Settlement replaces all three (see civ ecoBonuses)
@@ -3200,6 +3217,15 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
   const villagerFoodDrainPerSec = villRate * DATA.villager.cost.food;
 
   const assigned = { food: 0, wood: 0, gold: 0, stone: 0 };
+  // Sum of each worker's OWN gather rate, as opposed to `assigned[r] *
+  // rates[r]` (which assumes every worker on a resource shares one flat
+  // rate) — needed because the scripted opening's early food workers get
+  // real, phase-specific rates (sheep/boar/berries, see
+  // foodPhaseRateForWorkerIndex) instead of one blended "food" number.
+  // Defaults to the flat rate for every worker outside that scripted
+  // window, so this is a no-op everywhere else (wood/gold/stone, and food
+  // once past the opening).
+  const assignedRate = { food: 0, wood: 0, gold: 0, stone: 0 };
   // The moment each resource FIRST gets a villager assigned to it during
   // this call — lets a caller show "villagers start gathering X" as its own
   // step at the time it actually happened, rather than lumped in with
@@ -3234,8 +3260,10 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
           if (eta > worstEta) { worstEta = eta; target = r; }
         });
       }
+      const workerRate = (target === 'food' && openingSequence) ? foodPhaseRateForWorkerIndex(assigned.food) : rates[target];
       vills++;
       assigned[target]++;
+      assignedRate[target] += workerRate;
       if (!(target in firstAssignedAt)) firstAssignedAt[target] = t;
       nextBirth += 1 / villRate;
     }
@@ -3247,8 +3275,12 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
       // villagers existed for funding purposes. No upkeep debit paired with
       // this credit (see build-order.html plan history) — new-birth income
       // isn't debited for upkeep either today, so this keeps both consistent.
-      const workers = (existingAlloc?.[r] || 0) + assigned[r];
-      if (workers) saved[r] += workers * rates[r] * dt;
+      // Existing workers use the flat rate (they predate this call's own
+      // phase-specific assignment); new-birth workers use their own frozen
+      // per-worker rate (assignedRate), which equals assigned[r]*rates[r]
+      // whenever no phase-specific rate applies.
+      const existingWorkers = existingAlloc?.[r] || 0;
+      if (existingWorkers || assigned[r]) saved[r] += (existingWorkers * rates[r] + assignedRate[r]) * dt;
     });
     saved.food -= villagerFoodDrainPerSec * dt;
     if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) {
@@ -3292,10 +3324,28 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
 // toggle is on (passed as null, i.e. skipped entirely, in all-in/rush mode
 // — see buildStagedOptimizeTimeline) and only while starting in Dark Age.
 const OPENING_SEQUENCE = [
-  'food', 'food', 'food', 'food', 'food', 'food', // 6 on sheep
+  'food', 'food', 'food', 'food', 'food', 'food', // 2 on sheep, then 4 on lured boar (see foodPhaseRateForWorkerIndex — same 'food' label, different real rate)
   'wood', 'wood', 'wood', // 2-3 on wood
-  'food', 'food', 'food', 'food', 'food', 'food', 'food', 'food', 'food', 'food', // berries/hunt until pop 20
+  'food', 'food', 'food', 'food', 'food', 'food', 'food', 'food', 'food', 'food', // berries (milled) until pop 20
 ];
+// Real per-worker food rate for the Nth food-typed villager this call has
+// assigned so far (0-indexed, matching `assigned.food`'s count BEFORE
+// incrementing) — NOT the raw OPENING_SEQUENCE array index, so this stays
+// correct through BG_STONE_SEQUENCE's inserted stone slots too, since those
+// don't touch the food count. Encodes the real Arabia phase order (2 sheep,
+// then 4 workers on 2 lured boars, then everyone else on milled berries)
+// with each phase's own real effective rate — see the `gatherRates` comment
+// above for sourcing. Frozen per worker at assignment time, same
+// simplification the rest of the scripted opening already makes (a wood-
+// assigned villager stays on wood for the whole call too) — a worker never
+// gets modeled moving on to farms once their own source is worked out,
+// which slightly over/undershoots a VERY long call, but matches how short
+// this scripted window already is (bounded by OPENING_SEQUENCE.length).
+function foodPhaseRateForWorkerIndex(i) {
+  if (i < 2) return DATA.gatherRates.food; // sheep
+  if (i < 6) return DATA.arabiaBoarRate; // 2 lured boars, ~4 workers
+  return DATA.arabiaBerryRate; // milled berries, everyone else
+}
 // The villager count (0-indexed, matching a sequence's own indexing) at
 // which the scripted opening first sends a NEW villager to food after the
 // sheep sub-phase ends — i.e. the point a Mill is actually needed (sheep are
