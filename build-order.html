@@ -198,9 +198,12 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 
   <div class="card" data-mode-only="optimize">
     <h2>Optimize For</h2>
-    <p class="desc">Pick a unit to constantly produce, and this finds the fastest path there — automatically deciding which economy upgrades and extra Town Centers are worth it along the way. Add a stage to plan a transition instead — e.g. Scout Cavalry in Feudal, switching to Knights once Castle hits.</p>
+    <p class="desc">Pick a unit to constantly produce, and this finds the fastest path there — automatically deciding which economy upgrades and extra Town Centers are worth it along the way. Add a stage to plan a transition instead — e.g. Scout Cavalry in Feudal, switching to Knights once Castle hits. Add a unit to train it alongside the last stage's own unit, concurrently, instead of switching to it.</p>
     <div id="optimize-stages"></div>
-    <button type="button" id="optimize-add-stage" style="min-width:0;padding:8px 12px;font-size:12px;margin-top:4px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text2);font-family:inherit;cursor:pointer;">+ Add Stage</button>
+    <div style="display:flex;gap:8px;">
+      <button type="button" id="optimize-add-stage" style="min-width:0;padding:8px 12px;font-size:12px;margin-top:4px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text2);font-family:inherit;cursor:pointer;">+ Add Stage</button>
+      <button type="button" id="optimize-add-unit" style="min-width:0;padding:8px 12px;font-size:12px;margin-top:4px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text2);font-family:inherit;cursor:pointer;">+ Add Unit</button>
+    </div>
     <div style="display:flex;align-items:center;gap:24px;margin-top:16px;flex-wrap:wrap;">
       <label class="save-check" style="font-size:12px;"><input type="checkbox" id="optimize-loom" checked> Research Loom</label>
       <label class="save-check" style="font-size:12px;"><input type="checkbox" id="optimize-allin"> Prioritize Military (all-in)</label>
@@ -234,7 +237,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.55</div>
+  <div class="version">v0.56</div>
 </div>
 
 <script>
@@ -3505,7 +3508,7 @@ BG_STONE_SEQUENCE.millIndex = openingMillIndex(BG_STONE_SEQUENCE);
 // stone-costing building somewhere (Castle, currently the only one) — every
 // other target keeps the plain OPENING_SEQUENCE, byte-for-byte unchanged.
 function chooseOpeningSequence(stages, civ, huntConfig) {
-  const needsStone = stages.some(s => buildingChainItems(s.line.building, civ, new Set()).some(it => (it.cost?.stone || 0) > 0));
+  const needsStone = stages.some(s => s.units.some(u => buildingChainItems(u.line.building, civ, new Set()).some(it => (it.cost?.stone || 0) > 0)));
   const base = needsStone ? BG_STONE_SEQUENCE : OPENING_SEQUENCE;
   // A shallow copy, not the shared module-level constant directly — every
   // call can have its own `huntConfig`, and mutating the constant itself
@@ -3900,73 +3903,86 @@ const MAX_EXTRA_BUILDINGS = 5;
 // military" toggle) is on, in which case the whole realistic-economy
 // framing is skipped and everything is built the moment it's affordable,
 // same as before this behavior existed.
-function stageMandatoryItems(stage, civ, allIn, haveSet, fromAgeIdx, extraItems) {
-  const { line, tierIdx, buildingCount } = stage;
-  const targetAgeIdx = ageIndex(effectiveTierAge(line.tiers[tierIdx], civ));
+// `targets` is an array of {line, tierIdx, buildingCount} — normally one,
+// but a multi-unit stage ("Add Unit" — several units trained/upgraded
+// CONCURRENTLY within one stage, as opposed to "Add Stage"'s strictly
+// sequential later stages) passes several, all folded into ONE combined
+// mandatory-item list sharing one set of age-up transitions rather than
+// duplicating them per unit. Each target's own building/tier-upgrade
+// requirements are resolved independently (in array order) against the
+// SAME shared `haveSet`, so two targets sharing one building (e.g. two
+// Barracks lines) correctly end up needing only the max of their own
+// buildingCounts, not each paying for it separately.
+function stageMandatoryItems(targets, civ, allIn, haveSet, fromAgeIdx, extraItems) {
+  const targetAgeIdx = Math.max(...targets.map(({ line, tierIdx }) => ageIndex(effectiveTierAge(line.tiers[tierIdx], civ))));
   const deferIfEarly = it => { if (!allIn && ageIndex(it.age) < targetAgeIdx) it.deferToEnd = true; };
   const items = [...extraItems];
 
-  const buildingItems = buildingChainItems(line.building, civ, haveSet);
-  // buildingChainItems only ever returns a building the FIRST time it's
-  // added anywhere in the whole plan (haveSet dedups by name across
-  // stages) — so every item it just returned, including any prerequisite
-  // like Barracks, got exactly ONE fresh physical copy built. Record that
-  // before the extra-copies logic below reads buildingCounts, or a fresh
-  // building's own first copy (built by buildingChainItems itself) would
-  // be invisible to it and get double-built.
-  buildingItems.forEach(it => { if (!haveSet.buildingCounts.has(it.name)) haveSet.buildingCounts.set(it.name, 1); });
-  buildingItems.forEach(deferIfEarly);
-  items.push(...buildingItems);
-  // Running N production buildings in parallel needs N PHYSICAL copies of
-  // the training building itself, unlike its prerequisites (Archery Range
-  // doesn't need multiple Barracks): this stage's OWN buildingCount, minus
-  // however many this exact building already has — from its own first copy
-  // above, or from an earlier stage reusing the SAME building (Scout
-  // Cavalry then Knight, both at the Stable). Town Center is excluded —
-  // every game already starts with one, and "N Town Centers" is a decision
-  // the search itself makes (see MAX_EXTRA_TC), not implied by buildingCount.
-  // `stage.buildingCount` is always a concrete number by the time it gets
-  // here — for a 'quantity' stage, buildStagedOptimizeTimeline already
-  // resolved it (via trial runs of this whole function, picking whichever
-  // count finishes its target quantity fastest) before calling this.
-  if (line.building !== 'Town Center') {
-    const already = haveSet.buildingCounts.get(line.building) || 0;
-    if (buildingCount > already) {
-      const def = line.building === 'Castle' ? DATA.castle : DATA.productionBuildings[line.building];
-      const extraCount = buildingCount - already;
-      // N extra copies go up under N different idle villagers at the same
-      // time, not one after another — a single combined item (summed cost,
-      // ONE buildTimeSeconds floor) instead of N separate sequential items,
-      // matching how runSequential already merges simultaneous deferred
-      // items elsewhere (summed cost, MAX queueSeconds, never summed).
-      const perCost = costForCiv(def.cost, civ, line.building);
-      const extra = {
-        name: line.building,
-        cost: RES.reduce((c, r) => { c[r] = (perCost[r] || 0) * extraCount; return c; }, {}),
-        queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(line.building)),
-        age: def.minAge,
-        builders: buildersForBuilding(line.building),
-      };
-      // NOT deferred, unlike the first copy above — only that first copy
-      // actually counts toward the age-up-qualifying-building requirement;
-      // these extras are pure steady-state throughput, with no reason to
-      // hold them back until the age-up like a genuinely-required building
-      // (they'll naturally land wherever their own age sorts them, often
-      // well before the age-up they used to get needlessly bundled with).
-      items.push(extra);
-      haveSet.buildingCounts.set(line.building, buildingCount);
+  targets.forEach(({ line, tierIdx, buildingCount }) => {
+    const buildingItems = buildingChainItems(line.building, civ, haveSet);
+    // buildingChainItems only ever returns a building the FIRST time it's
+    // added anywhere in the whole plan (haveSet dedups by name across
+    // stages AND across targets within one stage) — so every item it just
+    // returned, including any prerequisite like Barracks, got exactly ONE
+    // fresh physical copy built. Record that before the extra-copies logic
+    // below reads buildingCounts, or a fresh building's own first copy
+    // (built by buildingChainItems itself) would be invisible to it and
+    // get double-built.
+    buildingItems.forEach(it => { if (!haveSet.buildingCounts.has(it.name)) haveSet.buildingCounts.set(it.name, 1); });
+    buildingItems.forEach(deferIfEarly);
+    items.push(...buildingItems);
+    // Running N production buildings in parallel needs N PHYSICAL copies of
+    // the training building itself, unlike its prerequisites (Archery Range
+    // doesn't need multiple Barracks): this target's OWN buildingCount, minus
+    // however many this exact building already has — from its own first copy
+    // above, or from an earlier stage (or an earlier target in THIS stage)
+    // reusing the SAME building (Scout Cavalry then Knight, both at the
+    // Stable). Town Center is excluded — every game already starts with
+    // one, and "N Town Centers" is a decision the search itself makes (see
+    // MAX_EXTRA_TC), not implied by buildingCount.
+    // `buildingCount` is always a concrete number by the time it gets
+    // here — for a 'quantity' stage, buildStagedOptimizeTimeline already
+    // resolved it (via trial runs of this whole function, picking whichever
+    // count finishes its target quantity fastest) before calling this.
+    if (line.building !== 'Town Center') {
+      const already = haveSet.buildingCounts.get(line.building) || 0;
+      if (buildingCount > already) {
+        const def = line.building === 'Castle' ? DATA.castle : DATA.productionBuildings[line.building];
+        const extraCount = buildingCount - already;
+        // N extra copies go up under N different idle villagers at the same
+        // time, not one after another — a single combined item (summed cost,
+        // ONE buildTimeSeconds floor) instead of N separate sequential items,
+        // matching how runSequential already merges simultaneous deferred
+        // items elsewhere (summed cost, MAX queueSeconds, never summed).
+        const perCost = costForCiv(def.cost, civ, line.building);
+        const extra = {
+          name: line.building,
+          cost: RES.reduce((c, r) => { c[r] = (perCost[r] || 0) * extraCount; return c; }, {}),
+          queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(line.building)),
+          age: def.minAge,
+          builders: buildersForBuilding(line.building),
+        };
+        // NOT deferred, unlike the first copy above — only that first copy
+        // actually counts toward the age-up-qualifying-building requirement;
+        // these extras are pure steady-state throughput, with no reason to
+        // hold them back until the age-up like a genuinely-required building
+        // (they'll naturally land wherever their own age sorts them, often
+        // well before the age-up they used to get needlessly bundled with).
+        items.push(extra);
+        haveSet.buildingCounts.set(line.building, buildingCount);
+      }
     }
-  }
 
-  for (let i = 1; i <= tierIdx; i++) {
-    const t = line.tiers[i];
-    if (t?.upgradeCost) items.push({ name: `${line.tiers[i - 1].name} → ${t.name}`, cost: costForCiv(t.upgradeCost, civ), age: effectiveTierAge(t, civ) });
-  }
+    for (let i = 1; i <= tierIdx; i++) {
+      const t = line.tiers[i];
+      if (t?.upgradeCost) items.push({ name: `${line.tiers[i - 1].name} → ${t.name}`, cost: costForCiv(t.upgradeCost, civ), age: effectiveTierAge(t, civ) });
+    }
+  });
 
   // Filler-building choice only depends on WHICH resources the composition
   // touches, not how much of each (see fillerBuildingsNeeded) — a
-  // buildings:1 placeholder row is enough to derive that safely.
-  const baselineRows = [{ line, tier: line.tiers[tierIdx], buildings: 1 }];
+  // buildings:1 placeholder row per target is enough to derive that safely.
+  const baselineRows = targets.map(({ line, tierIdx }) => ({ line, tier: line.tiers[tierIdx], buildings: 1 }));
   const { totalIncome: baselineIncome } = computeTotalIncome(baselineRows, civ, new Set());
   const baselineVillagers = villagersFromIncome(baselineIncome, ratesFor(civ, new Set())).villagers;
   ['Feudal', 'Castle', 'Imperial'].forEach(age => {
@@ -4045,7 +4061,7 @@ function withQuantityTail(trial, qty, buildingCount, tierName, trainTime) {
 const _optimizeMemo = new Map();
 function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ, efficiency, foodStrategy, forcedEarlyEcoTechId) {
   const memoKey = JSON.stringify([
-    stages.map(s => [s.line?.id, s.tierIdx, s.buildingCount ?? null, s.goalType || 'sustain', s.qty ?? null, s.combatTechIds ? [...s.combatTechIds].sort() : null]),
+    stages.map(s => [s.units.map(u => [u.line?.id, u.tierIdx, u.buildingCount ?? null, u.combatTechIds ? [...u.combatTechIds].sort() : null]), s.goalType || 'sustain', s.qty ?? null]),
     loomOn, allIn, civ?.id ?? null, efficiency ?? 100, foodStrategy ?? 'none', forcedEarlyEcoTechId ?? null,
   ]);
   if (_optimizeMemo.has(memoKey)) return _optimizeMemo.get(memoKey);
@@ -4057,7 +4073,11 @@ function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ, efficiency, foo
 function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficiency, foodStrategy, forcedEarlyEcoTechId) {
   const free = freeTechIds(civ);
   const openingSequence = allIn ? null : chooseOpeningSequence(stages, civ, foodStrategy);
-  const sortedStages = [...stages].sort((a, b) => ageIndex(a.line.tiers[a.tierIdx].age) - ageIndex(b.line.tiers[b.tierIdx].age));
+  // A stage's own sort-order age is the LATEST among its units (a multi-
+  // unit stage with Archer+Knight sorts by Knight's Castle, not Archer's
+  // Feudal) — degenerates to the single unit's own age unchanged.
+  const stageAgeIdx = s => Math.max(...s.units.map(u => ageIndex(u.line.tiers[u.tierIdx].age)));
+  const sortedStages = [...stages].sort((a, b) => stageAgeIdx(a) - stageAgeIdx(b));
   const effFactor = (efficiency ?? 100) / 100;
   // A single "how efficiently is this economy actually running vs. the
   // idealized math" knob, scoped to Optimize only — Constant Production's
@@ -4324,7 +4344,15 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
 
   for (let stageIdx = 0; stageIdx < sortedStages.length; stageIdx++) {
     const stage = sortedStages[stageIdx];
-    const { line, tierIdx } = stage;
+    // `units` is 1+ targets trained/upgraded CONCURRENTLY within this one
+    // stage ("Add Unit" — as opposed to "Add Stage"'s strictly sequential
+    // later stages, which fully replace one target with the next). `line`/
+    // `tierIdx` alias unit 0 for every single-target-only branch below
+    // (Villager target, 'quantity' goal) — safe because both are UI-
+    // restricted to units.length === 1 (a multi-unit stage only supports
+    // Constant Production, and can't include the Villager line at all).
+    const units = stage.units;
+    const line = units[0].line, tierIdx = units[0].tierIdx;
     const isQuantity = stage.goalType === 'quantity';
     const qty = stage.qty || 9;
 
@@ -4365,7 +4393,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // own mutable state, because every EARLIER stage's own goalType (which
     // may itself be 'quantity') needs to resolve exactly the same way it
     // would for real — re-running from stage 0 guarantees that for free.
-    let buildingCount = stage.buildingCount;
+    let buildingCount = units[0].buildingCount;
     let buildingCountAlternatives = null;
     if (isQuantity && !line.isVillager) {
       const initialBuildingCount = haveSet.buildingCounts.get(line.building) || 1;
@@ -4373,7 +4401,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       let bestK = initialBuildingCount, bestTotal = Infinity, worseStreak = 0;
       const tried = []; // every candidate actually evaluated — cheap to keep, lets the UI show runner-ups (full timeline included) instead of throwing this away
       for (let k = initialBuildingCount; k <= initialBuildingCount + MAX_EXTRA_BUILDINGS; k++) {
-        const trial = buildStagedOptimizeTimeline([...prefixStages, { ...stage, goalType: 'sustain', buildingCount: k }], loomOn, allIn, civ, efficiency, foodStrategy);
+        const trial = buildStagedOptimizeTimeline([...prefixStages, { ...stage, goalType: 'sustain', units: [{ ...units[0], buildingCount: k }] }], loomOn, allIn, civ, efficiency, foodStrategy);
         const trialResult = trial.stageResults[trial.stageResults.length - 1];
         if (trialResult.finishTime == null) continue; // unreachable at this count — skip, don't let it win by default
         const total = trialResult.finishTime + qty / (k / line.tiers[tierIdx].trainTime);
@@ -4388,6 +4416,11 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       buildingCount = bestK;
       buildingCountAlternatives = tried.filter(t => t.buildingCount !== bestK).sort((a, b) => a.finishTime - b.finishTime).slice(0, 2);
     }
+    // The resolved target list for THIS stage — unit 0's buildingCount
+    // swapped for whatever the quantity trial above picked (a no-op for
+    // every other unit, and for unit 0 itself on a non-quantity stage,
+    // where it's already the same value it started with).
+    const resolvedUnits = units.map((u, i) => i === 0 ? { ...u, buildingCount } : u);
 
     // Tried letting the search pick between full-rate and fully-paused
     // (villRate=0) training for the WHOLE mandatory prefix on sustain-mode
@@ -4407,7 +4440,10 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // pausing only PART of the prefix (train normally to some baseline,
     // pause only for the final age-up leg) — a materially bigger, separate
     // feature, not a tweak to this coarse version.
-    const targetAgeIdx = ageIndex(effectiveTierAge(line.tiers[tierIdx], civ));
+    // The stage's OWN overall target age is the LATEST age among its units
+    // (e.g. Archer + Knight in one stage needs Castle, not just Feudal) —
+    // degenerates to unit 0's own age when there's only one, unchanged.
+    const targetAgeIdx = Math.max(...resolvedUnits.map(u => ageIndex(effectiveTierAge(u.line.tiers[u.tierIdx], civ))));
     const extraItems = [];
     if (stageResults.length === 0 && loomOn && !allIn && !free.has('loom')) {
       const loom = DATA.ecoTechs.find(t => t.id === 'loom');
@@ -4451,57 +4487,64 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // Scout Cavalry stage and a later Knight stage) — the search has no
     // other way to know it's already been researched, since these bypass
     // the `levels` tech-tracking `stageMandatoryItems` uses.
-    const applicableIds = new Set(applicableCombatTechIds(line));
-    (stage.combatTechIds || []).forEach(id => {
-      if (!applicableIds.has(id) || alreadyAddedCombatTechs.has(id)) return;
-      const t = DATA.ecoTechs.find(e => e.id === id);
-      if (!t) return;
-      alreadyAddedCombatTechs.add(id);
-      // A free combat tech (Turks' Chemistry, Tatars' Thumb Ring/Parthian
-      // Tactics, etc.) is the same "instant, zero-cost, no building needed"
-      // real mechanic as a free eco-tech (user-confirmed) — skip the
-      // building requirement entirely and push a zero-cost/zero-time item,
-      // still bucketed (deferToEnd) into its own age's transaction so it
-      // completes exactly when that age is reached, same as any other
-      // deferred item. This used to be silently skipped whenever `free`
-      // matched, never modeled at all even when checked — fixed here.
-      if (free.has(id)) {
-        extraItems.push({ name: t.name, cost: { food: 0, wood: 0, gold: 0, stone: 0 }, queueSeconds: 0, deferToEnd: true, age: t.age });
-        return;
-      }
-      // Gate the tech behind its own building actually existing first — a
-      // Blacksmith tech researched before the Blacksmith is built can't
-      // happen in a real game. buildingChainItems is haveSet-deduped, so
-      // this is a no-op whenever the building's already going up anyway
-      // (e.g. Bloodlines needing a Stable that Knight/Scout Cavalry's own
-      // training building call already covers). PUSHED BEFORE the tech
-      // itself so the shared deferToEnd sort (stable, orders by original
-      // push index within the deferred bucket — see stageMandatoryItems)
-      // keeps the building ahead of the tech that needs it. Same
-      // build-it-late laziness as any other deferred building: only
-      // deferred if its own age is earlier than this stage's target age.
-      // Deliberately NEVER deferToEnd, unlike a building added for the
-      // unit's own normal training chain — a tech and its own building can
-      // land in the SAME deferred bundle (both tagged the same early age,
-      // both delayed toward the same upcoming age-up), and runSequential
-      // resolves an entire bundle as one simultaneous transaction with a
-      // shared cost pool, no ordering within it. In real AoE2 you can't
-      // even open a building's tech menu until it exists, so "researched
-      // at the same instant the building finishes" is wrong, not just a
-      // display quirk — confirmed by testing Bloodlines + a Stable that
-      // Knight's own training-building call would otherwise have deferred
-      // right alongside it. Keeping this non-deferred forces it out of
-      // that bundle entirely: non-deferred items always resolve before
-      // every deferred item (see stageMandatoryItems' own presort), so the
-      // building is guaranteed to genuinely finish first.
-      const requiredBuilding = COMBAT_TECH_BUILDING[id] || line.building;
-      buildingChainItems(requiredBuilding, civ, haveSet).forEach(bi => {
-        if (!haveSet.buildingCounts.has(bi.name)) haveSet.buildingCounts.set(bi.name, 1);
-        extraItems.push(bi);
+    // Looped per unit — each of a multi-unit stage's targets keeps its OWN
+    // applicable-tech set and its OWN checked selections (a Militia unit's
+    // Arson checkbox has nothing to do with a Knight unit sharing its
+    // stage). Degenerates to the single-target case unchanged when there's
+    // only one unit.
+    resolvedUnits.forEach(u => {
+      const applicableIds = new Set(applicableCombatTechIds(u.line));
+      (u.combatTechIds || []).forEach(id => {
+        if (!applicableIds.has(id) || alreadyAddedCombatTechs.has(id)) return;
+        const t = DATA.ecoTechs.find(e => e.id === id);
+        if (!t) return;
+        alreadyAddedCombatTechs.add(id);
+        // A free combat tech (Turks' Chemistry, Tatars' Thumb Ring/Parthian
+        // Tactics, etc.) is the same "instant, zero-cost, no building needed"
+        // real mechanic as a free eco-tech (user-confirmed) — skip the
+        // building requirement entirely and push a zero-cost/zero-time item,
+        // still bucketed (deferToEnd) into its own age's transaction so it
+        // completes exactly when that age is reached, same as any other
+        // deferred item. This used to be silently skipped whenever `free`
+        // matched, never modeled at all even when checked — fixed here.
+        if (free.has(id)) {
+          extraItems.push({ name: t.name, cost: { food: 0, wood: 0, gold: 0, stone: 0 }, queueSeconds: 0, deferToEnd: true, age: t.age });
+          return;
+        }
+        // Gate the tech behind its own building actually existing first — a
+        // Blacksmith tech researched before the Blacksmith is built can't
+        // happen in a real game. buildingChainItems is haveSet-deduped, so
+        // this is a no-op whenever the building's already going up anyway
+        // (e.g. Bloodlines needing a Stable that Knight/Scout Cavalry's own
+        // training building call already covers). PUSHED BEFORE the tech
+        // itself so the shared deferToEnd sort (stable, orders by original
+        // push index within the deferred bucket — see stageMandatoryItems)
+        // keeps the building ahead of the tech that needs it. Same
+        // build-it-late laziness as any other deferred building: only
+        // deferred if its own age is earlier than this stage's target age.
+        // Deliberately NEVER deferToEnd, unlike a building added for the
+        // unit's own normal training chain — a tech and its own building can
+        // land in the SAME deferred bundle (both tagged the same early age,
+        // both delayed toward the same upcoming age-up), and runSequential
+        // resolves an entire bundle as one simultaneous transaction with a
+        // shared cost pool, no ordering within it. In real AoE2 you can't
+        // even open a building's tech menu until it exists, so "researched
+        // at the same instant the building finishes" is wrong, not just a
+        // display quirk — confirmed by testing Bloodlines + a Stable that
+        // Knight's own training-building call would otherwise have deferred
+        // right alongside it. Keeping this non-deferred forces it out of
+        // that bundle entirely: non-deferred items always resolve before
+        // every deferred item (see stageMandatoryItems' own presort), so the
+        // building is guaranteed to genuinely finish first.
+        const requiredBuilding = COMBAT_TECH_BUILDING[id] || u.line.building;
+        buildingChainItems(requiredBuilding, civ, haveSet).forEach(bi => {
+          if (!haveSet.buildingCounts.has(bi.name)) haveSet.buildingCounts.set(bi.name, 1);
+          extraItems.push(bi);
+        });
+        extraItems.push({ name: t.name, cost: costForCiv(t.cost, civ), queueSeconds: t.queueSeconds, deferToEnd: true, age: t.age });
       });
-      extraItems.push({ name: t.name, cost: costForCiv(t.cost, civ), queueSeconds: t.queueSeconds, deferToEnd: true, age: t.age });
     });
-    const mandatoryItems = stageMandatoryItems({ ...stage, buildingCount }, civ, allIn, haveSet, reachedAgeIdx, extraItems);
+    const mandatoryItems = stageMandatoryItems(resolvedUnits.map(({ line, tierIdx, buildingCount }) => ({ line, tierIdx, buildingCount })), civ, allIn, haveSet, reachedAgeIdx, extraItems);
 
     // Instant-afford check runs fresh per stage against the CARRIED pool —
     // primeInstantGoals reports its own times relative to ITS OWN call
@@ -4532,8 +4575,11 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // Bail out the same way an unreachable Dijkstra state already does
       // below, rather than silently continuing with a cursorTime/
       // cursorVills that never actually got here.
-      checkpoints.push({ label: `${line.isVillager ? `${qty}x Villager` : `${buildingCount}x ${line.tiers[tierIdx].name}`} — past 60 min, add more Town Centers`, blocked: true });
-      stageResults.push({ line, tierIdx, buildingCount, goalType: stage.goalType, qty: stage.qty, buildingCountAlternatives, villagers: {}, totalVillCeil: 0, rates: ratesForOptimize(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
+      const blockedLabel = line.isVillager ? `${qty}x Villager` : resolvedUnits.map(u => `${u.buildingCount}x ${u.line.tiers[u.tierIdx].name}`).join(' + ');
+      checkpoints.push({ label: `${blockedLabel} — past 60 min, add more Town Centers`, blocked: true });
+      resolvedUnits.forEach(u => {
+        stageResults.push({ line: u.line, tierIdx: u.tierIdx, buildingCount: u.buildingCount, goalType: stage.goalType, qty: stage.qty, stageNumber: stageIdx + 1, buildingCountAlternatives: resolvedUnits.length === 1 ? buildingCountAlternatives : null, villagers: {}, totalVillCeil: 0, rates: ratesForOptimize(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
+      });
       break;
     }
     // Villagers permanently routed to stone during the mandatory prefix
@@ -4556,7 +4602,13 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // sum(alloc) === vills invariant.
     const stoneGained = cumAlloc.stone - stoneBefore;
     if (stoneGained > 0) {
-      const targetCost = costForCiv(line.cost, civ);
+      // Summed across every unit in the stage — a multi-unit stage's idle
+      // stone-workers get reassigned toward the COMBINED cost ratio of
+      // everything it's training, not just unit 0's own.
+      const targetCost = RES.reduce((c, r) => {
+        c[r] = resolvedUnits.reduce((s, u) => s + (costForCiv(u.line.cost, civ)[r] || 0), 0);
+        return c;
+      }, { food: 0, wood: 0, gold: 0, stone: 0 });
       if (!targetCost.stone) {
         const nonStoneRes = RES.filter(r => r !== 'stone' && targetCost[r] > 0);
         const costSum = nonStoneRes.reduce((s, r) => s + targetCost[r], 0);
@@ -4585,7 +4637,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // training). Force those two in for a Villager target so the search can
     // actually consider Stone Mining (every extra TC needs real stone) and
     // Gold Mining (a later stage's composition might want it).
-    const stageRows = line.isVillager ? [] : [{ line, tier: line.tiers[tierIdx], buildings: buildingCount }];
+    const stageRows = line.isVillager ? [] : resolvedUnits.map(u => ({ line: u.line, tier: u.line.tiers[u.tierIdx], buildings: u.buildingCount }));
     const relevantLines = line.isVillager
       ? [...new Set([...relevantEcoLines(stageRows, civ), 'stone-mine', 'gold-mine'])]
       : relevantEcoLines(stageRows, civ);
@@ -4825,8 +4877,11 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     });
 
     if (bestKey == null) {
-      checkpoints.push({ label: `${line.isVillager ? `${qty}x Villager` : `${buildingCount}x ${line.tiers[tierIdx].name}`} — past 60 min, add more Town Centers`, blocked: true });
-      stageResults.push({ line, tierIdx, buildingCount, goalType: stage.goalType, qty: stage.qty, buildingCountAlternatives, villagers: {}, totalVillCeil: 0, rates: ratesForOptimize(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
+      const blockedLabel2 = line.isVillager ? `${qty}x Villager` : resolvedUnits.map(u => `${u.buildingCount}x ${u.line.tiers[u.tierIdx].name}`).join(' + ');
+      checkpoints.push({ label: `${blockedLabel2} — past 60 min, add more Town Centers`, blocked: true });
+      resolvedUnits.forEach(u => {
+        stageResults.push({ line: u.line, tierIdx: u.tierIdx, buildingCount: u.buildingCount, goalType: stage.goalType, qty: stage.qty, stageNumber: stageIdx + 1, buildingCountAlternatives: resolvedUnits.length === 1 ? buildingCountAlternatives : null, villagers: {}, totalVillCeil: 0, rates: ratesForOptimize(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
+      });
       break; // a later stage built on an unreachable one isn't meaningful either
     }
 
@@ -4865,7 +4920,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         // whatever it was BEFORE the ramp, not updated for it. A known gap,
         // not worth a bigger fix: once sustained, income is fully claimed
         // by ongoing costs anyway, so it should sit near zero regardless.
-        label: line.isVillager ? `${qty}x Villager complete` : `Reach sustain (${bestVillCeil} villagers for ${buildingCount}x ${line.tiers[tierIdx].name})`,
+        label: line.isVillager ? `${qty}x Villager complete` : `Reach sustain (${bestVillCeil} villagers for ${resolvedUnits.map(u => `${u.buildingCount}x ${u.line.tiers[u.tierIdx].name}`).join(' + ')})`,
         time: cursorTime, vills: cursorVills, split: bestRamp.assigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, pool: { ...pool }, kind: line.isVillager ? 'complete' : 'sustain', buildNotes: rampBuildNotes,
       });
     } else if (line.isVillager) {
@@ -4931,19 +4986,33 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       bestVillagers = scaled;
     }
 
-    stageResults.push({
-      line, tierIdx, buildingCount: line.isVillager ? 1 + tcExtra : buildingCount, goalType: stage.goalType, qty: stage.qty,
-      buildingCountAlternatives: line.isVillager ? null : buildingCountAlternatives,
-      // The winning path's own final tech state — captured here (not
-      // recomputed later) since `levels` is this function's own mutable
-      // closure variable, only meaningful at the exact point the winning
-      // path's replay above finished updating it. Used by the "more eco
-      // upgrades" alternative in the render layer to know which eco-techs
-      // the search considered and passed on.
-      techIds: techIdsFor(levels),
-      villagers: bestVillagers, totalVillCeil: bestVillCeil, rates: bestRates, totalIncome: bestIncome,
-      farmUpkeepWoodPerSec: bestUpkeep.farmUpkeepWoodPerSec, houseWoodPerSec: bestUpkeep.houseWoodPerSec,
-      finishTime: cursorTime, tcCount: 1 + tcExtra,
+    // One stageResults entry PER UNIT — a multi-unit stage's units were all
+    // reached TOGETHER (one combined Dijkstra search/ramp above, see
+    // stageRows), so every entry shares the exact same combined
+    // villagers/rates/totalIncome/finishTime, differing only in which unit
+    // it identifies (line/tierIdx/buildingCount) for display. Degenerates
+    // to the original single push for a single-unit stage.
+    resolvedUnits.forEach(u => {
+      stageResults.push({
+        line: u.line, tierIdx: u.tierIdx, buildingCount: u.line.isVillager ? 1 + tcExtra : u.buildingCount, goalType: stage.goalType, qty: stage.qty,
+        // 1-based, shared by every unit pushed from THIS stage iteration —
+        // lets the render layer show "Stage 1"/"Stage 2" for real separate
+        // (sequential) stages while still grouping multiple units trained
+        // CONCURRENTLY within one stage under that same number, instead of
+        // mislabeling them as separate stages.
+        stageNumber: stageIdx + 1,
+        buildingCountAlternatives: (u.line.isVillager || resolvedUnits.length > 1) ? null : buildingCountAlternatives,
+        // The winning path's own final tech state — captured here (not
+        // recomputed later) since `levels` is this function's own mutable
+        // closure variable, only meaningful at the exact point the winning
+        // path's replay above finished updating it. Used by the "more eco
+        // upgrades" alternative in the render layer to know which eco-techs
+        // the search considered and passed on.
+        techIds: techIdsFor(levels),
+        villagers: bestVillagers, totalVillCeil: bestVillCeil, rates: bestRates, totalIncome: bestIncome,
+        farmUpkeepWoodPerSec: bestUpkeep.farmUpkeepWoodPerSec, houseWoodPerSec: bestUpkeep.houseWoodPerSec,
+        finishTime: cursorTime, tcCount: 1 + tcExtra,
+      });
     });
   }
 
@@ -5444,7 +5513,7 @@ function renderVillagerBars(villagers, rates, totalIncome, farmUpkeepWoodPerSec,
 // map has (push for deer, Mill for chickens) — "worst case" per the user's
 // own framing applies only to the map-luck spawn size (level:2, the
 // smallest real spawn), not to whether the food source gets taken at all.
-let optimizeState = { stages: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }], loomOn: true, allIn: false, efficiency: 85, foodStrategy: { deer: 'push', chicken: 'mill', level: 2 } };
+let optimizeState = { stages: [{ units: [{ lineId: null, tierIdx: 0, buildingCount: 1 }], goalType: 'sustain', qty: 9 }], loomOn: true, allIn: false, efficiency: 85, foodStrategy: { deer: 'push', chicken: 'mill', level: 2 } };
 // Pure UI/display state, not part of the plan itself — which buildingCount
 // alternative (if any) the last stage's tabs are currently showing instead
 // of the recommended pick. Reset to null (back to the real pick) whenever
@@ -5471,15 +5540,20 @@ let timelineAvailExpanded = false;
 // most of these same (prefixStages, k, 'sustain') combinations while
 // finding its own optimum, so `_optimizeMemo` usually makes this a cache
 // hit rather than a fresh search.
+// Not offered at all for a multi-unit stage ("Add Unit") — with more than
+// one target sharing the stage, "the" buildingCount to bump is ambiguous
+// (which unit's own production building?), and this alternative isn't
+// worth the extra UI to disambiguate yet.
 function moreProductionBuildingsAlt(prefixStages, stage, civ, loomOn, allIn, efficiency, currentBuildingCount, currentFinishTime, foodStrategy) {
-  if (stage.line.isVillager) return null;
+  if (stage.units.length !== 1 || stage.units[0].line.isVillager) return null;
+  const unit = stage.units[0];
   const isQty = stage.goalType === 'quantity';
   let best = null;
   [currentBuildingCount + 1, currentBuildingCount + 2].forEach(k => {
-    let trial = buildStagedOptimizeTimeline([...prefixStages, { ...stage, goalType: 'sustain', buildingCount: k }], loomOn, allIn, civ, efficiency, foodStrategy);
+    let trial = buildStagedOptimizeTimeline([...prefixStages, { ...stage, goalType: 'sustain', units: [{ ...unit, buildingCount: k }] }], loomOn, allIn, civ, efficiency, foodStrategy);
     const trialLast = trial.stageResults[trial.stageResults.length - 1];
     if (trialLast.finishTime == null) return;
-    if (isQty) trial = withQuantityTail(trial, stage.qty, k, stage.line.tiers[stage.tierIdx].name, stage.line.tiers[stage.tierIdx].trainTime);
+    if (isQty) trial = withQuantityTail(trial, stage.qty, k, unit.line.tiers[unit.tierIdx].name, unit.line.tiers[unit.tierIdx].trainTime);
     const delta = Math.abs(trial.finishTime - currentFinishTime);
     // `result` carries the full trial (checkpoints/villagers/etc.) so this
     // alternative can be clicked into and actually explored, same as the
@@ -5630,14 +5704,14 @@ const COMBAT_TECH_BUILDING = {
 // `optimizeState.stages[i].combatTechIds` instead of raw DOM checkboxes,
 // since Optimize re-renders its whole result on every state change rather
 // than mutating checkboxes in place.
-function renderCombatTechCheckboxes(stageIdx, line) {
+function renderCombatTechCheckboxes(stageIdx, unitIdx, line) {
   const ids = applicableCombatTechIds(line);
   if (!ids.length) return '';
   const techs = ids.map(id => DATA.ecoTechs.find(t => t.id === id)).filter(Boolean);
   const lineGroups = {};
   const standalone = [];
   techs.forEach(t => { if (t.line) (lineGroups[t.line] = lineGroups[t.line] || []).push(t); else standalone.push(t); });
-  const checked = optimizeState.stages[stageIdx].combatTechIds || new Set();
+  const checked = optimizeState.stages[stageIdx].units[unitIdx].combatTechIds || new Set();
 
   // data-age hooks into the SAME .tier-dot.filled[data-age="..."] CSS
   // already used for the unit-tier dots elsewhere in this tool (Dark/
@@ -5645,11 +5719,11 @@ function renderCombatTechCheckboxes(stageIdx, line) {
   // new palette, per the site owner's own request.
   const dotRow = (label, lineTechs) => {
     const level = lineTechs.reduce((lv, t, i) => checked.has(t.id) ? i + 1 : lv, 0);
-    const dots = lineTechs.map((t, i) => `<span class="tier-dot${i < level ? ' filled' : ''}" data-age="${t.age}" data-combat-tech-dot="${t.id}" data-stage-idx="${stageIdx}" data-tier="${i}" data-line-ids="${lineTechs.map(x => x.id).join(',')}" title="${t.name} (${t.age})" style="cursor:pointer;"></span>`).join('');
+    const dots = lineTechs.map((t, i) => `<span class="tier-dot${i < level ? ' filled' : ''}" data-age="${t.age}" data-combat-tech-dot="${t.id}" data-stage-idx="${stageIdx}" data-unit-idx="${unitIdx}" data-tier="${i}" data-line-ids="${lineTechs.map(x => x.id).join(',')}" title="${t.name} (${t.age})" style="cursor:pointer;"></span>`).join('');
     return `<div class="tech-line-row"><span class="tname">${label}</span><div class="tier-dots">${dots}</div></div>`;
   };
   const checkboxRow = t => `<label class="tech-line-row" style="cursor:pointer;">
-    <input type="checkbox" data-combat-tech-single="${t.id}" data-stage-idx="${stageIdx}" ${checked.has(t.id) ? 'checked' : ''}>
+    <input type="checkbox" data-combat-tech-single="${t.id}" data-stage-idx="${stageIdx}" data-unit-idx="${unitIdx}" ${checked.has(t.id) ? 'checked' : ''}>
     <span class="tname">${t.name}</span>
   </label>`;
 
@@ -5668,13 +5742,14 @@ function wireCombatTechCheckboxes(container) {
   container.querySelectorAll('[data-combat-tech-dot]').forEach(dot => {
     dot.addEventListener('click', () => {
       const stageIdx = Number(dot.dataset.stageIdx);
+      const unitIdx = Number(dot.dataset.unitIdx);
       const tier = Number(dot.dataset.tier);
       const lineIds = dot.dataset.lineIds.split(',');
-      const stage = optimizeState.stages[stageIdx];
-      stage.combatTechIds = stage.combatTechIds || new Set();
-      const curLevel = lineIds.reduce((lv, id, i) => stage.combatTechIds.has(id) ? i + 1 : lv, 0);
+      const unit = optimizeState.stages[stageIdx].units[unitIdx];
+      unit.combatTechIds = unit.combatTechIds || new Set();
+      const curLevel = lineIds.reduce((lv, id, i) => unit.combatTechIds.has(id) ? i + 1 : lv, 0);
       const nextLevel = curLevel === tier + 1 ? tier : tier + 1;
-      lineIds.forEach((id, i) => { if (i < nextLevel) stage.combatTechIds.add(id); else stage.combatTechIds.delete(id); });
+      lineIds.forEach((id, i) => { if (i < nextLevel) unit.combatTechIds.add(id); else unit.combatTechIds.delete(id); });
       renderOptimizeStages();
       renderOptimizeResults();
     });
@@ -5682,9 +5757,10 @@ function wireCombatTechCheckboxes(container) {
   container.querySelectorAll('[data-combat-tech-single]').forEach(cb => {
     cb.addEventListener('change', () => {
       const stageIdx = Number(cb.dataset.stageIdx);
-      const stage = optimizeState.stages[stageIdx];
-      stage.combatTechIds = stage.combatTechIds || new Set();
-      if (cb.checked) stage.combatTechIds.add(cb.dataset.combatTechSingle); else stage.combatTechIds.delete(cb.dataset.combatTechSingle);
+      const unitIdx = Number(cb.dataset.unitIdx);
+      const unit = optimizeState.stages[stageIdx].units[unitIdx];
+      unit.combatTechIds = unit.combatTechIds || new Set();
+      if (cb.checked) unit.combatTechIds.add(cb.dataset.combatTechSingle); else unit.combatTechIds.delete(cb.dataset.combatTechSingle);
       renderOptimizeStages();
       renderOptimizeResults();
     });
@@ -5697,8 +5773,11 @@ function renderOptimizeResults() {
   const descEl = document.getElementById('results-desc');
   const bodyEl = document.getElementById('results-body');
   const stages = optimizeState.stages
-    .map(s => ({ line: lines.find(l => l.id === s.lineId), tierIdx: s.tierIdx, buildingCount: s.buildingCount, goalType: s.goalType, qty: s.qty, combatTechIds: s.combatTechIds }))
-    .filter(s => s.line);
+    .map(s => ({
+      units: s.units.map(u => ({ line: lines.find(l => l.id === u.lineId), tierIdx: u.tierIdx, buildingCount: u.buildingCount, combatTechIds: u.combatTechIds })).filter(u => u.line),
+      goalType: s.goalType, qty: s.qty,
+    }))
+    .filter(s => s.units.length);
   if (!stages.length) { descEl.textContent = 'Pick a unit above to optimize for.'; bodyEl.innerHTML = ''; return; }
 
   const result = buildStagedOptimizeTimeline(stages, optimizeState.loomOn, optimizeState.allIn, civ, optimizeState.efficiency, optimizeState.foodStrategy);
@@ -5783,11 +5862,19 @@ function renderOptimizeResults() {
   // A multi-stage plan gets one bar chart + stat line per stage (each
   // stage's own sustain point, not just the final one) — a single-stage
   // plan is exactly what it always showed.
-  const stageBreakdown = result.stageResults.length <= 1 ? '' : result.stageResults.map((sr, i) => `
+  const stageBreakdown = result.stageResults.length <= 1 ? '' : result.stageResults.map((sr, i) => {
+    // A multi-unit stage ("Add Unit") pushes several stageResults sharing
+    // one `stageNumber` — label every entry after the first "(same
+    // stage)" instead of counting it as its own separate Stage N, or two
+    // units trained CONCURRENTLY would misleadingly read as two
+    // sequential stages.
+    const sameStageAsPrev = i > 0 && result.stageResults[i - 1].stageNumber === sr.stageNumber;
+    return `
     <div class="pending-card">
-      <h3>Stage ${i + 1}: ${srDesc(sr)}${sr.finishTime == null ? ' (blocked)' : ` — ${sr.goalType === 'quantity' ? 'done' : 'ready'} by ${fmtClock(sr.finishTime)}`}</h3>
+      <h3>Stage ${sr.stageNumber ?? i + 1}${sameStageAsPrev ? ' (same stage)' : ''}: ${srDesc(sr)}${sr.finishTime == null ? ' (blocked)' : ` — ${sr.goalType === 'quantity' ? 'done' : 'ready'} by ${fmtClock(sr.finishTime)}`}</h3>
       ${sr.finishTime == null ? '' : renderVillagerBars(sr.villagers, sr.rates, sr.totalIncome, sr.farmUpkeepWoodPerSec, sr.houseWoodPerSec)}
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   const bars = renderVillagerBars(displayResult.villagers, displayResult.rates, displayResult.totalIncome, displayResult.farmUpkeepWoodPerSec, displayResult.houseWoodPerSec);
   const buildingCounts = Object.fromEntries(displayResult.haveSet.buildingCounts);
@@ -5839,76 +5926,107 @@ function renderOptimizeStages() {
   const container = document.getElementById('optimize-stages');
 
   container.innerHTML = optimizeState.stages.map((stage, i) => {
-    const stillValid = lines.some(l => l.id === stage.lineId);
-    if (!stillValid) { stage.lineId = (lines[1] || lines[0]).id; stage.tierIdx = 0; }
-    const line = lines.find(l => l.id === stage.lineId);
-    const removeBtn = optimizeState.stages.length > 1
+    // Repair each unit's own lineId independently (a civ switch can orphan
+    // any of them, not just the first) — same fallback the single-target
+    // version always had, just looped now.
+    stage.units.forEach(u => {
+      if (!lines.some(l => l.id === u.lineId)) { u.lineId = (lines[1] || lines[0]).id; u.tierIdx = 0; }
+    });
+    const multiUnit = stage.units.length > 1;
+    const removeStageBtn = optimizeState.stages.length > 1
       ? `<button type="button" class="stage-remove" data-stage-idx="${i}" title="Remove this stage" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:16px;line-height:1;padding:0 4px;">×</button>` : '';
-    const tierDots = line.tiers.length > 1
-      ? line.tiers.map((t, ti) => `<span class="tier-dot${ti <= stage.tierIdx ? ' filled' : ''}" data-tier-idx="${ti}" title="${t.name} (${t.age})"></span>`).join('')
-      : '';
+
+    const unitBlocks = stage.units.map((u, ui) => {
+      const line = lines.find(l => l.id === u.lineId);
+      const tierDots = line.tiers.length > 1
+        ? line.tiers.map((t, ti) => `<span class="tier-dot${ti <= u.tierIdx ? ' filled' : ''}" data-tier-idx="${ti}" title="${t.name} (${t.age})"></span>`).join('')
+        : '';
+      // Only shown once a stage has more than one unit — removing back
+      // down to a single unit hides both the label and this button again,
+      // matching how "Stage N" only appears once there's more than one
+      // stage.
+      const removeUnitBtn = multiUnit
+        ? `<button type="button" class="unit-remove" data-stage-idx="${i}" data-unit-idx="${ui}" title="Remove this unit" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:14px;line-height:1;padding:0 4px;">×</button>` : '';
+      // Production-building count is per UNIT (each target may need a
+      // different number of buildings) — moved inside this block from the
+      // old stage-level version. Hidden in 'quantity' mode, same as before
+      // (buildingCount is auto-picked there) — 'quantity' is itself only
+      // ever available for a single-unit stage, see the goal-type toggle.
+      const countDots = stage.goalType !== 'quantity' ? `
+        <div style="margin-top:8px;">
+          <span class="tname">${multiUnit ? 'Production Buildings' : 'Units in Constant Production'}</span><br>
+          <div class="tier-dots stage-count-dots" data-stage-idx="${i}" data-unit-idx="${ui}" style="margin-top:6px;">
+            <span class="tier-dot${u.buildingCount >= 1 ? ' filled' : ''}" data-count-idx="0" title="1 production building"></span>
+            <span class="tier-dot${u.buildingCount >= 2 ? ' filled' : ''}" data-count-idx="1" title="2 production buildings"></span>
+            <span class="tier-dot${u.buildingCount >= 3 ? ' filled' : ''}" data-count-idx="2" title="3 production buildings"></span>
+          </div>
+        </div>` : '';
+      return `<div style="${ui > 0 ? 'margin-top:10px;padding-top:10px;border-top:1px dashed var(--border2);' : ''}">
+        ${multiUnit ? `<div style="display:flex;justify-content:space-between;align-items:center;"><span class="tname" style="font-weight:400;font-size:11px;color:var(--text2);">Unit ${ui + 1}</span>${removeUnitBtn}</div>` : ''}
+        <div style="display:flex;gap:16px;margin-top:2px;flex-wrap:wrap;">
+          <div style="flex:1 1 160px;min-width:140px;">
+            <select class="stage-unit-select" data-stage-idx="${i}" data-unit-idx="${ui}">${lines.map(l => `<option value="${l.id}" ${l.id === u.lineId ? 'selected' : ''}>${l.name}</option>`).join('')}</select>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;">
+              <div class="tier-dots stage-tier-dots" data-stage-idx="${i}" data-unit-idx="${ui}">${tierDots}</div>
+              <span class="tname">${line.tiers[u.tierIdx].name}</span>
+            </div>
+          </div>
+          <div style="flex:1 1 160px;min-width:160px;">${renderCombatTechCheckboxes(i, ui, line)}</div>
+        </div>
+        ${countDots}
+      </div>`;
+    }).join('');
+
     return `<div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-top:${i === 0 ? 0 : 10}px;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span class="tname">${optimizeState.stages.length > 1 ? `Stage ${i + 1}` : 'Target'}</span>
-        ${removeBtn}
+        ${removeStageBtn}
       </div>
-      <div style="display:flex;gap:16px;margin-top:6px;flex-wrap:wrap;">
-        <div style="flex:1 1 160px;min-width:140px;">
-          <select class="stage-unit-select" data-stage-idx="${i}">${lines.map(l => `<option value="${l.id}" ${l.id === stage.lineId ? 'selected' : ''}>${l.name}</option>`).join('')}</select>
-          <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;">
-            <div class="tier-dots stage-tier-dots" data-stage-idx="${i}">${tierDots}</div>
-            <span class="tname">${line.tiers[stage.tierIdx].name}</span>
-          </div>
-        </div>
-        <div style="flex:1 1 160px;min-width:160px;">${renderCombatTechCheckboxes(i, line)}</div>
-      </div>
+      ${unitBlocks}
       <div style="margin-top:8px;">
         <span class="tname">Goal</span><br>
         <div class="goal-type-toggle" data-stage-idx="${i}" style="display:flex;gap:6px;margin-top:6px;">
           <button type="button" class="goal-type-btn" data-stage-idx="${i}" data-goal-type="sustain" style="flex:none;padding:6px 10px;font-size:12px;border-radius:var(--radius);cursor:pointer;font-family:inherit;${stage.goalType !== 'quantity' ? 'border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);' : 'border:1px solid var(--border2);background:var(--bg);color:var(--text2);'}">Constant Production</button>
-          <button type="button" class="goal-type-btn" data-stage-idx="${i}" data-goal-type="quantity" style="flex:none;padding:6px 10px;font-size:12px;border-radius:var(--radius);cursor:pointer;font-family:inherit;${stage.goalType === 'quantity' ? 'border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);' : 'border:1px solid var(--border2);background:var(--bg);color:var(--text2);'}">N Total</button>
+          ${multiUnit ? '' : `<button type="button" class="goal-type-btn" data-stage-idx="${i}" data-goal-type="quantity" style="flex:none;padding:6px 10px;font-size:12px;border-radius:var(--radius);cursor:pointer;font-family:inherit;${stage.goalType === 'quantity' ? 'border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);' : 'border:1px solid var(--border2);background:var(--bg);color:var(--text2);'}">N Total</button>`}
         </div>
+        ${multiUnit ? '<p class="desc" style="margin-top:4px;">Multiple units in one stage always run as Constant Production — pick one unit (remove the others) for an "N Total" quantity goal.</p>' : ''}
       </div>
-      ${stage.goalType === 'quantity' ? `
+      ${stage.goalType === 'quantity' && !multiUnit ? `
       <div style="margin-top:8px;display:flex;align-items:center;gap:6px;">
         <input type="number" class="stage-qty-input" data-stage-idx="${i}" min="1" value="${stage.qty ?? 9}" style="width:56px;padding:4px 6px;font-size:12px;">
         <span class="tname" style="font-weight:400;">units total, as fast as possible — production-building count is picked automatically</span>
-      </div>` : `
-      <div style="margin-top:8px;">
-        <span class="tname">Units in Constant Production</span><br>
-        <div class="tier-dots stage-count-dots" data-stage-idx="${i}" style="margin-top:6px;">
-          <span class="tier-dot${stage.buildingCount >= 1 ? ' filled' : ''}" data-count-idx="0" title="1 production building"></span>
-          <span class="tier-dot${stage.buildingCount >= 2 ? ' filled' : ''}" data-count-idx="1" title="2 production buildings"></span>
-          <span class="tier-dot${stage.buildingCount >= 3 ? ' filled' : ''}" data-count-idx="2" title="3 production buildings"></span>
-        </div>
-      </div>`}
+      </div>` : ''}
     </div>`;
   }).join('');
 
   container.querySelectorAll('.stage-unit-select').forEach(sel => sel.addEventListener('change', e => {
     const i = Number(e.target.dataset.stageIdx);
-    optimizeState.stages[i].lineId = e.target.value;
-    optimizeState.stages[i].tierIdx = 0;
+    const ui = Number(e.target.dataset.unitIdx);
+    const unit = optimizeState.stages[i].units[ui];
+    unit.lineId = e.target.value;
+    unit.tierIdx = 0;
     // A different unit line means a different applicable-techs set (see
     // applicableCombatTechIds) — clear rather than leave stale, invisible
     // selections (e.g. Melee Attack checked for a Knight) silently still
     // feeding the search after switching to an Archer, which doesn't use it.
-    optimizeState.stages[i].combatTechIds = new Set();
+    unit.combatTechIds = new Set();
     renderOptimizeStages();
     renderOptimizeResults();
   }));
   container.querySelectorAll('.stage-tier-dots').forEach(wrap => {
     const i = Number(wrap.dataset.stageIdx);
+    const ui = Number(wrap.dataset.unitIdx);
     [...wrap.querySelectorAll('.tier-dot')].forEach(dot => dot.addEventListener('click', () => {
-      optimizeState.stages[i].tierIdx = Number(dot.dataset.tierIdx);
+      optimizeState.stages[i].units[ui].tierIdx = Number(dot.dataset.tierIdx);
       renderOptimizeStages();
       renderOptimizeResults();
     }));
   });
   container.querySelectorAll('.stage-count-dots').forEach(wrap => {
     const i = Number(wrap.dataset.stageIdx);
+    const ui = Number(wrap.dataset.unitIdx);
     [...wrap.querySelectorAll('.tier-dot')].forEach(dot => dot.addEventListener('click', () => {
-      optimizeState.stages[i].buildingCount = Number(dot.dataset.countIdx) + 1;
+      optimizeState.stages[i].units[ui].buildingCount = Number(dot.dataset.countIdx) + 1;
       renderOptimizeStages();
       renderOptimizeResults();
     }));
@@ -5935,13 +6053,36 @@ function renderOptimizeStages() {
     renderOptimizeStages();
     renderOptimizeResults();
   }));
+  container.querySelectorAll('.unit-remove').forEach(btn => btn.addEventListener('click', () => {
+    const i = Number(btn.dataset.stageIdx);
+    const ui = Number(btn.dataset.unitIdx);
+    optimizeState.stages[i].units.splice(ui, 1);
+    renderOptimizeStages();
+    renderOptimizeResults();
+  }));
   wireCombatTechCheckboxes(container);
 }
 
 document.getElementById('optimize-add-stage').addEventListener('click', () => {
   const civ = selectedCiv();
   const lines = allLinesForCiv(civ);
-  optimizeState.stages.push({ lineId: (lines[1] || lines[0]).id, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 });
+  optimizeState.stages.push({ units: [{ lineId: (lines[1] || lines[0]).id, tierIdx: 0, buildingCount: 1 }], goalType: 'sustain', qty: 9 });
+  renderOptimizeStages();
+  renderOptimizeResults();
+});
+// Adds a unit to the LAST stage — trained/upgraded CONCURRENTLY with that
+// stage's existing unit(s), sharing one combined economy (see
+// buildStagedOptimizeTimelineUncached's per-stage `units` handling), unlike
+// "Add Stage" which starts a new, strictly-sequential later stage. Forces
+// the stage to Constant Production — see the goal-type toggle's own
+// multi-unit note for why "N Total" isn't offered once a stage has more
+// than one unit.
+document.getElementById('optimize-add-unit').addEventListener('click', () => {
+  const civ = selectedCiv();
+  const lines = allLinesForCiv(civ);
+  const stage = optimizeState.stages[optimizeState.stages.length - 1];
+  stage.units.push({ lineId: (lines[1] || lines[0]).id, tierIdx: 0, buildingCount: 1 });
+  stage.goalType = 'sustain';
   renderOptimizeStages();
   renderOptimizeResults();
 });
