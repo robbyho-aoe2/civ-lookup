@@ -234,7 +234,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.52</div>
+  <div class="version">v0.53</div>
 </div>
 
 <script>
@@ -3411,6 +3411,23 @@ const CHICKEN_STRATEGIES = {
 const FUNNEL_WOOD_COST = 10; // vs a Mill's 100 — user estimate, not researched
 const DEER_STRATEGY_LABELS = { none: "Don't take", push: 'Push with Scout', mill: 'Mill' };
 const CHICKEN_STRATEGY_LABELS = { none: "Don't take", mill: 'Mill', walk: 'Long-carry (no Mill)', funnel: 'Funnel under TC (~10 wood, no Mill)' };
+// A Mill (deer/chicken 'mill') or gates (chicken 'funnel') is a REAL,
+// separate structure from the always-assumed berries Mill — a different
+// spot on the map, its own wood cost — so choosing one of these strategies
+// should cost real wood on top of berries', not be free just because push/
+// walk/"don't take" are. Returns null (no extra cost) for push/walk/none,
+// so the three chicken options and two deer options are no longer "lumped
+// together" as wood-cost-equivalent (user-reported gap: the strategy
+// dropdowns changed gather RATE but never actually deducted the
+// corresponding structure's wood). Deer wins if both are somehow set at
+// once, matching huntRateAndWorkers' own precedence (not a real scenario).
+function huntStructureFor(deerStrategy, chickenStrategy, civ) {
+  const millName = civ?.millName || 'Mill';
+  if (deerStrategy === 'mill') return { name: `${millName} (Deer)`, cost: structureForResource('food', civ).cost.wood };
+  if (chickenStrategy === 'mill') return { name: `${millName} (Chickens)`, cost: structureForResource('food', civ).cost.wood };
+  if (chickenStrategy === 'funnel') return { name: 'Gates (Chickens)', cost: FUNNEL_WOOD_COST };
+  return null;
+}
 // Resolves the two independent dropdowns + shared level into the one
 // {rate, workers} the opening sequence actually needs — deer takes
 // priority in the (unreal) case both are somehow set at once.
@@ -3478,6 +3495,9 @@ function chooseOpeningSequence(stages, civ, huntConfig) {
   const hunt = huntConfig ? huntRateAndWorkers(huntConfig.deer, huntConfig.chicken, huntConfig.level) : null;
   seq.huntRate = hunt?.rate;
   seq.huntWorkers = hunt?.workers;
+  const huntStructure = huntConfig ? huntStructureFor(huntConfig.deer, huntConfig.chicken, civ) : null;
+  seq.huntStructureName = huntStructure?.name ?? null;
+  seq.huntWoodCost = huntStructure?.cost ?? 0;
   return seq;
 }
 
@@ -4209,6 +4229,21 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         } else {
           builtResources.food = true; // already covered by another resource's structure (e.g. Settlement)
         }
+      }
+
+      // The deer/chicken structure (if the chosen strategy needs one) is a
+      // SEPARATE building from the berries Mill above — a different spot on
+      // the map — so it's its own wood cost, deducted at the same real-world
+      // moment (the hunt block's first worker starts exactly when the
+      // berries Mill also becomes necessary, per foodPhaseRateForWorkerIndex).
+      // Guarded by its own builtResources flag so a later call in the same
+      // search doesn't pay for it twice.
+      if (openingSequence && r.millAt != null && openingSequence.huntWoodCost > 0 && !builtResources.huntStructure) {
+        builtResources.huntStructure = true;
+        cumAlloc.food += 1;
+        remainingAssigned.food = Math.max(0, remainingAssigned.food - 1);
+        pool.wood -= openingSequence.huntWoodCost;
+        checkpoints.push({ label: openingSequence.huntStructureName, time: r.millAt, vills: OPENING_MILL_INDEX, split: { food: 1, wood: 0, gold: 0, stone: 0 }, houses: housesFor(OPENING_MILL_INDEX), alloc: { ...cumAlloc }, kind: 'gather' });
       }
 
       RES.forEach(res => { cumAlloc[res] += remainingAssigned[res] || 0; });
