@@ -237,7 +237,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.64</div>
+  <div class="version">v0.65</div>
 </div>
 
 <script>
@@ -1301,7 +1301,9 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "sheep-mill-garrison-bonus", "foodPerSec": 0.402, "note": "6 of 8 real sheep garrisoned in the Mill for passive food (24.12/min), the other 2 eaten normally" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "cavalry-archer-line",
@@ -1543,7 +1545,9 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "no-decay-meat-pct", "value": 16.3, "note": "100% of chicken/deer/boar/sheep meat with no decay (estimated from wild chickens' real ~86% capture rate)" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "knight-line",
@@ -3360,7 +3364,7 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
           if (eta > worstEta) { worstEta = eta; target = r; }
         });
       }
-      const workerRate = (target === 'food' && openingSequence) ? foodPhaseRateForWorkerIndex(assigned.food, openingSequence.huntRate, openingSequence.huntWorkers, openingSequence.huntingMult) : rates[target];
+      const workerRate = (target === 'food' && openingSequence) ? foodPhaseRateForWorkerIndex(assigned.food, openingSequence.huntRate, openingSequence.huntWorkers, openingSequence.huntingMult, openingSequence.sheepMult) : rates[target];
       vills++;
       assigned[target]++;
       assignedRate[target] += workerRate;
@@ -3450,9 +3454,9 @@ const OPENING_SEQUENCE = [
 // of `huntWorkers` workers (default 4 if not given, matching deer/chicken
 // Mill's own real norm); everyone else — including all of index 6+ when no
 // hunt is selected — is on berries, same as before this existed.
-function foodPhaseRateForWorkerIndex(i, huntRate, huntWorkers, huntingMult = 1) {
-  if (i < 2) return DATA.gatherRates.food; // sheep
-  if (i < 6) return DATA.arabiaBoarRate * huntingMult; // 2 lured boars, ~4 workers — Mongols hunt faster
+function foodPhaseRateForWorkerIndex(i, huntRate, huntWorkers, huntingMult = 1, sheepMult = 1) {
+  if (i < 2) return DATA.gatherRates.food * sheepMult; // sheep — Jurchens' no-decay livestock bonus
+  if (i < 6) return DATA.arabiaBoarRate * huntingMult; // 2 lured boars, ~4 workers — Mongols hunt faster / Jurchens no-decay
   const hw = huntWorkers ?? 4;
   if (huntRate != null && i < 6 + hw) return huntRate; // dedicated deer/chicken block
   return DATA.arabiaBerryRate; // milled berries — always the baseline for everyone else
@@ -3597,10 +3601,24 @@ function chooseOpeningSequence(stages, civ, huntConfig) {
   // Mongols: "Hunters work +40% faster" — applies to boar (always hunted)
   // and to deer/chicken strategies that are genuinely a kill-then-gather
   // hunt (push/mill/walk), not to chicken funnel (a herding action, no
-  // kill involved — see huntRateAndWorkers' own carve-out).
+  // kill involved — see huntRateAndWorkers' own carve-out). Jurchens:
+  // "100% of chickens/deer/boar/sheep meat with no decay" produces the
+  // SAME kind of effect (a higher effective rate) for boar/deer/chicken,
+  // composed into the same multiplier — but ALSO uniquely reaches sheep
+  // (not "hunted" in the game's own sense, so out of scope for Mongols'
+  // bonus), tracked separately as `sheepMult` below. No civ has both
+  // bonuses in real AoE2, but multiplying is the correct composition if
+  // that ever changed. Jurchens' own value is an ESTIMATE: the only real
+  // captured-% figure on file is wild chickens (~86% of nominal food
+  // captured by a normal civ before scattering/decay — see the Arabia
+  // food-source table above), extrapolated to boar/deer/sheep too since
+  // no source gives those individually — user-confirmed acceptable
+  // ("you gave me all the boar/deer/sheep/chicken numbers earlier").
   const huntingBonus = (civ?.ecoBonuses || []).find(b => b.type === 'hunting-rate-pct');
-  const huntingMult = huntingBonus ? 1 + huntingBonus.value / 100 : 1;
+  const noDecayBonus = (civ?.ecoBonuses || []).find(b => b.type === 'no-decay-meat-pct');
+  const huntingMult = (huntingBonus ? 1 + huntingBonus.value / 100 : 1) * (noDecayBonus ? 1 + noDecayBonus.value / 100 : 1);
   seq.huntingMult = huntingMult;
+  seq.sheepMult = noDecayBonus ? 1 + noDecayBonus.value / 100 : 1;
   const hunt = huntConfig ? huntRateAndWorkers(huntConfig.deer, huntConfig.chicken, huntConfig.level, huntingMult) : null;
   seq.huntRate = hunt?.rate;
   seq.huntWorkers = hunt?.workers;
@@ -3843,6 +3861,21 @@ function computeTotalIncome(rows, civ, techIds, assumeFarms = true) {
     if (b.type !== 'dual-resource-generation') return;
     totalIncome[b.secondary] = Math.max(0, totalIncome[b.secondary] - totalIncome[b.primary] * b.ratio);
   });
+  // Gurjaras: "Can garrison livestock in Mills to passively produce food"
+  // — a real, labor-free income stream, same shape as dual-resource-
+  // generation (reduces how much villager-driven food income is still
+  // needed) but a flat rate rather than proportional to another
+  // resource. Modeled as 6 of the real 8 Arabia sheep garrisoned
+  // together in the same Mill already built for berries (the other 2
+  // are eaten normally by the existing 2-worker sheep phase, unchanged)
+  // — user-provided real average food/min AT 6 garrisoned together
+  // (24.12 total), not a full "how many extra Mills is it worth
+  // building" optimization (the per-sheep rate keeps dropping as more
+  // share one Mill, so splitting into more Mills is mathematically
+  // always better — but costs real wood per Mill this tool doesn't yet
+  // search over; deferred, flagged, not guessed).
+  const sheepMillBonus = (civ?.ecoBonuses || []).find(b => b.type === 'sheep-mill-garrison-bonus');
+  if (sheepMillBonus) totalIncome.food = Math.max(0, totalIncome.food - sheepMillBonus.foodPerSec);
   return { totalIncome, popRate, farmUpkeepWoodPerSec, houseWoodPerSec, housePopSpace, hasNoHouses };
 }
 
