@@ -6,9 +6,9 @@
 <title>AoE Auto Scout — by Fast Castle and Chill</title>
 <style>
 :root{
-  --bg:#0f0d0b;--surf:#1c1814;--surf2:#242018;--border:#332c24;--border2:#4a3f30;
-  --amber:#c8922a;--amberL:#f0b458;--amberBg:rgba(200,146,42,.1);
-  --text:#ede5d8;--text2:#a8967e;--text3:#6b5840;
+  --bg:#14181c;--surf:#1a1f24;--surf2:#232a31;--border:#2e383f;--border2:#414d57;
+  --amber:#c97a4a;--amberL:#e0956b;--amberBg:rgba(201,122,74,.12);
+  --text:#dde3e6;--text2:#7c8b94;--text3:#56626b;
   --green:#4ade80;--greenBg:rgba(74,222,128,.07);--greenBd:rgba(74,222,128,.25);
   --red:#f87171;--redBg:rgba(248,113,113,.07);--redBd:rgba(248,113,113,.25);
   --blue:#60a5fa;--purple:#a78bfa;--blueBg:rgba(96,165,250,.12);--purpleBg:rgba(167,139,250,.12);
@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.95</div>
+    <div class="version">v1.96</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1106,7 +1106,7 @@ const ITEM_AGES = {
   },
 };
 const AGE_LABELS = ['⚔️ Feudal','🏰 Castle','👑 Imperial'];
-const AGE_COLORS = ['#c8922a','#2dd4bf','#f87171'];
+const AGE_COLORS = ['#c97a4a','#2dd4bf','#f87171'];
 
 const TECH_DESCRIPTIONS = {
   199:'Archer-line +1 attack, +1 range',
@@ -5421,7 +5421,7 @@ function renderSuggestions() {
       const isSel = selected.some(s => s.name === q);
       const badge = n !== null ? `<span class="sug-cnt ${isAll ? 'all' : 'few'}">${isAll ? 'all' : n}</span>` : '';
       let style = '';
-      if (isSel) style = `style="background:${cat.color};border-color:${cat.color};color:#0f0d0b"`;
+      if (isSel) style = `style="background:${cat.color};border-color:${cat.color};color:#14181c"`;
       const cls = `sug-btn${isAll ? ' sug-all' : ''}${isSel ? ' sel' : ''}`;
       return `<button class="${cls}" ${style} data-q="${q}">${q}${badge}</button>`;
     }).join('');
