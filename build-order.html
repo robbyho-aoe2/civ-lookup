@@ -209,11 +209,11 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
       <label class="save-check" style="font-size:12px;"><input type="checkbox" id="optimize-allin"> Prioritize Military (all-in)</label>
       <label class="save-check" style="font-size:12px;">Efficiency <input type="number" id="optimize-efficiency" min="1" max="100" value="85" style="width:48px;padding:3px 5px;font-size:12px;margin-left:4px;">%</label>
     </div>
-    <p class="desc" style="margin-top:12px;margin-bottom:4px;">Deer/Chicken Preferences (berries are always assumed)</p>
+    <p class="desc" style="margin-top:12px;margin-bottom:4px;">Hunt Preferences (berries are always assumed; a real Arabia map has deer OR chickens, never both)</p>
     <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-      <label class="save-check" style="font-size:12px;">Deer <select id="optimize-deer-strategy" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
-      <label class="save-check" style="font-size:12px;">Wild Chickens <select id="optimize-chicken-strategy" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
-      <label class="save-check" style="font-size:12px;">Map Generation <select id="optimize-hunt-level" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
+      <label class="save-check" style="font-size:12px;">Map Has <select id="optimize-hunt-animal" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
+      <label class="save-check" style="font-size:12px;">Strategy <select id="optimize-hunt-strategy" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
+      <label class="save-check" style="font-size:12px;">Spawn Size <select id="optimize-hunt-level" style="margin-left:4px;padding:3px 5px;font-size:12px;"></select></label>
     </div>
     <p class="assumptions" style="margin-top:10px;margin-bottom:0;">Off (default): a realistic economy — sheep, then wood, then berries/hunt up to pop 20, no Barracks before Feudal, Loom right before advancing. On: skip all of that and build everything the instant it's affordable, prioritizing the target unit above all else. A later stage REPLACES the earlier one's production once its age is reached, it doesn't run alongside it. Efficiency scales down gather AND villager-training rate together — a rough stand-in for real-play friction (idle time, imperfect pathing, reaction delay) this idealized math otherwise ignores entirely. 100% = no friction; not a researched default, meant to be tuned against real games.</p>
   </div>
@@ -237,7 +237,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.66</div>
+  <div class="version">v0.67</div>
 </div>
 
 <script>
@@ -3636,10 +3636,19 @@ function chooseOpeningSequence(stages, civ, huntConfig) {
   const huntingMult = (huntingBonus ? 1 + huntingBonus.value / 100 : 1) * (noDecayBonus ? 1 + noDecayBonus.value / 100 : 1);
   seq.huntingMult = huntingMult;
   seq.sheepMult = noDecayBonus ? 1 + noDecayBonus.value / 100 : 1;
-  const hunt = huntConfig ? huntRateAndWorkers(huntConfig.deer, huntConfig.chicken, huntConfig.level, huntingMult) : null;
+  // `huntConfig` is a single real-map choice — {animal:'deer'|'chicken',
+  // strategy, level} — since Arabia rolls ONE or the other, never both
+  // (user correction: the old two-independent-dropdown UI let both be set
+  // at once, which isn't a real scenario). Translated here into the
+  // deerStrategy/chickenStrategy pair huntRateAndWorkers/huntStructureFor
+  // already expect, so those two (already well-tested) stay untouched —
+  // exactly one of the pair is ever non-'none'.
+  const deerStrategy = huntConfig?.animal === 'deer' ? huntConfig.strategy : 'none';
+  const chickenStrategy = huntConfig?.animal === 'chicken' ? huntConfig.strategy : 'none';
+  const hunt = huntConfig ? huntRateAndWorkers(deerStrategy, chickenStrategy, huntConfig.level, huntingMult) : null;
   seq.huntRate = hunt?.rate;
   seq.huntWorkers = hunt?.workers;
-  const huntStructure = huntConfig ? huntStructureFor(huntConfig.deer, huntConfig.chicken, civ) : null;
+  const huntStructure = huntConfig ? huntStructureFor(deerStrategy, chickenStrategy, civ) : null;
   seq.huntStructureName = huntStructure?.name ?? null;
   seq.huntWoodCost = huntStructure?.cost ?? 0;
   return seq;
@@ -5769,7 +5778,7 @@ function renderVillagerBars(villagers, rates, totalIncome, farmUpkeepWoodPerSec,
 // map has (push for deer, Mill for chickens) — "worst case" per the user's
 // own framing applies only to the map-luck spawn size (level:2, the
 // smallest real spawn), not to whether the food source gets taken at all.
-let optimizeState = { stages: [{ units: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }] }], loomOn: true, allIn: false, efficiency: 85, foodStrategy: { deer: 'push', chicken: 'mill', level: 2 } };
+let optimizeState = { stages: [{ units: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }] }], loomOn: true, allIn: false, efficiency: 85, foodStrategy: { animal: 'deer', strategy: 'push', level: 2 } };
 // Pure UI/display state, not part of the plan itself — which buildingCount
 // alternative (if any) the last stage's tabs are currently showing instead
 // of the recommended pick. Reset to null (back to the real pick) whenever
@@ -6361,23 +6370,40 @@ document.getElementById('optimize-efficiency').addEventListener('input', e => {
   window.__efficiencyDebounce = setTimeout(renderOptimizeResults, 400);
 });
 {
-  const deerSel = document.getElementById('optimize-deer-strategy');
-  const chickenSel = document.getElementById('optimize-chicken-strategy');
+  // A real Arabia map rolls deer OR wild chickens, never both (user
+  // correction — the old two-independent-dropdown design let both be set
+  // at once, which isn't a real scenario) — one "Map Has" choice, then a
+  // "Strategy" dropdown whose OWN options depend on that choice.
+  const ANIMAL_LABELS = { deer: 'Deer', chicken: 'Wild Chickens' };
+  const ANIMAL_DEFAULT_STRATEGY = { deer: 'push', chicken: 'mill' };
+  const animalSel = document.getElementById('optimize-hunt-animal');
+  const strategySel = document.getElementById('optimize-hunt-strategy');
   const levelSel = document.getElementById('optimize-hunt-level');
-  deerSel.innerHTML = Object.entries(DEER_STRATEGY_LABELS).map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
-  chickenSel.innerHTML = Object.entries(CHICKEN_STRATEGY_LABELS).map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
+  animalSel.innerHTML = Object.entries(ANIMAL_LABELS).map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
+  const strategyLabelsFor = animal => animal === 'chicken' ? CHICKEN_STRATEGY_LABELS : DEER_STRATEGY_LABELS;
+  const populateStrategyOptions = () => {
+    strategySel.innerHTML = Object.entries(strategyLabelsFor(optimizeState.foodStrategy.animal)).map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
+    strategySel.value = optimizeState.foodStrategy.strategy;
+  };
+  populateStrategyOptions();
   // Level is shared (deer count / chicken count are paired real spawns —
   // 2/6, 3/7, 4/8) and defaults to the lowest, worst-case roll — user's own
   // explicit request: never assume a better-than-guaranteed map generosity
   // unless the user opts into it.
   levelSel.innerHTML = [2, 3, 4].map(lv => `<option value="${lv}">${lv} deer / ${lv + 4} chickens</option>`).join('');
-  deerSel.addEventListener('change', e => {
-    optimizeState.foodStrategy.deer = e.target.value;
+  animalSel.addEventListener('change', e => {
+    optimizeState.foodStrategy.animal = e.target.value;
+    // Switching which animal the map has resets to that animal's own
+    // default ACTIVE strategy (push for deer, mill for chickens) rather
+    // than carrying over a strategy id that may not even exist for the
+    // new animal (e.g. 'funnel' is chicken-only).
+    optimizeState.foodStrategy.strategy = ANIMAL_DEFAULT_STRATEGY[e.target.value];
+    populateStrategyOptions();
     optimizeAltView = null;
     renderOptimizeResults();
   });
-  chickenSel.addEventListener('change', e => {
-    optimizeState.foodStrategy.chicken = e.target.value;
+  strategySel.addEventListener('change', e => {
+    optimizeState.foodStrategy.strategy = e.target.value;
     optimizeAltView = null;
     renderOptimizeResults();
   });
@@ -6443,8 +6469,9 @@ function setMode(mode) {
     document.getElementById('optimize-loom').checked = optimizeState.loomOn;
     document.getElementById('optimize-allin').checked = optimizeState.allIn;
     document.getElementById('optimize-efficiency').value = optimizeState.efficiency;
-    document.getElementById('optimize-deer-strategy').value = optimizeState.foodStrategy.deer;
-    document.getElementById('optimize-chicken-strategy').value = optimizeState.foodStrategy.chicken;
+    document.getElementById('optimize-hunt-animal').value = optimizeState.foodStrategy.animal;
+    document.getElementById('optimize-hunt-strategy').innerHTML = Object.entries(optimizeState.foodStrategy.animal === 'chicken' ? CHICKEN_STRATEGY_LABELS : DEER_STRATEGY_LABELS).map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
+    document.getElementById('optimize-hunt-strategy').value = optimizeState.foodStrategy.strategy;
     document.getElementById('optimize-hunt-level').value = optimizeState.foodStrategy.level;
   }
   renderCivBonusList();
