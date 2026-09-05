@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.05</div>
+    <div class="version">v2.06</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -377,7 +377,7 @@ const CB = {
   Teutons:["Farms cost -40%","Town Centers +10 garrison capacity; Towers +5 garrison capacity","Barracks and Stable Units +1/+2 melee armor in Castle/Imperial Age","Monks +100% healing range","Murder Holes, Herbal Medicine free"],
   Tupi:["Start with +25 of each resource","Villagers can garrison in Settlements","Fallen units return 15% of their cost","Archery Range and Barracks upgrades cost -50% food"],
   Turks:["Gold miners work +25% faster","Scout Cavalry-line +1 pierce armor and upgrades free","Chemistry free; Gunpowder technologies costs -50%","Gunpowder Units +25% HP"],
-  Varangians:["Fishing and hunting also generate +40% gold","Bloodlines and Careening effects +50%","Varangian Guards attack +25% faster","Longships and Catapult Galleons attack +10% faster"],
+  Varangians:["Shepherding, fishing, and hunting also generate +40% gold","Bloodlines and Caravan effects +50%","Varangian Guards attack +25% faster and generate +50% gold","Longships and Catapult Galleons attack +15% faster"],
   Vietnamese:["Enemy Town Centers are revealed at the start of the game","Economic upgrades cost no wood and research +100% faster","Archery Range units and Fire Lancers +20% HP","Conscription free"],
   Vikings:["Wheelbarrow, Hand Cart free","Infantry +20% HP starting in Feudal Age","Warships cost -10/15/20% in Feudal/Castle/Imperial Age"],
   Wei:["Receive one free Villager for each economic upgrade researched","Hei Guang Cavalry and Xianbei Raider +20/30% HP in Castle/Imperial Age","Traction Trebuchets and Lou Chuans cost -25%"],
@@ -788,7 +788,7 @@ const TEAM_BONUS = {
   Teutons: "Units more resistant to conversion",
   Tupi: "Towers and Castles provide +10 population space",
   Turks: "Gunpowder Units train +25% faster",
-  Varangians: "Knight-line +1 attack vs. Infantry", // best-effort read of the civ card image, still needs confirmation — flag if wrong
+  Varangians: "Knight-line +1 attack vs. Infantry", // confirmed correct by the site owner (2026-09-05)
   Vietnamese: "Imperial Skirmisher upgrade available in Imperial Age",
   Vikings: "Docks cost -15%",
   Wei: "Cavalry +2 attack vs. Siege Weapons",
@@ -2659,17 +2659,24 @@ const BONUS_CATEGORY_OVERRIDE = {
   // directly by the site owner, bonus-by-bonus.
   // "vs. Infantry" names the TARGET being attacked, not Varangians' own
   // infantry strength — same false-positive pattern as Wei's "vs. Siege
-  // Weapons" team bonus elsewhere in this file. Text itself still needs
-  // the site owner's confirmation (see TEAM_BONUS's own flag).
+  // Weapons" team bonus elsewhere in this file. Confirmed correct by the
+  // site owner (2026-09-05) — text and categorization both stand as-is.
   'Knight-line +1 attack vs. Infantry': { exclude:['Infantry'], include:['Cavalry'] },
   // "Fishing" false-triggers Naval — this is an eco-only bonus (extra gold
-  // income), not a naval-strength one.
-  'Fishing and hunting also generate +40% gold': { exclude:['Naval'], include:['Eco'] },
-  // Bloodlines (Stable tech) + Careening (Dock tech) genuinely spans both.
-  'Bloodlines and Careening effects +50%': { include:['Naval','Cavalry'] },
-  // "Varangian Guards" is a proper noun the classifier can't tell is infantry.
-  'Varangian Guards attack +25% faster': { include:['Infantry'] },
-  'Longships and Catapult Galleons attack +10% faster': { include:['Naval'] },
+  // income), not a naval-strength one. Corrected (2026-09-05): includes
+  // Shepherding too, not just fishing/hunting.
+  'Shepherding, fishing, and hunting also generate +40% gold': { exclude:['Naval'], include:['Eco'] },
+  // Corrected (2026-09-05): the site's second clause is Caravan (a Market
+  // trade tech, Eco), NOT Careening (a Dock tech, Naval) — a real word-level
+  // fix, not a typo, so the category changes too: Bloodlines→Cavalry,
+  // Caravan→Eco, no Naval involvement here at all.
+  'Bloodlines and Caravan effects +50%': { include:['Cavalry','Eco'] },
+  // "Varangian Guards" is a proper noun the classifier can't tell is
+  // infantry. Corrected (2026-09-05): the unit ALSO generates gold now, so
+  // this bonus genuinely spans Infantry (attack speed) and Eco (gold).
+  'Varangian Guards attack +25% faster and generate +50% gold': { include:['Infantry','Eco'] },
+  // Corrected (2026-09-05): 10% → 15%.
+  'Longships and Catapult Galleons attack +15% faster': { include:['Naval'] },
 };
 
 /* Same idea as BONUS_CATEGORY_OVERRIDE, but for Castle/Imperial unique techs,
