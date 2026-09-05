@@ -237,7 +237,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.60</div>
+  <div class="version">v0.61</div>
 </div>
 
 <script>
@@ -1103,7 +1103,10 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "age-up-resource-bonus", "delta": { "food": 0, "wood": 200, "gold": 0, "stone": 0 }, "note": "Receive +200 wood when advancing to the next Age" },
+        { "type": "tech-cost-pct", "building": "Barracks", "value": 50, "note": "Barracks technologies cost -50%" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "cavalry-archer-line",
@@ -1130,7 +1133,10 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "age-up-resource-bonus", "delta": { "food": 100, "wood": 0, "gold": 100, "stone": 0 }, "note": "Receive +100 gold and +100 food when advancing to the next Age" },
+        { "type": "free-tier-upgrade", "tierName": "Pikeman", "note": "Pikeman upgrade free" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "hand-cannoneer",
@@ -1717,7 +1723,12 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "unit-cost-pct", "line": "scout-cavalry-line", "value": 15, "note": "Scout Cavalry-line costs -15%" },
+        { "type": "free-tech", "techId": "forging", "note": "Melee attack upgrades free" },
+        { "type": "free-tech", "techId": "iron-casting", "note": "Melee attack upgrades free" },
+        { "type": "free-tech", "techId": "blast-furnace", "note": "Melee attack upgrades free" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -3035,11 +3046,17 @@ function startingPoolForCiv(civ) {
 // `buildingName`, when passed, additionally applies any `building-cost-pct`
 // bonus scoped to that building (by exact name, or `building:'all'` for a
 // blanket discount like Malians'/Incas') — optionally narrowed to one
-// `resource` (Bulgarians' Town Centers, stone only) and/or gated to not
-// apply before an `age` is reached (Britons' Town Centers, Castle Age+).
-// Only building-construction call sites pass this; tech/unit-upgrade costs
-// (which never pass a buildingName) are unaffected.
-function costForCiv(cost, civ, buildingName) {
+// `resource` (Bulgarians' Town Centers, stone only). No age-gating needed
+// in practice: every real building-cost-pct civ's own construction sites
+// happen to already be implicitly age-correct on their own (e.g. Britons'
+// Town Center discount — the only place this tool ever prices a TC is
+// already gated to Castle Age by an unrelated, pre-existing check).
+// `unitLineId`, when passed, additionally applies a `unit-cost-pct` bonus
+// scoped to that exact unit line (Magyars' Scout Cavalry -15%) — only
+// call sites pricing a unit's OWN training cost pass this.
+// Only building-construction call sites pass buildingName; tech/unit-
+// upgrade costs (which pass neither) are unaffected by either.
+function costForCiv(cost, civ, buildingName, unitLineId) {
   const out = { ...cost };
   (civ?.ecoBonuses || []).forEach(b => {
     if (b.type === 'flat' && out[b.resource] != null) {
@@ -3047,6 +3064,9 @@ function costForCiv(cost, civ, buildingName) {
     } else if (b.type === 'pct-cost') {
       RES.forEach(r => { out[r] = out[r] * (1 - b.value / 100); });
     } else if (b.type === 'building-cost-pct' && buildingName && (b.building === 'all' || b.building === buildingName)) {
+      const resources = b.resource ? [b.resource] : RES;
+      resources.forEach(r => { if (out[r]) out[r] = Math.round(out[r] * (1 - b.value / 100)); });
+    } else if (b.type === 'unit-cost-pct' && unitLineId && b.line === unitLineId) {
       const resources = b.resource ? [b.resource] : RES;
       resources.forEach(r => { if (out[r]) out[r] = Math.round(out[r] * (1 - b.value / 100)); });
     }
@@ -3746,7 +3766,7 @@ function computeTotalIncome(rows, civ, techIds, assumeFarms = true) {
   const totalIncome = { food: 0, wood: 0, gold: 0, stone: 0 };
   let popRate = 0;
   rows.forEach(({ line, tier, buildings }) => {
-    const cost = costForCiv(line.cost, civ);
+    const cost = costForCiv(line.cost, civ, null, line.id);
     const unitRate = buildings / tier.trainTime;
     RES.forEach(r => totalIncome[r] += (cost[r] || 0) * unitRate);
     popRate += line.pop * unitRate;
@@ -4001,7 +4021,13 @@ function stageMandatoryItems(targets, civ, allIn, haveSet, fromAgeIdx, extraItem
 
     for (let i = 1; i <= tierIdx; i++) {
       const t = line.tiers[i];
-      if (t?.upgradeCost) items.push({ name: `${line.tiers[i - 1].name} → ${t.name}`, cost: costForCiv(t.upgradeCost, civ), age: effectiveTierAge(t, civ) });
+      if (!t?.upgradeCost) continue;
+      // Ethiopians: "Pikeman upgrade free" — a specific unit-TIER upgrade,
+      // not an ecoTech, so the existing free-tech mechanism (keyed by
+      // ecoTechs id) doesn't cover it; matched by tier name instead.
+      const freeUpgrade = (civ?.ecoBonuses || []).some(b => b.type === 'free-tier-upgrade' && b.tierName === t.name);
+      const cost = freeUpgrade ? { food: 0, wood: 0, gold: 0, stone: 0 } : costForCiv(t.upgradeCost, civ);
+      items.push({ name: `${line.tiers[i - 1].name} → ${t.name}`, cost, age: effectiveTierAge(t, civ) });
     }
   });
 
@@ -4246,6 +4272,14 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence, cumAlloc);
       if (!r) { checkpoints.push({ label: `${simItem.name} — past 60 min, add more Town Centers`, blocked: true }); anyBlocked = true; ri += mergedItems.length; continue; }
       cursorTime = r.time; cursorVills = r.vills; pool = r.pool;
+      // Ethiopians (+100 food/+100 gold)/Dravidians (+200 wood): a flat
+      // resource credit the instant an age-up completes — real, one-time
+      // income landing exactly like the Tatars' per-TC sheep credit does,
+      // just triggered by reaching an age instead of building a TC.
+      if (simItem.isAgeUp) {
+        const ageBonus = (civ?.ecoBonuses || []).find(b => b.type === 'age-up-resource-bonus');
+        if (ageBonus) RES.forEach(res => { pool[res] += (ageBonus.delta[res] || 0); });
+      }
 
       const remainingAssigned = { ...r.assigned };
       const span = cursorTime - callStartTime;
@@ -4604,7 +4638,17 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           if (!haveSet.buildingCounts.has(bi.name)) haveSet.buildingCounts.set(bi.name, 1);
           extraItems.push(bi);
         });
-        extraItems.push({ name: t.name, cost: costForCiv(t.cost, civ), queueSeconds: t.queueSeconds, deferToEnd: true, age: t.age });
+        // Dravidians: "Barracks technologies cost -50%" — scoped by the
+        // tech's own real research building (Arson/Squires, both Barracks),
+        // not the unit's OWN training building, so this applies correctly
+        // regardless of which unit line the checkbox was checked from.
+        let techCost = costForCiv(t.cost, civ);
+        const techBuildingDiscount = (civ?.ecoBonuses || []).find(b => b.type === 'tech-cost-pct' && b.building === requiredBuilding);
+        if (techBuildingDiscount) {
+          const resources = techBuildingDiscount.resource ? [techBuildingDiscount.resource] : RES;
+          resources.forEach(r => { if (techCost[r]) techCost[r] = Math.round(techCost[r] * (1 - techBuildingDiscount.value / 100)); });
+        }
+        extraItems.push({ name: t.name, cost: techCost, queueSeconds: t.queueSeconds, deferToEnd: true, age: t.age });
       });
     });
     const mandatoryItems = stageMandatoryItems(resolvedUnits.map(({ line, tierIdx, buildingCount }) => ({ line, tierIdx, buildingCount })), civ, allIn, haveSet, reachedAgeIdx, extraItems);
@@ -4669,7 +4713,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // stone-workers get reassigned toward the COMBINED cost ratio of
       // everything it's training, not just unit 0's own.
       const targetCost = RES.reduce((c, r) => {
-        c[r] = resolvedUnits.reduce((s, u) => s + (costForCiv(u.line.cost, civ)[r] || 0), 0);
+        c[r] = resolvedUnits.reduce((s, u) => s + (costForCiv(u.line.cost, civ, null, u.line.id)[r] || 0), 0);
         return c;
       }, { food: 0, wood: 0, gold: 0, stone: 0 });
       if (!targetCost.stone) {
