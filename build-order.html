@@ -237,7 +237,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.63</div>
+  <div class="version">v0.64</div>
 </div>
 
 <script>
@@ -1585,7 +1585,13 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "pastures-food-rate",
+          "rates": { "base": 21.61, "wheelbarrow": 23.33, "handCart": 25.21 },
+          "note": "Pastures replace Farms — real food/min at each carry-capacity tier (current balance)"
+        }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "knight-line",
@@ -3203,6 +3209,19 @@ function resolveSequential(itemList, rates, villRate, startTime, startVills, poo
 }
 
 function effectiveGatherRate(resource, civ, techIds) {
+  // Khitans: "Pastures replace Farms" — a real, structurally distinct
+  // food-gathering building, not a multiplier on the standard farm
+  // formula, so it's modeled as its own directly-sourced rate table
+  // (user-provided real food/min at each carry-capacity tier — "New
+  // Khitan Pastures" from the current live balance, not the pre-patch
+  // "Old" column) rather than derived from DATA.gatherRates.food.
+  if (resource === 'food') {
+    const pastures = (civ?.ecoBonuses || []).find(b => b.type === 'pastures-food-rate');
+    if (pastures) {
+      const tier = techIds.has('hand-cart') ? 'handCart' : techIds.has('wheelbarrow') ? 'wheelbarrow' : 'base';
+      return pastures.rates[tier] / 60;
+    }
+  }
   let rate = DATA.gatherRates[resource];
   // A tech that `supersedes` another (Hand Cart replacing Wheelbarrow's
   // bonus rather than stacking with it) suppresses the superseded tech's
