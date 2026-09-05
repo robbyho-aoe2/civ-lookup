@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.02</div>
+    <div class="version">v2.03</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -455,7 +455,7 @@ const UNIQUE_UNITS = {
   Maya:"Plumed Archer",
   Mongols:"Mangudai",
   Muisca:"Guecha Warrior, Temple Guard",
-  Persians:"War Elephant, Savar",
+  Persians:"Battle Elephant, Savar",
   Poles:"Obuch, Winged Hussar",
   Portuguese:"Organ Gun, Caravel",
   Romans:"Centurion, Legionary",
@@ -1274,8 +1274,8 @@ const UNIT_DESCRIPTIONS = {
   1737:'Thirisadai (Dravidians): Warship with a wide splash attack. Strong vs grouped ships; weak vs single strong targets',
   1741:'Chakram Thrower (Gurjaras): Ranged infantry that pierces through multiple targets. Strong vs grouped infantry; weak vs cavalry',
   1747:'Ghulam (Hindustanis): Cheap ranged infantry with bonus vs cavalry. Strong vs cavalry; weak vs archers',
-  1755:'Camel Scout (Incas/Mapuche/Muisca/Tupi): Fast early-game scout with camel-line bonuses. Low attack; best for map control and harassment',
-  1759:'Ratha, Mounted Archer (Gurjaras): Cavalry archer variant with siege-like bonus. Strong vs siege and buildings; weak vs camels',
+  1755:'Camel Scout (Gurjaras): Fast early-game scout with camel-line bonuses. Low attack; best for map control and harassment',
+  1759:'Ratha, Mounted Archer (Bengalis): Cavalry archer variant with siege-like bonus. Strong vs siege and buildings; weak vs camels',
   1790:'Centurion (Romans): Infantry with reduced friendly-fire and boosted anti-cavalry bonus. Strong vs cavalry and buildings; weak vs archers',
   1792:'Legionary (Romans): Fast melee infantry with bonus vs spearmen. Strong vs infantry and spearmen; weak vs cavalry',
   1800:'Composite Bowman (Hindustanis): Foot archer with bonus vs buildings. Strong vs infantry and structures; weak vs cavalry and skirmishers',
@@ -1285,7 +1285,7 @@ const UNIT_DESCRIPTIONS = {
   1910:'Grenadier (Jurchens): Gunpowder infantry with splash damage. Strong vs grouped infantry and buildings; weak vs cavalry',
   1920:'Liao Dao (Khitans): Fast raiding cavalry. Strong vs archers and siege; weak vs spearmen and camels',
   1922:'Mounted Trebuchet (Khitans): Siege unit that can fire without unpacking. Strong vs buildings; weak vs fast cavalry',
-  1949:'Tiger Cavalry (Shu): Fast raiding cavalry. Strong vs archers and siege; weak vs spearmen and camels',
+  1949:'Tiger Cavalry (Wei): Fast raiding cavalry. Strong vs archers and siege; weak vs spearmen and camels',
   1959:'White Feather Guard (Shu): Elite foot archer. Strong vs infantry; weak vs cavalry and skirmishers',
   1961:'War Chariot (Shu): Fast ranged cavalry unit. Strong vs infantry; weak vs camels and skirmishers',
   1968:'Fire Archer (Wu): Cheap ranged infantry with anti-building bonus. Strong vs infantry and buildings; weak vs cavalry',
@@ -1404,6 +1404,10 @@ const EQUIVALENCE_NOTES = {
   2569: 'has Bolas Rider instead',
   2571: 'has Elite Bolas Rider instead',
   1134: 'has Elite Battle Elephant instead',
+  1792: 'has Legionary instead',
+  558:  'has Savar instead',
+  207:  'has Imperial Camel Rider instead',
+  1155: 'has Imperial Skirmisher instead',
   1012: 'has Grazing Grasslands (Pasture tier) instead',
   1013: 'has Enclosures (Pasture tier) instead',
   1014: 'has Livestock Husbandry (Pasture tier) instead',
@@ -1496,19 +1500,17 @@ const QUICK_CATEGORIES = [
    as Paladin-tier cavalry for Wei/Shu/Wu) added on top of the normal id match. */
 const CIV_ARCHETYPES = [
   {emoji:'🏹',label:'Archer',bonusKey:'Archer',items:[
-    {t:'unit',id:24},{t:'unit',id:492,missingNote:'-1'},{t:'unit',id:6},
+    {t:'unit',id:24},{t:'unit',id:492,missingNote:'-1'},{t:'unit',id:6,extra:[1155]},
     {t:'tech',id:437},{t:'tech',id:201},{t:'tech',id:200},{t:'tech',id:199},{t:'tech',id:47},
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
   {emoji:'🎯',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras',...MOUNTED_CROSSBOWMAN_EXTRA_CIVS],items:[
     {t:'unit',id:474,extra:[...XIANBEI_IDS,...ELE_ARCHER_IDS,2569,2571]},
-    {t:'unit',id:MOUNTED_CROSSBOWMAN_SENTINEL_ID}, // Mounted Crossbowman (Danes/Saxons/Varangians + TBD existing civs) — see its own comment above
     {t:'tech',id:435},{t:'tech',id:39},{t:'tech',id:437},{t:'tech',id:436},{t:'tech',id:47},
     {t:'tech',id:199},{t:'tech',id:200},{t:'tech',id:201},
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
   {emoji:'⚔️',label:'Cavalry',bonusKey:'Cavalry',restrictTo:['Armenians','Bengalis','Berbers','Bohemians','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Dravidians','Ethiopians','Franks','Georgians','Goths','Gurjaras','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Malay','Malians','Magyars','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu'],items:[
-    {t:'unit',id:JARL_SENTINEL_ID}, // Jarl (Varangians only) — see its own comment above
     {t:'unit',id:[569,1813],extra:[1946,2568,1753]},
     {t:'unit',id:[441,1707]},
     {t:'unit',id:283,extra:[1946,2568,1753]},
@@ -1519,9 +1521,8 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:67},{t:'tech',id:68},{t:'tech',id:75},{t:'tech',id:45},{t:'tech',id:46},
   ]},
   {emoji:'🛡',label:'Infantry',bonusKey:'Infantry',items:[
-    {t:'unit',id:473,extra:[2554]},{t:'unit',id:359},{t:'unit',id:77,extra:[2554]},
+    {t:'unit',id:473,extra:[2554,1792]},{t:'unit',id:359},{t:'unit',id:77,extra:[2554]},
     {t:'unit',id:1901},{t:'unit',id:1903},
-    {t:'unit',id:HEAVY_VARANGIAN_GUARD_SENTINEL_ID}, // Varangian Guard (Danes/Saxons/Varangians) — see its own comment above
     {t:'tech',id:77},{t:'tech',id:76},{t:'tech',id:74},{t:'tech',id:215},{t:'tech',id:602},
     {t:'tech',id:67},{t:'tech',id:68},{t:'tech',id:75},{t:'tech',id:875},
   ]},
@@ -1530,13 +1531,12 @@ const CIV_ARCHETYPES = [
     {t:'unit',id:588,extra:[1907]},
     {t:'unit',id:542},{t:'unit',id:36},
     {t:'unit',id:331,extra:TRACTION_TREB_IDS},
-    {t:'unit',id:1258,extra:[1120,1122,1744,1746]},
-    {t:'unit',id:548,extra:[1120,1122,1744,1746]},
+    {t:'unit',id:1258,extra:[1744,1746]},
+    {t:'unit',id:548,extra:[1744,1746]},
     {t:'tech',id:47},{t:'tech',id:377},{t:'tech',id:321},
   ]},
   {emoji:'⛵',label:'Naval',bonusKey:'Naval',items:[
     {t:'unit',id:691,extra:[2633]},{t:'unit',id:420},{t:'unit',id:528},{t:'unit',id:539},{t:'unit',id:2628},
-    {t:'unit',id:LONGSHIP_SENTINEL_ID}, // Longship (Danes/Saxons/Varangians) — see its own comment above
     {t:'tech',id:35},{t:'tech',id:34},{t:'tech',id:375},{t:'tech',id:374},{t:'tech',id:373},{t:'tech',id:47},
     {t:'tech',id:201},{t:'tech',id:68},{t:'tech',id:75},{t:'tech',id:907},
   ]},
@@ -1560,7 +1560,8 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:63},{t:'tech',id:64},{t:'tech',id:140},{t:'tech',id:194},{t:'tech',id:608},
   ]},
   {emoji:'🐪',label:'Camel',bonusKey:'Camel',restrictTo:['Berbers','Byzantines','Cumans','Ethiopians','Gurjaras','Hindustanis','Khitans','Malians','Mongols','Persians','Saracens','Tatars','Turks'],items:[
-    {t:'unit',id:330},{t:'unit',id:329},
+    {t:'unit',id:330,extra:[558,207]}, // Heavy Camel Rider — extra covers Persians' Savar and Hindustanis' further Imperial Camel Rider tier (both replace/extend this same tier, not additive units)
+    {t:'unit',id:329},
     {t:'tech',id:435},{t:'tech',id:39},{t:'tech',id:80},{t:'tech',id:82},{t:'tech',id:81},
   ]},
   {emoji:'🐘',label:'Elephant',bonusKey:'Elephant',restrictTo:['Bengalis','Burmese','Dravidians','Khmer','Malay','Vietnamese','Persians'],items:[
@@ -1639,11 +1640,118 @@ const MIN_GAMES_OPTIONS = [
    Slingers give Incas/Mapuche/Muisca/Tupi a cheap extra ranged option on top
    of their normal Archer line, rather than substituting for it. */
 const EXTRA_UU_BONUS = {
+  // Full audit (2026-09-05): of ~65 real unique units across the roster,
+  // only 6 had any scoring representation at all before this pass (4 true
+  // tier-replacements correctly folded into an existing item's `extra` —
+  // Gurjaras/Mapuche's Knight-line and Cavalry-Archer-line swaps, Wei's
+  // Xianbei Raider — plus this object's original 2 entries below). The
+  // other ~69 contributed ZERO points to their own civ's archetype score.
+  // Filled in here rather than as new standalone `items[]` entries
+  // specifically because `items[].length` is the shared MAX/denominator
+  // for every civ compared in that archetype (`renderArchetypeGrid`'s
+  // `max`) — a real unit only 1-4 civs could ever have would otherwise
+  // silently deflate all ~50 OTHER civs' displayed percentage. This
+  // channel adds +1 to the qualifying civ's own score without touching
+  // that shared denominator at all, same as this object's original intent.
   Defensive: [
     { ids:[SLINGER_ID], civs:['Incas','Mapuche','Muisca','Tupi'], note:'Slinger — cheap extra ranged option that bolsters home defense' },
   ],
+  Archer: [
+    { ids:[1800], civs:['Armenians'], note:'Composite Bowman — flexible ranged option' },
+    { ids:[8], civs:['Britons'], note:'Longbowman — long-range foot archer' },
+    { ids:[73], civs:['Chinese'], note:'Chu Ko Nu — rapid-fire repeating crossbow' },
+    { ids:[1741], civs:['Gurjaras'], note:'Chakram Thrower — ranged throwing-disc infantry' },
+    { ids:[1013], civs:['Malians'], note:'Gbeto — anti-cavalry ranged infantry' },
+    { ids:[763], civs:['Maya'], note:'Plumed Archer — fast ranged raider' },
+    { ids:[2562], civs:['Muisca'], note:'Guecha Warrior — ranged infantry' },
+    { ids:[1959], civs:['Shu'], note:'White Feather Guard — elite ranged infantry' },
+    { ids:[2579], civs:['Tupi'], note:'Blackwood Archer — ranged infantry' },
+    { ids:[1129], civs:['Vietnamese'], note:'Rattan Archer — durable ranged infantry' },
+    { ids:[1968], civs:['Wu'], note:'Fire Archer — incendiary ranged infantry' },
+  ],
+  'Cavalry Archer': [
+    { ids:[1009], civs:['Berbers'], note:'Genitour — light harassing mounted skirmisher' },
+    { ids:[1759], civs:['Bengalis'], note:'Ratha (Mounted Archer) — siege-capable mounted archer' },
+    { ids:[1126], civs:['Burmese'], note:'Arambai — mounted thrown-weapon skirmisher' },
+    { ids:[1231], civs:['Cumans'], note:'Kipchak — mounted raider' },
+    { ids:[11], civs:['Mongols'], note:'Mangudai — elite mounted archer' },
+    { ids:[MOUNTED_CROSSBOWMAN_SENTINEL_ID], civs:['Danes','Saxons','Varangians',...MOUNTED_CROSSBOWMAN_EXTRA_CIVS], note:'Mounted Crossbowman — shared Viking Sagas regional unit' },
+  ],
+  Cavalry: [
+    { ids:[1655], civs:['Burgundians'], note:'Coustillier — charging shock cavalry' },
+    { ids:[1908], civs:['Jurchens'], note:'Iron Pagoda — heavy armored cavalry' },
+    { ids:[1234], civs:['Lithuanians'], note:'Leitis — anti-cavalry raider' },
+    { ids:[1236], civs:['Lithuanians','Poles'], note:'Winged Hussar — elite anti-cavalry hussar' },
+    { ids:[1961], civs:['Shu'], note:'War Chariot — fast raiding cavalry' },
+    { ids:[1228], civs:['Tatars'], note:'Keshik — gold-generating raider' },
+    { ids:[1949], civs:['Wei'], note:'Tiger Cavalry — fast raiding cavalry' },
+    { ids:[1225], civs:['Bulgarians'], note:'Konnik — dismounting elite cavalry' },
+    { ids:[40], civs:['Byzantines'], note:'Cataphract — anti-infantry heavy cavalry' },
+    { ids:[1803], civs:['Georgians'], note:'Monaspa — self-healing cavalry' },
+    { ids:[755], civs:['Huns'], note:'Tarkan — anti-building raider' },
+    { ids:[869], civs:['Magyars'], note:'Magyar Huszar — fast raiding cavalry' },
+    { ids:[876], civs:['Slavs'], note:'Boyar — durable heavy cavalry' },
+    { ids:[JARL_SENTINEL_ID], civs:['Varangians'], note:'Jarl — Varangians\' own Castle-trained unique unit' },
+  ],
   Infantry: [
     { ids:[2582,2584], civs:['Tupi'], note:'Ibirapema Warrior — unique ranged-infantry hybrid' },
+    { ids:[1657], civs:['Burgundians'], note:'Flemish Militia — cheap anti-cavalry militia' },
+    { ids:[1735], civs:['Dravidians'], note:'Urumi Swordsman — whip-sword anti-infantry' },
+    { ids:[1747], civs:['Hindustanis'], note:'Ghulam — cheap swordsman-tier infantry' },
+    { ids:[868], civs:['Italians'], note:'Condottiero — anti-gunpowder infantry' },
+    { ids:[1920], civs:['Khitans'], note:'Liao Dao — elite infantry' },
+    { ids:[2586], civs:['Muisca'], note:'Temple Guard — defensive infantry' },
+    { ids:[1701], civs:['Poles'], note:'Obuch — anti-cavalry infantry' },
+    { ids:[1790], civs:['Romans'], note:'Centurion — infantry support unit' },
+    { ids:[250], civs:['Vikings'], note:'Berserk — self-healing infantry' },
+    { ids:[1970], civs:['Wu'], note:'Jian Swordsman — elite infantry' },
+    { ids:[725], civs:['Aztecs'], note:'Jaguar Warrior — anti-infantry specialist' },
+    { ids:[232], civs:['Celts'], note:'Woad Raider — fast raiding infantry' },
+    { ids:[1016], civs:['Ethiopians'], note:'Shotel Warrior — high-attack infantry' },
+    { ids:[281], civs:['Franks'], note:'Throwing Axeman — ranged-melee hybrid infantry' },
+    { ids:[41], civs:['Goths'], note:'Huskarl — anti-archer infantry' },
+    { ids:[879], civs:['Incas'], note:'Kamayuk — anti-cavalry infantry' },
+    { ids:[291], civs:['Japanese'], note:'Samurai — anti-unique-unit infantry' },
+    { ids:[1123], civs:['Malay'], note:'Karambit Warrior — poison-blade infantry' },
+    { ids:[1658], civs:['Sicilians'], note:'Serjeant — line-infantry with formation bonus' },
+    { ids:[25], civs:['Teutons'], note:'Teutonic Knight — heavily armored infantry' },
+    { ids:[HEAVY_VARANGIAN_GUARD_SENTINEL_ID, VARANGIAN_GUARD_SENTINEL_ID], civs:['Danes','Saxons','Varangians'], note:'Varangian Guard — shared Viking Sagas regional unit' },
+  ],
+  Siege: [
+    { ids:[1704], civs:['Bohemians'], note:'Hussite Wagon — mobile fortified wagon' },
+    { ids:[1706], civs:['Bohemians'], note:'Houfnice — long-range siege gun' },
+    { ids:[1922], civs:['Khitans'], note:'Mounted Trebuchet — mobile siege unit' },
+    { ids:[827], civs:['Koreans'], note:'War Wagon — durable ranged wagon' },
+    // Moved from Capped Ram/Siege Ram's own `extra` in CIV_ARCHETYPES —
+    // that folding gave Khmer zero incremental credit, since (unlike
+    // Bengalis/Dravidians/Gurjaras/Hindustanis' Siege Elephant, which
+    // REPLACES ram access entirely) Khmer keep normal Ram access too.
+    { ids:[1120,1122], civs:['Khmer'], note:'Ballista Elephant — mobile ranged siege unit' },
+  ],
+  Naval: [
+    { ids:[1302], civs:['Chinese'], note:'Dragon Ship — special-attack warship' },
+    { ids:[1737], civs:['Dravidians'], note:'Thirisadai — ramming warship' },
+    { ids:[866], civs:['Italians'], note:'Genoese Crossbowman — anti-ship ranged unit' },
+    { ids:[829], civs:['Koreans'], note:'Turtle Ship — armored ramming warship' },
+    { ids:[1003], civs:['Portuguese'], note:'Caravel — exploration/combat ship' },
+    { ids:[533], civs:['Vikings'], note:'Longboat — fast raiding warship' },
+    { ids:[LONGSHIP_SENTINEL_ID], civs:['Danes','Saxons','Varangians'], note:'Longship — shared Viking Sagas regional unit' },
+  ],
+  Monk: [
+    { ids:[1811], civs:['Armenians'], note:'Warrior Priest — combat-capable monk' },
+    { ids:[775], civs:['Spanish'], note:'Missionary — mounted monk' },
+  ],
+  Camel: [
+    { ids:[1007], civs:['Berbers'], note:'Camel Archer — mounted archer on camel' },
+    { ids:[1755], civs:['Gurjaras'], note:'Camel Scout — fast early-game camel scout' },
+    { ids:[1230], civs:['Tatars'], note:'Flaming Camel — anti-cavalry suicide unit' },
+    { ids:[282], civs:['Saracens'], note:'Mameluke — anti-cavalry camel thrower' },
+  ],
+  Gunpowder: [
+    { ids:[1910], civs:['Jurchens'], note:'Grenadier — explosive ranged infantry' },
+    { ids:[1001], civs:['Portuguese'], note:'Organ Gun — multi-shot gunpowder unit' },
+    { ids:[771], civs:['Spanish'], note:'Conquistador — mounted gunpowder unit' },
+    { ids:[46], civs:['Turks'], note:'Janissary — elite gunpowder infantry' },
   ],
 };
 
