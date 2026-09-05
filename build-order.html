@@ -237,7 +237,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.65</div>
+  <div class="version">v0.66</div>
 </div>
 
 <script>
@@ -1302,7 +1302,8 @@ const DATA = {
         }
       ],
       "ecoBonuses": [
-        { "type": "sheep-mill-garrison-bonus", "foodPerSec": 0.402, "note": "6 of 8 real sheep garrisoned in the Mill for passive food (24.12/min), the other 2 eaten normally" }
+        { "type": "sheep-mill-garrison-bonus", "foodPerSec": 0.402, "note": "6 of 8 real sheep garrisoned in the Mill for passive food (24.12/min), the other 2 eaten normally" },
+        { "type": "extra-berry-bushes", "count": 2, "note": "Start with 2 extra Forage Bushes" }
       ],
       "unavailableUnitLines": [
         "eagle-line",
@@ -3598,6 +3599,22 @@ function chooseOpeningSequence(stages, civ, huntConfig) {
   // back to back with different strategies).
   const seq = [...base];
   seq.millIndex = base.millIndex;
+  // Gurjaras: "Start with 2 extra Forage Bushes." This tool has no real
+  // food-quantity tracking anywhere — OPENING_SEQUENCE's own berry block
+  // (10 'food' slots) isn't derived from 750 nominal food either, it's a
+  // villager-COUNT cutoff (pop ~20) standing in for "how long berries
+  // realistically last before a skilled player transitions to farms,"
+  // same proxy the whole scripted opening already relies on. Extra
+  // bushes should extend THAT cutoff, not a quantity that doesn't exist
+  // in the model: assuming 6 base bushes (750 food) -> 8 (1000, +33%),
+  // proportionally extending the 10-slot berry block by the same ratio.
+  // Rounded, an approximation layered on an already-approximate slot
+  // count — revisit the base-bush assumption if it's wrong.
+  const extraBushBonus = (civ?.ecoBonuses || []).find(b => b.type === 'extra-berry-bushes');
+  if (extraBushBonus) {
+    const extraSlots = Math.round(10 * (extraBushBonus.count / 6));
+    for (let i = 0; i < extraSlots; i++) seq.push('food');
+  }
   // Mongols: "Hunters work +40% faster" — applies to boar (always hunted)
   // and to deer/chicken strategies that are genuinely a kill-then-gather
   // hunt (push/mill/walk), not to chicken funnel (a herding action, no
