@@ -237,7 +237,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.62</div>
+  <div class="version">v0.63</div>
 </div>
 
 <script>
@@ -681,7 +681,9 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "age-up-villager-bonus", "perTc": 2, "note": "Town Centers spawn 2 Villagers when the next Age is reached" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "cavalry-archer-line",
@@ -1063,7 +1065,10 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "building-cost-flat", "building": "Archery Range", "resource": "wood", "value": 75, "note": "Archery Ranges and Stables cost -75 wood" },
+        { "type": "building-cost-flat", "building": "Stable", "resource": "wood", "value": 75, "note": "Archery Ranges and Stables cost -75 wood" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "hand-cannoneer",
@@ -2174,7 +2179,9 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "building-cost-flat", "building": "Market", "resource": "wood", "value": 100, "note": "Markets cost -100 wood" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "battle-elephant-line",
@@ -2652,7 +2659,9 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "free-villager-per-tech", "note": "Receive one free Villager for each economic upgrade researched" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "cavalry-archer-line",
@@ -3074,6 +3083,13 @@ function costForCiv(cost, civ, buildingName, unitLineId) {
     } else if (b.type === 'building-cost-pct' && buildingName && (b.building === 'all' || b.building === buildingName)) {
       const resources = b.resource ? [b.resource] : RES;
       resources.forEach(r => { if (out[r]) out[r] = Math.round(out[r] * (1 - b.value / 100)); });
+    } else if (b.type === 'building-cost-flat' && buildingName && b.building === buildingName) {
+      // A flat amount off, not a percentage (Cumans' Archery Range/Stable
+      // -75 wood, Saracens' Market -100 wood) — scoped to the exact
+      // building by name, deliberately no 'all' wildcard like the pct
+      // version has, since a flat amount doesn't make sense to blanket-
+      // apply across buildings of very different base costs.
+      if (out[b.resource] != null) out[b.resource] = Math.max(0, out[b.resource] - b.value);
     } else if (b.type === 'unit-cost-pct' && unitLineId && b.line === unitLineId) {
       const resources = b.resource ? [b.resource] : RES;
       resources.forEach(r => { if (out[r]) out[r] = Math.round(out[r] * (1 - b.value / 100)); });
@@ -4287,6 +4303,16 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       if (simItem.isAgeUp) {
         const ageBonus = (civ?.ecoBonuses || []).find(b => b.type === 'age-up-resource-bonus');
         if (ageBonus) RES.forEach(res => { pool[res] += (ageBonus.delta[res] || 0); });
+        // Bengalis: "Town Centers spawn 2 Villagers when the next Age is
+        // reached" — scales with however many TCs exist right now (each
+        // one spawns its own 2), assigned to food by default, matching
+        // how every other free/starting villager in this tool is credited.
+        const ageVillagerBonus = (civ?.ecoBonuses || []).find(b => b.type === 'age-up-villager-bonus');
+        if (ageVillagerBonus) {
+          const freeVills = ageVillagerBonus.perTc * (1 + tcExtra);
+          cursorVills += freeVills;
+          cumAlloc.food += freeVills;
+        }
       }
 
       const remainingAssigned = { ...r.assigned };
@@ -5020,7 +5046,17 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         return;
       }
       runSequential([move.item], ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra));
-      if (move.type === 'tech') levels = { ...levels, [move.id]: levels[move.id] + 1 };
+      if (move.type === 'tech') {
+        levels = { ...levels, [move.id]: levels[move.id] + 1 };
+        // Wei: "Receive one free Villager for each economic upgrade
+        // researched" — every 'tech' move here IS one of the 5 real
+        // gather-rate eco lines (Wheelbarrow/Hand Cart, Double-Bit Axe,
+        // Gold/Stone Mining, etc.), never a combat tech (those are bundled
+        // into mandatoryItems directly, not a Dijkstra 'tech' move) — an
+        // exact match for "economic upgrade."
+        const freeVillPerTech = (civ?.ecoBonuses || []).find(b => b.type === 'free-villager-per-tech');
+        if (freeVillPerTech) { cursorVills += 1; cumAlloc.food += 1; }
+      }
       else tcExtra += move.count || 1;
     });
 
