@@ -237,7 +237,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.59</div>
+  <div class="version">v0.60</div>
 </div>
 
 <script>
@@ -1900,7 +1900,9 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "hunting-rate-pct", "value": 40, "note": "Hunters work +40% faster" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "hand-cannoneer",
@@ -3295,7 +3297,7 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
           if (eta > worstEta) { worstEta = eta; target = r; }
         });
       }
-      const workerRate = (target === 'food' && openingSequence) ? foodPhaseRateForWorkerIndex(assigned.food, openingSequence.huntRate, openingSequence.huntWorkers) : rates[target];
+      const workerRate = (target === 'food' && openingSequence) ? foodPhaseRateForWorkerIndex(assigned.food, openingSequence.huntRate, openingSequence.huntWorkers, openingSequence.huntingMult) : rates[target];
       vills++;
       assigned[target]++;
       assignedRate[target] += workerRate;
@@ -3385,9 +3387,9 @@ const OPENING_SEQUENCE = [
 // of `huntWorkers` workers (default 4 if not given, matching deer/chicken
 // Mill's own real norm); everyone else — including all of index 6+ when no
 // hunt is selected — is on berries, same as before this existed.
-function foodPhaseRateForWorkerIndex(i, huntRate, huntWorkers) {
+function foodPhaseRateForWorkerIndex(i, huntRate, huntWorkers, huntingMult = 1) {
   if (i < 2) return DATA.gatherRates.food; // sheep
-  if (i < 6) return DATA.arabiaBoarRate; // 2 lured boars, ~4 workers
+  if (i < 6) return DATA.arabiaBoarRate * huntingMult; // 2 lured boars, ~4 workers — Mongols hunt faster
   const hw = huntWorkers ?? 4;
   if (huntRate != null && i < 6 + hw) return huntRate; // dedicated deer/chicken block
   return DATA.arabiaBerryRate; // milled berries — always the baseline for everyone else
@@ -3460,14 +3462,22 @@ function huntStructureFor(deerStrategy, chickenStrategy, civ) {
 // Resolves the two independent dropdowns + shared level into the one
 // {rate, workers} the opening sequence actually needs — deer takes
 // priority in the (unreal) case both are somehow set at once.
-function huntRateAndWorkers(deerStrategy, chickenStrategy, level) {
+function huntRateAndWorkers(deerStrategy, chickenStrategy, level, huntingMult = 1) {
   if (deerStrategy && deerStrategy !== 'none') {
     const s = DEER_STRATEGIES[deerStrategy];
-    return s ? { rate: typeof s.rate === 'function' ? s.rate(level) : s.rate, workers: s.workers(level) } : null;
+    if (!s) return null;
+    const rate = typeof s.rate === 'function' ? s.rate(level) : s.rate;
+    return { rate: rate * huntingMult, workers: s.workers(level) };
   }
   if (chickenStrategy && chickenStrategy !== 'none') {
     const s = CHICKEN_STRATEGIES[chickenStrategy];
-    return s ? { rate: typeof s.rate === 'function' ? s.rate(level) : s.rate, workers: s.workers(level) } : null;
+    if (!s) return null;
+    const rate = typeof s.rate === 'function' ? s.rate(level) : s.rate;
+    // Funnel walks LIVE chickens to a cheap gate near the TC — herding,
+    // not a kill-then-gather hunt — so the "hunters work faster" bonus
+    // doesn't apply to it, only to mill/walk (both a real hunt kill).
+    const mult = chickenStrategy === 'funnel' ? 1 : huntingMult;
+    return { rate: rate * mult, workers: s.workers(level) };
   }
   return null;
 }
@@ -3521,7 +3531,14 @@ function chooseOpeningSequence(stages, civ, huntConfig) {
   // back to back with different strategies).
   const seq = [...base];
   seq.millIndex = base.millIndex;
-  const hunt = huntConfig ? huntRateAndWorkers(huntConfig.deer, huntConfig.chicken, huntConfig.level) : null;
+  // Mongols: "Hunters work +40% faster" — applies to boar (always hunted)
+  // and to deer/chicken strategies that are genuinely a kill-then-gather
+  // hunt (push/mill/walk), not to chicken funnel (a herding action, no
+  // kill involved — see huntRateAndWorkers' own carve-out).
+  const huntingBonus = (civ?.ecoBonuses || []).find(b => b.type === 'hunting-rate-pct');
+  const huntingMult = huntingBonus ? 1 + huntingBonus.value / 100 : 1;
+  seq.huntingMult = huntingMult;
+  const hunt = huntConfig ? huntRateAndWorkers(huntConfig.deer, huntConfig.chicken, huntConfig.level, huntingMult) : null;
   seq.huntRate = hunt?.rate;
   seq.huntWorkers = hunt?.workers;
   const huntStructure = huntConfig ? huntStructureFor(huntConfig.deer, huntConfig.chicken, civ) : null;
@@ -5116,16 +5133,25 @@ function structureForResource(r, civ) {
   const settlement = (civ?.ecoBonuses || []).find(b => b.type === 'settlement');
   const muleCart = (civ?.ecoBonuses || []).find(b => b.type === 'mule-cart');
   const millName = civ?.millName || 'Mill';
-  const campDiscount = (civ?.ecoBonuses || []).find(b => b.type === 'camp-cost-pct');
-  const discountMult = campDiscount ? 1 - campDiscount.value / 100 : 1;
   if (settlement) return { name: 'Settlement', covers: RES, cost: { wood: settlement.cost } };
   if (muleCart && r !== 'food') {
     const cost = muleCart.freeStarting ? { food: 0, wood: 0 } : muleCart.cost;
     return { name: 'Mule Cart', covers: ['wood', 'gold', 'stone'], cost };
   }
-  if (r === 'food') return { name: millName, covers: ['food'], cost: { wood: Math.round(DATA.campCosts.mill * discountMult) } };
-  if (r === 'wood') return { name: 'Lumber Camp', covers: ['wood'], cost: { wood: Math.round(DATA.campCosts.lumberCamp * discountMult) } };
-  return { name: `Mining Camp (${RES_LABEL[r]})`, covers: [r], cost: { wood: Math.round(DATA.campCosts.miningCamp * discountMult) } };
+  const name = r === 'food' ? millName : r === 'wood' ? 'Lumber Camp' : `Mining Camp (${RES_LABEL[r]})`;
+  const baseCost = r === 'food' ? DATA.campCosts.mill : r === 'wood' ? DATA.campCosts.lumberCamp : DATA.campCosts.miningCamp;
+  const covers = r === 'food' ? ['food'] : r === 'wood' ? ['wood'] : [r];
+  // Two separate discount mechanisms can both apply to these three real
+  // buildings — Japanese's bespoke `camp-cost-pct` (these three
+  // specifically, "-50%") AND Malians'/Incas' generic `building-cost-pct`
+  // (building:'all', -15%/-15%) — previously only the former was ever
+  // consulted here, silently missing the latter on exactly this
+  // construction site (their own discount still worked everywhere ELSE,
+  // e.g. Barracks/Blacksmith, via costForCiv's normal path).
+  let cost = costForCiv({ wood: baseCost }, civ, name).wood;
+  const campDiscount = (civ?.ecoBonuses || []).find(b => b.type === 'camp-cost-pct');
+  if (campDiscount) cost = cost * (1 - campDiscount.value / 100);
+  return { name, covers, cost: { wood: Math.round(cost) } };
 }
 
 function initialBuiltState(civ) {
@@ -5440,10 +5466,15 @@ function renderSetupCard(villagers, civ, needsCastle, neededBuildings, buildingC
     items = [{ name: 'Settlement (replaces Mill/Mining Camp/Lumber Camp)', cost: { wood: settlement.cost } }];
     note = 'One building covers food, wood, gold, and stone drop-off/tech access.';
   } else {
+    // Two separate discount mechanisms can apply to these three real
+    // buildings — Japanese's bespoke `camp-cost-pct` (these three
+    // specifically) AND Malians'/Incas' generic `building-cost-pct`
+    // (building:'all') — combined here the same way structureForResource
+    // combines them, so this display never disagrees with the live sim.
     const campDiscount = (civ?.ecoBonuses || []).find(b => b.type === 'camp-cost-pct');
-    const discountMult = campDiscount ? 1 - campDiscount.value / 100 : 1;
-    const mill = Math.round(DATA.campCosts.mill * discountMult);
+    const campMult = campDiscount ? 1 - campDiscount.value / 100 : 1;
     const millName = civ?.millName || 'Mill';
+    const mill = Math.round(costForCiv({ wood: DATA.campCosts.mill }, civ, millName).wood * campMult);
     if (villagers.food > 0) items.push({ name: millName, cost: { wood: mill } });
 
     // Armenians/Georgians' Mule Cart replaces Mining Camp + Lumber Camp
@@ -5454,13 +5485,16 @@ function renderSetupCard(villagers, civ, needsCastle, neededBuildings, buildingC
       const label = muleCart.freeStarting ? 'Mule Cart (already at start — covers wood/gold/stone)' : 'Mule Cart (covers wood/gold/stone)';
       items.push({ name: label, cost });
     } else {
-      const miningCamp = Math.round(DATA.campCosts.miningCamp * discountMult);
-      const lumberCamp = Math.round(DATA.campCosts.lumberCamp * discountMult);
+      const miningCamp = Math.round(costForCiv({ wood: DATA.campCosts.miningCamp }, civ, 'Mining Camp').wood * campMult);
+      const lumberCamp = Math.round(costForCiv({ wood: DATA.campCosts.lumberCamp }, civ, 'Lumber Camp').wood * campMult);
       if (villagers.gold > 0) items.push({ name: 'Mining Camp (Gold)', cost: { wood: miningCamp } });
       if (villagers.stone > 0) items.push({ name: 'Mining Camp (Stone)', cost: { wood: miningCamp } });
       if (villagers.wood > 0) items.push({ name: 'Lumber Camp', cost: { wood: lumberCamp } });
     }
-    note = (campDiscount ? `${civ.name} buildings discounted ${campDiscount.value}%. ` : '') + 'Assumes one camp per resource; a map with scattered deposits may need more.';
+    const buildingDiscount = (civ?.ecoBonuses || []).find(b => b.type === 'building-cost-pct' && b.building === 'all');
+    note = (campDiscount ? `${civ.name} buildings discounted ${campDiscount.value}%. ` : '')
+      + (buildingDiscount ? `${civ.name} buildings cost -${buildingDiscount.value}% ${buildingDiscount.resource || ''}. ` : '')
+      + 'Assumes one camp per resource; a map with scattered deposits may need more.';
   }
 
   // Multiple production buildings (Optimize's "Units in Constant
