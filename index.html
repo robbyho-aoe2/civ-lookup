@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.96</div>
+    <div class="version">v1.97</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -258,13 +258,12 @@ header{
 /* ================================================================
    ALL 53 CIVS
    ================================================================ */
-// Danes and Saxons (The Viking Sagas DLC, launching 2026-09-22) added ahead
-// of release — SiegeEngineers/aoe2techtree doesn't have their tech-tree data
-// yet, so civData for these two is hand-built below (see
+// Danes, Saxons, and Varangians (The Viking Sagas DLC, launching 2026-09-22)
+// added ahead of release — SiegeEngineers/aoe2techtree doesn't have their
+// tech-tree data yet, so civData for all three is hand-built below (see
 // MANUAL_NEW_CIV_DATA) from the in-game civ cards/tech trees directly,
-// rather than the live fetch. Varangians (the DLC's third civ) isn't in its
-// own card yet — add once it is. Delete MANUAL_NEW_CIV_DATA and just leave
-// the names here once SiegeEngineers' data.json catches up.
+// rather than the live fetch. Delete MANUAL_NEW_CIV_DATA and just leave the
+// names here once SiegeEngineers' data.json catches up.
 const ALL_CIVS = [
   "Armenians","Aztecs","Bengalis","Berbers","Bohemians","Britons","Bulgarians","Burgundians",
   "Burmese","Byzantines","Celts","Chinese","Cumans","Danes","Dravidians","Ethiopians","Franks",
@@ -272,7 +271,7 @@ const ALL_CIVS = [
   "Jurchens","Khitans","Khmer","Koreans","Lithuanians","Malay","Malians","Magyars",
   "Mapuche","Maya","Mongols","Muisca","Persians","Poles","Portuguese","Romans",
   "Saracens","Saxons","Shu","Sicilians","Slavs","Spanish","Tatars","Teutons","Tupi",
-  "Turks","Vietnamese","Vikings","Wei","Wu"
+  "Turks","Varangians","Vietnamese","Vikings","Wei","Wu"
 ];
 
 /* In-game civ crest/banner icons — same source repo as DATA_URL below
@@ -369,6 +368,9 @@ const CB = {
   Teutons:["Farms cost -40%","Town Centers +10 garrison capacity; Towers +5 garrison capacity","Barracks and Stable Units +1/+2 melee armor in Castle/Imperial Age","Monks +100% healing range","Murder Holes, Herbal Medicine free"],
   Tupi:["Start with +25 of each resource","Villagers can garrison in Settlements","Fallen units return 15% of their cost","Archery Range and Barracks upgrades cost -50% food"],
   Turks:["Gold miners work +25% faster","Scout Cavalry-line +1 pierce armor and upgrades free","Chemistry free; Gunpowder technologies costs -50%","Gunpowder Units +25% HP"],
+  // Best-effort read of the civ card image (small text, some ambiguity on
+  // exactly how the bullets split) — flag/correct once confirmed:
+  Varangians:["Shipwrights, Fishing, and hunting also generate +40% gold","Bloodlines and Careening effects +50%","Varangian Guards attack +25% faster","Longships and Compact Galleons attack +10% faster"],
   Vietnamese:["Enemy Town Centers are revealed at the start of the game","Economic upgrades cost no wood and research +100% faster","Archery Range units and Fire Lancers +20% HP","Conscription free"],
   Vikings:["Wheelbarrow, Hand Cart free","Infantry +20% HP starting in Feudal Age","Warships cost -10/15/20% in Feudal/Castle/Imperial Age"],
   Wei:["Receive one free Villager for each economic upgrade researched","Hei Guang Cavalry and Xianbei Raider +20/30% HP in Castle/Imperial Age","Traction Trebuchets and Lou Chuans cost -25%"],
@@ -402,7 +404,7 @@ const CIV_FOCUS = {
   Sicilians:"Infantry and Cavalry", Slavs:"Infantry and Siege",
   Spanish:"Gunpowder and Monk", Tatars:"Cavalry Archer",
   Teutons:"Infantry and Defensive", Tupi:"Archer and Infantry",
-  Turks:"Gunpowder", Vietnamese:"Archer",
+  Turks:"Gunpowder", Varangians:"Cavalry and Naval", Vietnamese:"Archer",
   Vikings:"Infantry and Naval", Wei:"Cavalry", Wu:"Infantry and Naval",
 };
 
@@ -458,6 +460,7 @@ const UNIQUE_UNITS = {
   Teutons:"Teutonic Knight",
   Tupi:"Blackwood Archer, Ibirapema Warrior",
   Turks:"Janissary",
+  Varangians:"Jarl (Cavalry)",
   Vietnamese:"Rattan Archer, Imperial Skirmisher",
   Vikings:"Berserk, Longboat",
   Wei:"Tiger Cavalry, Xianbei Raider",
@@ -516,6 +519,7 @@ const UNIQUE_TECHS = {
   Teutons:["Ironclad","Crenellations"],
   Tupi:["Caciques","Curare"],
   Turks:["Sipahi","Artillery"],
+  Varangians:["Vsevolod's Legacy","Væringjar"], // best-effort read of the civ card image — flag if wrong
   Vietnamese:["Chatras","Paper Money"],
   Vikings:["Chieftains","Bogsveigar"],
   Wei:["Tuntian","Ming Guang Armor"],
@@ -560,6 +564,7 @@ const UU_CIV_MAP = {
   'Iron Pagoda':'Jurchens',
   'Jaguar Warrior':'Aztecs',
   'Janissary':'Turks',
+  'Jarl':'Varangians',
   'Jian Swordsman':'Wu',
   'Jomsviking':'Danes',
   'Kamayuk':'Incas',
@@ -776,6 +781,7 @@ const TEAM_BONUS = {
   Teutons: "Units more resistant to conversion",
   Tupi: "Towers and Castles provide +10 population space",
   Turks: "Gunpowder Units train +25% faster",
+  Varangians: "Knight-line +1 attack vs. Infantry", // best-effort read of the civ card image — flag if wrong
   Vietnamese: "Imperial Skirmisher upgrade available in Imperial Age",
   Vikings: "Docks cost -15%",
   Wei: "Cavalry +2 attack vs. Siege Weapons",
@@ -1465,14 +1471,14 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:437},{t:'tech',id:201},{t:'tech',id:200},{t:'tech',id:199},{t:'tech',id:47},
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
-  {emoji:'🎯',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras',...MOUNTED_CROSSBOWMAN_EXTRA_CIVS],items:[
+  {emoji:'🎯',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras',...MOUNTED_CROSSBOWMAN_EXTRA_CIVS],items:[
     {t:'unit',id:474,extra:[...XIANBEI_IDS,...ELE_ARCHER_IDS,2569,2571]},
     {t:'unit',id:MOUNTED_CROSSBOWMAN_SENTINEL_ID}, // Mounted Crossbowman (Danes/Saxons/Varangians + TBD existing civs) — see its own comment above
     {t:'tech',id:435},{t:'tech',id:39},{t:'tech',id:437},{t:'tech',id:436},{t:'tech',id:47},
     {t:'tech',id:199},{t:'tech',id:200},{t:'tech',id:201},
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
-  {emoji:'⚔️',label:'Cavalry',bonusKey:'Cavalry',restrictTo:['Armenians','Bengalis','Berbers','Bohemians','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Dravidians','Ethiopians','Franks','Georgians','Goths','Gurjaras','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Malay','Malians','Magyars','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Vietnamese','Vikings','Wei','Wu'],items:[
+  {emoji:'⚔️',label:'Cavalry',bonusKey:'Cavalry',restrictTo:['Armenians','Bengalis','Berbers','Bohemians','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Dravidians','Ethiopians','Franks','Georgians','Goths','Gurjaras','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Malay','Malians','Magyars','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu'],items:[
     {t:'unit',id:[569,1813],extra:[1946,2568,1753]},
     {t:'unit',id:[441,1707]},
     {t:'unit',id:283,extra:[1946,2568,1753]},
@@ -1973,7 +1979,8 @@ function parseRaw(raw) {
 }
 
 /* ================================================================
-   MANUAL CIV DATA — The Viking Sagas (Danes, Saxons; launches 2026-09-22)
+   MANUAL CIV DATA — The Viking Sagas (Danes, Saxons, Varangians; launches
+   2026-09-22)
    ================================================================
    SiegeEngineers/aoe2techtree (DATA_URL above) doesn't have these civs'
    tech trees yet, so civData for them can't come from the live fetch like
@@ -1982,22 +1989,26 @@ function parseRaw(raw) {
    ID any already-fetched civ has access to (i.e. every standard, non-civ-
    specific unit/tech that exists in the game), then subtract this civ's own
    specific exclusions. Their brand-new content (Jomsviking, Hearth Troop,
-   Varangian Guard, Mounted Crossbowman, the new Longship) has no real ID
-   yet either — it's simply absent from both the union and civData, same
+   Jarl, Varangian Guard, Mounted Crossbowman, the new Longship) has no real
+   ID yet either — it's simply absent from both the union and civData, same
    as it would be from a real fetch that hasn't caught up yet.
 
-   Danes and Saxons share the DLC's exclusion list — the official
-   announcement explicitly describes the three new civs as having "their
-   own unique units, technologies, and SHARED architecture," and Saxons'
-   own tech tree (verified directly against screenshots of every page —
-   Barracks/Archery/Stable, Blacksmith/Siege/Dock, University,
-   Castle/Monastery, Economy) confirmed exactly this exclusion set. Danes'
-   tree wasn't legible in enough detail to re-derive independently, so it's
-   inferred from the shared-architecture statement rather than re-verified
-   pixel-by-pixel — flag it if something looks wrong once real data lands.
+   All three share the DLC's exclusion list — the official announcement
+   explicitly describes the three new civs as having "their own unique
+   units, technologies, and SHARED architecture," and Saxons' own tech tree
+   (verified directly against screenshots of every page — Barracks/
+   Archery/Stable, Blacksmith/Siege/Dock, University, Castle/Monastery,
+   Economy) confirmed exactly this exclusion set. Danes' and Varangians'
+   trees weren't legible in enough detail to re-derive independently, so
+   both are inferred from the shared-architecture statement rather than
+   re-verified pixel-by-pixel — flag it if something looks wrong once real
+   data lands, especially for Varangians: its "Cavalry and Naval" focus is
+   quite different from Danes'/Saxons' own Infantry-leaning bonuses, so its
+   real tech tree may turn out to diverge from this shared list more than
+   theirs did.
 
    DELETE this whole block (and the 3 names in ALL_CIVS' comment) once
-   SiegeEngineers/aoe2techtree adds real Danes/Saxons(/Varangians) entries —
+   SiegeEngineers/aoe2techtree adds real Danes/Saxons/Varangians entries —
    parseRaw will then populate civData for them for free, like every other
    civ, and this manual version would just be silently stale in the way.
 */
@@ -2035,7 +2046,7 @@ const VIKING_SAGAS_EXCLUDE = {
   techs: resolveIds(VIKING_SAGAS_EXCLUDE_NAMES.techs, TECH_IDS),
 };
 function applyManualNewCivData() {
-  const realCivs = Object.keys(civData).filter(c => c !== 'Danes' && c !== 'Saxons');
+  const realCivs = Object.keys(civData).filter(c => c !== 'Danes' && c !== 'Saxons' && c !== 'Varangians');
   if (!realCivs.length) return; // fetch failed/empty — nothing to build a union from
   const allUnits = new Set(), allTechs = new Set();
   realCivs.forEach(c => {
@@ -2045,8 +2056,8 @@ function applyManualNewCivData() {
   // civData[c].units is a per-civ ACCESS set, not an ownership set — every
   // civ's own unique unit(s) are IN that set (that's the whole point of the
   // fetched data), so naively unioning across all 53 civs would hand Danes/
-  // Saxons every OTHER civ's unique unit too (Samurai, Huskarl, ...), which
-  // is exactly backwards. Filtered out here using UU_CIV_MAP — the existing,
+  // Saxons/Varangians every OTHER civ's unique unit too (Samurai, Huskarl,
+  // ...), which is exactly backwards. Filtered out here using UU_CIV_MAP — the existing,
   // already-complete unit-name → owning-civ map — rather than guessing from
   // UNIT_IDS' object layout (its "standard" and "unique" sections aren't
   // actually cleanly separated; several unique units like Ballista Elephant
@@ -2064,7 +2075,7 @@ function applyManualNewCivData() {
   });
   ['Traction Trebuchet', 'Xianbei Raider', 'Champi Warrior', 'Elite Champi Warrior', 'Fire Lancer', 'Elite Fire Lancer', 'Hei Guang Cavalry', 'Heavy Hei Guang Cavalry']
     .forEach(name => { const id = UNIT_IDS[name]; if (id != null) (Array.isArray(id) ? id : [id]).forEach(x => uniqueUnitIds.add(x)); });
-  ['Danes', 'Saxons'].forEach(civ => {
+  ['Danes', 'Saxons', 'Varangians'].forEach(civ => {
     civData[civ] = {
       units: new Set([...allUnits].filter(id => !uniqueUnitIds.has(id) && !VIKING_SAGAS_EXCLUDE.units.includes(id))),
       techs: new Set([...allTechs].filter(id => !VIKING_SAGAS_EXCLUDE.techs.includes(id))),
