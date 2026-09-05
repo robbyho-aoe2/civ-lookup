@@ -237,7 +237,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.69</div>
+  <div class="version">v0.70</div>
 </div>
 
 <script>
@@ -1595,6 +1595,24 @@ const DATA = {
           "type": "pastures-food-rate",
           "rates": { "base": 21.61, "wheelbarrow": 23.33, "handCart": 25.21 },
           "note": "Pastures replace Farms — real food/min at each carry-capacity tier (current balance)"
+        },
+        {
+          "type": "unit-speed-pct",
+          "lines": ["spearman-line", "skirmisher-line", "scout-cavalry-line"],
+          "value": 15,
+          "note": "Skirmisher, Spearman-, and Scout Cavalry-line train and upgrade +15% faster"
+        },
+        {
+          "type": "tech-age-override",
+          "unitTier": "Heavy Cavalry Archer",
+          "newAge": "Castle",
+          "note": "Heavy Cavalry Archer upgrade available in Castle Age"
+        },
+        {
+          "type": "tier-upgrade-cost-pct",
+          "tierName": "Heavy Cavalry Archer",
+          "value": 50,
+          "note": "Heavy Cavalry Archer upgrade costs -50%"
         }
       ],
       "unavailableUnitLines": [
@@ -2959,6 +2977,19 @@ function effectiveTierAge(tier, civ) {
   const override = (civ?.ecoBonuses || []).find(b => b.type === 'tech-age-override' && b.unitTier === tier.name);
   return override ? override.newAge : tier.age;
 }
+// Khitans: "Skirmisher, Spearman-, and Scout Cavalry-line train and upgrade
+// +15% faster" — the train half. Matched by the unit LINE's own id (not the
+// tier), since the bonus covers every tier of these 3 lines uniformly. The
+// upgrade half is handled separately at the combat-tech checkbox research
+// site (see `unit-speed-pct` in the extraItems loop) — mandatory tier
+// upgrades (Spearman→Pikeman etc.) have no modeled research time for ANY
+// civ today (a pre-existing simplification, not something this bonus should
+// newly introduce for everyone), so there's nothing for that half of the
+// bonus to discount there.
+function effectiveTrainTime(tier, line, civ) {
+  const bonus = (civ?.ecoBonuses || []).find(b => b.type === 'unit-speed-pct' && b.lines.includes(line?.id));
+  return bonus ? tier.trainTime / (1 + bonus.value / 100) : tier.trainTime;
+}
 function currentAgeIndex() { return 0; } // every build now starts in Dark Age
 
 function allLinesForCiv(civ) {
@@ -3854,7 +3885,7 @@ function computeTotalIncome(rows, civ, techIds, assumeFarms = true) {
   let popRate = 0;
   rows.forEach(({ line, tier, buildings }) => {
     const cost = costForCiv(line.cost, civ, null, line.id);
-    const unitRate = buildings / tier.trainTime;
+    const unitRate = buildings / effectiveTrainTime(tier, line, civ);
     RES.forEach(r => totalIncome[r] += (cost[r] || 0) * unitRate);
     popRate += line.pop * unitRate;
   });
@@ -4128,7 +4159,12 @@ function stageMandatoryItems(targets, civ, allIn, haveSet, fromAgeIdx, extraItem
       // not an ecoTech, so the existing free-tech mechanism (keyed by
       // ecoTechs id) doesn't cover it; matched by tier name instead.
       const freeUpgrade = (civ?.ecoBonuses || []).some(b => b.type === 'free-tier-upgrade' && b.tierName === t.name);
-      const cost = freeUpgrade ? { food: 0, wood: 0, gold: 0, stone: 0 } : costForCiv(t.upgradeCost, civ);
+      // Khitans: "Heavy Cavalry Archer upgrade... costs -50%" — same
+      // tier-name matching as free-tier-upgrade above, generalized to a
+      // percentage instead of always-free.
+      const tierDiscount = (civ?.ecoBonuses || []).find(b => b.type === 'tier-upgrade-cost-pct' && b.tierName === t.name);
+      let cost = freeUpgrade ? { food: 0, wood: 0, gold: 0, stone: 0 } : costForCiv(t.upgradeCost, civ);
+      if (tierDiscount) RES.forEach(r => { if (cost[r]) cost[r] = Math.round(cost[r] * (1 - tierDiscount.value / 100)); });
       items.push({ name: `${line.tiers[i - 1].name} → ${t.name}`, cost, age: effectiveTierAge(t, civ) });
     }
   });
@@ -4617,13 +4653,13 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         // >= every one of theirs, by construction of `prefixStages` itself).
         const trialResult = trial.stageResults[trial.stageResults.length - trialUnits.length + ui];
         if (!trialResult || trialResult.finishTime == null) continue; // unreachable at this count — skip, don't let it win by default
-        const total = trialResult.finishTime + uQty / (k / u.line.tiers[u.tierIdx].trainTime);
+        const total = trialResult.finishTime + uQty / (k / effectiveTrainTime(u.line.tiers[u.tierIdx], u.line, civ));
         // Stored WITH the quantity tail applied (the trial itself only ran
         // as far as "sustain" for THIS unit, same as any sustain-mode
         // unit) so a viewer can open any candidate's own full timeline,
         // not just its headline number — targeted at unit `ui`'s own
         // stageResults entry specifically, not assumed to be the last one.
-        tried.push({ buildingCount: k, finishTime: total, result: withQuantityTail(trial, uQty, k, u.line.tiers[u.tierIdx].name, u.line.tiers[u.tierIdx].trainTime, trialUnits.length - 1 - ui) });
+        tried.push({ buildingCount: k, finishTime: total, result: withQuantityTail(trial, uQty, k, u.line.tiers[u.tierIdx].name, effectiveTrainTime(u.line.tiers[u.tierIdx], u.line, civ), trialUnits.length - 1 - ui) });
         if (total < bestTotal) { bestTotal = total; bestK = k; worseStreak = 0; }
         else if (++worseStreak >= 2) break; // more buildings only cost more once ramp-up starts dominating the tail savings — confirmed empirically unimodal (single dip), so 2 non-improving trials in a row means it won't get better; stop re-running full searches for nothing
       }
@@ -4760,7 +4796,17 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           const resources = techBuildingDiscount.resource ? [techBuildingDiscount.resource] : RES;
           resources.forEach(r => { if (techCost[r]) techCost[r] = Math.round(techCost[r] * (1 - techBuildingDiscount.value / 100)); });
         }
-        extraItems.push({ name: t.name, cost: techCost, queueSeconds: t.queueSeconds, deferToEnd: true, age: t.age });
+        // Khitans: "...train and upgrade +15% faster" — the upgrade half.
+        // Scoped to the UNIT this checkbox was checked from (u.line.id), not
+        // the tech itself — Bloodlines checked from a Scout Cavalry unit
+        // gets the discount, the same Bloodlines checked from a Knight
+        // shouldn't. This is the one real place a per-line "upgrade speed"
+        // bonus has something to discount: mandatory tier upgrades
+        // (Spearman→Pikeman etc.) have no modeled research time for ANY
+        // civ today, so they're untouched by this bonus, same as before.
+        const speedBonus = (civ?.ecoBonuses || []).find(b => b.type === 'unit-speed-pct' && b.lines.includes(u.line.id));
+        const techTime = speedBonus ? t.queueSeconds / (1 + speedBonus.value / 100) : t.queueSeconds;
+        extraItems.push({ name: t.name, cost: techCost, queueSeconds: techTime, deferToEnd: true, age: t.age });
       });
     });
     const mandatoryItems = stageMandatoryItems(resolvedUnits.map(({ line, tierIdx, buildingCount }) => ({ line, tierIdx, buildingCount })), civ, allIn, haveSet, reachedAgeIdx, extraItems);
@@ -5190,7 +5236,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         label: `Queue ${u.line.tiers[u.tierIdx].name}`,
         time: sustainReachedTime, vills: cursorVills, split: null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, pool: { ...pool }, kind: 'queue', itemName: u.line.tiers[u.tierIdx].name,
       });
-      const uFinishTime = sustainReachedTime + uQty / (u.buildingCount / u.line.tiers[u.tierIdx].trainTime);
+      const uFinishTime = sustainReachedTime + uQty / (u.buildingCount / effectiveTrainTime(u.line.tiers[u.tierIdx], u.line, civ));
       checkpoints.push({
         label: `${uQty}x ${u.line.tiers[u.tierIdx].name} complete`,
         time: uFinishTime, vills: cursorVills, split: null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, pool: { ...pool }, kind: 'complete',
@@ -5818,7 +5864,7 @@ function moreProductionBuildingsAlt(prefixStages, stage, civ, loomOn, allIn, eff
     let trial = buildStagedOptimizeTimeline([...prefixStages, { units: [{ ...unit, goalType: 'sustain', buildingCount: k }] }], loomOn, allIn, civ, efficiency, foodStrategy);
     const trialLast = trial.stageResults[trial.stageResults.length - 1];
     if (trialLast.finishTime == null) return;
-    if (isQty) trial = withQuantityTail(trial, unit.qty, k, unit.line.tiers[unit.tierIdx].name, unit.line.tiers[unit.tierIdx].trainTime);
+    if (isQty) trial = withQuantityTail(trial, unit.qty, k, unit.line.tiers[unit.tierIdx].name, effectiveTrainTime(unit.line.tiers[unit.tierIdx], unit.line, civ));
     const delta = Math.abs(trial.finishTime - currentFinishTime);
     // `result` carries the full trial (checkpoints/villagers/etc.) so this
     // alternative can be clicked into and actually explored, same as the
