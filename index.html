@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.97</div>
+    <div class="version">v1.98</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -368,9 +368,7 @@ const CB = {
   Teutons:["Farms cost -40%","Town Centers +10 garrison capacity; Towers +5 garrison capacity","Barracks and Stable Units +1/+2 melee armor in Castle/Imperial Age","Monks +100% healing range","Murder Holes, Herbal Medicine free"],
   Tupi:["Start with +25 of each resource","Villagers can garrison in Settlements","Fallen units return 15% of their cost","Archery Range and Barracks upgrades cost -50% food"],
   Turks:["Gold miners work +25% faster","Scout Cavalry-line +1 pierce armor and upgrades free","Chemistry free; Gunpowder technologies costs -50%","Gunpowder Units +25% HP"],
-  // Best-effort read of the civ card image (small text, some ambiguity on
-  // exactly how the bullets split) — flag/correct once confirmed:
-  Varangians:["Shipwrights, Fishing, and hunting also generate +40% gold","Bloodlines and Careening effects +50%","Varangian Guards attack +25% faster","Longships and Compact Galleons attack +10% faster"],
+  Varangians:["Fishing and hunting also generate +40% gold","Bloodlines and Careening effects +50%","Varangian Guards attack +25% faster","Longships and Catapult Galleons attack +10% faster"],
   Vietnamese:["Enemy Town Centers are revealed at the start of the game","Economic upgrades cost no wood and research +100% faster","Archery Range units and Fire Lancers +20% HP","Conscription free"],
   Vikings:["Wheelbarrow, Hand Cart free","Infantry +20% HP starting in Feudal Age","Warships cost -10/15/20% in Feudal/Castle/Imperial Age"],
   Wei:["Receive one free Villager for each economic upgrade researched","Hei Guang Cavalry and Xianbei Raider +20/30% HP in Castle/Imperial Age","Traction Trebuchets and Lou Chuans cost -25%"],
@@ -519,7 +517,7 @@ const UNIQUE_TECHS = {
   Teutons:["Ironclad","Crenellations"],
   Tupi:["Caciques","Curare"],
   Turks:["Sipahi","Artillery"],
-  Varangians:["Vsevolod's Legacy","Væringjar"], // best-effort read of the civ card image — flag if wrong
+  Varangians:["Vendel Legacy","Gothikon"],
   Vietnamese:["Chatras","Paper Money"],
   Vikings:["Chieftains","Bogsveigar"],
   Wei:["Tuntian","Ming Guang Armor"],
@@ -781,7 +779,7 @@ const TEAM_BONUS = {
   Teutons: "Units more resistant to conversion",
   Tupi: "Towers and Castles provide +10 population space",
   Turks: "Gunpowder Units train +25% faster",
-  Varangians: "Knight-line +1 attack vs. Infantry", // best-effort read of the civ card image — flag if wrong
+  Varangians: "Knight-line +1 attack vs. Infantry", // best-effort read of the civ card image, still needs confirmation — flag if wrong
   Vietnamese: "Imperial Skirmisher upgrade available in Imperial Age",
   Vikings: "Docks cost -15%",
   Wei: "Cavalry +2 attack vs. Siege Weapons",
@@ -1053,6 +1051,15 @@ const LONGSHIP_SENTINEL_ID = 900001;
    touches Danes/Saxons) once the list is known. */
 const MOUNTED_CROSSBOWMAN_SENTINEL_ID = 900002;
 const MOUNTED_CROSSBOWMAN_EXTRA_CIVS = []; // TODO: fill in once known
+
+/* Jarl — Varangians' own unique unit (Cavalry), NOT shared with Danes/
+   Saxons like Longship/Mounted Crossbowman above are. Same placeholder-
+   sentinel situation (no real ID yet), but added ONLY to
+   civData['Varangians'].units, and referenced as its own standalone
+   Cavalry-archetype item — same pattern as Longship's own Naval item,
+   per the site owner's request. Replace with the real ID once
+   SiegeEngineers assigns one. */
+const JARL_SENTINEL_ID = 900003;
 
 /* Khitans replace Farms with Pastures, which have their own 3-tier upgrade
    chain (Livestock Husbandry / Enclosures / Grazing Grasslands) matching the
@@ -1479,6 +1486,7 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
   {emoji:'⚔️',label:'Cavalry',bonusKey:'Cavalry',restrictTo:['Armenians','Bengalis','Berbers','Bohemians','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Dravidians','Ethiopians','Franks','Georgians','Goths','Gurjaras','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Malay','Malians','Magyars','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu'],items:[
+    {t:'unit',id:JARL_SENTINEL_ID}, // Jarl (Varangians only) — see its own comment above
     {t:'unit',id:[569,1813],extra:[1946,2568,1753]},
     {t:'unit',id:[441,1707]},
     {t:'unit',id:283,extra:[1946,2568,1753]},
@@ -2084,6 +2092,8 @@ function applyManualNewCivData() {
     civData[civ].units.add(LONGSHIP_SENTINEL_ID);
     civData[civ].units.add(MOUNTED_CROSSBOWMAN_SENTINEL_ID);
   });
+  // Jarl is Varangians-exclusive, unlike the two shared sentinels above.
+  civData['Varangians'].units.add(JARL_SENTINEL_ID);
 }
 
 /* ================================================================
@@ -2463,12 +2473,53 @@ const BONUS_CATEGORY_OVERRIDE = {
   'Jian Swordsmen and Hei Guang Cavalry +2 attack in Imperial Age': { include:['Infantry'] },
   'Careening, Dry Dock free': { include:['Naval'] }, // already Naval via keyword, explicit for clarity
   'Military production buildings and Docks provide +55 food': { exclude:['Naval','Defensive'], include:['Eco'] },
+
+  // ── Danes ── (The Viking Sagas, 2026-09-22)
+  'Villagers and Fishing Ships drop off +5% food': { exclude:['Naval'], include:['Eco'] },
+  // "Building" false-triggers Defensive on a raiding/looting bonus, not a
+  // defensive one; the loot itself is Siege-flavored (buildings are mainly
+  // destroyed by siege equipment) on top of the Eco gold gain.
+  'Military units loot 25 gold and 15% of the resource cost of destroyed buildings': { exclude:['Defensive'], include:['Eco','Siege'] },
+  // "Gold" false-triggers Eco on what's really a Barracks/Siege Workshop
+  // strength discount; classifier also misses Infantry since "Barracks"
+  // itself isn't a recognized unit-type keyword.
+  'Barracks and Siege Workshop upgrades cost -66% gold': { exclude:['Eco'], include:['Infantry','Siege'] },
+  // "Varangian Guards" is a proper noun the classifier can't tell is infantry.
+  'Varangian Guards and Longships move +10% faster': { include:['Infantry'] },
+
+  // ── Saxons ── (The Viking Sagas, 2026-09-22)
+  // "Castle" false-triggers Defensive on a per-building cost DISCOUNT (not a
+  // combat bonus); "Foot Soldiers" isn't a recognized Infantry keyword.
+  'Foot Soldiers cost -5% per Town Center or Castle controlled (maximum -20%)': { exclude:['Defensive'], include:['Infantry'] },
+  // No keyword hits at all — repairing mainly matters for walls/towers
+  // (Defensive) and siege equipment/ships in the field (Siege).
+  'Repairers work +25% faster': { include:['Defensive','Siege'] },
+
+  // ── Varangians ── (The Viking Sagas, 2026-09-22) — categories confirmed
+  // directly by the site owner, bonus-by-bonus.
+  // "vs. Infantry" names the TARGET being attacked, not Varangians' own
+  // infantry strength — same false-positive pattern as Wei's "vs. Siege
+  // Weapons" team bonus elsewhere in this file. Text itself still needs
+  // the site owner's confirmation (see TEAM_BONUS's own flag).
+  'Knight-line +1 attack vs. Infantry': { exclude:['Infantry'], include:['Cavalry'] },
+  // "Fishing" false-triggers Naval — this is an eco-only bonus (extra gold
+  // income), not a naval-strength one.
+  'Fishing and hunting also generate +40% gold': { exclude:['Naval'], include:['Eco'] },
+  // Bloodlines (Stable tech) + Careening (Dock tech) genuinely spans both.
+  'Bloodlines and Careening effects +50%': { include:['Naval','Cavalry'] },
+  // "Varangian Guards" is a proper noun the classifier can't tell is infantry.
+  'Varangian Guards attack +25% faster': { include:['Infantry'] },
+  'Longships and Catapult Galleons attack +10% faster': { include:['Naval'] },
 };
 
 /* Same idea as BONUS_CATEGORY_OVERRIDE, but for Castle/Imperial unique techs,
    keyed by tech name (not the full concatenated name+description string
    used for classification, which is fragile to match exactly). */
 const UNIQUE_TECH_CATEGORY_OVERRIDE = {
+  // ── Varangians ── (The Viking Sagas, 2026-09-22) — proper nouns, no
+  // description on file yet, category confirmed directly by the site owner.
+  'Vendel Legacy': { include: ['Cavalry'] },
+  'Gothikon': { include: ['Infantry'] },
   // "resources" reads as an Eco keyword, but Atheism is purely a
   // Relic/Monastery-denial tech.
   'Atheism': { exclude:['Monk'], include:['Defensive','Eco'] },
@@ -2562,27 +2613,6 @@ const UNIQUE_TECH_CATEGORY_OVERRIDE = {
 
   // ── Mapuche ──
   'Malon': { exclude:['Archer'], include:['Defensive','Cavalry Archer'] },
-
-  // ── Danes ── (The Viking Sagas, 2026-09-22)
-  'Villagers and Fishing Ships drop off +5% food': { exclude:['Naval'], include:['Eco'] },
-  // "Building" false-triggers Defensive on a raiding/looting bonus, not a
-  // defensive one; the loot itself is Siege-flavored (buildings are mainly
-  // destroyed by siege equipment) on top of the Eco gold gain.
-  'Military units loot 25 gold and 15% of the resource cost of destroyed buildings': { exclude:['Defensive'], include:['Eco','Siege'] },
-  // "Gold" false-triggers Eco on what's really a Barracks/Siege Workshop
-  // strength discount; classifier also misses Infantry since "Barracks"
-  // itself isn't a recognized unit-type keyword.
-  'Barracks and Siege Workshop upgrades cost -66% gold': { exclude:['Eco'], include:['Infantry','Siege'] },
-  // "Varangian Guards" is a proper noun the classifier can't tell is infantry.
-  'Varangian Guards and Longships move +10% faster': { include:['Infantry'] },
-
-  // ── Saxons ── (The Viking Sagas, 2026-09-22)
-  // "Castle" false-triggers Defensive on a per-building cost DISCOUNT (not a
-  // combat bonus); "Foot Soldiers" isn't a recognized Infantry keyword.
-  'Foot Soldiers cost -5% per Town Center or Castle controlled (maximum -20%)': { exclude:['Defensive'], include:['Infantry'] },
-  // No keyword hits at all — repairing mainly matters for walls/towers
-  // (Defensive) and siege equipment/ships in the field (Siege).
-  'Repairers work +25% faster': { include:['Defensive','Siege'] },
 };
 
 
