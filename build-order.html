@@ -237,7 +237,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.58</div>
+  <div class="version">v0.59</div>
 </div>
 
 <script>
@@ -809,7 +809,9 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "building-cost-pct", "building": "Town Center", "resource": "wood", "value": 50, "note": "Town Centers cost -50% wood" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -2397,7 +2399,9 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "farm-cost-pct", "value": 40, "note": "Farms cost -40%" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -3733,7 +3737,12 @@ function computeTotalIncome(rows, civ, techIds, assumeFarms = true) {
   const farmYield = techIds.has('crop-rotation') ? 550 : techIds.has('heavy-plow') ? 375 : techIds.has('horse-collar') ? 250 : 175;
   const folwarkBonus = (civ?.ecoBonuses || []).find(b => b.type === 'folwark-yield-bonus');
   const effectiveFarmYield = farmYield * (folwarkBonus ? 1 + folwarkBonus.value / 100 : 1);
-  const farmUpkeepWoodPerSec = assumeFarms ? totalIncome.food * DATA.farmBuildCost / effectiveFarmYield : 0;
+  // Teutons: "Farms cost -40%" — Farms have no cost besides wood in this
+  // model (matches the real building), so this discounts the rebuild cost
+  // directly rather than needing its own resource-scoped field.
+  const farmCostBonus = (civ?.ecoBonuses || []).find(b => b.type === 'farm-cost-pct');
+  const effectiveFarmBuildCost = DATA.farmBuildCost * (farmCostBonus ? 1 - farmCostBonus.value / 100 : 1);
+  const farmUpkeepWoodPerSec = assumeFarms ? totalIncome.food * effectiveFarmBuildCost / effectiveFarmYield : 0;
   totalIncome.wood += farmUpkeepWoodPerSec;
   const popSpaceOverride = (civ?.ecoBonuses || []).find(b => b.type === 'house-pop-space');
   const housePopSpace = popSpaceOverride ? popSpaceOverride.value : DATA.housePopSpace;
