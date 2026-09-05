@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.03</div>
+    <div class="version">v2.04</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -455,7 +455,7 @@ const UNIQUE_UNITS = {
   Maya:"Plumed Archer",
   Mongols:"Mangudai",
   Muisca:"Guecha Warrior, Temple Guard",
-  Persians:"Battle Elephant, Savar",
+  Persians:"War Elephant, Savar",
   Poles:"Obuch, Winged Hussar",
   Portuguese:"Organ Gun, Caravel",
   Romans:"Centurion, Legionary",
@@ -1511,7 +1511,7 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
   {emoji:'⚔️',label:'Cavalry',bonusKey:'Cavalry',restrictTo:['Armenians','Bengalis','Berbers','Bohemians','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Dravidians','Ethiopians','Franks','Georgians','Goths','Gurjaras','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Malay','Malians','Magyars','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu'],items:[
-    {t:'unit',id:[569,1813],extra:[1946,2568,1753]},
+    {t:'unit',id:[569,1813],extra:[1946,2568,1753,558]}, // Paladin — extra covers Persians' Savar (replaces Paladin entirely for them, not additive)
     {t:'unit',id:[441,1707]},
     {t:'unit',id:283,extra:[1946,2568,1753]},
     {t:'unit',id:38,extra:[1944,2566,1751]},
@@ -1560,7 +1560,7 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:63},{t:'tech',id:64},{t:'tech',id:140},{t:'tech',id:194},{t:'tech',id:608},
   ]},
   {emoji:'🐪',label:'Camel',bonusKey:'Camel',restrictTo:['Berbers','Byzantines','Cumans','Ethiopians','Gurjaras','Hindustanis','Khitans','Malians','Mongols','Persians','Saracens','Tatars','Turks'],items:[
-    {t:'unit',id:330,extra:[558,207]}, // Heavy Camel Rider — extra covers Persians' Savar and Hindustanis' further Imperial Camel Rider tier (both replace/extend this same tier, not additive units)
+    {t:'unit',id:330,extra:[207]}, // Heavy Camel Rider — extra covers Hindustanis' further Imperial Camel Rider tier (extends this same tier, not an additive unit)
     {t:'unit',id:329},
     {t:'tech',id:435},{t:'tech',id:39},{t:'tech',id:80},{t:'tech',id:82},{t:'tech',id:81},
   ]},
@@ -1740,6 +1740,12 @@ const EXTRA_UU_BONUS = {
   Monk: [
     { ids:[1811], civs:['Armenians'], note:'Warrior Priest — combat-capable monk' },
     { ids:[775], civs:['Spanish'], note:'Missionary — mounted monk' },
+  ],
+  Elephant: [
+    // Distinct from the shared Battle Elephant(1132/1134) item above — Persians'
+    // own Castle-trained unique unit, additive on top of their normal Battle
+    // Elephant access, not a replacement (confirmed by the site owner directly).
+    { ids:[239], civs:['Persians'], note:'War Elephant — Castle-trained unique unit' },
   ],
   Camel: [
     { ids:[1007], civs:['Berbers'], note:'Camel Archer — mounted archer on camel' },
