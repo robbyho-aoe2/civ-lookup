@@ -237,7 +237,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.61</div>
+  <div class="version">v0.62</div>
 </div>
 
 <script>
@@ -1697,7 +1697,9 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        { "type": "tc-food-bonus", "value": 100, "note": "Each Town Center provides +100 food" }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -3040,6 +3042,12 @@ function startingPoolForCiv(civ) {
   const bonus = (civ?.ecoBonuses || []).find(b => b.type === 'starting-resources');
   const pool = { ...DATA.startingResources };
   if (bonus) RES.forEach(r => { pool[r] = Math.max(0, pool[r] + (bonus.delta[r] || 0)); });
+  // Lithuanians: "Each Town Center provides +100 food" — includes the
+  // starting TC every civ already has (unlike Tatars' tc-sheep-food,
+  // which is explicitly new-TCs-only) — credited here at t=0, then again
+  // per extra TC built (see tcFoodBonus at the Dijkstra search's TC move).
+  const tcFoodBonus = (civ?.ecoBonuses || []).find(b => b.type === 'tc-food-bonus');
+  if (tcFoodBonus) pool.food += tcFoodBonus.value;
   return pool;
 }
 
@@ -4750,6 +4758,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       : relevantEcoLines(stageRows, civ);
     const tcExtraCap = line.isVillager ? MAX_TC_FOR_VILLAGER_TARGET : MAX_EXTRA_TC;
     const tcSheepBonus = (civ?.ecoBonuses || []).find(b => b.type === 'tc-sheep-food');
+    const tcFoodBonus = (civ?.ecoBonuses || []).find(b => b.type === 'tc-food-bonus');
     // Free techs are no longer pre-leveled here regardless of age (that was
     // the bug — see the age-gated free-tech branch in the tech-move loop
     // below, which now handles them as an instant, zero-cost move exactly
@@ -4931,6 +4940,10 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           // represent a depleting resource, so this is a lump sum landing
           // the moment the TC(s) complete.
           if (tcSheepBonus) r.pool.food += tcSheepBonus.perSheep * tcSheepBonus.count * (1 + tcSheepBonus.longevityPct / 100) * k;
+          // Lithuanians: +100 food per Town Center, extra ones included —
+          // the starting TC's own credit is handled once at t=0 by
+          // startingPoolForCiv instead.
+          if (tcFoodBonus) r.pool.food += tcFoodBonus.value * k;
           const key = stateKey(cur.levels, cur.tcExtra + k, cur.ageAdvanced, cur.trainingPaused);
           const existing = finalized.get(key);
           if (!existing || existing.time > r.time) {
