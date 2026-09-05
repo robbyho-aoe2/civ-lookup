@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.04</div>
+    <div class="version">v2.05</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -285,11 +285,9 @@ const CIV_ICON_FILE_OVERRIDES = { Maya: 'mayans' };
    varangians.png) 404 as of this writing. Hosted locally instead, cropped
    from the real in-game tech-tree shield icons the site owner screenshotted
    and pasted directly (transparent-background PNGs, same visual role as the
-   repo's own icons). Saxons' shield not provided yet — falls through to the
-   normal (currently-404ing) remote URL, silently hidden by the existing
-   onerror handler, same as before this override existed. Swap an entry back
-   to the remote path once SiegeEngineers adds the real asset. */
-const CIV_ICON_LOCAL_OVERRIDES = { Danes: 'img/civs/danes.png', Varangians: 'img/civs/varangians.png' };
+   repo's own icons). Swap an entry back to the remote path once
+   SiegeEngineers adds the real asset for that civ. */
+const CIV_ICON_LOCAL_OVERRIDES = { Danes: 'img/civs/danes.png', Saxons: 'img/civs/saxons.png', Varangians: 'img/civs/varangians.png' };
 function civIconUrl(civName) {
   if (CIV_ICON_LOCAL_OVERRIDES[civName]) return CIV_ICON_LOCAL_OVERRIDES[civName];
   const file = CIV_ICON_FILE_OVERRIDES[civName] || civName.toLowerCase();
