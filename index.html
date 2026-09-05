@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.00</div>
+    <div class="version">v2.01</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -280,7 +280,18 @@ const ALL_CIVS = [
    except Maya (file is "mayans.png" — the only mismatch across all 53). */
 const CIV_ICON_BASE = 'https://raw.githubusercontent.com/SiegeEngineers/aoe2techtree/master/img/Civs';
 const CIV_ICON_FILE_OVERRIDES = { Maya: 'mayans' };
+/* Viking Sagas civs (The Viking Sagas, 2026-09-22) aren't in that repo yet —
+   raw.githubusercontent.com/.../danes.png (and presumably saxons.png/
+   varangians.png) 404 as of this writing. Hosted locally instead, cropped
+   from the real in-game tech-tree shield icons the site owner screenshotted
+   and pasted directly (transparent-background PNGs, same visual role as the
+   repo's own icons). Saxons' shield not provided yet — falls through to the
+   normal (currently-404ing) remote URL, silently hidden by the existing
+   onerror handler, same as before this override existed. Swap an entry back
+   to the remote path once SiegeEngineers adds the real asset. */
+const CIV_ICON_LOCAL_OVERRIDES = { Danes: 'img/civs/danes.png', Varangians: 'img/civs/varangians.png' };
 function civIconUrl(civName) {
+  if (CIV_ICON_LOCAL_OVERRIDES[civName]) return CIV_ICON_LOCAL_OVERRIDES[civName];
   const file = CIV_ICON_FILE_OVERRIDES[civName] || civName.toLowerCase();
   return `${CIV_ICON_BASE}/${file}.png`;
 }
@@ -2027,6 +2038,9 @@ const VIKING_SAGAS_EXCLUDE_NAMES = {
   // Stable, Blacksmith/Siege Workshop/Dock, University, Castle/Monastery —
   // every page screenshotted and checked directly), and inferred for Danes
   // via the DLC's stated shared architecture (see block comment above).
+  // NOT re-verified for Varangians — see VARANGIANS_EXTRA_EXCLUDE_NAMES/
+  // VARANGIANS_INCLUDE_NAMES below, which is where its real, now-confirmed
+  // divergence from this shared base gets layered on.
   units: [
     'Cavalry Archer', 'Heavy Cavalry Archer', 'Hand Cannoneer', 'Bombard Cannon',
     'Demolition Ship', 'Heavy Demolition Ship', 'Fast Fire Ship',
@@ -2040,6 +2054,20 @@ const VIKING_SAGAS_EXCLUDE_NAMES = {
   ],
   techs: ['Parthian Tactics', 'Blast Furnace', 'Carvel Hull', 'Bombard Tower', 'Fervor'],
 };
+/* Varangians-specific corrections, confirmed directly by the site owner
+   playing/checking the real tech tree (2026-09-05) — layered ON TOP of the
+   shared base above, not a replacement for it (the base's Camel/Elephant/
+   Eagle/Steppe-Lancer exclusions etc. are still assumed to hold for
+   Varangians too, just not independently re-verified). Deliberately NOT
+   extended to Danes/Saxons — these were checked for Varangians specifically
+   and the base list's own header already flags that Varangians' Cavalry-
+   and-Naval focus was expected to diverge more than Danes'/Saxons' did. */
+const VARANGIANS_EXTRA_EXCLUDE_NAMES = {
+  units: ['Arbalester', 'Champion', 'Siege Onager'],
+  techs: ['Thumb Ring', 'Block Printing', 'Redemption', 'Heresy', 'Sanctity', 'Keep', 'Arrowslits', 'Sappers', 'Hoardings'],
+};
+// Present for Varangians despite being in the shared base's own exclude list.
+const VARANGIANS_INCLUDE_NAMES = { techs: ['Blast Furnace'] };
 function resolveIds(names, idMap) {
   const out = [];
   names.forEach(name => {
@@ -2052,6 +2080,11 @@ function resolveIds(names, idMap) {
 const VIKING_SAGAS_EXCLUDE = {
   units: resolveIds(VIKING_SAGAS_EXCLUDE_NAMES.units, UNIT_IDS),
   techs: resolveIds(VIKING_SAGAS_EXCLUDE_NAMES.techs, TECH_IDS),
+};
+const VARANGIANS_EXCLUDE = {
+  units: [...VIKING_SAGAS_EXCLUDE.units, ...resolveIds(VARANGIANS_EXTRA_EXCLUDE_NAMES.units, UNIT_IDS)],
+  techs: [...VIKING_SAGAS_EXCLUDE.techs, ...resolveIds(VARANGIANS_EXTRA_EXCLUDE_NAMES.techs, TECH_IDS)]
+    .filter(id => !resolveIds(VARANGIANS_INCLUDE_NAMES.techs, TECH_IDS).includes(id)),
 };
 function applyManualNewCivData() {
   const realCivs = Object.keys(civData).filter(c => c !== 'Danes' && c !== 'Saxons' && c !== 'Varangians');
@@ -2084,9 +2117,10 @@ function applyManualNewCivData() {
   ['Traction Trebuchet', 'Xianbei Raider', 'Champi Warrior', 'Elite Champi Warrior', 'Fire Lancer', 'Elite Fire Lancer', 'Hei Guang Cavalry', 'Heavy Hei Guang Cavalry']
     .forEach(name => { const id = UNIT_IDS[name]; if (id != null) (Array.isArray(id) ? id : [id]).forEach(x => uniqueUnitIds.add(x)); });
   ['Danes', 'Saxons', 'Varangians'].forEach(civ => {
+    const exclude = civ === 'Varangians' ? VARANGIANS_EXCLUDE : VIKING_SAGAS_EXCLUDE;
     civData[civ] = {
-      units: new Set([...allUnits].filter(id => !uniqueUnitIds.has(id) && !VIKING_SAGAS_EXCLUDE.units.includes(id))),
-      techs: new Set([...allTechs].filter(id => !VIKING_SAGAS_EXCLUDE.techs.includes(id))),
+      units: new Set([...allUnits].filter(id => !uniqueUnitIds.has(id) && !exclude.units.includes(id))),
+      techs: new Set([...allTechs].filter(id => !exclude.techs.includes(id))),
     };
     // Real units, no real IDs yet — see each sentinel's own comment above.
     civData[civ].units.add(LONGSHIP_SENTINEL_ID);
