@@ -237,7 +237,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.72</div>
+  <div class="version">v0.73</div>
 </div>
 
 <script>
@@ -538,6 +538,16 @@ const DATA = {
       { name:'Cavalier', age:'Imperial', trainTime:30, upgradeCost:{food:300,wood:0,gold:300,stone:0}, upgradeResearchTime:80 },
       { name:'Paladin', age:'Imperial', trainTime:30, upgradeCost:{food:1300,wood:0,gold:750,stone:0}, upgradeResearchTime:170 },
     ]},
+    // Real ids/costs/times from SiegeEngineers/aoe2techtree's cached data.json
+    // (see [[reference_aoe2techtree_data]]) — SLANCER/ESLANCER (1370/1372,
+    // unit_upgrades['1372'] for the Elite upgrade tech). Restricted to the 5
+    // civs whose real per-civ Unit list actually contains id 1370, confirmed
+    // programmatically against that same data, not guessed — site owner
+    // reported it missing for Khitans specifically.
+    { id:'steppe-lancer-line', name:'Steppe Lancer', building:'Stable', cost:{food:70,wood:0,gold:40,stone:0}, pop:1, civRestriction:'Cumans, Jurchens, Khitans, Mongols, Tatars only', tiers:[
+      { name:'Steppe Lancer', age:'Castle', trainTime:24 },
+      { name:'Elite Steppe Lancer', age:'Imperial', trainTime:20, upgradeCost:{food:600,wood:0,gold:550,stone:0}, upgradeResearchTime:55 },
+    ]},
     { id:'camel-line', name:'Camel Rider', building:'Stable', cost:{food:55,wood:0,gold:60,stone:0}, pop:1, civRestriction:'Camel Rider civs only; Imperial Camel Rider is Hindustanis-exclusive', tiers:[
       { name:'Camel Rider', age:'Castle', trainTime:22 },
       { name:'Heavy Camel Rider', age:'Imperial', trainTime:20, upgradeCost:{food:325,wood:0,gold:360,stone:0}, upgradeResearchTime:105 },
@@ -630,7 +640,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["parthian-tactics", "plate-barding-armor", "siege-engineers", "thumb-ring"]
     },
     {
       "id": "aztecs",
@@ -666,7 +678,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["ring-archer-armor", "thumb-ring"]
     },
     {
       "id": "bengalis",
@@ -697,7 +711,9 @@ const DATA = {
         "ram-line",
         "hand-cannoneer",
         "bombard-cannon"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["heresy", "parthian-tactics", "plate-mail-armor", "thumb-ring"]
     },
     {
       "id": "berbers",
@@ -735,7 +751,9 @@ const DATA = {
         "eagle-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["block-printing", "gambesons", "parthian-tactics", "sanctity"]
     },
     {
       "id": "bohemians",
@@ -796,7 +814,9 @@ const DATA = {
         "camel-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["bloodlines", "gambesons", "plate-barding-armor", "thumb-ring"]
     },
     {
       "id": "britons",
@@ -826,7 +846,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["atonement", "bloodlines", "heresy", "parthian-tactics", "redemption", "thumb-ring"]
     },
     {
       "id": "bulgarians",
@@ -856,7 +878,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["atonement", "block-printing", "faith", "ring-archer-armor", "sanctity"]
     },
     {
       "id": "burgundians",
@@ -897,7 +921,9 @@ const DATA = {
         "camel-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["bloodlines", "gambesons", "heresy", "parthian-tactics", "ring-archer-armor", "siege-engineers", "theocracy", "thumb-ring"]
     },
     {
       "id": "burmese",
@@ -939,7 +965,9 @@ const DATA = {
         "camel-line",
         "hand-cannoneer",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["heresy", "leather-archer-armor", "ring-archer-armor", "thumb-ring"]
     },
     {
       "id": "byzantines",
@@ -966,7 +994,9 @@ const DATA = {
         "eagle-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["blast-furnace", "bloodlines", "herbal-medicine", "parthian-tactics", "siege-engineers"]
     },
     {
       "id": "celts",
@@ -1001,7 +1031,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["atonement", "block-printing", "bloodlines", "bracer", "illumination", "parthian-tactics", "plate-barding-armor", "redemption", "squires", "theocracy", "thumb-ring"]
     },
     {
       "id": "chinese",
@@ -1050,7 +1082,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["gambesons", "heresy", "parthian-tactics", "redemption", "siege-engineers"]
     },
     {
       "id": "cumans",
@@ -1080,7 +1114,8 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ],
+      "unavailableTechs": ["block-printing", "bracer", "gambesons", "husbandry", "illumination", "redemption", "siege-engineers", "theocracy"]
     },
     {
       "id": "dravidians",
@@ -1123,7 +1158,9 @@ const DATA = {
         "knight-line",
         "camel-line",
         "ram-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["bloodlines", "fervor", "heresy", "illumination", "parthian-tactics", "plate-barding-armor", "redemption", "siege-engineers"]
     },
     {
       "id": "ethiopians",
@@ -1152,7 +1189,9 @@ const DATA = {
         "hand-cannoneer",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["block-printing", "bloodlines", "gambesons", "parthian-tactics", "plate-barding-armor", "redemption"]
     },
     {
       "id": "franks",
@@ -1194,7 +1233,9 @@ const DATA = {
         "camel-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["atonement", "bloodlines", "bracer", "parthian-tactics", "redemption", "ring-archer-armor", "thumb-ring"]
     },
     {
       "id": "georgians",
@@ -1228,7 +1269,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["atonement", "illumination", "ring-archer-armor", "thumb-ring"]
     },
     {
       "id": "goths",
@@ -1260,7 +1303,9 @@ const DATA = {
         "camel-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["arson", "atonement", "block-printing", "gambesons", "heresy", "parthian-tactics", "plate-barding-armor", "plate-mail-armor", "redemption", "siege-engineers", "thumb-ring"]
     },
     {
       "id": "gurjaras",
@@ -1322,7 +1367,9 @@ const DATA = {
         "knight-line",
         "ram-line",
         "battle-elephant-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["blast-furnace", "block-printing", "faith", "gambesons", "parthian-tactics", "ring-archer-armor", "siege-engineers", "squires"]
     },
     {
       "id": "hindustanis",
@@ -1362,7 +1409,9 @@ const DATA = {
         "ram-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["atonement", "gambesons", "heresy", "parthian-tactics", "plate-mail-armor"]
     },
     {
       "id": "huns",
@@ -1400,7 +1449,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["block-printing", "gambesons", "herbal-medicine", "plate-mail-armor", "redemption", "ring-archer-armor", "siege-engineers", "theocracy"]
     },
     {
       "id": "incas",
@@ -1450,7 +1501,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["atonement", "fervor", "gambesons"]
     },
     {
       "id": "italians",
@@ -1491,7 +1544,9 @@ const DATA = {
         "camel-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["gambesons", "heresy", "parthian-tactics", "siege-engineers"]
     },
     {
       "id": "japanese",
@@ -1524,7 +1579,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["heresy", "plate-barding-armor"]
     },
     {
       "id": "jurchens",
@@ -1568,7 +1625,8 @@ const DATA = {
         "hand-cannoneer",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ],
+      "unavailableTechs": ["faith", "heresy", "parthian-tactics", "plate-mail-armor", "redemption", "thumb-ring"]
     },
     {
       "id": "khitans",
@@ -1634,7 +1692,8 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ],
+      "unavailableTechs": ["blast-furnace", "block-printing", "bloodlines", "herbal-medicine", "redemption"]
     },
     {
       "id": "khmer",
@@ -1662,7 +1721,9 @@ const DATA = {
         "camel-line",
         "bombard-cannon",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["atonement", "block-printing", "gambesons", "heresy", "plate-mail-armor", "squires", "thumb-ring"]
     },
     {
       "id": "koreans",
@@ -1709,7 +1770,9 @@ const DATA = {
         "mangonel-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["atonement", "blast-furnace", "bloodlines", "heresy", "illumination", "parthian-tactics", "plate-barding-armor", "redemption"]
     },
     {
       "id": "lithuanians",
@@ -1750,7 +1813,9 @@ const DATA = {
         "camel-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["blast-furnace", "gambesons", "parthian-tactics", "plate-mail-armor", "siege-engineers"]
     },
     {
       "id": "magyars",
@@ -1783,7 +1848,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["atonement", "faith", "gambesons", "plate-mail-armor", "redemption", "squires"]
     },
     {
       "id": "malay",
@@ -1811,7 +1878,9 @@ const DATA = {
         "camel-line",
         "hand-cannoneer",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["bloodlines", "chain-barding-armor", "fervor", "gambesons", "parthian-tactics", "plate-barding-armor", "theocracy"]
     },
     {
       "id": "malians",
@@ -1850,7 +1919,9 @@ const DATA = {
         "eagle-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["blast-furnace", "bracer", "gambesons", "illumination", "parthian-tactics", "siege-engineers"]
     },
     {
       "id": "mapuche",
@@ -1901,7 +1972,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["block-printing", "bracer", "fervor", "gambesons", "illumination", "redemption", "squires", "thumb-ring"]
     },
     {
       "id": "mayans",
@@ -1938,7 +2011,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["gambesons", "illumination", "redemption", "siege-engineers"]
     },
     {
       "id": "mongols",
@@ -1967,7 +2042,8 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ],
+      "unavailableTechs": ["block-printing", "gambesons", "illumination", "plate-barding-armor", "redemption", "ring-archer-armor", "sanctity", "theocracy"]
     },
     {
       "id": "muisca",
@@ -2019,7 +2095,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["arson", "blast-furnace", "gambesons", "ring-archer-armor"]
     },
     {
       "id": "persians",
@@ -2063,7 +2141,9 @@ const DATA = {
         "eagle-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["atonement", "bracer", "heresy", "illumination", "redemption", "sanctity", "siege-engineers"]
     },
     {
       "id": "poles",
@@ -2110,7 +2190,9 @@ const DATA = {
         "hand-cannoneer",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["atonement", "gambesons", "heresy", "illumination", "parthian-tactics", "plate-barding-armor", "ring-archer-armor"]
     },
     {
       "id": "portuguese",
@@ -2151,7 +2233,9 @@ const DATA = {
         "camel-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["illumination", "parthian-tactics", "squires"]
     },
     {
       "id": "romans",
@@ -2199,7 +2283,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["arson", "bracer", "gambesons", "heresy", "parthian-tactics", "plate-mail-armor", "sanctity", "theocracy", "thumb-ring"]
     },
     {
       "id": "saracens",
@@ -2226,7 +2312,8 @@ const DATA = {
         "eagle-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"]
     },
     {
       "id": "shu",
@@ -2285,7 +2372,9 @@ const DATA = {
         "trebuchet",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["blast-furnace", "block-printing", "bloodlines", "herbal-medicine", "iron-casting", "parthian-tactics", "redemption", "sanctity"]
     },
     {
       "id": "sicilians",
@@ -2319,7 +2408,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["atonement", "block-printing", "heresy", "parthian-tactics", "redemption", "ring-archer-armor", "theocracy", "thumb-ring"]
     },
     {
       "id": "slavs",
@@ -2359,7 +2450,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["bracer", "fervor", "heresy", "parthian-tactics", "thumb-ring"]
     },
     {
       "id": "spanish",
@@ -2398,7 +2491,9 @@ const DATA = {
         "camel-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["parthian-tactics", "siege-engineers"]
     },
     {
       "id": "tatars",
@@ -2441,7 +2536,8 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ],
+      "unavailableTechs": ["chain-mail-armor", "faith", "gambesons", "heresy", "plate-mail-armor", "redemption", "sanctity", "theocracy"]
     },
     {
       "id": "teutons",
@@ -2469,7 +2565,9 @@ const DATA = {
         "camel-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["bracer", "husbandry", "parthian-tactics", "thumb-ring"]
     },
     {
       "id": "tupi",
@@ -2525,7 +2623,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["atonement", "blast-furnace", "block-printing", "fervor", "gambesons", "siege-engineers", "thumb-ring"]
     },
     {
       "id": "turks",
@@ -2562,7 +2662,9 @@ const DATA = {
         "eagle-line",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["block-printing", "gambesons", "herbal-medicine", "illumination", "siege-engineers"]
     },
     {
       "id": "vietnamese",
@@ -2601,7 +2703,9 @@ const DATA = {
         "camel-line",
         "hand-cannoneer",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["blast-furnace", "fervor", "gambesons", "heresy", "parthian-tactics", "redemption"]
     },
     {
       "id": "vikings",
@@ -2653,7 +2757,9 @@ const DATA = {
         "bombard-cannon",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["bloodlines", "herbal-medicine", "husbandry", "illumination", "parthian-tactics", "plate-barding-armor", "redemption", "sanctity", "theocracy", "thumb-ring"]
     },
     {
       "id": "wei",
@@ -2712,7 +2818,9 @@ const DATA = {
         "trebuchet",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["atonement", "gambesons", "herbal-medicine", "heresy", "plate-barding-armor", "plate-mail-armor", "redemption", "siege-engineers"]
     },
     {
       "id": "wu",
@@ -2768,7 +2876,9 @@ const DATA = {
         "trebuchet",
         "battle-elephant-line",
         "elephant-archer-line"
-      ]
+      ,
+        "steppe-lancer-line"],
+      "unavailableTechs": ["block-printing", "gambesons", "heresy", "parthian-tactics", "ring-archer-armor", "siege-engineers", "thumb-ring"]
     }
   ],
 };
@@ -4754,7 +4864,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // stage). Degenerates to the single-target case unchanged when there's
     // only one unit.
     resolvedUnits.forEach(u => {
-      const applicableIds = new Set(applicableCombatTechIds(u.line));
+      const applicableIds = new Set(applicableCombatTechIds(u.line, civ));
       (u.combatTechIds || []).forEach(id => {
         if (!applicableIds.has(id) || alreadyAddedCombatTechs.has(id)) return;
         const t = DATA.ecoTechs.find(e => e.id === id);
@@ -5983,7 +6093,20 @@ function bestEarlyEcoTechAlt(stages, result, sr, civ, loomOn, allIn, efficiency,
 // Armor are genuinely separate techs, split out per the site owner's
 // correction — see the DATA.ecoTechs entries themselves). Monastery techs
 // (Redemption, Faith, etc.) are a different category, out of scope here.
-function applicableCombatTechIds(line) {
+// Filters a line's normally-applicable techs down to what this SPECIFIC civ
+// can actually research — real per-civ tech-tree gaps (Khitans lack
+// Bloodlines, most civs lack 2+ Monastery techs, Thumb Ring/Parthian
+// Tactics are civ-restricted, etc.) confirmed against the same real
+// per-civ Unit/Tech access lists SiegeEngineers/aoe2techtree's own data.json
+// uses (see [[reference_aoe2techtree_data]]) — NOT guessed. Previously this
+// tool offered the identical checkbox list to every civ regardless of real
+// tech-tree gaps (site owner: "khitans dont get bloodlines" surfaced this).
+function applicableCombatTechIds(line, civ) {
+  const ids = applicableCombatTechIdsRaw(line);
+  const unavailable = civ?.unavailableTechs;
+  return unavailable ? ids.filter(id => !unavailable.includes(id)) : ids;
+}
+function applicableCombatTechIdsRaw(line) {
   if (!line) return [];
   const infantry = ['militia-line', 'spearman-line', 'eagle-line'];
   // Ballistics (projectile accuracy vs moving targets) is real for foot
@@ -5993,7 +6116,7 @@ function applicableCombatTechIds(line) {
   // the site owner's own correction; the original version wrongly gave it
   // to every Siege Workshop line and Bombard Cannon.
   const footArchers = ['archer-line', 'skirmisher-line'];
-  const meleeCavalry = ['scout-cavalry-line', 'knight-line', 'camel-line', 'battle-elephant-line'];
+  const meleeCavalry = ['scout-cavalry-line', 'knight-line', 'camel-line', 'battle-elephant-line', 'steppe-lancer-line'];
   // Husbandry: every mounted line gets it (site owner's own correction —
   // originally modeled as Scout-Cavalry-only). Doesn't apply to unique
   // units at all here since this tool's Optimize/Constant Production
@@ -6061,8 +6184,8 @@ const COMBAT_TECH_BUILDING = {
 // `optimizeState.stages[i].combatTechIds` instead of raw DOM checkboxes,
 // since Optimize re-renders its whole result on every state change rather
 // than mutating checkboxes in place.
-function renderCombatTechCheckboxes(stageIdx, unitIdx, line) {
-  const ids = applicableCombatTechIds(line);
+function renderCombatTechCheckboxes(stageIdx, unitIdx, line, civ) {
+  const ids = applicableCombatTechIds(line, civ);
   if (!ids.length) return '';
   const techs = ids.map(id => DATA.ecoTechs.find(t => t.id === id)).filter(Boolean);
   const lineGroups = {};
@@ -6340,7 +6463,7 @@ function renderOptimizeStages() {
               <span class="tname">${line.tiers[u.tierIdx].name}</span>
             </div>
           </div>
-          <div style="flex:1 1 160px;min-width:160px;">${renderCombatTechCheckboxes(i, ui, line)}</div>
+          <div style="flex:1 1 160px;min-width:160px;">${renderCombatTechCheckboxes(i, ui, line, civ)}</div>
         </div>
         ${countDots}
         ${goalToggle}
