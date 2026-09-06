@@ -237,7 +237,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.70</div>
+  <div class="version">v0.71</div>
 </div>
 
 <script>
@@ -297,6 +297,11 @@ const DATA = {
   // already has its own richer mechanic (Castle-unit gating everywhere).
   //
   productionBuildings: {
+    // Real build time (SiegeEngineers/aoe2techtree, id 68) — cost here is
+    // the standard 100 wood; the Gurjaras extra-Mill Dijkstra move applies
+    // any real per-civ Mill discount itself via structureForResource,
+    // rather than reading this entry's own flat cost.
+    'Mill': { cost: { wood: 100 }, buildTimeSeconds: 35, minAge: 'Dark' },
     'Barracks': { cost: { wood: 175 }, buildTimeSeconds: 50, minAge: 'Dark' },
     'Dock': { cost: { wood: 150 }, buildTimeSeconds: 35, minAge: 'Dark' },
     'Blacksmith': { cost: { wood: 150 }, buildTimeSeconds: 40, minAge: 'Feudal' },
@@ -1302,7 +1307,13 @@ const DATA = {
         }
       ],
       "ecoBonuses": [
-        { "type": "sheep-mill-garrison-bonus", "foodPerSec": 0.402, "note": "6 of 8 real sheep garrisoned in the Mill for passive food (24.12/min), the other 2 eaten normally" },
+        {
+          "type": "sheep-mill-garrison-bonus",
+          "sheepCount": 6,
+          "ratesByMillCount": { "1": 4.02, "2": 5.31, "3": 6.05 },
+          "maxExtraMills": 2,
+          "note": "6 of 8 real sheep garrisoned in Mills for passive food, the other 2 eaten normally. Real per-sheep food/min falls as more sheep share one Mill, so splitting the 6 across MORE Mills raises the total (24.12/min in 1 Mill, 31.86 in 2, 36.30 in 3) at the cost of an extra Mill's wood each time -- searched by the Dijkstra optimizer like extra Town Centers, not fixed."
+        },
         { "type": "extra-berry-bushes", "count": 2, "note": "Start with 2 extra Forage Bushes" }
       ],
       "unavailableUnitLines": [
@@ -3880,7 +3891,7 @@ function expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, house
 // budgeting (and, more subtly, stops investing eco-tech research time in
 // Horse Collar/Heavy Plow/Crop Rotation for) a farm-rebuild cost nothing
 // in that target's actual timeframe would ever incur.
-function computeTotalIncome(rows, civ, techIds, assumeFarms = true) {
+function computeTotalIncome(rows, civ, techIds, assumeFarms = true, millExtra = 0) {
   const totalIncome = { food: 0, wood: 0, gold: 0, stone: 0 };
   let popRate = 0;
   rows.forEach(({ line, tier, buildings }) => {
@@ -3927,12 +3938,15 @@ function computeTotalIncome(rows, civ, techIds, assumeFarms = true) {
   // are eaten normally by the existing 2-worker sheep phase, unchanged)
   // — user-provided real average food/min AT 6 garrisoned together
   // (24.12 total), not a full "how many extra Mills is it worth
-  // building" optimization (the per-sheep rate keeps dropping as more
-  // share one Mill, so splitting into more Mills is mathematically
-  // always better — but costs real wood per Mill this tool doesn't yet
-  // search over; deferred, flagged, not guessed).
+  // Gurjaras: how many Mills the 6 garrisoned sheep are split across is a
+  // real searched decision (see the `mill` Dijkstra move) — millExtra 0 = 1
+  // Mill (the default, zero-extra-cost case), 1 = 2 Mills, 2 = 3 Mills.
   const sheepMillBonus = (civ?.ecoBonuses || []).find(b => b.type === 'sheep-mill-garrison-bonus');
-  if (sheepMillBonus) totalIncome.food = Math.max(0, totalIncome.food - sheepMillBonus.foodPerSec);
+  if (sheepMillBonus) {
+    const millCount = 1 + millExtra;
+    const perSheepRate = sheepMillBonus.ratesByMillCount[millCount] ?? sheepMillBonus.ratesByMillCount[1];
+    totalIncome.food = Math.max(0, totalIncome.food - perSheepRate * sheepMillBonus.sheepCount / 60);
+  }
   return { totalIncome, popRate, farmUpkeepWoodPerSec, houseWoodPerSec, housePopSpace, hasNoHouses };
 }
 
@@ -4360,6 +4374,8 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
   haveSet.buildingCounts = new Map();
   let levels = {};
   let tcExtra = 0;
+  let millExtra = 0;
+  const sheepMillBonus = (civ?.ecoBonuses || []).find(b => b.type === 'sheep-mill-garrison-bonus');
   let reachedAgeIdx = 0; // Dark
   let cursorTime = 0, cursorVills = startVills, pool = opening.pool;
 
@@ -4924,10 +4940,10 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // earlier stage already reached Castle) — otherwise the search has a
     // real, considered decision to make: pay for the age-up or don't.
     const startAgeAdvanced = !line.isVillager || reachedAgeIdx >= requiredExtraTcAgeIdx;
-    function stateKey(lv, tc, ageAdvanced, trainingPaused) { return relevantLines.map(id => lv[id]).join(',') + '|' + tc + '|' + (ageAdvanced ? 1 : 0) + '|' + (trainingPaused ? 1 : 0); }
+    function stateKey(lv, tc, ageAdvanced, trainingPaused, millExtra) { return relevantLines.map(id => lv[id]).join(',') + '|' + tc + '|' + (ageAdvanced ? 1 : 0) + '|' + (trainingPaused ? 1 : 0) + '|' + (millExtra || 0); }
 
-    const startState = { levels: { ...levels }, tcExtra, time: cursorTime, vills: cursorVills, pool, alloc: { ...cumAlloc }, ageAdvanced: startAgeAdvanced, trainingPaused: false };
-    const startKey = stateKey(startState.levels, startState.tcExtra, startState.ageAdvanced, startState.trainingPaused);
+    const startState = { levels: { ...levels }, tcExtra, millExtra, time: cursorTime, vills: cursorVills, pool, alloc: { ...cumAlloc }, ageAdvanced: startAgeAdvanced, trainingPaused: false };
+    const startKey = stateKey(startState.levels, startState.tcExtra, startState.ageAdvanced, startState.trainingPaused, startState.millExtra);
     const finalized = new Map([[startKey, startState]]);
     const cameFrom = new Map();
     const frontier = [startState];
@@ -4935,7 +4951,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
 
     while (frontier.length) {
       const cur = popMinTime(frontier);
-      const curKey = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused);
+      const curKey = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra);
       if (finalized.get(curKey) !== cur) continue;
       const rates = ratesForOptimize(civ, techIdsFor(cur.levels));
       // Prioritize Military (all-in): once the mandatory prefix has
@@ -4982,12 +4998,12 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc);
         if (!r) return;
         const nextLevels = { ...cur.levels, [id]: cur.levels[id] + 1 };
-        const key = stateKey(nextLevels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused);
+        const key = stateKey(nextLevels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra);
         const existing = finalized.get(key);
         if (existing && existing.time <= r.time) return;
         const nextAlloc = { ...cur.alloc };
         RES.forEach(res => { nextAlloc[res] += r.assigned[res]; });
-        const next = { levels: nextLevels, tcExtra: cur.tcExtra, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
+        const next = { levels: nextLevels, tcExtra: cur.tcExtra, millExtra: cur.millExtra, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
         finalized.set(key, next);
         cameFrom.set(key, { fromKey: curKey, move: { type: 'tech', id, item } });
         frontier.push(next);
@@ -5000,7 +5016,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // Non-Villager only, deliberately — the Villager-boom branch has its
       // own, already-tested age-up/tcExtra moves below; not touching them.
       if (allIn && !line.isVillager && !cur.trainingPaused) {
-        const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, true);
+        const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, true, cur.millExtra);
         const existing = finalized.get(key);
         if (!existing || existing.time > cur.time) {
           const next = { ...cur, trainingPaused: true };
@@ -5040,10 +5056,10 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         const ageItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], AGE_ORDER[requiredExtraTcAgeIdx], civ));
         const resolved = resolveSequential(ageItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence);
         if (resolved) {
-          const key = stateKey(cur.levels, cur.tcExtra, true, cur.trainingPaused);
+          const key = stateKey(cur.levels, cur.tcExtra, true, cur.trainingPaused, cur.millExtra);
           const existing = finalized.get(key);
           if (!existing || existing.time > resolved.time) {
-            const next = { levels: cur.levels, tcExtra: cur.tcExtra, time: resolved.time, vills: resolved.vills, pool: resolved.pool, alloc: resolved.alloc, ageAdvanced: true, trainingPaused: cur.trainingPaused };
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra, millExtra: cur.millExtra, time: resolved.time, vills: resolved.vills, pool: resolved.pool, alloc: resolved.alloc, ageAdvanced: true, trainingPaused: cur.trainingPaused };
             finalized.set(key, next);
             cameFrom.set(key, { fromKey: curKey, move: { type: 'age-up', items: ageItems } });
             frontier.push(next);
@@ -5094,14 +5110,39 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           // the starting TC's own credit is handled once at t=0 by
           // startingPoolForCiv instead.
           if (tcFoodBonus) r.pool.food += tcFoodBonus.value * k;
-          const key = stateKey(cur.levels, cur.tcExtra + k, cur.ageAdvanced, cur.trainingPaused);
+          const key = stateKey(cur.levels, cur.tcExtra + k, cur.ageAdvanced, cur.trainingPaused, cur.millExtra);
           const existing = finalized.get(key);
           if (!existing || existing.time > r.time) {
             const nextAlloc = { ...cur.alloc };
             RES.forEach(res => { nextAlloc[res] += r.assigned[res]; });
-            const next = { levels: cur.levels, tcExtra: cur.tcExtra + k, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra + k, millExtra: cur.millExtra, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
             finalized.set(key, next);
             cameFrom.set(key, { fromKey: curKey, move: { type: 'tc', item, count: k } });
+            frontier.push(next);
+          }
+        }
+      }
+
+      // Gurjaras: splitting the 6 garrisoned sheep across more Mills raises
+      // the per-sheep passive rate (see sheep-mill-garrison-bonus's own
+      // note) at the cost of one more Mill's real wood — searched exactly
+      // like the tcExtra move above, just simpler (no age gate, no parallel-
+      // K loop; one Mill at a time is realistic here since there's no
+      // "several builder crews" precedent for a 100-wood building the way
+      // there is for Town Centers).
+      if (sheepMillBonus && cur.millExtra < sheepMillBonus.maxExtraMills) {
+        const millCost = structureForResource('food', civ).cost.wood;
+        const item = { name: `${civ?.millName || 'Mill'} (Sheep)`, cost: { food: 0, wood: millCost, gold: 0, stone: 0 }, queueSeconds: multiBuilderTime(DATA.productionBuildings['Mill'].buildTimeSeconds, buildersForBuilding('Mill')), age: DATA.productionBuildings['Mill'].minAge, builders: buildersForBuilding('Mill') };
+        const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc);
+        if (r) {
+          const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra + 1);
+          const existing = finalized.get(key);
+          if (!existing || existing.time > r.time) {
+            const nextAlloc = { ...cur.alloc };
+            RES.forEach(res => { nextAlloc[res] += r.assigned[res]; });
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra, millExtra: cur.millExtra + 1, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
+            finalized.set(key, next);
+            cameFrom.set(key, { fromKey: curKey, move: { type: 'mill', item } });
             frontier.push(next);
           }
         }
@@ -5127,7 +5168,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // the target composition, or the population it aims for would still
       // silently include feeding a training stream all-in is meant to shut
       // off. Passing tcCount 0 drops the villager row's income entirely.
-      const incomeInfo = computeTotalIncome(rowsWithVillagers(stageRows, allIn ? 0 : 1 + state.tcExtra), civ, techIds, false);
+      const incomeInfo = computeTotalIncome(rowsWithVillagers(stageRows, allIn ? 0 : 1 + state.tcExtra), civ, techIds, false, state.millExtra);
       // For a Villager target the "sustain requirement" isn't a fixed
       // composition to support — it's the goal itself: villagersFromIncome
       // would give the ratio needed to sustain ongoing villager training at
@@ -5181,6 +5222,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         const freeVillPerTech = (civ?.ecoBonuses || []).find(b => b.type === 'free-villager-per-tech');
         if (freeVillPerTech) { cursorVills += 1; cumAlloc.food += 1; }
       }
+      else if (move.type === 'mill') millExtra += 1;
       else tcExtra += move.count || 1;
     });
 
