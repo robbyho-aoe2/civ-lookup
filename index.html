@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.06</div>
+    <div class="version">v2.07</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2672,9 +2672,9 @@ const BONUS_CATEGORY_OVERRIDE = {
   // Caravan→Eco, no Naval involvement here at all.
   'Bloodlines and Caravan effects +50%': { include:['Cavalry','Eco'] },
   // "Varangian Guards" is a proper noun the classifier can't tell is
-  // infantry. Corrected (2026-09-05): the unit ALSO generates gold now, so
-  // this bonus genuinely spans Infantry (attack speed) and Eco (gold).
-  'Varangian Guards attack +25% faster and generate +50% gold': { include:['Infantry','Eco'] },
+  // infantry. Site owner: Infantry only, despite the gold clause — exclude
+  // Eco explicitly since "gold" would otherwise auto-trigger it.
+  'Varangian Guards attack +25% faster and generate +50% gold': { exclude:['Eco'], include:['Infantry'] },
   // Corrected (2026-09-05): 10% → 15%.
   'Longships and Catapult Galleons attack +15% faster': { include:['Naval'] },
 };
