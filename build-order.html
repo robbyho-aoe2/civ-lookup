@@ -237,7 +237,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.74</div>
+  <div class="version">v0.75</div>
 </div>
 
 <script>
@@ -4413,11 +4413,20 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     return r;
   }
   // Real AoE2:DE rule: extra Town Centers can't be constructed before
-  // Castle Age — Cumans' unique bonus lets them start in Feudal instead.
-  // The starting TC (every game already has one) is exempt; this only
-  // gates the 2nd TC onward, in both the tcExtra Dijkstra move below and
-  // the Villager-line branch's own TC-building loop.
+  // Castle Age — Cumans' unique bonus lets ONLY the 2nd TC start in Feudal
+  // instead; the 3rd and every one after still needs real Castle Age (site
+  // owner's correction — this used to let Cumans build unlimited TCs off
+  // just Feudal). The starting TC (every game already has one) is exempt.
+  // `requiredExtraTcAgeIdx` (Feudal for Cumans) still gates whether the
+  // Villager-target age-up move is offered AT ALL — real for unlocking the
+  // 2nd TC — but a Villager target's own age state is a single boolean
+  // (`ageAdvanced`) with no way to separately represent "reached Feudal but
+  // not yet Castle", so its own TC move can't enforce the 3rd-TC-needs-
+  // Castle rule the way the non-Villager move below now does — a real,
+  // narrower gap than before this fix, not attempted (would need Villager's
+  // age state to track more than yes/no advanced).
   const requiredExtraTcAgeIdx = ageIndex(civ?.id === 'cumans' ? 'Feudal' : 'Castle');
+  const requiredAgeIdxForTc = extraSoFar => (civ?.id === 'cumans' && extraSoFar === 0) ? ageIndex('Feudal') : ageIndex('Castle');
   // NOT `new Set(free)` — a free tech only actually takes effect once its
   // own tiered-line move has been taken (now properly age-gated, see the
   // tech-move loop below), never unconditionally from t=0. Loom (the one
@@ -4486,6 +4495,18 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
   let tcExtra = 0;
   let millExtra = 0;
   const sheepMillBonus = (civ?.ecoBonuses || []).find(b => b.type === 'sheep-mill-garrison-bonus');
+  // Tracks whether Loom has actually been bundled into the winning path yet
+  // — for a non-Villager target it's set the instant the (unconditional,
+  // once-per-plan) mandatory-prefix push below fires. For a Villager
+  // target, Loom is NOT pushed there at all (see that push's own updated
+  // condition) — it only gets bundled if/when the villager-boom age-up
+  // move actually fires (right before Feudal, real per-civ-confirmed rule),
+  // set true at PATH REPLAY time (see 'age-up' handling below) since the
+  // move is explored speculatively many times before Dijkstra settles on a
+  // winner. If a Villager target's winning path never ages up at all (a
+  // real, reported case: small qty stays in Dark Age), Loom has nowhere to
+  // bundle with — see the fallback appended after the whole stage loop.
+  let loomResearched = false;
   let reachedAgeIdx = 0; // Dark
   let cursorTime = 0, cursorVills = startVills, pool = opening.pool;
 
@@ -4816,9 +4837,27 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // degenerates to unit 0's own age when there's only one, unchanged.
     const targetAgeIdx = Math.max(...resolvedUnits.map(u => ageIndex(effectiveTierAge(u.line.tiers[u.tierIdx], civ))));
     const extraItems = [];
-    if (stageResults.length === 0 && loomOn && !allIn && !free.has('loom')) {
+    // Goths: "Loom is researched instantly" — still a real, visible step in
+    // the build (site owner: "they still need to research it even though
+    // it's free and immediate"), just zero-cost/zero-time so it resolves
+    // the moment it's pushed rather than being deferred — there's no TC-
+    // queue cost to defer AWAY from. Applies regardless of target type
+    // (Villager included), unlike the paid case below.
+    if (stageResults.length === 0 && loomOn && !allIn && free.has('loom')) {
+      const loom = DATA.ecoTechs.find(t => t.id === 'loom');
+      extraItems.push({ name: loom.name, cost: { food: 0, wood: 0, gold: 0, stone: 0 }, tcQueue: false, researchTime: 0, queueSeconds: 0, age: loom.age });
+      loomResearched = true;
+    }
+    // Villager targets are excluded here — their own age-up (if any) isn't
+    // decided until the Dijkstra search below runs, so bucketing Loom
+    // against THIS function's fixed "Dark" target age (the Villager tier's
+    // own hardcoded age) would bundle it against the wrong (or no)
+    // transition. Handled instead by the villager age-up move itself, with
+    // an end-of-plan fallback if that move never fires — see loomResearched.
+    if (stageResults.length === 0 && loomOn && !allIn && !free.has('loom') && !line.isVillager) {
       const loom = DATA.ecoTechs.find(t => t.id === 'loom');
       extraItems.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age });
+      loomResearched = true;
     }
     // A genuinely alternate path with one specific eco-tech forced in early
     // (see mostImpactfulSkippedEcoTech's caller) — NOT tacked onto the end
@@ -5163,6 +5202,22 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
             fillerItems.push({ name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name)), age: def.minAge, deferToEnd: true, builders: buildersForBuilding(name) });
           });
         });
+        // A Villager target's own age-up (if it happens at all) is decided
+        // HERE, not in the mandatory-prefix construction above — so a
+        // (paid, non-free) Loom gets bundled with it right here instead,
+        // same "right before this age transition" placement a non-Villager
+        // target's Loom already gets. Gated on stageIdx 0 (Loom is a whole-
+        // plan, once-only concern) and !loomResearched (a free-Loom civ
+        // already got its own zero-cost item pushed unconditionally above,
+        // so this never double-adds for them). Speculative — this move is
+        // explored from many frontier states before Dijkstra settles on a
+        // winner, so loomResearched itself is only flipped at PATH REPLAY
+        // time (see the 'age-up' replay branch), never here.
+        const includesLoom = stageIdx === 0 && loomOn && !allIn && !free.has('loom') && !loomResearched;
+        if (includesLoom) {
+          const loom = DATA.ecoTechs.find(t => t.id === 'loom');
+          fillerItems.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age });
+        }
         const ageItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], AGE_ORDER[requiredExtraTcAgeIdx], civ));
         const resolved = resolveSequential(ageItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence);
         if (resolved) {
@@ -5171,13 +5226,13 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           if (!existing || existing.time > resolved.time) {
             const next = { levels: cur.levels, tcExtra: cur.tcExtra, millExtra: cur.millExtra, time: resolved.time, vills: resolved.vills, pool: resolved.pool, alloc: resolved.alloc, ageAdvanced: true, trainingPaused: cur.trainingPaused };
             finalized.set(key, next);
-            cameFrom.set(key, { fromKey: curKey, move: { type: 'age-up', items: ageItems } });
+            cameFrom.set(key, { fromKey: curKey, move: { type: 'age-up', items: ageItems, includesLoom } });
             frontier.push(next);
           }
         }
       }
 
-      if (cur.tcExtra < tcExtraCap && (line.isVillager ? cur.ageAdvanced : reachedAgeIdx >= requiredExtraTcAgeIdx)) {
+      if (cur.tcExtra < tcExtraCap && (line.isVillager ? cur.ageAdvanced : reachedAgeIdx >= requiredAgeIdxForTc(cur.tcExtra))) {
         // Real boom play builds several TCs CONCURRENTLY — separate builder
         // groups working different sites at once, funded together — not
         // one at a time. Confirmed via milestone comparison against a real
@@ -5315,6 +5370,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       if (move.type === 'age-up') {
         runSequential(move.items, ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra));
         reachedAgeIdx = Math.max(reachedAgeIdx, requiredExtraTcAgeIdx);
+        if (move.includesLoom) loomResearched = true;
         move.items.filter(it => !it.isAgeUp).forEach(it => {
           if (!haveSet.has(it.name)) { haveSet.add(it.name); haveSet.buildingCounts.set(it.name, 1); }
         });
@@ -5460,6 +5516,20 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         finishTime: unitFinishTimes[ui], tcCount: 1 + tcExtra,
       });
     });
+  }
+
+  // Fallback: a Villager target whose winning path never ages up at all
+  // (small qty, stays in Dark Age — a real reported case) never got a
+  // chance to bundle Loom with anything above. Per the site owner: append
+  // it at the very end of the whole plan rather than leaving it unresearched.
+  // Bumps the LAST stage's own finishTime forward too — that field feeds
+  // the returned `finishTime` below directly, and would otherwise silently
+  // ignore the time this just added.
+  if (loomOn && !allIn && !free.has('loom') && !loomResearched) {
+    const loom = DATA.ecoTechs.find(t => t.id === 'loom');
+    runSequential([{ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, age: loom.age }], ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra));
+    loomResearched = true;
+    stageResults.forEach(sr => { if (sr.stageNumber === stageResults[stageResults.length - 1].stageNumber) sr.finishTime = Math.max(sr.finishTime, cursorTime); });
   }
 
   const lastStage = stageResults[stageResults.length - 1];
@@ -6106,8 +6176,76 @@ function applicableCombatTechIds(line, civ) {
   const unavailable = civ?.unavailableTechs;
   return unavailable ? ids.filter(id => !unavailable.includes(id)) : ids;
 }
+const FOOT_ARCHER_TECHS = ['fletching', 'bodkin-arrow', 'bracer', 'padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor', 'thumb-ring', 'ballistics', 'chemistry'];
+const CAV_ARCHER_TECHS = ['fletching', 'bodkin-arrow', 'bracer', 'padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor', 'parthian-tactics', 'bloodlines', 'ballistics', 'husbandry', 'chemistry'];
+const MELEE_CAV_TECHS = ['forging', 'iron-casting', 'blast-furnace', 'scale-barding-armor', 'chain-barding-armor', 'plate-barding-armor', 'bloodlines', 'husbandry'];
+const INFANTRY_TECHS = ['forging', 'iron-casting', 'blast-furnace', 'scale-mail-armor', 'chain-mail-armor', 'plate-mail-armor', 'arson', 'squires', 'gambesons'];
+const MONASTERY_TECHS = ['redemption', 'atonement', 'herbal-medicine', 'heresy', 'sanctity', 'fervor', 'illumination', 'block-printing', 'theocracy', 'faith'];
+const GUNPOWDER_ARMOR_TECHS = ['padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor']; // same "Archer" armor class as Hand Cannoneer
+// Every real unique unit's tech-tree category — every civ's uniqueUnits
+// entries were getting ZERO checkbox options before this (site owner: "it
+// looks like all unique units are missing their available upgrades"), since
+// they're built into synthetic per-civ line ids (see allLinesForCiv) that
+// never matched any of the standard-line checks below. Matched by NAME
+// since that id is unstable/per-civ. Classified by the unit's real combat
+// role, same reasoning already confirmed piece by piece this session
+// (Shrivamsha Rider/Camel Scout/Xianbei Raider/Tiger Cavalry/Grenadier
+// explicitly, the rest by the same logic applied consistently).
+// Deliberately NOT covered: Dock-trained naval UUs (Dragon Ship, Thirisadai,
+// Turtle Ship, Caravel, Longboat) — this tool has no ship-tech checkbox
+// category at all, nothing to offer them. Also not covered: Wei/Shu/Wu's
+// named "hero" units (Cao Cao, Liu Bei, Sun Jian) and Flaming Camel — real
+// combat-tech eligibility for these isn't confirmed, left as [] rather than
+// guessed.
+const UNIQUE_UNIT_TECH_GROUP = {
+  'Composite Bowman': FOOT_ARCHER_TECHS, 'Chu Ko Nu': FOOT_ARCHER_TECHS,
+  'Chakram Thrower': FOOT_ARCHER_TECHS, 'Gbeto': FOOT_ARCHER_TECHS,
+  'Plumed Archer': FOOT_ARCHER_TECHS, 'Guecha Warrior': FOOT_ARCHER_TECHS,
+  'White Feather Guard': FOOT_ARCHER_TECHS, 'Blackwood Archer': FOOT_ARCHER_TECHS,
+  'Rattan Archer': FOOT_ARCHER_TECHS, 'Fire Archer': FOOT_ARCHER_TECHS,
+  'Longbowman': FOOT_ARCHER_TECHS, 'Genoese Crossbowman': FOOT_ARCHER_TECHS,
+  'Imperial Skirmisher': FOOT_ARCHER_TECHS,
+  'Genitour': CAV_ARCHER_TECHS, 'Camel Archer': CAV_ARCHER_TECHS,
+  'Ratha': CAV_ARCHER_TECHS, 'Arambai': CAV_ARCHER_TECHS,
+  'Kipchak': CAV_ARCHER_TECHS, 'Mangudai': CAV_ARCHER_TECHS,
+  'Xianbei Raider': CAV_ARCHER_TECHS, 'Bolas Rider': CAV_ARCHER_TECHS,
+  'Coustillier': MELEE_CAV_TECHS, 'Iron Pagoda': MELEE_CAV_TECHS,
+  'Leitis': MELEE_CAV_TECHS, 'Winged Hussar': MELEE_CAV_TECHS,
+  'Keshik': MELEE_CAV_TECHS, 'Tiger Cavalry': MELEE_CAV_TECHS,
+  'Konnik': MELEE_CAV_TECHS, 'Cataphract': MELEE_CAV_TECHS,
+  'Monaspa': MELEE_CAV_TECHS, 'Tarkan': MELEE_CAV_TECHS,
+  'Magyar Huszar': MELEE_CAV_TECHS, 'Boyar': MELEE_CAV_TECHS,
+  'Shrivamsha Rider': MELEE_CAV_TECHS, 'Camel Scout': MELEE_CAV_TECHS,
+  'Savar': MELEE_CAV_TECHS, 'Kona': MELEE_CAV_TECHS,
+  'Imperial Camel Rider': MELEE_CAV_TECHS, 'War Elephant': MELEE_CAV_TECHS,
+  'Mameluke': MELEE_CAV_TECHS,
+  'Janissary': GUNPOWDER_ARMOR_TECHS, 'Conquistador': GUNPOWDER_ARMOR_TECHS,
+  'Organ Gun': GUNPOWDER_ARMOR_TECHS,
+  'Flemish Militia': INFANTRY_TECHS, 'Urumi Swordsman': INFANTRY_TECHS,
+  'Ghulam': INFANTRY_TECHS, 'Condottiero': INFANTRY_TECHS,
+  'Liao Dao': INFANTRY_TECHS, 'Temple Guard': INFANTRY_TECHS,
+  'Obuch': INFANTRY_TECHS, 'Centurion': INFANTRY_TECHS,
+  'Legionary': INFANTRY_TECHS, 'Berserk': INFANTRY_TECHS,
+  'Jian Swordsman': INFANTRY_TECHS, 'Jaguar Warrior': INFANTRY_TECHS,
+  'Woad Raider': INFANTRY_TECHS, 'Shotel Warrior': INFANTRY_TECHS,
+  'Throwing Axeman': INFANTRY_TECHS, 'Huskarl': INFANTRY_TECHS,
+  'Kamayuk': INFANTRY_TECHS, 'Samurai': INFANTRY_TECHS,
+  'Karambit Warrior': INFANTRY_TECHS, 'Serjeant': INFANTRY_TECHS,
+  'Teutonic Knight': INFANTRY_TECHS, 'Ibirapema Warrior': INFANTRY_TECHS,
+  'Warrior Priest': MONASTERY_TECHS, 'Missionary': MONASTERY_TECHS,
+  // Every real siege-class unique unit also benefits from Siege Engineers
+  // (site owner: "all siege benefit from siege engineers, including things
+  // like grenadiers") — Grenadier specifically is Archery-Range-trained in
+  // this tool's own data, not Siege-Workshop, so a building-based check
+  // wouldn't have caught it.
+  'Mounted Trebuchet': ['siege-engineers'], 'Grenadier': ['siege-engineers'],
+  'Hussite Wagon': ['siege-engineers'], 'Houfnice': ['siege-engineers'],
+  'War Wagon': ['siege-engineers'], 'Ballista Elephant': ['siege-engineers'],
+  'War Chariot': ['siege-engineers'],
+};
 function applicableCombatTechIdsRaw(line) {
   if (!line) return [];
+  if (UNIQUE_UNIT_TECH_GROUP[line.name]) return UNIQUE_UNIT_TECH_GROUP[line.name];
   const infantry = ['militia-line', 'spearman-line', 'eagle-line'];
   // Ballistics (projectile accuracy vs moving targets) is real for foot
   // Archers/Skirmishers, Cavalry Archer, and Scorpion — NOT Mangonel
@@ -6118,47 +6256,32 @@ function applicableCombatTechIdsRaw(line) {
   const footArchers = ['archer-line', 'skirmisher-line'];
   const meleeCavalry = ['scout-cavalry-line', 'knight-line', 'camel-line', 'battle-elephant-line', 'steppe-lancer-line'];
   // Husbandry: every mounted line gets it (site owner's own correction —
-  // originally modeled as Scout-Cavalry-only). Doesn't apply to unique
-  // units at all here since this tool's Optimize/Constant Production
-  // targets are the standard unitLines only, no civ-specific UU training
-  // target exists to attach it to.
-  if (infantry.includes(line.id)) return ['forging', 'iron-casting', 'blast-furnace', 'scale-mail-armor', 'chain-mail-armor', 'plate-mail-armor', 'arson', 'squires', 'gambesons'];
-  if (footArchers.includes(line.id)) return ['fletching', 'bodkin-arrow', 'bracer', 'padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor', 'thumb-ring', 'ballistics', 'chemistry'];
+  // originally modeled as Scout-Cavalry-only).
+  if (infantry.includes(line.id)) return INFANTRY_TECHS;
+  if (footArchers.includes(line.id)) return FOOT_ARCHER_TECHS;
   // Cavalry Archer is under the "Archer" armor class for pierce-armor
   // purposes (same reasoning already applied to Hand Cannoneer below) — was
   // missing Padded/Leather/Ring Archer Armor entirely, a real gap (site
   // owner: "cav archers aren't showing armor upgrades").
-  if (line.id === 'cavalry-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor', 'parthian-tactics', 'bloodlines', 'ballistics', 'husbandry', 'chemistry'];
+  if (line.id === 'cavalry-archer-line') return CAV_ARCHER_TECHS;
   // Elephant Archer uses the same armor/upgrade set as Cavalry Archer
   // (Parthian Tactics, not Barding Armor) — site owner's correction, was
   // previously wrongly modeled on Battle Elephant's own Barding Armor line.
-  if (line.id === 'elephant-archer-line') return ['fletching', 'bodkin-arrow', 'bracer', 'padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor', 'parthian-tactics', 'bloodlines', 'ballistics', 'husbandry', 'chemistry'];
-  if (meleeCavalry.includes(line.id)) return ['forging', 'iron-casting', 'blast-furnace', 'scale-barding-armor', 'chain-barding-armor', 'plate-barding-armor', 'bloodlines', 'husbandry'];
-  // Gurjaras' Shrivamsha Rider (their real Knight-line replacement) and
-  // Camel Scout are both Stable-trained mounted units matched by NAME
-  // (unique-unit lines get a synthetic per-civ id, not a stable line id) —
-  // site owner's corrections, same melee-cavalry tech set as Knight/Camel.
-  if (['Shrivamsha Rider', 'Camel Scout'].includes(line.name)) return ['forging', 'iron-casting', 'blast-furnace', 'scale-barding-armor', 'chain-barding-armor', 'plate-barding-armor', 'bloodlines', 'husbandry'];
+  if (line.id === 'elephant-archer-line') return CAV_ARCHER_TECHS;
+  if (meleeCavalry.includes(line.id)) return MELEE_CAV_TECHS;
   if (line.id === 'scorpion-line') return ['ballistics', 'siege-engineers'];
   if (['mangonel-line', 'ram-line', 'trebuchet', 'petard'].includes(line.id)) return ['siege-engineers'];
-  // Every real siege-class unique unit also benefits from Siege Engineers
-  // (site owner: "all siege benefit from siege engineers, including things
-  // like grenadiers") — matched by name since these are unique-unit lines,
-  // not standard ones. Grenadier in particular is Archery-Range-trained in
-  // this tool's own data, not Siege-Workshop-trained, so a building-based
-  // check wouldn't have caught it — confirmed real per the site owner.
-  if (['Mounted Trebuchet', 'Grenadier', 'Hussite Wagon', 'Houfnice', 'War Wagon', 'Ballista Elephant'].includes(line.name)) return ['siege-engineers'];
   // Chemistry UNLOCKS Hand Cannoneer/Bombard Cannon (a hard prerequisite for
   // both, not an optional combat upgrade this checkbox mechanism is for) —
   // site owner's correction for Bombard Cannon, same pattern already fixed
   // for Hand Cannoneer just below. Neither gets any further checkbox
   // upgrade in this tool today.
-  if (line.id === 'hand-cannoneer') return ['padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor'];
+  if (line.id === 'hand-cannoneer') return GUNPOWDER_ARMOR_TECHS;
   if (line.id === 'bombard-cannon') return [];
   // All 10 real Monastery techs — independent options, not a tier line
   // (see the DATA.ecoTechs entries themselves), so every one renders as
   // its own standalone checkbox rather than a cascading dot row.
-  if (line.id === 'monk') return ['redemption', 'atonement', 'herbal-medicine', 'heresy', 'sanctity', 'fervor', 'illumination', 'block-printing', 'theocracy', 'faith'];
+  if (line.id === 'monk') return MONASTERY_TECHS;
   return []; // Villager: no applicable combat techs here
 }
 
