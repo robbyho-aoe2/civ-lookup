@@ -238,7 +238,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.77</div>
+  <div class="version">v0.78</div>
 </div>
 
 <script>
@@ -747,7 +747,14 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "unit-cost-pct-by-age",
+          "lines": ["scout-cavalry-line", "knight-line", "camel-line", "battle-elephant-line", "steppe-lancer-line"],
+          "ratesByAge": [0, 0, 15, 20],
+          "note": "Stable Units cost -15/20% in Castle/Imperial Age"
+        }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "battle-elephant-line",
@@ -1297,6 +1304,12 @@ const DATA = {
           "type": "free-tech",
           "techId": "loom",
           "note": "Loom is researched instantly"
+        },
+        {
+          "type": "unit-cost-pct-by-age",
+          "lines": ["militia-line", "spearman-line", "eagle-line"],
+          "ratesByAge": [15, 20, 25, 30],
+          "note": "Infantry costs -15/20/25/30% in Dark/Feudal/Castle/Imperial Age"
         }
       ],
       "unavailableUnitLines": [
@@ -1403,7 +1416,14 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "unit-cost-pct-by-age",
+          "lines": ["villager"],
+          "ratesByAge": [8, 13, 18, 23],
+          "note": "Villagers cost -8/13/18/23% in Dark/Feudal/Castle/Imperial Age"
+        }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "knight-line",
@@ -3278,6 +3298,17 @@ function costForCiv(cost, civ, buildingName, unitLineId, ageIdx) {
   return out;
 }
 
+// Resolves the real, age-adjusted food cost of training ONE villager — the
+// one villager-cost consumption site that ISN'T a discrete construction
+// item (it's a per-second drain baked into simulateItemReady/resolveSequential/
+// runSequential's own funding math), so it needs a plain NUMBER rather than
+// a cost object. Reuses costForCiv's own unit-cost-pct-by-age handling
+// (line 'villager') rather than a separate lookup, so Hindustanis' bonus
+// only needs to exist in one place.
+function effectiveVillagerFoodCost(civ, ageIdx) {
+  return costForCiv(DATA.villager.cost, civ, null, 'villager', ageIdx).food;
+}
+
 // Age-up cost/time, adjusted for the handful of civs that discount it
 // (Byzantines: Imperial only; Italians: every age; Muisca: gold only, every
 // age) or research it faster (Malay). `scope` on an age-cost-pct bonus is
@@ -4036,11 +4067,11 @@ function expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, house
 // budgeting (and, more subtly, stops investing eco-tech research time in
 // Horse Collar/Heavy Plow/Crop Rotation for) a farm-rebuild cost nothing
 // in that target's actual timeframe would ever incur.
-function computeTotalIncome(rows, civ, techIds, assumeFarms = true, millExtra = 0) {
+function computeTotalIncome(rows, civ, techIds, assumeFarms = true, millExtra = 0, ageIdx = null) {
   const totalIncome = { food: 0, wood: 0, gold: 0, stone: 0 };
   let popRate = 0;
   rows.forEach(({ line, tier, buildings }) => {
-    const cost = costForCiv(line.cost, civ, null, line.id);
+    const cost = costForCiv(line.cost, civ, null, line.id, ageIdx);
     const unitRate = buildings / effectiveTrainTime(tier, line, civ);
     RES.forEach(r => totalIncome[r] += (cost[r] || 0) * unitRate);
     popRate += line.pop * unitRate;
@@ -4135,7 +4166,7 @@ ECO_LINE_IDS.forEach(id => { ecoLineTechs[id] = DATA.ecoTechs.filter(t => t.line
 // picked — this fills in the same thing, using whatever villRate (i.e. TC
 // count) is actually in play, so the sustain target correctly reflects that
 // keeping villRate running costs real food, same as any other unit would.
-const VILLAGER_ROW_LINE = { cost: DATA.villager.cost, pop: 1 };
+const VILLAGER_ROW_LINE = { id: 'villager', cost: DATA.villager.cost, pop: 1 };
 function rowsWithVillagers(targetRows, tcCount) {
   return [...targetRows, { line: VILLAGER_ROW_LINE, tier: { trainTime: DATA.villager.trainTime }, buildings: tcCount }];
 }
@@ -4513,7 +4544,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     houseBaseline = startVills + 2 * housePopSpace;
   }
   if (villRateFor(0) > 0) {
-    const openingVills = Math.floor(startingPool.food / DATA.villager.cost.food);
+    const openingVills = Math.floor(startingPool.food / effectiveVillagerFoodCost(civ, 0));
     if (openingVills > 0) checkpoints.push({ label: `Queue ${openingVills} Villagers`, time: 0, vills: startVills, split: null, houses: opening.applies ? 2 : 0, alloc: { ...cumAlloc }, pool: { ...opening.pool }, kind: 'start' });
   }
   const housesFor = v => hasNoHouses ? 0 : housesAlready + Math.max(0, Math.ceil((v + SCOUT_POP - houseBaseline) / housePopSpace));
@@ -4589,7 +4620,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       })() : mergedItems[0];
 
       const callStartTime = cursorTime, callStartVills = cursorVills;
-      const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence, cumAlloc);
+      const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence, cumAlloc, effectiveVillagerFoodCost(civ, reachedAgeIdx));
       if (!r) { checkpoints.push({ label: `${simItem.name} — past 60 min, add more Town Centers`, blocked: true }); anyBlocked = true; ri += mergedItems.length; continue; }
       cursorTime = r.time; cursorVills = r.vills; pool = r.pool;
       // Ethiopians (+100 food/+100 gold)/Dravidians (+200 wood): a flat
@@ -5071,7 +5102,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // stone-workers get reassigned toward the COMBINED cost ratio of
       // everything it's training, not just unit 0's own.
       const targetCost = RES.reduce((c, r) => {
-        c[r] = resolvedUnits.reduce((s, u) => s + (costForCiv(u.line.cost, civ, null, u.line.id)[r] || 0), 0);
+        c[r] = resolvedUnits.reduce((s, u) => s + (costForCiv(u.line.cost, civ, null, u.line.id, reachedAgeIdx)[r] || 0), 0);
         return c;
       }, { food: 0, wood: 0, gold: 0, stone: 0 });
       if (!targetCost.stone) {
@@ -5170,7 +5201,12 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // effective age bumps to requiredExtraTcAgeIdx once its own age-up
       // move has been taken (cur.ageAdvanced), matching the same age that
       // move's own gating gate gates.
-      const effectiveAgeIdx = Math.max(reachedAgeIdx, (line.isVillager && cur.ageAdvanced) ? requiredExtraTcAgeIdx : -Infinity);
+      // Cumans, Villager target: castleAdvanced (real Castle Age, reached
+      // via the separate castle-age-up move above) also needs to lift the
+      // effective age here — without this, tech-gating and villager-cost-
+      // by-age would both keep reading Feudal (requiredExtraTcAgeIdx) even
+      // after Cumans genuinely reached Castle for their 3rd+ TC.
+      const effectiveAgeIdx = Math.max(reachedAgeIdx, (line.isVillager && cur.ageAdvanced) ? requiredExtraTcAgeIdx : -Infinity, (line.isVillager && cur.castleAdvanced) ? ageIndex('Castle') : -Infinity);
       relevantLines.forEach(id => {
         const chain = ecoLineTechs[id];
         if (cur.levels[id] >= chain.length) return;
@@ -5188,7 +5224,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         const item = isFree
           ? { name: tech.name, cost: { food: 0, wood: 0, gold: 0, stone: 0 }, tcQueue: false, researchTime: 0, queueSeconds: 0, age: tech.age }
           : { name: tech.name, cost: costForCiv(tech.cost, civ), tcQueue: tech.tcQueue, researchTime: tech.researchTime, queueSeconds: tech.queueSeconds, age: tech.age };
-        const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc);
+        const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc, effectiveVillagerFoodCost(civ, effectiveAgeIdx));
         if (!r) return;
         const nextLevels = { ...cur.levels, [id]: cur.levels[id] + 1 };
         const key = stateKey(nextLevels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, cur.castleAdvanced);
@@ -5263,7 +5299,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           fillerItems.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age });
         }
         const ageItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], AGE_ORDER[requiredExtraTcAgeIdx], civ));
-        const resolved = resolveSequential(ageItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence);
+        const resolved = resolveSequential(ageItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx));
         if (resolved) {
           // Reaching THIS age-up also means real Castle Age for every civ
           // except Cumans (whose requiredExtraTcAgeIdx is Feudal, not
@@ -5299,7 +5335,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           });
         }
         const castleAgeItems = mergeWithAgeUps(fillerItems2, ageUpPending('Feudal', 'Castle', civ));
-        const resolvedCastle = resolveSequential(castleAgeItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence);
+        const resolvedCastle = resolveSequential(castleAgeItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx));
         if (resolvedCastle) {
           const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, true);
           const existing = finalized.get(key);
@@ -5343,7 +5379,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
             age: DATA.townCenter.minAge,
             builders: line.isVillager ? TC_BUILDERS : 1,
           };
-          const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc);
+          const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc, effectiveVillagerFoodCost(civ, effectiveAgeIdx));
           if (!r) break; // k TCs unaffordable within the sim cap means k+1 (strictly more expensive) can't be either
           // Tatars: every NEW Town Center (never the free starting one)
           // comes with 2 sheep, worth 50% more food than normal thanks to
@@ -5383,7 +5419,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       if (sheepMillBonus && cur.millExtra < sheepMillBonus.maxExtraMills) {
         const millCost = structureForResource('food', civ).cost.wood;
         const item = { name: `${civ?.millName || 'Mill'} (Sheep)`, cost: { food: 0, wood: millCost, gold: 0, stone: 0 }, queueSeconds: multiBuilderTime(DATA.productionBuildings['Mill'].buildTimeSeconds, buildersForBuilding('Mill')), age: DATA.productionBuildings['Mill'].minAge, builders: buildersForBuilding('Mill') };
-        const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc);
+        const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc, effectiveVillagerFoodCost(civ, effectiveAgeIdx));
         if (r) {
           const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra + 1, cur.castleAdvanced);
           const existing = finalized.get(key);
@@ -5418,7 +5454,14 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // the target composition, or the population it aims for would still
       // silently include feeding a training stream all-in is meant to shut
       // off. Passing tcCount 0 drops the villager row's income entirely.
-      const incomeInfo = computeTotalIncome(rowsWithVillagers(stageRows, allIn ? 0 : 1 + state.tcExtra), civ, techIds, false, state.millExtra);
+      // Same effective-age formula the search loop's own `effectiveAgeIdx`
+      // uses (this is a separate loop over `finalized`, so it can't just
+      // read that loop-local const) — needed so a Villager target's own
+      // ongoing-training food cost reflects Hindustanis'/etc. age-scaled
+      // villager discount at the age THIS state actually represents, not
+      // just the age reached before the search even started.
+      const stateAgeIdx = Math.max(reachedAgeIdx, (line.isVillager && state.ageAdvanced) ? requiredExtraTcAgeIdx : -Infinity, (line.isVillager && state.castleAdvanced) ? ageIndex('Castle') : -Infinity);
+      const incomeInfo = computeTotalIncome(rowsWithVillagers(stageRows, allIn ? 0 : 1 + state.tcExtra), civ, techIds, false, state.millExtra, stateAgeIdx);
       // For a Villager target the "sustain requirement" isn't a fixed
       // composition to support — it's the goal itself: villagersFromIncome
       // would give the ratio needed to sustain ongoing villager training at
