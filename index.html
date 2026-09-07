@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.08</div>
+    <div class="version">v2.09</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1498,19 +1498,26 @@ const QUICK_CATEGORIES = [
    `bonusKey`: key into ABS (archetype bonus scores) for civ-bonus/castle-tech/UU points.
    `extraIds`: behind-the-scenes unit-id equivalences (e.g. Hei Guang Cavalry counts
    as Paladin-tier cavalry for Wei/Shu/Wu) added on top of the normal id match. */
+// `icon` (new) points to a custom-generated PNG in img/icons/, used by
+// archIconHtml() below for every plain-HTML render site. `emoji` is KEPT
+// (not removed) since one site — the radar chart's SVG axis labels,
+// see renderComparisonRadar — renders these inside an SVG <text> element,
+// where a raster <img> can't drop in as cleanly as it can in plain HTML;
+// emoji genuinely is the pragmatic choice there, so that one site still
+// reads `arch.emoji` directly, unchanged.
 const CIV_ARCHETYPES = [
-  {emoji:'🏹',label:'Archer',bonusKey:'Archer',items:[
+  {emoji:'🏹',icon:'archer',label:'Archer',bonusKey:'Archer',items:[
     {t:'unit',id:24},{t:'unit',id:492,missingNote:'-1'},{t:'unit',id:6,extra:[1155]},
     {t:'tech',id:437},{t:'tech',id:201},{t:'tech',id:200},{t:'tech',id:199},{t:'tech',id:47},
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
-  {emoji:'🎯',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras',...MOUNTED_CROSSBOWMAN_EXTRA_CIVS],items:[
+  {emoji:'🎯',icon:'cavalry_archer',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras',...MOUNTED_CROSSBOWMAN_EXTRA_CIVS],items:[
     {t:'unit',id:474,extra:[...XIANBEI_IDS,...ELE_ARCHER_IDS,2569,2571]},
     {t:'tech',id:435},{t:'tech',id:39},{t:'tech',id:437},{t:'tech',id:436},{t:'tech',id:47},
     {t:'tech',id:199},{t:'tech',id:200},{t:'tech',id:201},
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
-  {emoji:'⚔️',label:'Cavalry',bonusKey:'Cavalry',restrictTo:['Armenians','Bengalis','Berbers','Bohemians','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Dravidians','Ethiopians','Franks','Georgians','Goths','Gurjaras','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Malay','Malians','Magyars','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu'],items:[
+  {emoji:'⚔️',icon:'cavalry',label:'Cavalry',bonusKey:'Cavalry',restrictTo:['Armenians','Bengalis','Berbers','Bohemians','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Dravidians','Ethiopians','Franks','Georgians','Goths','Gurjaras','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Malay','Malians','Magyars','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu'],items:[
     {t:'unit',id:[569,1813],extra:[1946,2568,1753,558]}, // Paladin — extra covers Persians' Savar (replaces Paladin entirely for them, not additive)
     {t:'unit',id:[441,1707]},
     {t:'unit',id:283,extra:[1946,2568,1753]},
@@ -1520,13 +1527,13 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:435},{t:'tech',id:80},{t:'tech',id:82},{t:'tech',id:81},{t:'tech',id:39},
     {t:'tech',id:67},{t:'tech',id:68},{t:'tech',id:75},{t:'tech',id:45},{t:'tech',id:46},
   ]},
-  {emoji:'🛡',label:'Infantry',bonusKey:'Infantry',items:[
+  {emoji:'🛡',icon:'infantry',label:'Infantry',bonusKey:'Infantry',items:[
     {t:'unit',id:473,extra:[2554,1792]},{t:'unit',id:359},{t:'unit',id:77,extra:[2554]},
     {t:'unit',id:1901},{t:'unit',id:1903},
     {t:'tech',id:77},{t:'tech',id:76},{t:'tech',id:74},{t:'tech',id:215},{t:'tech',id:602},
     {t:'tech',id:67},{t:'tech',id:68},{t:'tech',id:75},{t:'tech',id:875},
   ]},
-  {emoji:'💣',label:'Siege',bonusKey:'Siege',items:[
+  {emoji:'💣',icon:'siege',label:'Siege',bonusKey:'Siege',items:[
     {t:'unit',id:550,extra:[1904,1907]},
     {t:'unit',id:588,extra:[1907]},
     {t:'unit',id:542},{t:'unit',id:36},
@@ -1535,18 +1542,18 @@ const CIV_ARCHETYPES = [
     {t:'unit',id:548,extra:[1744,1746]},
     {t:'tech',id:47},{t:'tech',id:377},{t:'tech',id:321},
   ]},
-  {emoji:'⛵',label:'Naval',bonusKey:'Naval',items:[
+  {emoji:'⛵',icon:'naval',label:'Naval',bonusKey:'Naval',items:[
     {t:'unit',id:691,extra:[2633]},{t:'unit',id:420},{t:'unit',id:528},{t:'unit',id:539},{t:'unit',id:2628},
     {t:'tech',id:35},{t:'tech',id:34},{t:'tech',id:375},{t:'tech',id:374},{t:'tech',id:373},{t:'tech',id:47},
     {t:'tech',id:201},{t:'tech',id:68},{t:'tech',id:75},{t:'tech',id:907},
   ]},
-  {emoji:'✝',label:'Monk',bonusKey:'Monastery',items:[
+  {emoji:'✝',icon:'monk',label:'Monk',bonusKey:'Monastery',items:[
     {t:'unit',id:125},
     {t:'tech',id:231},{t:'tech',id:252},{t:'tech',id:316},{t:'tech',id:319},
     {t:'tech',id:438},{t:'tech',id:233},
     {t:'tech',id:230},{t:'tech',id:439},{t:'tech',id:441},
   ]},
-  {emoji:'💰',label:'Eco',bonusKey:'Eco',items:[
+  {emoji:'💰',icon:'eco',label:'Eco',bonusKey:'Eco',items:[
     {t:'tech',id:213},{t:'tech',id:249},
     {t:'tech',id:14,extra:[1014]},
     {t:'tech',id:13,extra:[1013]},
@@ -1554,27 +1561,34 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:221},{t:'tech',id:202},{t:'tech',id:203},
     {t:'tech',id:182},{t:'tech',id:279},
   ]},
-  {emoji:'🏰',label:'Defensive',bonusKey:'Defensive',items:[
+  {emoji:'🏰',icon:'defensive',label:'Defensive',bonusKey:'Defensive',items:[
     {t:'tech',id:379},{t:'tech',id:50},{t:'tech',id:51},
     {t:'tech',id:322},{t:'tech',id:380},{t:'tech',id:321},{t:'tech',id:315},
     {t:'tech',id:63},{t:'tech',id:64},{t:'tech',id:140},{t:'tech',id:194},{t:'tech',id:608},
   ]},
-  {emoji:'🐪',label:'Camel',bonusKey:'Camel',restrictTo:['Berbers','Byzantines','Cumans','Ethiopians','Gurjaras','Hindustanis','Khitans','Malians','Mongols','Persians','Saracens','Tatars','Turks'],items:[
+  {emoji:'🐪',icon:'camel',label:'Camel',bonusKey:'Camel',restrictTo:['Berbers','Byzantines','Cumans','Ethiopians','Gurjaras','Hindustanis','Khitans','Malians','Mongols','Persians','Saracens','Tatars','Turks'],items:[
     {t:'unit',id:330,extra:[207]}, // Heavy Camel Rider — extra covers Hindustanis' further Imperial Camel Rider tier (extends this same tier, not an additive unit)
     {t:'unit',id:329},
     {t:'tech',id:435},{t:'tech',id:39},{t:'tech',id:80},{t:'tech',id:82},{t:'tech',id:81},
   ]},
-  {emoji:'🐘',label:'Elephant',bonusKey:'Elephant',restrictTo:['Bengalis','Burmese','Dravidians','Khmer','Malay','Vietnamese','Persians'],items:[
+  {emoji:'🐘',icon:'elephant',label:'Elephant',bonusKey:'Elephant',restrictTo:['Bengalis','Burmese','Dravidians','Khmer','Malay','Vietnamese','Persians'],items:[
     {t:'unit',id:1132},{t:'unit',id:1134},
     {t:'tech',id:435},{t:'tech',id:80},{t:'tech',id:82},{t:'tech',id:81},
     {t:'tech',id:67},{t:'tech',id:68},{t:'tech',id:75},
     {t:'tech',id:45},{t:'tech',id:46},
   ]},
-  {emoji:'🔫',label:'Gunpowder',bonusKey:'Gunpowder',items:[
+  {emoji:'🔫',icon:'gunpowder',label:'Gunpowder',bonusKey:'Gunpowder',items:[
     {t:'unit',id:5},{t:'unit',id:36},
     {t:'tech',id:47},{t:'tech',id:219},
   ]},
 ];
+// Custom-icon <img> for a CIV_ARCHETYPES entry, for every plain-HTML render
+// site (filter buttons, tier-list headers, info panels) — see CIV_ARCHETYPES'
+// own header comment for why the SVG radar-chart axis labels keep using
+// arch.emoji directly instead.
+function archIconHtml(arch, sizePx = 14) {
+  return `<img class="arch-icon" src="img/icons/${arch.icon}.png" alt="${arch.label}" style="width:${sizePx}px;height:${sizePx}px;vertical-align:-3px">`;
+}
 
 /* Game-timing archetypes — separate group, scored on estimated win rate by
    game duration rather than tech tree completeness */
@@ -3174,7 +3188,7 @@ function renderSelectorPillsHtml() {
   let html = `<div class="arch-group-label">Tech tree rankings</div><div class="arch-pill-row">`;
   CIV_ARCHETYPES.forEach((a, i) => {
     const on = activeArchetype === i ? ' on' : '';
-    html += `<button class="arch-btn${on}" data-kind="archetype" data-i="${i}">${a.emoji} ${a.label}</button>`;
+    html += `<button class="arch-btn${on}" data-kind="archetype" data-i="${i}">${archIconHtml(a)} ${a.label}</button>`;
   });
   html += `</div><div class="arch-group-label" style="margin-top:8px">Players <span style="font-weight:400;text-transform:none;letter-spacing:normal;opacity:.7">(Player Data updated ${formatPlayerDataDate()})</span></div>`;
   // Grouped into Pro / Console, each capped at ~2 rows tall with a scroll
@@ -3555,9 +3569,9 @@ function renderArchetypeGrid() {
     gradeOf: c => civGrade(c, arch),
     valueOf: c => totalScoreCiv(c, arch).total,
     valueLabel: c => scoreLabel(totalScoreCiv(c, arch), max),
-    headerHtml: `${arch.emoji} ${arch.label} — ranked by tech tree + civ bonuses (${max} tech items, +2 pts per qualifying bonus)`,
+    headerHtml: `${archIconHtml(arch, 16)} ${arch.label} — ranked by tech tree + civ bonuses (${max} tech items, +2 pts per qualifying bonus)`,
     subHeaderHtml: arch.restrictTo ? `Only civs with access to this archetype's core units are shown (${pool.length} of 53)` : null,
-    clearLabel: `${arch.emoji} ${arch.label} ranking`,
+    clearLabel: `${archIconHtml(arch)} ${arch.label} ranking`,
   });
 }
 
@@ -5209,7 +5223,7 @@ function civInfoHtml(civName, compact) {
         h += `<div class="arch-rank-ring" data-arch-i="${i}" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;width:60px" title="Click to see full ${arch.label} ranking">
           <div style="position:relative;display:flex;align-items:center;justify-content:center">
             ${radialRing(pct, color, 46)}
-            <span style="position:absolute;font-size:14px">${arch.emoji}</span>
+            <span style="position:absolute">${archIconHtml(arch, 20)}</span>
           </div>
           <span style="font-size:9px;color:var(--text3);text-align:center;line-height:1.2">${arch.label}</span>
           <span style="font-size:10px;font-weight:700;color:${color}">#${r.rank}/${r.of}</span>
@@ -5257,7 +5271,7 @@ function civInfoHtml(civName, compact) {
       const grade = civGrade(civName, arch);
       const gcolor = grade ? GRADE_COLOR[grade] : 'var(--text3)';
 
-      h += `<div class="info-sl">${arch.emoji} ${arch.label} — tech checklist</div>`;
+      h += `<div class="info-sl">${archIconHtml(arch, 16)} ${arch.label} — tech checklist</div>`;
       h += `<div style="display:flex;gap:16px;align-items:flex-start">`;
 
       // Left: checklist + bonus notes stacked in one column
