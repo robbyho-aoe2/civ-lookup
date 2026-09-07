@@ -238,7 +238,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.79</div>
+  <div class="version">v0.80</div>
 </div>
 
 <script>
@@ -5148,14 +5148,27 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // villagers — see the terminal-evaluation swap below). ──
     // A Villager target has no fixed composition row — `stageRows: []`
     // means relevantEcoLines only sees ongoing villager-training's own food
-    // cost, missing stone/gold entirely (Town Center's real wood+stone cost
-    // isn't captured by rowsWithVillagers, which only knows about villager
-    // training). Force those two in for a Villager target so the search can
-    // actually consider Stone Mining (every extra TC needs real stone) and
+    // cost, missing wood/stone/gold entirely (Town Center's real wood+stone
+    // cost isn't captured by rowsWithVillagers, which only knows about
+    // villager training). Force those in for a Villager target so the
+    // search can actually consider Wood-chop/Carry-capacity (every extra TC
+    // needs real wood), Stone Mining (every extra TC needs real stone), and
     // Gold Mining (a later stage's composition might want it).
+    // Wood specifically must ALWAYS be forced in here, not left to
+    // relevantEcoLines' own totalIncome.wood>0 check — a civ with a
+    // dual-resource-generation bonus feeding wood (Portuguese: foragers
+    // generate wood off food) can drive that ongoing-upkeep check to
+    // exactly 0, which wrongly reads as "wood is irrelevant to this
+    // target" and excludes wood-chop techs from the search entirely, even
+    // though Town Centers still cost real wood independent of any upkeep
+    // bonus. Confirmed as a real bug, not a hypothetical: Portuguese was
+    // finishing a 200-villager target SLOWER than Franks (1605.75 vs
+    // 1599.88, 20 TCs vs 17) purely because the search couldn't research
+    // any wood tech to fund those extra TCs faster — a bonus civ ending up
+    // worse than a no-bonus civ is never correct.
     const stageRows = line.isVillager ? [] : resolvedUnits.map(u => ({ line: u.line, tier: u.line.tiers[u.tierIdx], buildings: u.buildingCount }));
     const relevantLines = line.isVillager
-      ? [...new Set([...relevantEcoLines(stageRows, civ), 'stone-mine', 'gold-mine'])]
+      ? [...new Set([...relevantEcoLines(stageRows, civ), 'wood-chop', 'carry-capacity', 'stone-mine', 'gold-mine'])]
       : relevantEcoLines(stageRows, civ);
     const tcExtraCap = line.isVillager ? MAX_TC_FOR_VILLAGER_TARGET : MAX_EXTRA_TC;
     const tcSheepBonus = (civ?.ecoBonuses || []).find(b => b.type === 'tc-sheep-food');
