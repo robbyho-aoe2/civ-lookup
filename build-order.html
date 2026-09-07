@@ -238,7 +238,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.80</div>
+  <div class="version">v0.81</div>
 </div>
 
 <script>
@@ -257,11 +257,9 @@ const DATA = {
   // - 2 lured boars (gathered like sheep, no Mill): ~22 food/min/vill.
   // - Berries with a Mill (standard play): ~15 food/min/vill, already netting
   //   out the Mill's 100 wood cost.
-  // Used by `foodPhaseRateForWorkerIndex` below to give the scripted
-  // opening's early food-assigned villagers their real, phase-specific rate
-  // instead of the flat generic one — deer/wild-chickens (a 50/50 roll on
-  // Arabia as of the same patch) aren't modeled yet, tracked as follow-up
-  // work in the same memory entry.
+  // Used by ARABIA_FOOD_SOURCES/foodPhaseRateForVills below to give the
+  // scripted opening's early food-assigned villagers their real,
+  // phase-specific rate instead of the flat generic one.
   arabiaBoarRate: 22.2 / 60,
   arabiaBerryRate: 15.4 / 60,
   villager: { cost:{food:50,wood:0,gold:0,stone:0}, trainTime:25 },
@@ -3546,7 +3544,7 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
   // rates[r]` (which assumes every worker on a resource shares one flat
   // rate) — needed because the scripted opening's early food workers get
   // real, phase-specific rates (sheep/boar/berries, see
-  // foodPhaseRateForWorkerIndex) instead of one blended "food" number.
+  // foodPhaseRateForVills) instead of one blended "food" number.
   // Defaults to the flat rate for every worker outside that scripted
   // window, so this is a no-op everywhere else (wood/gold/stone, and food
   // once past the opening).
@@ -3573,7 +3571,6 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
       let target;
       if (openingSequence && vills < openingSequence.length) {
         target = openingSequence[vills];
-        if (target === 'food' && vills === openingSequence.millIndex) millAt = t;
       } else {
         target = need[0];
         let worstEta = -Infinity;
@@ -3585,7 +3582,15 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
           if (eta > worstEta) { worstEta = eta; target = r; }
         });
       }
-      const workerRate = (target === 'food' && openingSequence) ? foodPhaseRateForWorkerIndex(assigned.food, openingSequence.huntRate, openingSequence.huntWorkers, openingSequence.huntingMult, openingSequence.sheepMult) : rates[target];
+      // Fires the first time ANY villager (scripted or adaptively-routed)
+      // actually lands on food at or past millIndex — not tied to a fixed
+      // vills index, since the scripted array no longer extends into
+      // berries at all (see chooseOpeningSequence) and the adaptive router
+      // might reasonably choose wood/gold/stone first even once past that
+      // point, same as real play (the Mill only needs to exist once someone
+      // is actually gathering berries, not preemptively).
+      if (openingSequence && target === 'food' && vills >= openingSequence.millIndex && millAt == null) millAt = t;
+      const workerRate = (target === 'food' && openingSequence) ? foodPhaseRateForVills(vills, openingSequence) : rates[target];
       vills++;
       assigned[target]++;
       assignedRate[target] += workerRate;
@@ -3638,49 +3643,86 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
 // is proportionally furthest from its target share (not a lump cost like
 // simulateItemReady — a target RATIO). Returns null if already at/above
 // sustain, or if there's no villager production to ramp with.
-// Standard Arabia-opening villager order, given explicitly: the first 6
-// (counting from villager #1, including whichever of your starting
-// villagers fall in this range) go to food — sheep, no building needed —
-// the next 2-3 to wood (for houses/buildings), then EVERY villager after
-// that goes back to food — berries/hunt, which DOES need a Mill, unlike
-// sheep — all the way up to pop 20, before finally switching to the general
-// proportional-fill toward whatever the composition's actual target ratio
-// is. Only consulted at all when the "Optimize" mode's realistic-economy
-// toggle is on (passed as null, i.e. skipped entirely, in all-in/rush mode
-// — see buildStagedOptimizeTimeline) and only while starting in Dark Age.
-const OPENING_SEQUENCE = [
-  'food', 'food', 'food', 'food', 'food', 'food', // 2 on sheep, then 4 on lured boar (see foodPhaseRateForWorkerIndex — same 'food' label, different real rate)
-  'wood', 'wood', 'wood', // 2-3 on wood
-  'food', 'food', 'food', 'food', 'food', 'food', 'food', 'food', 'food', 'food', // berries (milled) until pop 20
-];
-// Real per-worker food rate for the Nth food-typed villager this call has
-// assigned so far (0-indexed, matching `assigned.food`'s count BEFORE
-// incrementing) — NOT the raw OPENING_SEQUENCE array index, so this stays
-// correct through BG_STONE_SEQUENCE's inserted stone slots too, since those
-// don't touch the food count. Encodes the real Arabia phase order (2 sheep,
-// then 4 workers on 2 lured boars, then everyone else on milled berries)
-// with each phase's own real effective rate — see the `gatherRates` comment
-// above for sourcing. Frozen per worker at assignment time, same
-// simplification the rest of the scripted opening already makes (a wood-
-// assigned villager stays on wood for the whole call too) — a worker never
-// gets modeled moving on to farms once their own source is worked out,
-// which slightly over/undershoots a VERY long call, but matches how short
-// this scripted window already is (bounded by OPENING_SEQUENCE.length).
-// Berries are an always-on baseline (same footing as sheep/boar — a real
-// player builds a Mill on them regardless), NOT a selectable strategy —
-// user-corrected: the food-source choice below is ADDITIVE (deer/chickens
-// alongside berries, a real map fact plus a playstyle choice on top of it),
-// never a replacement for berries. `huntRate` (null when neither deer nor
-// chickens are being pursued this game) only ever affects a dedicated block
-// of `huntWorkers` workers (default 4 if not given, matching deer/chicken
-// Mill's own real norm); everyone else — including all of index 6+ when no
-// hunt is selected — is on berries, same as before this existed.
-function foodPhaseRateForWorkerIndex(i, huntRate, huntWorkers, huntingMult = 1, sheepMult = 1) {
-  if (i < 2) return DATA.gatherRates.food * sheepMult; // sheep — Jurchens' no-decay livestock bonus
-  if (i < 6) return DATA.arabiaBoarRate * huntingMult; // 2 lured boars, ~4 workers — Mongols hunt faster / Jurchens no-decay
-  const hw = huntWorkers ?? 4;
-  if (huntRate != null && i < 6 + hw) return huntRate; // dedicated deer/chicken block
-  return DATA.arabiaBerryRate; // milled berries — always the baseline for everyone else
+// Real per-map natural food economy — used to DERIVE the scripted opening's
+// population-indexed phase lengths (see chooseOpeningSequence below) instead
+// of the hand-tuned slot counts this replaced (2 sheep/4 boar/10 berries,
+// never actually computed from real food quantities at all). Real numbers,
+// source: a detailed current-patch AoE2:DE analysis video the user provided
+// this session. 'arena' is a literal alias of 'arabia' (early food layout is
+// effectively identical, user-confirmed) — no real map-selector UI exists
+// yet (confirmed by grep: nothing else keys off a map id anywhere in this
+// file today), but chooseOpeningSequence takes a mapId param so a future map
+// only needs a new entry here, not a code change.
+const ARABIA_FOOD_SOURCES = {
+  // Bounded: the real animal count is small and physically caps how many
+  // workers are ever usefully dedicated — slot length stays fixed at
+  // `headcount`, NOT derived from quantity/rate (you can't meaningfully put
+  // more than ~2 shepherds on 8 sheep or ~4 lurers on 2 boars). totalFood/
+  // rate are kept anyway for documentation/sanity-check purposes.
+  sheep: { totalFood: 8 * 100, headcount: 2, rate: DATA.gatherRates.food, bounded: true },
+  boar: { totalFood: 2 * 340, headcount: 4, rate: DATA.arabiaBoarRate, bounded: true },
+  // Elastic: a real berry field genuinely supports an open-ended crew over
+  // time (matching how the scripted opening's berries tail has always
+  // worked — "everyone past the hunt block" gathers berries), so its slot
+  // length is a real function of totalFood/rate/headcount — this is what
+  // makes Gurjaras' extra bushes change WINDOW LENGTH now, not a guessed
+  // ratio bolted onto a fixed 10-slot block.
+  berries: { totalFood: 6 * 125, headcount: 4, rate: DATA.arabiaBerryRate, bounded: false },
+};
+const MAP_FOOD_SOURCES = { arabia: ARABIA_FOOD_SOURCES, arena: ARABIA_FOOD_SOURCES };
+
+// Fixed, civ-independent calibration constant that converts a food phase's
+// real depletion duration (seconds) into a population-count slot length —
+// deliberately NOT villRateFor(tcExtra,...), which varies per Dijkstra
+// search branch and would force a new state dimension threaded through the
+// whole search; this keeps the opening sequence exactly as stateless/
+// precomputed as it's always been (built once per top-level call, shared
+// unchanged across every branch — see chooseOpeningSequence's own use below).
+const REFERENCE_VILL_RATE = 1 / DATA.villager.trainTime; // 1/25 vill/sec
+
+// See ARABIA_FOOD_SOURCES' own comment: bounded sources keep their fixed
+// real headcount regardless of quantity; elastic sources size their window
+// from real depletion time (totalFood / (headcount*rate), converted to a
+// population count via REFERENCE_VILL_RATE) — this is the mechanism that
+// lets Gurjaras' extra bushes and the deer/chicken spawn-level toggle change
+// how LONG a source lasts, not just how fast it's gathered.
+function foodPhaseSlotCount(source) {
+  if (source.bounded) return source.headcount;
+  const duration = source.totalFood / (source.headcount * source.rate);
+  return Math.max(source.headcount, Math.round(duration * REFERENCE_VILL_RATE));
+}
+
+// Real nominal per-animal food (standard AoE2:DE values) — used with the
+// user-selected spawn level to get a REAL total quantity for whichever hunt
+// strategy is active, feeding the same foodPhaseSlotCount formula as
+// sheep/boar/berries above (deer/chicken's per-worker RATE tables,
+// DEER_STRATEGIES/CHICKEN_STRATEGIES below, are unchanged by this).
+const HUNT_NOMINAL_FOOD = { deer: 140, chicken: 65 };
+function huntQuantity(deerStrategy, chickenStrategy, level) {
+  if (deerStrategy && deerStrategy !== 'none') return level * HUNT_NOMINAL_FOOD.deer;
+  if (chickenStrategy && chickenStrategy !== 'none') return (level + 4) * HUNT_NOMINAL_FOOD.chicken; // level shared with deer (2/3/4) -> real chicken count (6/7/8)
+  return null;
+}
+
+// Real per-worker food rate for the Nth food-typed villager overall (indexed
+// by the GLOBAL villager count `vills` — see call sites below — NOT a
+// per-call counter that resets to 0 every simulateItemReady call, which was
+// a latent bug: the Dijkstra search calls this many times per branch, each
+// usually resuming mid-window rather than from vills=0, so a call-local
+// index could return sheep/boar rate for a worker who's really deep into the
+// berries tail. `seq` is whatever chooseOpeningSequence returned — carries
+// sheepSlots/boarSlots/berriesStart/berryRate/huntSlots/huntRate alongside
+// the plain 'food'/'wood'/'stone' array). Berries are an always-on baseline
+// (same footing as sheep/boar — a real player builds a Mill on them
+// regardless), NOT a selectable strategy; hunt (if chosen) is ADDITIVE,
+// carved out of the same berries tail as a concurrent dedicated block, never
+// a replacement for it.
+function foodPhaseRateForVills(vills, seq) {
+  if (vills < seq.sheepSlots) return DATA.gatherRates.food * seq.sheepMult; // sheep -- Jurchens' no-decay livestock bonus
+  if (vills < seq.sheepSlots + seq.boarSlots) return DATA.arabiaBoarRate * seq.huntingMult; // lured boar -- Mongols hunt faster / Jurchens no-decay
+  const offset = vills - seq.berriesStart;
+  if (seq.huntRate != null && offset < seq.huntSlots) return seq.huntRate; // dedicated deer/chicken block, concurrent with berries
+  return seq.berryRate; // milled berries -- always the baseline for everyone else past sheep/boar
 }
 // Deer and wild chickens are mutually exclusive on a real Arabia map (a
 // 50/50 roll as of the current patch), but modeled as two INDEPENDENT
@@ -3796,9 +3838,6 @@ function openingMillIndex(seq) {
   while (i < seq.length && seq[i] !== 'food') i++; // skip wood (and stone, if inserted)
   return i;
 }
-const OPENING_MILL_INDEX = openingMillIndex(OPENING_SEQUENCE);
-OPENING_SEQUENCE.millIndex = OPENING_MILL_INDEX;
-
 // Real players sending 2-3 villagers to a Castle's 650 stone don't wait
 // until Castle Age hits to start — they peel a few off right after the
 // initial wood run so stone is already banking well before it's the
@@ -3812,43 +3851,64 @@ OPENING_SEQUENCE.millIndex = OPENING_MILL_INDEX;
 // villagers is born during that one item's own funding window, which is
 // far slower than gathering it in parallel with the age-ups leading up to
 // it. Capped at 3 (not scaled with population) — a fixed, one-time
-// detachment, same as the real recipe this was verified against.
-const BG_STONE_SLOTS = 3;
-const BG_STONE_SEQUENCE = [
-  ...OPENING_SEQUENCE.slice(0, 9), // 6 food (sheep) + 3 wood, unchanged
-  ...Array(BG_STONE_SLOTS).fill('stone'),
-  ...OPENING_SEQUENCE.slice(9), // berries/hunt tail, unchanged, just shifted later
-];
-BG_STONE_SEQUENCE.millIndex = openingMillIndex(BG_STONE_SEQUENCE);
-// Only worth the extra 3 scripted slots when the plan actually needs a
-// stone-costing building somewhere (Castle, currently the only one) — every
-// other target keeps the plain OPENING_SEQUENCE, byte-for-byte unchanged.
-function chooseOpeningSequence(stages, civ, huntConfig) {
+// detachment, same as the real recipe this was verified against. Now a
+// local inside chooseOpeningSequence (was a module-level BG_STONE_SLOTS/
+// BG_STONE_SEQUENCE pair) since the berries tail it's spliced before is no
+// longer a fixed-length constant once berries slot count is civ-dependent.
+function chooseOpeningSequence(stages, civ, huntConfig, mapId = 'arabia') {
+  const mapSources = MAP_FOOD_SOURCES[mapId] || MAP_FOOD_SOURCES.arabia;
+  const sheepSlots = foodPhaseSlotCount(mapSources.sheep); // = 2 today (bounded)
+  const boarSlots = foodPhaseSlotCount(mapSources.boar);   // = 4 today (bounded)
+
+  // Gurjaras: 6 of the real 8 sheep are garrisoned for passive income (see
+  // computeTotalIncome's sheepMillBonus) rather than gathered by these 2
+  // dedicated shepherds — ARABIA_FOOD_SOURCES.sheep's totalFood (all 8)
+  // deliberately isn't reduced for this, so it doesn't double-count: sheep
+  // is a bounded source (slot count = fixed headcount, never derived from
+  // totalFood), so the passive-garrison sheep never fed sheepSlots in the
+  // first place. Documented here rather than silently coincidental.
+
   const needsStone = stages.some(s => s.units.some(u => buildingChainItems(u.line.building, civ, new Set()).some(it => (it.cost?.stone || 0) > 0)));
-  const base = needsStone ? BG_STONE_SEQUENCE : OPENING_SEQUENCE;
-  // A shallow copy, not the shared module-level constant directly — every
-  // call can have its own `huntConfig`, and mutating the constant itself
-  // would leak one call's choice into every other call sharing the same
-  // base sequence (this function's own memoized caller runs many of these
-  // back to back with different strategies).
-  const seq = [...base];
-  seq.millIndex = base.millIndex;
-  // Gurjaras: "Start with 2 extra Forage Bushes." This tool has no real
-  // food-quantity tracking anywhere — OPENING_SEQUENCE's own berry block
-  // (10 'food' slots) isn't derived from 750 nominal food either, it's a
-  // villager-COUNT cutoff (pop ~20) standing in for "how long berries
-  // realistically last before a skilled player transitions to farms,"
-  // same proxy the whole scripted opening already relies on. Extra
-  // bushes should extend THAT cutoff, not a quantity that doesn't exist
-  // in the model: assuming 6 base bushes (750 food) -> 8 (1000, +33%),
-  // proportionally extending the 10-slot berry block by the same ratio.
-  // Rounded, an approximation layered on an already-approximate slot
-  // count — revisit the base-bush assumption if it's wrong.
+  const stoneSlots = needsStone ? BG_STONE_SLOTS : 0;
+
+  // Gurjaras: "Start with 2 extra Forage Bushes" — now a REAL quantity
+  // increase (750 -> 1000 food) feeding the exact same duration formula as
+  // every other civ, replacing the old flat-ratio slot-append hack
+  // entirely (that hack extended a fixed 10-slot guess proportionally;
+  // this instead recomputes the real duration from the real bigger pool).
   const extraBushBonus = (civ?.ecoBonuses || []).find(b => b.type === 'extra-berry-bushes');
-  if (extraBushBonus) {
-    const extraSlots = Math.round(10 * (extraBushBonus.count / 6));
-    for (let i = 0; i < extraSlots; i++) seq.push('food');
-  }
+  const berriesSource = extraBushBonus
+    ? { ...mapSources.berries, totalFood: mapSources.berries.totalFood + extraBushBonus.count * 125 }
+    : mapSources.berries;
+  const berriesSlots = foodPhaseSlotCount(berriesSource);
+
+  // The FORCED/scripted array itself stays SHORT — sheep+boar+wood+stone
+  // only, unchanged in spirit from before this whole redesign. berriesSlots
+  // is deliberately NOT appended as more array elements: an earlier version
+  // of this did that, and directly caused the exact bug this redesign was
+  // meant to fix (Gurjaras finishing a 200-villager target SLOWER than a
+  // civ with no bonus at all) — a LONGER forced-food block means the search
+  // loses that much MORE of its own ability to route villagers to wood for
+  // extra Town Centers, no matter how urgently needed; since real quantities
+  // produce a much bigger berries tail (10->~29 slots even at baseline) than
+  // the old hand-tuned guess, this crowd-out got roughly 3x worse, not fixed.
+  // Real quantity/duration still matters — it now governs how long the
+  // ELEVATED real rate (milled berries, or a hunt bonus) stays available to
+  // whichever worker the search/ramp's own ADAPTIVE routing (unchanged,
+  // untouched by this redesign) decides to put on food, via
+  // foodPhaseRateForVills below — never how many workers get FORCED there.
+  const seq = [
+    ...Array(sheepSlots).fill('food'),
+    ...Array(boarSlots).fill('food'),
+    'wood', 'wood', 'wood',
+    ...Array(stoneSlots).fill('stone'),
+  ];
+  seq.millIndex = openingMillIndex(seq); // = seq.length here (no trailing 'food' left to skip past)
+  seq.sheepSlots = sheepSlots;
+  seq.boarSlots = boarSlots;
+  seq.berriesStart = sheepSlots + boarSlots + 3 + stoneSlots;
+  seq.berryRate = berriesSource.rate;
+
   // Mongols: "Hunters work +40% faster" — applies to boar (always hunted)
   // and to deer/chicken strategies that are genuinely a kill-then-gather
   // hunt (push/mill/walk), not to chicken funnel (a herding action, no
@@ -3861,10 +3921,10 @@ function chooseOpeningSequence(stages, civ, huntConfig) {
   // bonuses in real AoE2, but multiplying is the correct composition if
   // that ever changed. Jurchens' own value is an ESTIMATE: the only real
   // captured-% figure on file is wild chickens (~86% of nominal food
-  // captured by a normal civ before scattering/decay — see the Arabia
-  // food-source table above), extrapolated to boar/deer/sheep too since
-  // no source gives those individually — user-confirmed acceptable
-  // ("you gave me all the boar/deer/sheep/chicken numbers earlier").
+  // captured by a normal civ before scattering/decay), extrapolated to
+  // boar/deer/sheep too since no source gives those individually —
+  // user-confirmed acceptable ("you gave me all the boar/deer/sheep/
+  // chicken numbers earlier").
   const huntingBonus = (civ?.ecoBonuses || []).find(b => b.type === 'hunting-rate-pct');
   const noDecayBonus = (civ?.ecoBonuses || []).find(b => b.type === 'no-decay-meat-pct');
   const huntingMult = (huntingBonus ? 1 + huntingBonus.value / 100 : 1) * (noDecayBonus ? 1 + noDecayBonus.value / 100 : 1);
@@ -3886,6 +3946,21 @@ function chooseOpeningSequence(stages, civ, huntConfig) {
   const hunt = huntConfig ? huntRateAndWorkers(deerStrategy, chickenStrategy, huntConfig.level, huntingMult) : null;
   seq.huntRate = hunt?.rate;
   seq.huntWorkers = hunt?.workers;
+  if (hunt) {
+    // A real quantity (spawn count x nominal per-animal food), run through
+    // the SAME duration formula as sheep/boar/berries above — this is what
+    // makes the 2/3/4-deer or 6/7/8-chicken spawn-level toggle change how
+    // LONG the block lasts, not just its rate (the toggle previously only
+    // ever affected `hunt.rate` via DEER_STRATEGIES/CHICKEN_STRATEGIES'
+    // level-keyed Mill rates, never the window length). Carved out of the
+    // SAME berries tail (concurrent with berries, not sequential, matching
+    // the confirmed real consumption order), so it can never exceed it.
+    const qty = huntQuantity(deerStrategy, chickenStrategy, huntConfig.level);
+    const rawHuntSlots = foodPhaseSlotCount({ totalFood: qty, headcount: hunt.workers, rate: hunt.rate, bounded: false });
+    seq.huntSlots = Math.min(berriesSlots, rawHuntSlots);
+  } else {
+    seq.huntSlots = 0;
+  }
   const huntStructure = huntConfig ? huntStructureFor(deerStrategy, chickenStrategy, civ) : null;
   seq.huntStructureName = huntStructure?.name ?? null;
   seq.huntWoodCost = huntStructure?.cost ?? 0;
@@ -3913,7 +3988,6 @@ function simulateRampToSustain(rates, villRate, startVills, targetVillagers, tot
     let target;
     if (openingSequence && vills < openingSequence.length) {
       target = openingSequence[vills];
-      if (target === 'food' && vills === OPENING_MILL_INDEX) millAt = t;
     } else {
       target = 'food';
       let worstRatio = Infinity;
@@ -3923,6 +3997,9 @@ function simulateRampToSustain(rates, villRate, startVills, targetVillagers, tot
         if (ratio < worstRatio) { worstRatio = ratio; target = r; }
       });
     }
+    // See simulateItemReady's matching comment — fires the first time food
+    // is actually chosen at or past millIndex, scripted or adaptive.
+    if (openingSequence && target === 'food' && vills >= openingSequence.millIndex && millAt == null) millAt = t;
     assigned[target]++;
     vills++;
     t += 1 / villRate;
@@ -4534,19 +4611,19 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
   // the same shared starting pop cap, so they need a House sooner relative
   // to their villager count (via the existing houseBaseline formula below,
   // now correctly seeded from their real starting count). Conveniently,
-  // OPENING_SEQUENCE's first 6 slots are already all 'food' (the sheep
-  // sub-phase), so Chinese's extra 3 villagers land on real starting sheep
-  // exactly as they would in the actual game, with no special-casing needed.
+  // the scripted opening's sheep+boar block (sheepSlots+boarSlots, 6 slots
+  // today) is already all 'food', so Chinese's extra 3 villagers land on
+  // real starting sheep exactly as they would in the actual game, with no
+  // special-casing needed.
   const startVills = 3 + ((civ?.ecoBonuses || []).find(b => b.type === 'starting-resources')?.villagerDelta || 0);
-  for (let i = 0; i < startVills; i++) cumAlloc[OPENING_SEQUENCE[i] || 'food']++;
+  for (let i = 0; i < startVills; i++) cumAlloc[openingSequence?.[i] || 'food']++;
   const builtResources = initialBuiltState(civ);
   const startBuildNotes = [];
   // Food is excluded here even though the starting 3 villagers are credited
-  // to it above — they're on sheep (see OPENING_SEQUENCE), which walk
-  // straight to the TC and need no building at all, unlike every other
-  // resource's very first villager. See OPENING_MILL_INDEX / the millAt
-  // handling below for when food's own structure (a Mill, for berries/hunt)
-  // actually gets built.
+  // to it above — they're on sheep, which walk straight to the TC and need
+  // no building at all, unlike every other resource's very first villager.
+  // See openingSequence.millIndex / the millAt handling below for when
+  // food's own structure (a Mill, for berries/hunt) actually gets built.
   RES.forEach(r => {
     if (r === 'food' || cumAlloc[r] <= 0 || builtResources[r]) return;
     const s = structureForResource(r, civ);
@@ -4715,7 +4792,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           RES.forEach(r2 => { pool[r2] -= (s.cost?.[r2] || 0); });
           // No `pool` on the checkpoint itself either — same interpolated-
           // timestamp reason as the gather checkpoint above.
-          checkpoints.push({ label: s.name, time: r.millAt, vills: OPENING_MILL_INDEX, split: { food: 1, wood: 0, gold: 0, stone: 0 }, houses: housesFor(OPENING_MILL_INDEX), alloc: { ...cumAlloc }, kind: 'gather' });
+          checkpoints.push({ label: s.name, time: r.millAt, vills: openingSequence.millIndex, split: { food: 1, wood: 0, gold: 0, stone: 0 }, houses: housesFor(openingSequence.millIndex), alloc: { ...cumAlloc }, kind: 'gather' });
         } else {
           builtResources.food = true; // already covered by another resource's structure (e.g. Settlement)
         }
@@ -4725,7 +4802,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // SEPARATE building from the berries Mill above — a different spot on
       // the map — so it's its own wood cost, deducted at the same real-world
       // moment (the hunt block's first worker starts exactly when the
-      // berries Mill also becomes necessary, per foodPhaseRateForWorkerIndex).
+      // berries Mill also becomes necessary, per foodPhaseRateForVills).
       // Guarded by its own builtResources flag so a later call in the same
       // search doesn't pay for it twice.
       if (openingSequence && r.millAt != null && openingSequence.huntWoodCost > 0 && !builtResources.huntStructure) {
@@ -4733,7 +4810,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         cumAlloc.food += 1;
         remainingAssigned.food = Math.max(0, remainingAssigned.food - 1);
         pool.wood -= openingSequence.huntWoodCost;
-        checkpoints.push({ label: openingSequence.huntStructureName, time: r.millAt, vills: OPENING_MILL_INDEX, split: { food: 1, wood: 0, gold: 0, stone: 0 }, houses: housesFor(OPENING_MILL_INDEX), alloc: { ...cumAlloc }, kind: 'gather' });
+        checkpoints.push({ label: openingSequence.huntStructureName, time: r.millAt, vills: openingSequence.millIndex, split: { food: 1, wood: 0, gold: 0, stone: 0 }, houses: housesFor(openingSequence.millIndex), alloc: { ...cumAlloc }, kind: 'gather' });
       }
 
       RES.forEach(res => { cumAlloc[res] += remainingAssigned[res] || 0; });
