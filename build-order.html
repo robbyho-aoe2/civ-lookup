@@ -238,7 +238,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.81</div>
+  <div class="version">v0.82</div>
 </div>
 
 <script>
@@ -3404,7 +3404,7 @@ function mergeWithAgeUps(goalItems, ageItems) {
 // accuracy for a Villager-boom age-up by not bundling filler buildings
 // with the age-up they were deferred for — don't re-duplicate this again,
 // reuse this instead.
-function resolveSequential(itemList, rates, villRate, startTime, startVills, pool, alloc, openingSequence, villagerFoodCost) {
+function resolveSequential(itemList, rates, villRate, startTime, startVills, pool, alloc, openingSequence, villagerFoodCost, farmWoodRatio) {
   let t = startTime, v = startVills, p = pool, a = { ...alloc };
   let ri = 0;
   while (ri < itemList.length) {
@@ -3422,7 +3422,7 @@ function resolveSequential(itemList, rates, villRate, startTime, startVills, poo
         queueSeconds: Math.max(0, ...deferred.filter(it => !it.tcQueue).map(it => it.queueSeconds || 0)),
       };
     })() : mergedItems[0];
-    const r = simulateItemReady(simItem, rates, villRate, t, v, p, openingSequence, a, villagerFoodCost);
+    const r = simulateItemReady(simItem, rates, villRate, t, v, p, openingSequence, a, villagerFoodCost, farmWoodRatio);
     if (!r) return null;
     t = r.time; v = r.vills; p = r.pool;
     RES.forEach(res => { a[res] += r.assigned[res]; });
@@ -3496,7 +3496,7 @@ function buildingChainItems(buildingName, civ, haveSet) {
 // Their labor still counts toward whatever they're assigned to (RES.forEach
 // below, not `need.forEach`) — it just may not help THIS item at all until
 // the script hands control back to the greedy algorithm.
-function simulateItemReady(item, rates, villRate, startTime, startVills, pool, openingSequence, existingAlloc, villagerFoodCost) {
+function simulateItemReady(item, rates, villRate, startTime, startVills, pool, openingSequence, existingAlloc, villagerFoodCost, farmWoodRatio) {
   const need = RES.filter(r => item.cost[r] > 0);
   const minTime = startTime + (item.queueSeconds || 0);
   // Town Center techs (tcQueue:true) block villager production for their
@@ -3565,6 +3565,20 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
   const dt = 0.5;
   const capT = startTime + 3600; // 60 min simulation cap
   let nextBirth = t + 1 / villRate;
+  // Real farm wood upkeep once natural food (sheep/boar/berries/hunt) is
+  // exhausted — see chooseOpeningSequence's berriesEnd. Tracked as a running
+  // approximate farmer headcount: existing farmers carried over from BEFORE
+  // this call are derived from existingAlloc.food minus the real natural-
+  // food capacity (this tool doesn't separately persist a farmer/non-farmer
+  // split across calls — an accepted approximation, same spirit as every
+  // other "frozen worker" simplification already in this function), while
+  // NEW farmer births within THIS call are identified exactly (vills is
+  // known precisely at assignment time). If a wood shortfall means farms
+  // can't be kept rebuilt fast enough, population growth itself genuinely
+  // slows (birth INTERVAL stretches) — not just "costs more" — per the
+  // user's explicit choice; a small floor (5%) keeps growth from ever
+  // fully freezing rather than risking an infinite/blocked loop.
+  let farmVills = openingSequence ? Math.max(0, (existingAlloc?.food || 0) - openingSequence.berriesEnd) : 0;
 
   while (t <= capT) {
     while (t >= nextBirth - 1e-9) {
@@ -3590,12 +3604,18 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
       // point, same as real play (the Mill only needs to exist once someone
       // is actually gathering berries, not preemptively).
       if (openingSequence && target === 'food' && vills >= openingSequence.millIndex && millAt == null) millAt = t;
-      const workerRate = (target === 'food' && openingSequence) ? foodPhaseRateForVills(vills, openingSequence) : rates[target];
+      const isFarmer = openingSequence && target === 'food' && vills >= openingSequence.berriesEnd;
+      const workerRate = target === 'food' ? ((openingSequence && foodPhaseRateForVills(vills, openingSequence)) ?? rates.food) : rates[target];
       vills++;
       assigned[target]++;
       assignedRate[target] += workerRate;
+      if (isFarmer) farmVills++;
       if (!(target in firstAssignedAt)) firstAssignedAt[target] = t;
-      nextBirth += 1 / villRate;
+      const woodVills = (existingAlloc?.wood || 0) + assigned.wood;
+      const farmDemand = farmWoodRatio ? farmVills * rates.food * farmWoodRatio : 0;
+      const woodSupply = woodVills * rates.wood;
+      const growthMult = farmDemand > 0 && farmDemand > woodSupply ? Math.max(0.05, woodSupply / farmDemand) : 1;
+      nextBirth += 1 / (villRate * growthMult);
     }
     RES.forEach(r => {
       // Existing, already-working villagers (from before this call started)
@@ -3717,12 +3737,16 @@ function huntQuantity(deerStrategy, chickenStrategy, level) {
 // regardless), NOT a selectable strategy; hunt (if chosen) is ADDITIVE,
 // carved out of the same berries tail as a concurrent dedicated block, never
 // a replacement for it.
+// Returns null once past seq.berriesEnd — real natural food (sheep/boar/
+// berries/hunt) genuinely exhausted, caller falls back to the generic
+// tech-adjusted rate (rates.food), representing farms.
 function foodPhaseRateForVills(vills, seq) {
   if (vills < seq.sheepSlots) return DATA.gatherRates.food * seq.sheepMult; // sheep -- Jurchens' no-decay livestock bonus
   if (vills < seq.sheepSlots + seq.boarSlots) return DATA.arabiaBoarRate * seq.huntingMult; // lured boar -- Mongols hunt faster / Jurchens no-decay
+  if (vills >= seq.berriesEnd) return null; // natural food exhausted -- farms take over
   const offset = vills - seq.berriesStart;
   if (seq.huntRate != null && offset < seq.huntSlots) return seq.huntRate; // dedicated deer/chicken block, concurrent with berries
-  return seq.berryRate; // milled berries -- always the baseline for everyone else past sheep/boar
+  return seq.berryRate; // milled berries -- baseline for everyone else past sheep/boar, while it lasts
 }
 // Deer and wild chickens are mutually exclusive on a real Arabia map (a
 // 50/50 roll as of the current patch), but modeled as two INDEPENDENT
@@ -3908,6 +3932,15 @@ function chooseOpeningSequence(stages, civ, huntConfig, mapId = 'arabia') {
   seq.boarSlots = boarSlots;
   seq.berriesStart = sheepSlots + boarSlots + 3 + stoneSlots;
   seq.berryRate = berriesSource.rate;
+  // The real population-count point at which berries itself (the longest-
+  // lasting natural food source) is genuinely exhausted — past this,
+  // foodPhaseRateForVills falls back to the generic tech-adjusted rate
+  // (rates.food), representing a real switch to farms, and the villager-
+  // quantity growth throttle (simulateItemReady/simulateRampToSustain)
+  // starts counting new food-assigned workers as farmers needing real wood
+  // upkeep. Hunt (if any) is already capped to never outlast berries (see
+  // huntSlots below), so this one boundary covers both.
+  seq.berriesEnd = seq.berriesStart + berriesSlots;
 
   // Mongols: "Hunters work +40% faster" — applies to boar (always hunted)
   // and to deer/chicken strategies that are genuinely a kill-then-gather
@@ -3978,12 +4011,17 @@ function chooseOpeningSequence(stages, civ, huntConfig, mapId = 'arabia') {
 const SCOUT_POP = 1;
 const HOUSE_LEAD_POP = 2;
 
-function simulateRampToSustain(rates, villRate, startVills, targetVillagers, totalVillCeil, startTime, openingSequence) {
+function simulateRampToSustain(rates, villRate, startVills, targetVillagers, totalVillCeil, startTime, openingSequence, existingAlloc, farmWoodRatio) {
   if (startVills >= totalVillCeil || villRate <= 0) return null;
   const assigned = { food: 0, wood: 0, gold: 0, stone: 0 };
   let millAt = null; // see simulateItemReady's matching field
   let vills = startVills;
   let t = startTime || 0;
+  // See simulateItemReady's matching comment — same farmVills tracking and
+  // wood-gated growth throttle, just driving `t` directly here (this
+  // function has no pool/saved concept of its own to route the debit
+  // through, unlike simulateItemReady's cost-affordability loop).
+  let farmVills = openingSequence ? Math.max(0, (existingAlloc?.food || 0) - openingSequence.berriesEnd) : 0;
   while (vills < totalVillCeil) {
     let target;
     if (openingSequence && vills < openingSequence.length) {
@@ -4000,9 +4038,15 @@ function simulateRampToSustain(rates, villRate, startVills, targetVillagers, tot
     // See simulateItemReady's matching comment — fires the first time food
     // is actually chosen at or past millIndex, scripted or adaptive.
     if (openingSequence && target === 'food' && vills >= openingSequence.millIndex && millAt == null) millAt = t;
+    const isFarmer = openingSequence && target === 'food' && vills >= openingSequence.berriesEnd;
     assigned[target]++;
+    if (isFarmer) farmVills++;
     vills++;
-    t += 1 / villRate;
+    const woodVills = (existingAlloc?.wood || 0) + assigned.wood;
+    const farmDemand = farmWoodRatio ? farmVills * rates.food * farmWoodRatio : 0;
+    const woodSupply = woodVills * rates.wood;
+    const growthMult = farmDemand > 0 && farmDemand > woodSupply ? Math.max(0.05, woodSupply / farmDemand) : 1;
+    t += 1 / (villRate * growthMult);
   }
   return { time: t, vills, assigned, newVills: vills - startVills, millAt };
 }
@@ -4157,13 +4201,35 @@ function expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, house
 // `assumeFarms` (default true) charges food income its farm-rebuild wood
 // upkeep — accurate for Constant Production's own steady-state framing
 // (an indefinite, ongoing economy, where farms are the only food source
-// that doesn't eventually run dry) but wrong for Optimize's sustain calc:
-// every Optimize target is reached within the first few tens of minutes,
-// while still comfortably on sheep/deer/boar/berries — natural food with
-// NO wood upkeep at all. Optimize's own call site passes false so it stops
+// that doesn't eventually run dry) but wrong for Optimize's sustain calc: a
+// normal composition/sustain target (e.g. "3 Barracks of Man-at-Arms") is
+// typically reached within the first few tens of minutes, while still
+// comfortably on sheep/deer/boar/berries — natural food with NO wood
+// upkeep at all. Optimize's own call site passes false so it stops
 // budgeting (and, more subtly, stops investing eco-tech research time in
 // Horse Collar/Heavy Plow/Crop Rotation for) a farm-rebuild cost nothing
-// in that target's actual timeframe would ever incur.
+// in that target's actual timeframe would ever incur. A Villager-QUANTITY
+// target is a different story — those routinely run 15-27+ minutes, well
+// past real natural-food depletion — handled by a SEPARATE mechanism
+// (farmUpkeepRatio + the farmVills throttle inside simulateItemReady/
+// simulateRampToSustain below), not by flipping this flag.
+// Wood needed to keep one unit of ongoing food income flowing once it's
+// coming from farms (rebuild cost ÷ yield-per-farm, both civ/tech-scaled) —
+// shared by computeTotalIncome's own steady-state upkeep below AND the
+// villager-quantity throttle mechanism (which needs the same ratio, just
+// multiplied by a REAL farmer headcount instead of a composition's total
+// food income).
+function farmUpkeepRatio(techIds, civ) {
+  const farmYield = techIds.has('crop-rotation') ? 550 : techIds.has('heavy-plow') ? 375 : techIds.has('horse-collar') ? 250 : 175;
+  const folwarkBonus = (civ?.ecoBonuses || []).find(b => b.type === 'folwark-yield-bonus');
+  const effectiveFarmYield = farmYield * (folwarkBonus ? 1 + folwarkBonus.value / 100 : 1);
+  // Teutons: "Farms cost -40%" — Farms have no cost besides wood in this
+  // model (matches the real building), so this discounts the rebuild cost
+  // directly rather than needing its own resource-scoped field.
+  const farmCostBonus = (civ?.ecoBonuses || []).find(b => b.type === 'farm-cost-pct');
+  const effectiveFarmBuildCost = DATA.farmBuildCost * (farmCostBonus ? 1 - farmCostBonus.value / 100 : 1);
+  return effectiveFarmBuildCost / effectiveFarmYield;
+}
 function computeTotalIncome(rows, civ, techIds, assumeFarms = true, millExtra = 0, ageIdx = null) {
   const totalIncome = { food: 0, wood: 0, gold: 0, stone: 0 };
   let popRate = 0;
@@ -4173,15 +4239,7 @@ function computeTotalIncome(rows, civ, techIds, assumeFarms = true, millExtra = 
     RES.forEach(r => totalIncome[r] += (cost[r] || 0) * unitRate);
     popRate += line.pop * unitRate;
   });
-  const farmYield = techIds.has('crop-rotation') ? 550 : techIds.has('heavy-plow') ? 375 : techIds.has('horse-collar') ? 250 : 175;
-  const folwarkBonus = (civ?.ecoBonuses || []).find(b => b.type === 'folwark-yield-bonus');
-  const effectiveFarmYield = farmYield * (folwarkBonus ? 1 + folwarkBonus.value / 100 : 1);
-  // Teutons: "Farms cost -40%" — Farms have no cost besides wood in this
-  // model (matches the real building), so this discounts the rebuild cost
-  // directly rather than needing its own resource-scoped field.
-  const farmCostBonus = (civ?.ecoBonuses || []).find(b => b.type === 'farm-cost-pct');
-  const effectiveFarmBuildCost = DATA.farmBuildCost * (farmCostBonus ? 1 - farmCostBonus.value / 100 : 1);
-  const farmUpkeepWoodPerSec = assumeFarms ? totalIncome.food * effectiveFarmBuildCost / effectiveFarmYield : 0;
+  const farmUpkeepWoodPerSec = assumeFarms ? totalIncome.food * farmUpkeepRatio(techIds, civ) : 0;
   totalIncome.wood += farmUpkeepWoodPerSec;
   const popSpaceOverride = (civ?.ecoBonuses || []).find(b => b.type === 'house-pop-space');
   const housePopSpace = popSpaceOverride ? popSpaceOverride.value : DATA.housePopSpace;
@@ -4717,7 +4775,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       })() : mergedItems[0];
 
       const callStartTime = cursorTime, callStartVills = cursorVills;
-      const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence, cumAlloc, effectiveVillagerFoodCost(civ, reachedAgeIdx));
+      const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence, cumAlloc, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(levels), civ));
       if (!r) { checkpoints.push({ label: `${simItem.name} — past 60 min, add more Town Centers`, blocked: true }); anyBlocked = true; ri += mergedItems.length; continue; }
       cursorTime = r.time; cursorVills = r.vills; pool = r.pool;
       // Ethiopians (+100 food/+100 gold)/Dravidians (+200 wood): a flat
@@ -5336,7 +5394,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         const item = isFree
           ? { name: tech.name, cost: { food: 0, wood: 0, gold: 0, stone: 0 }, tcQueue: false, researchTime: 0, queueSeconds: 0, age: tech.age }
           : { name: tech.name, cost: costForCiv(tech.cost, civ), tcQueue: tech.tcQueue, researchTime: tech.researchTime, queueSeconds: tech.queueSeconds, age: tech.age };
-        const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc, effectiveVillagerFoodCost(civ, effectiveAgeIdx));
+        const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc, effectiveVillagerFoodCost(civ, effectiveAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ));
         if (!r) return;
         const nextLevels = { ...cur.levels, [id]: cur.levels[id] + 1 };
         const key = stateKey(nextLevels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, cur.castleAdvanced);
@@ -5411,7 +5469,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           fillerItems.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age });
         }
         const ageItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], AGE_ORDER[requiredExtraTcAgeIdx], civ));
-        const resolved = resolveSequential(ageItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx));
+        const resolved = resolveSequential(ageItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ));
         if (resolved) {
           // Reaching THIS age-up also means real Castle Age for every civ
           // except Cumans (whose requiredExtraTcAgeIdx is Feudal, not
@@ -5447,7 +5505,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           });
         }
         const castleAgeItems = mergeWithAgeUps(fillerItems2, ageUpPending('Feudal', 'Castle', civ));
-        const resolvedCastle = resolveSequential(castleAgeItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx));
+        const resolvedCastle = resolveSequential(castleAgeItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ));
         if (resolvedCastle) {
           const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, true);
           const existing = finalized.get(key);
@@ -5491,7 +5549,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
             age: DATA.townCenter.minAge,
             builders: line.isVillager ? TC_BUILDERS : 1,
           };
-          const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc, effectiveVillagerFoodCost(civ, effectiveAgeIdx));
+          const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc, effectiveVillagerFoodCost(civ, effectiveAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ));
           if (!r) break; // k TCs unaffordable within the sim cap means k+1 (strictly more expensive) can't be either
           // Tatars: every NEW Town Center (never the free starting one)
           // comes with 2 sheep, worth 50% more food than normal thanks to
@@ -5531,7 +5589,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       if (sheepMillBonus && cur.millExtra < sheepMillBonus.maxExtraMills) {
         const millCost = structureForResource('food', civ).cost.wood;
         const item = { name: `${civ?.millName || 'Mill'} (Sheep)`, cost: { food: 0, wood: millCost, gold: 0, stone: 0 }, queueSeconds: multiBuilderTime(DATA.productionBuildings['Mill'].buildTimeSeconds, buildersForBuilding('Mill')), age: DATA.productionBuildings['Mill'].minAge, builders: buildersForBuilding('Mill') };
-        const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc, effectiveVillagerFoodCost(civ, effectiveAgeIdx));
+        const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc, effectiveVillagerFoodCost(civ, effectiveAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ));
         if (r) {
           const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra + 1, cur.castleAdvanced);
           const existing = finalized.get(key);
@@ -5585,7 +5643,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       if (state.vills >= totalVillCeil) {
         total = state.time;
       } else {
-        ramp = simulateRampToSustain(rates, villRate, state.vills, villagers, totalVillCeil, state.time, openingSequence);
+        ramp = simulateRampToSustain(rates, villRate, state.vills, villagers, totalVillCeil, state.time, openingSequence, state.alloc, farmUpkeepRatio(techIds, civ));
         total = ramp ? ramp.time : Infinity;
       }
       if (total < bestTotal) { bestTotal = total; bestKey = key; bestRamp = ramp; bestRates = rates; bestVillagers = villagers; bestVillCeil = totalVillCeil; bestIncome = incomeInfo.totalIncome; bestUpkeep = incomeInfo; }
