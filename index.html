@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.10</div>
+    <div class="version">v2.11</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1586,8 +1586,8 @@ const CIV_ARCHETYPES = [
 // site (filter buttons, tier-list headers, info panels) — see CIV_ARCHETYPES'
 // own header comment for why the SVG radar-chart axis labels keep using
 // arch.emoji directly instead.
-function archIconHtml(arch, sizePx = 18) {
-  return `<img class="arch-icon" src="img/icons/${arch.icon}.png" alt="${arch.label}" style="width:${sizePx}px;height:${sizePx}px;vertical-align:-4px">`;
+function archIconHtml(arch, sizePx = 22) {
+  return `<img class="arch-icon" src="img/icons/${arch.icon}.png" alt="${arch.label}" style="width:${sizePx}px;height:${sizePx}px;vertical-align:-5px">`;
 }
 
 /* Game-timing archetypes — separate group, scored on estimated win rate by
@@ -3569,7 +3569,7 @@ function renderArchetypeGrid() {
     gradeOf: c => civGrade(c, arch),
     valueOf: c => totalScoreCiv(c, arch).total,
     valueLabel: c => scoreLabel(totalScoreCiv(c, arch), max),
-    headerHtml: `${archIconHtml(arch, 20)} ${arch.label} — ranked by tech tree + civ bonuses (${max} tech items, +2 pts per qualifying bonus)`,
+    headerHtml: `${archIconHtml(arch, 24)} ${arch.label} — ranked by tech tree + civ bonuses (${max} tech items, +2 pts per qualifying bonus)`,
     subHeaderHtml: arch.restrictTo ? `Only civs with access to this archetype's core units are shown (${pool.length} of 53)` : null,
     clearLabel: `${archIconHtml(arch)} ${arch.label} ranking`,
   });
@@ -5223,7 +5223,7 @@ function civInfoHtml(civName, compact) {
         h += `<div class="arch-rank-ring" data-arch-i="${i}" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;width:60px" title="Click to see full ${arch.label} ranking">
           <div style="position:relative;display:flex;align-items:center;justify-content:center">
             ${radialRing(pct, color, 46)}
-            <span style="position:absolute">${archIconHtml(arch, 25)}</span>
+            <span style="position:absolute">${archIconHtml(arch, 29)}</span>
           </div>
           <span style="font-size:9px;color:var(--text3);text-align:center;line-height:1.2">${arch.label}</span>
           <span style="font-size:10px;font-weight:700;color:${color}">#${r.rank}/${r.of}</span>
@@ -5271,7 +5271,7 @@ function civInfoHtml(civName, compact) {
       const grade = civGrade(civName, arch);
       const gcolor = grade ? GRADE_COLOR[grade] : 'var(--text3)';
 
-      h += `<div class="info-sl">${archIconHtml(arch, 20)} ${arch.label} — tech checklist</div>`;
+      h += `<div class="info-sl">${archIconHtml(arch, 24)} ${arch.label} — tech checklist</div>`;
       h += `<div style="display:flex;gap:16px;align-items:flex-start">`;
 
       // Left: checklist + bonus notes stacked in one column
