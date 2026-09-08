@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.15</div>
+    <div class="version">v2.16</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1167,6 +1167,11 @@ const TECH_IDS = {
   'Gold Mining':55,'Gold Shaft Mining':182,
   'Stone Mining':278,'Stone Shaft Mining':279,
   'Coinage':23,'Banking':17,'Caravan':48,'Guilds':15,
+  // Sentinel-ID techs (see each one's own comment further up the file) —
+  // without a name entry here, the archetype checklist's reverse lookup
+  // (Object.entries(TECH_IDS).find(...)) falls through to a raw "ID
+  // 900007/900008/900009" label instead of the real name.
+  'Treadmill Crane':TREADMILL_CRANE_SENTINEL_ID,'Siphons':SIPHONS_SENTINEL_ID,'Incendiaries':INCENDIARIES_SENTINEL_ID,
 };
 
 /* Age each tech/unit first becomes available: 0=Dark, 1=Feudal, 2=Castle, 3=Imperial
@@ -1189,6 +1194,11 @@ const ITEM_AGES = {
     233:3, 249:2, 252:2, 279:2, 315:3, 316:2, 319:2, 321:3, 322:2, 373:3,
     374:2, 375:3, 377:3, 379:3, 380:2, 435:1, 436:3, 437:2, 438:3, 439:2,
     441:2, 602:1, 608:3, 875:2, 907:3,
+    // Guilds/Siphons/Treadmill Crane/Incendiaries added later than this
+    // object — without an entry here they silently fell back to the
+    // default age 3 (Imperial), which happened to be right for Treadmill
+    // Crane/Incendiaries but WRONG for Guilds and Siphons (both Castle).
+    15:2, [SIPHONS_SENTINEL_ID]:2, [TREADMILL_CRANE_SENTINEL_ID]:3, [INCENDIARIES_SENTINEL_ID]:3,
   },
 };
 const AGE_LABELS = ['⚔️ Feudal','🏰 Castle','👑 Imperial'];
@@ -1270,6 +1280,9 @@ const TECH_DESCRIPTIONS = {
   17: 'Tribute between allies is free',
   48: 'Trade carts and trade cogs move 50% faster',
   15: 'Market buy/sell rates 30% better',
+  [TREADMILL_CRANE_SENTINEL_ID]: 'Dropped-off resources delivered instantly instead of walking the last stretch',
+  [SIPHONS_SENTINEL_ID]: 'Fire Galley-line ships gain explosive charge attacks when attacking ships',
+  [INCENDIARIES_SENTINEL_ID]: 'Fire Galley-line ships detonate when sunk, dealing damage around them (requires Siphons)',
 };
 
 const UNIT_DESCRIPTIONS = {
