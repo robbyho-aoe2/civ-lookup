@@ -396,6 +396,17 @@ const EUROPE_CODES = new Set([
   'hr','sk','si','lt','lv','ee','is','lu','mt','cy','ru','ua','by','rs','al','mk','ba','me','md',
   'li','mc','sm','va','ad','xk',
 ]);
+// Continental Asia, East through Southwest (Middle East) — Turkey/Georgia/
+// Armenia/Azerbaijan (transcontinental) grouped here rather than Europe,
+// matching how gaming-region buckets usually split them. Cyprus stays in
+// EUROPE_CODES above (already placed there) rather than double-listed here.
+const ASIA_CODES = new Set([
+  'jp','kr','cn','tw','hk','mo','mn',
+  'ph','vn','th','id','my','sg','mm','kh','la','bn','tl',
+  'in','pk','bd','lk','np','bt','mv',
+  'kz','uz','tm','tj','kg',
+  'sa','ae','il','tr','ir','iq','jo','lb','sy','ye','om','qa','kw','bh','ge','am','az','ps',
+]);
 const REGION_DEFS = [
   { key: 'us',    label: 'USA',           match: c => c === 'us' },
   { key: 'ca',    label: 'Canada',        match: c => c === 'ca' },
@@ -405,6 +416,7 @@ const REGION_DEFS = [
   { key: 'au',    label: 'Australia',     match: c => c === 'au' },
   { key: 'latam', label: 'Latin America', match: c => LATAM_CODES.has(c) },
   { key: 'europe',label: 'Europe',        match: c => EUROPE_CODES.has(c) },
+  { key: 'asia',  label: 'Asia',          match: c => ASIA_CODES.has(c) },
 ];
 // A player's ranking rating: the higher of their 1v1 Console / Team
 // Console ratings, whichever they have — "top Team and 1v1 elos when
