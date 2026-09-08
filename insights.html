@@ -1102,25 +1102,42 @@ function renderWeeklyReport(report) {
       <p class="sub-desc">+${g.growth1v1.toLocaleString()} 1v1 / +${g.growthTeam.toLocaleString()} Team since last report · this week: ${g.window1v1.toLocaleString()} 1v1, ${g.windowTeam.toLocaleString()} Team${g.lowActivityCaveat ? ' — <b>note:</b> this looks low for the tracked pool, likely a data-refresh lag rather than an real activity drop' : ''}</p>
     </div>`;
 
+  const eloVal = v => v == null ? '—' : v.toLocaleString();
+  const eloChange = v => v == null ? '—' : `${v > 0 ? '+' : ''}${v.toLocaleString()}`;
   const mostGames = `
     <div class="weekly-section">
       <h3>Players With the Most Games This Week</h3>
+      <p class="sub-desc">Finishing Elo and net change (this window) per ladder — Team Δ reads "—" until a prior-week Team-rating snapshot exists to diff against.</p>
       ${weeklyTable(
-        [{ label: 'Player' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }],
-        report.mostGames.map(p => [wLink(p.name, p.profileId), p.games.toLocaleString(), weeklyPct(p.winRate)])
+        [{ label: 'Player' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }, { label: '1v1 Elo', num: true }, { label: '1v1 Δ', num: true }, { label: 'Team Elo', num: true }, { label: 'Team Δ', num: true }],
+        report.mostGames.map(p => [wLink(p.name, p.profileId), p.games.toLocaleString(), weeklyPct(p.winRate), eloVal(p.elo1v1), eloChange(p.elo1v1Change), eloVal(p.eloTeam), eloChange(p.eloTeamChange)])
       )}
     </div>`;
 
+  // Schema changed 2026-09-07: older reports carry "rivalries" with a
+  // per-pair recordThisWeek/gamesThisWeek; newer ones carry "rivalryUpdates"
+  // (gamesThisWindow only, no per-pair W-L split) plus a standalone
+  // "rivalryOfWeek" callout. Support both so the archive dropdown still
+  // renders older weeks correctly.
+  const rivalryRows = report.rivalryUpdates || report.rivalries || [];
+  const usesWindowSchema = !!report.rivalryUpdates;
+  const rivalryOfWeekHtml = report.rivalryOfWeek ? `
+      <div class="weekly-highlight" style="margin-bottom:12px">
+        <b>Rivalry of the week:</b> ${wLink(report.rivalryOfWeek.nameA, report.rivalryOfWeek.idA)} vs ${wLink(report.rivalryOfWeek.nameB, report.rivalryOfWeek.idB)} — ${report.rivalryOfWeek.gamesThisWindow.toLocaleString()} games this window, record ${report.rivalryOfWeek.record}
+      </div>` : '';
   const rivalries = `
     <div class="weekly-section">
       <h3>Rivalries</h3>
       <p class="sub-desc">1v1 pairs with at least 3 games together, ranked by whoever played each other most recently — a constantly-updating list rather than a fixed all-time top 5.</p>
+      ${rivalryOfWeekHtml}
       ${weeklyTable(
         [{ label: 'Rivalry' }, { label: 'All-Time Record', num: true }, { label: 'This Week', num: true }],
-        (report.rivalries || []).map(r => [
+        rivalryRows.map(r => [
           `${wLink(r.nameA, r.idA)} vs ${wLink(r.nameB, r.idB)}`,
           r.record,
-          r.recordThisWeek ? `${r.recordThisWeek} (${r.gamesThisWeek})` : 'quiet week',
+          usesWindowSchema
+            ? (r.gamesThisWindow ? `+${r.gamesThisWindow.toLocaleString()}` : 'quiet week')
+            : (r.recordThisWeek ? `${r.recordThisWeek} (${r.gamesThisWeek})` : 'quiet week'),
         ])
       )}
     </div>`;
@@ -1149,11 +1166,11 @@ function renderWeeklyReport(report) {
     <div class="weekly-section">
       <h3>Civ Popularity This Week</h3>
       <p class="sub-desc">Most picked</p>
-      ${weeklyTable([{ label: 'Civ' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }], cp.topPicked.map(c => [c.civ, c.games.toLocaleString(), weeklyPct(c.winRate)]))}
+      ${weeklyTable([{ label: 'Civ' }, { label: 'Games', num: true }, { label: 'Pick Rate', num: true }, { label: 'Win Rate', num: true }], cp.topPicked.map(c => [c.civ, c.games.toLocaleString(), weeklyPct(c.pickRate), weeklyPct(c.winRate)]))}
       <p class="sub-desc" style="margin-top:12px">Highest win rate</p>
-      ${weeklyTable([{ label: 'Civ' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }], cp.topWinRate.map(c => [c.civ, c.games.toLocaleString(), weeklyPct(c.winRate)]))}
-      <p class="sub-desc" style="margin-top:12px">Biggest movers vs. last week</p>
-      ${weeklyTable([{ label: 'Civ' }, { label: 'Change', num: true }, { label: 'Now' }, { label: 'Prior' }], cp.biggestMovers.map(c => [c.civ, `${c.pctPointChange >= 0 ? '+' : ''}${c.pctPointChange.toFixed(1)}pp`, weeklyPct(c.nowShare), weeklyPct(c.priorShare)]))}
+      ${weeklyTable([{ label: 'Civ' }, { label: 'Games', num: true }, { label: 'Pick Rate', num: true }, { label: 'Win Rate', num: true }], cp.topWinRate.map(c => [c.civ, c.games.toLocaleString(), weeklyPct(c.pickRate), weeklyPct(c.winRate)]))}
+      <p class="sub-desc" style="margin-top:12px">Biggest pick-rate movers vs. last week — gainers first, losers last</p>
+      ${weeklyTable([{ label: 'Civ' }, { label: 'Pick Rate Δ', num: true }, { label: 'Now (Pick Rate)' }, { label: 'Prior (Pick Rate)' }], cp.biggestMovers.map(c => [c.civ, `${c.pctPointChange >= 0 ? '+' : ''}${c.pctPointChange.toFixed(2)}pp`, weeklyPct(c.nowShare), weeklyPct(c.priorShare)]))}
     </div>`;
 
   const bm = report.biggestMovers;
