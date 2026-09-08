@@ -240,7 +240,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.85</div>
+  <div class="version">v0.86</div>
 </div>
 
 <script>
@@ -3906,6 +3906,14 @@ function chooseOpeningSequence(stages, civ, huntConfig, mapId = 'arabia') {
   // first place. Documented here rather than silently coincidental.
 
   const needsStone = stages.some(s => s.units.some(u => buildingChainItems(u.line.building, civ, new Set()).some(it => (it.cost?.stone || 0) > 0)));
+  // Real players sending 2-3 villagers to a Castle's 650 stone don't wait
+  // until Castle Age hits to start — see this same constant's original,
+  // fuller comment (now removed) at the old module-level BG_STONE_SEQUENCE
+  // definition this replaced during the Phase 1 food redesign. Was left
+  // completely undefined after that redesign (a real regression — any
+  // stone-needing target, e.g. any Castle-trained Unique Unit, crashed
+  // chooseOpeningSequence with a ReferenceError) until caught here.
+  const BG_STONE_SLOTS = 3;
   const stoneSlots = needsStone ? BG_STONE_SLOTS : 0;
 
   // Gurjaras: "Start with 2 extra Forage Bushes" — now a REAL quantity
