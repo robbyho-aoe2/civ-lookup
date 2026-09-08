@@ -1250,8 +1250,8 @@ function snlEmptyState() {
       <p class="weekly-empty">${soon}</p>
     </div>
     <div class="weekly-section">
-      <h3>Ratstacks — Repeat Squads</h3>
-      <p class="sub-desc">Duos, trios, and full-team stacks that queued together most this weekend.</p>
+      <h3>Ratstacks</h3>
+      <p class="sub-desc">Players who repeatedly queued together as teammates this weekend, regardless of match size.</p>
       <p class="weekly-empty">${soon}</p>
     </div>`;
 }
@@ -1278,11 +1278,11 @@ function renderSnlReport(report) {
   const rs = report.ratstacks || {};
   const squadTable = (label, rows) => `
       <p class="sub-desc" style="margin-top:12px">${label}</p>
-      ${weeklyTable([{ label: 'Squad' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }], (rows || []).map(r => [r.names.map((n, i) => wLink(n, r.profileIds?.[i])).join(' + '), r.games.toLocaleString(), weeklyPct(r.winRate)]))}`;
+      ${weeklyTable([{ label: 'Players' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }], (rows || []).map(r => [r.names.map((n, i) => wLink(n, r.profileIds?.[i])).join(' + '), r.games.toLocaleString(), weeklyPct(r.winRate)]))}`;
   const ratstacks = `
     <div class="weekly-section">
-      <h3>Ratstacks — Repeat Squads</h3>
-      <p class="sub-desc">Duos, trios, and full-team stacks that queued together most this weekend.</p>
+      <h3>Ratstacks</h3>
+      <p class="sub-desc">Players who repeatedly queued together as teammates this weekend, regardless of match size.</p>
       ${squadTable('Duos', rs.duos)}
       ${squadTable('Trios', rs.trios)}
       ${squadTable('Quads', rs.quads)}
