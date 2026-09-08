@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.16</div>
+    <div class="version">v2.17</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1935,6 +1935,10 @@ const MANUAL_ADJUSTMENTS = {
   Japanese: [{ arch:'Infantry', pts:1, note:'Infantry attacks 33% faster — exceptional value (+3 pts total)' }],
   Hindustanis: [{ arch:'Eco', pts:2, note:'Villagers cost -8/13/18/23% per Age — exceptional value (major production lead)' }],
   Armenians: [{ arch:'Eco', pts:2, note:'Fortified Church free Relic — sustained gold generation advantage' }],
+  // Saxons' free resources on every Mill/Lumber Camp/Mining Camp built is
+  // treated as exceptionally strong — worth +6 total instead of the
+  // standard +2 (site owner's own call, 2026-09-08).
+  Saxons: [{ arch:'Eco', pts:4, note:'Mills, Lumber Camps, and Mining Camps provide +50 food and +10 stone when built — exceptional value (+6 pts total)' }],
 };
 
 
