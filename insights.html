@@ -344,6 +344,21 @@ async function loadAndRender() {
       const peakB = b?.peaks?.['1v1 PC']?.peak ?? -1;
       crossplayDropIds.add(peakA >= peakB ? idB : idA);
     });
+    // Same known-duplicate pairs, but the Region insight ranks by console
+    // rating (not PC crossplay peak) — reusing crossplayDropIds' own
+    // PC-peak tie-break can pick the account with the LOWER console rating,
+    // which can also report a different (wrong) country than the one
+    // actually kept, silently vanishing a real person from every region
+    // instead of just deduping them to one entry. Tie-break independently
+    // here by whichever account has the higher bestConsoleRating instead.
+    const regionDropIds = new Set(CROSSPLAY_EXCLUDE_IDS);
+    CROSSPLAY_DEDUP_PAIRS.forEach(([idA, idB]) => {
+      const a = consolePlayers.find(p => p.profileId === idA);
+      const b = consolePlayers.find(p => p.profileId === idB);
+      const ra = (a && bestConsoleRating(a)?.rating) ?? -1;
+      const rb = (b && bestConsoleRating(b)?.rating) ?? -1;
+      regionDropIds.add(ra >= rb ? idB : idA);
+    });
 
     const crossplayRows = consolePlayers
       .filter(p => p.peaks && p.peaks['1v1 PC'] && p.peaks['1v1 PC'].peak != null)
@@ -372,7 +387,7 @@ async function loadAndRender() {
       pc: squadScope(squadsData.pc),
     };
 
-    render(content, binEntries, stats, bracketAgg, civsData, crossplayRows, squads, meta.lastUpdated, squadsData.lastUpdated, consolePlayers);
+    render(content, binEntries, stats, bracketAgg, civsData, crossplayRows, squads, meta.lastUpdated, squadsData.lastUpdated, consolePlayers, regionDropIds);
   } catch (e) {
     content.innerHTML = `<div class="error">Could not load player data: ${e.message}</div>`;
   }
@@ -407,6 +422,12 @@ const ASIA_CODES = new Set([
   'kz','uz','tm','tj','kg',
   'sa','ae','il','tr','ir','iq','jo','lb','sy','ye','om','qa','kw','bh','ge','am','az','ps',
 ]);
+// All 54 African states — no sub-split requested, one continental bucket.
+const AFRICA_CODES = new Set([
+  'dz','ao','bj','bw','bf','bi','cv','cm','cf','td','km','cd','cg','ci','dj','eg','gq','er',
+  'sz','et','ga','gm','gh','gn','gw','ke','ls','lr','ly','mg','mw','ml','mr','mu','ma','mz',
+  'na','ne','ng','rw','st','sn','sc','sl','so','za','ss','sd','tz','tg','tn','ug','zm','zw','eh',
+]);
 const REGION_DEFS = [
   { key: 'us',    label: 'USA',           match: c => c === 'us' },
   { key: 'ca',    label: 'Canada',        match: c => c === 'ca' },
@@ -416,6 +437,7 @@ const REGION_DEFS = [
   { key: 'au',    label: 'Australia',     match: c => c === 'au' },
   { key: 'latam', label: 'Latin America', match: c => LATAM_CODES.has(c) },
   { key: 'europe',label: 'Europe',        match: c => EUROPE_CODES.has(c) },
+  { key: 'africa',label: 'Africa',        match: c => AFRICA_CODES.has(c) },
   { key: 'asia',  label: 'Asia',          match: c => ASIA_CODES.has(c) },
 ];
 // A player's ranking rating: the higher of their 1v1 Console / Team
@@ -430,7 +452,7 @@ function bestConsoleRating(p) {
   return r1 >= rt ? { rating: r1, ladder: '1v1 Console' } : { rating: rt, ladder: 'Team Console' };
 }
 
-function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows, squads, metaLastUpdated, squadsLastUpdated, consolePlayers) {
+function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows, squads, metaLastUpdated, squadsLastUpdated, consolePlayers, regionDropIds) {
   content.innerHTML = `
     <section id="weekly" class="card">
       <h2>Weekly Recap</h2>
@@ -1135,6 +1157,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
   const regionRows = {};
   REGION_DEFS.forEach(def => {
     regionRows[def.key] = consolePlayers
+      .filter(p => !regionDropIds.has(p.profileId))
       .filter(p => p.country && def.match(p.country))
       .map(p => ({ ...p, best: bestConsoleRating(p) }))
       .filter(p => p.best)
