@@ -240,7 +240,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.88</div>
+  <div class="version">v0.89</div>
 </div>
 
 <script>
@@ -2524,7 +2524,20 @@ const DATA = {
           "pop": 1
         }
       ],
-      "ecoBonuses": [],
+      "ecoBonuses": [
+        {
+          "type": "builder-speed-pct",
+          "value": 30,
+          "note": "Builders work 30% faster -- a real construction-TIME bonus (multiBuilderTime), unscoped: reaches every real building this tool constructs, Castle/TC included, unlike every other civ's building bonus which only discounts resource cost"
+        },
+        {
+          "type": "tech-cost-pct",
+          "building": "Blacksmith",
+          "resource": "gold",
+          "value": 100,
+          "note": "Blacksmith upgrades cost no gold -- zeroes only the gold component of every real Blacksmith tech (Forging/Iron Casting/Blast Furnace, the 3 armor lines, Fletching/Bodkin Arrow/Bracer, the 3 archer-armor lines, Gambesons), food/wood components (if any) unaffected"
+        }
+      ],
       "unavailableUnitLines": [
         "eagle-line",
         "camel-line",
@@ -3502,7 +3515,7 @@ function buildingChainItems(buildingName, civ, haveSet) {
   const def = buildingName === 'Castle' ? DATA.castle : DATA.productionBuildings[buildingName];
   if (!def) return [];
   haveSet.add(buildingName);
-  return [{ name: buildingName, cost: costForCiv(def.cost, civ, buildingName), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(buildingName)), age: def.minAge, builders: buildersForBuilding(buildingName) }];
+  return [{ name: buildingName, cost: costForCiv(def.cost, civ, buildingName), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(buildingName), civ), age: def.minAge, builders: buildersForBuilding(buildingName) }];
 }
 
 // Simulates constant villager production: new villagers are born at a fixed
@@ -4458,7 +4471,17 @@ const CASTLE_BUILDERS = 10;
 // Blacksmith) — see MARKET_BUILDERS below and buildersForBuilding.
 const BUILDING_BUILDERS = 1;
 const MARKET_BUILDERS = 2;
-function multiBuilderTime(baseSeconds, n) { return (3 * baseSeconds) / (n + 2); }
+// Spanish: "Builders work 30% faster" — a real construction-TIME bonus,
+// distinct from every other civ's building-cost discounts (Bulgarians/
+// Malians/Incas/Britons/Teutons) which only touch resource cost, never
+// speed. Applies uniformly to every real construction site in this file
+// (all of which already route through multiBuilderTime) — Castle and TC
+// included, matching the real, unscoped in-game bonus.
+function builderSpeedMult(civ) {
+  const b = (civ?.ecoBonuses || []).find(x => x.type === 'builder-speed-pct');
+  return b ? 1 + b.value / 100 : 1;
+}
+function multiBuilderTime(baseSeconds, n, civ) { return (3 * baseSeconds) / (n + 2) / builderSpeedMult(civ); }
 function buildersForBuilding(name) {
   if (name === 'Castle') return CASTLE_BUILDERS;
   if (name === 'Market') return MARKET_BUILDERS;
@@ -4550,7 +4573,7 @@ function stageMandatoryItems(targets, civ, allIn, haveSet, fromAgeIdx, extraItem
         const extra = {
           name: line.building,
           cost: RES.reduce((c, r) => { c[r] = (perCost[r] || 0) * extraCount; return c; }, {}),
-          queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(line.building)),
+          queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(line.building), civ),
           age: def.minAge,
           builders: buildersForBuilding(line.building),
         };
@@ -4592,7 +4615,7 @@ function stageMandatoryItems(targets, civ, allIn, haveSet, fromAgeIdx, extraItem
     if (ageIndex(age) > targetAgeIdx || ageIndex(age) <= fromAgeIdx) return;
     fillerBuildingsNeeded(age, civ, baselineVillagers, haveSet).forEach(name => {
       const def = DATA.productionBuildings[name];
-      const item = { name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name)), age: def.minAge, builders: buildersForBuilding(name) };
+      const item = { name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name), civ), age: def.minAge, builders: buildersForBuilding(name) };
       deferIfEarly(item);
       items.push(item);
     });
@@ -5517,7 +5540,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           if (ageIndex(age) > requiredExtraTcAgeIdx || ageIndex(age) <= reachedAgeIdx) return;
           fillerBuildingsNeeded(age, civ, genericVillagers, scratchHaveSet).forEach(name => {
             const def = DATA.productionBuildings[name];
-            fillerItems.push({ name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name)), age: def.minAge, deferToEnd: true, builders: buildersForBuilding(name) });
+            fillerItems.push({ name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name), civ), age: def.minAge, deferToEnd: true, builders: buildersForBuilding(name) });
           });
         });
         // A Villager target's own age-up (if it happens at all) is decided
@@ -5569,7 +5592,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         if (ageIndex('Castle') > reachedAgeIdx) {
           fillerBuildingsNeeded('Castle', civ, genericVillagers2, scratchHaveSet2).forEach(name => {
             const def = DATA.productionBuildings[name];
-            fillerItems2.push({ name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name)), age: def.minAge, deferToEnd: true, builders: buildersForBuilding(name) });
+            fillerItems2.push({ name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name), civ), age: def.minAge, deferToEnd: true, builders: buildersForBuilding(name) });
           });
         }
         const castleAgeItems = mergeWithAgeUps(fillerItems2, ageUpPending('Feudal', 'Castle', civ));
@@ -5613,7 +5636,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           const item = {
             name: k === 1 ? 'Town Center' : `${k}x Town Center`,
             cost: RES.reduce((c, r) => { c[r] = perCost[r] * k; return c; }, {}),
-            queueSeconds: line.isVillager ? multiBuilderTime(DATA.townCenter.buildTimeSeconds, TC_BUILDERS) : DATA.townCenter.buildTimeSeconds,
+            queueSeconds: multiBuilderTime(DATA.townCenter.buildTimeSeconds, line.isVillager ? TC_BUILDERS : 1, civ),
             age: DATA.townCenter.minAge,
             builders: line.isVillager ? TC_BUILDERS : 1,
           };
@@ -5656,7 +5679,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // there is for Town Centers).
       if (sheepMillBonus && cur.millExtra < sheepMillBonus.maxExtraMills) {
         const millCost = structureForResource('food', civ).cost.wood;
-        const item = { name: `${civ?.millName || 'Mill'} (Sheep)`, cost: { food: 0, wood: millCost, gold: 0, stone: 0 }, queueSeconds: multiBuilderTime(DATA.productionBuildings['Mill'].buildTimeSeconds, buildersForBuilding('Mill')), age: DATA.productionBuildings['Mill'].minAge, builders: buildersForBuilding('Mill') };
+        const item = { name: `${civ?.millName || 'Mill'} (Sheep)`, cost: { food: 0, wood: millCost, gold: 0, stone: 0 }, queueSeconds: multiBuilderTime(DATA.productionBuildings['Mill'].buildTimeSeconds, buildersForBuilding('Mill'), civ), age: DATA.productionBuildings['Mill'].minAge, builders: buildersForBuilding('Mill') };
         const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc, effectiveVillagerFoodCost(civ, effectiveAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ));
         if (r) {
           const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra + 1, cur.castleAdvanced);
