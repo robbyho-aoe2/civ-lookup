@@ -272,7 +272,7 @@ async function fetchLivePlayer(id) {
   });
 
   return {
-    entry: { name: profile.name, profileId: numId, group: null, ratings, peaks, live: true },
+    entry: { name: profile.name, profileId: numId, group: null, ratings, peaks, live: true, countryIcon: profile.countryIcon || null, countryName: profile.countryName || null },
     player: { name: profile.name, profileId: numId, group: null, ladders },
   };
 }
@@ -431,7 +431,7 @@ function render(content, entry, player) {
     <div class="card">
       <div class="player-hero">
         <div>
-          <div class="player-name">${entry.name}</div>
+          <div class="player-name">${entry.countryIcon ? `<span title="${entry.countryName || ''}">${entry.countryIcon}</span> ` : ''}${entry.name}</div>
           <div class="player-badges" id="player-badges"></div>
         </div>
       </div>
