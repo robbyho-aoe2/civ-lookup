@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.12</div>
+    <div class="version">v2.13</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1063,6 +1063,14 @@ const LONGSHIP_SENTINEL_ID = 900001;
 const MOUNTED_CROSSBOWMAN_SENTINEL_ID = 900002;
 const MOUNTED_CROSSBOWMAN_EXTRA_CIVS = []; // TODO: fill in once known
 
+/* Cranequins — Mounted Crossbowman's own Imperial-age upgrade tech (per the
+   site owner, 2026-09-08), same "real ID not published yet" situation as
+   Mounted Crossbowman itself — no match anywhere in the cached aoe2techtree
+   data.json (which predates The Viking Sagas entirely, confirmed: 53 civs,
+   no Varangians). Placeholder sentinel, added to civData alongside
+   MOUNTED_CROSSBOWMAN_SENTINEL_ID for the same civs. */
+const CRANEQUINS_SENTINEL_ID = 900003;
+
 /* Varangian Guard — Danes/Saxons/Varangians' shared Barracks regional unit
    (The Viking Sagas, 2026-09-22), named for all three, not Varangians-
    exclusive despite the name (both Danes' AND Varangians' own CB text
@@ -1512,10 +1520,21 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
   {emoji:'🎯',icon:'cavalry_archer',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras',...MOUNTED_CROSSBOWMAN_EXTRA_CIVS],items:[
-    {t:'unit',id:474,extra:[...XIANBEI_IDS,...ELE_ARCHER_IDS,2569,2571]},
+    // Mounted Crossbowman folded in here (not EXTRA_UU_BONUS) because it's a
+    // genuine tier-REPLACEMENT for Danes/Saxons/Varangians, who have no real
+    // Cavalry Archer at all — same treatment as Xianbei Raider/Elephant
+    // Archer/Bolas Rider above, per the site owner (2026-09-08): "steppe
+    // lancers are being shown in cavalry, but mounted crossbowmen are being
+    // shown as +1 bonus... we need to clarify and get consistency
+    // throughout." EXTRA_UU_BONUS is for units that are ADDITIVE (the civ
+    // keeps its normal unit too, e.g. Mongols' Mangudai) — Mounted
+    // Crossbowman isn't that, so it doesn't belong there. Its own Imperial
+    // upgrade, Cranequins, is a separate standalone tech item below.
+    {t:'unit',id:474,extra:[...XIANBEI_IDS,...ELE_ARCHER_IDS,2569,2571,MOUNTED_CROSSBOWMAN_SENTINEL_ID]},
     {t:'tech',id:435},{t:'tech',id:39},{t:'tech',id:437},{t:'tech',id:436},{t:'tech',id:47},
     {t:'tech',id:199},{t:'tech',id:200},{t:'tech',id:201},
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
+    {t:'tech',id:CRANEQUINS_SENTINEL_ID},
   ]},
   {emoji:'⚔️',icon:'cavalry',label:'Cavalry',bonusKey:'Cavalry',restrictTo:['Armenians','Bengalis','Berbers','Bohemians','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Dravidians','Ethiopians','Franks','Georgians','Goths','Gurjaras','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Malay','Malians','Magyars','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu'],items:[
     {t:'unit',id:[569,1813],extra:[1946,2568,1753,558]}, // Paladin — extra covers Persians' Savar (replaces Paladin entirely for them, not additive)
@@ -1689,7 +1708,12 @@ const EXTRA_UU_BONUS = {
     { ids:[1126], civs:['Burmese'], note:'Arambai — mounted thrown-weapon skirmisher' },
     { ids:[1231], civs:['Cumans'], note:'Kipchak — mounted raider' },
     { ids:[11], civs:['Mongols'], note:'Mangudai — elite mounted archer' },
-    { ids:[MOUNTED_CROSSBOWMAN_SENTINEL_ID], civs:['Danes','Saxons','Varangians',...MOUNTED_CROSSBOWMAN_EXTRA_CIVS], note:'Mounted Crossbowman — shared Viking Sagas regional unit' },
+    // Mounted Crossbowman moved OUT of this bucket (2026-09-08) — it's a
+    // true Cavalry-Archer-line replacement for Danes/Saxons/Varangians (no
+    // real Cavalry Archer at all for them), not an additive bonus unit like
+    // the others above. Now folded into CIV_ARCHETYPES' Cavalry Archer
+    // item's own `extra` array instead, same treatment as Xianbei Raider/
+    // Elephant Archer/Bolas Rider — see that item's own comment.
   ],
   Cavalry: [
     { ids:[1655], civs:['Burgundians'], note:'Coustillier — charging shock cavalry' },
@@ -2203,11 +2227,36 @@ const VIKING_SAGAS_EXCLUDE_NAMES = {
    and the base list's own header already flags that Varangians' Cavalry-
    and-Naval focus was expected to diverge more than Danes'/Saxons' did. */
 const VARANGIANS_EXTRA_EXCLUDE_NAMES = {
-  units: ['Arbalester', 'Champion', 'Siege Onager'],
+  // Rocket Cart/Heavy Rocket Cart: real gap found 2026-09-08 — neither name
+  // was ever in the shared base list NOR here, so the unfiltered
+  // all-other-civs union silently granted them to Varangians (nothing in
+  // UU_CIV_MAP claims those IDs as some other civ's OWN unique unit either).
+  // Confirmed directly by the site owner: Varangians do NOT have these.
+  // This also fixes a knock-on bug: Siege Onager's own archetype item
+  // (`{t:'unit',id:588,extra:[1907]}`) was scoring Varangians as "has Siege
+  // Onager" via that same Heavy Rocket Cart id (1907) in its `extra`
+  // equivalence, even though Siege Onager is separately, correctly
+  // excluded below.
+  units: ['Arbalester', 'Champion', 'Siege Onager', 'Rocket Cart', 'Heavy Rocket Cart'],
   techs: ['Thumb Ring', 'Block Printing', 'Redemption', 'Heresy', 'Sanctity', 'Keep', 'Arrowslits', 'Sappers', 'Hoardings'],
 };
-// Present for Varangians despite being in the shared base's own exclude list.
-const VARANGIANS_INCLUDE_NAMES = { techs: ['Blast Furnace'] };
+// Present for Varangians despite being in the shared base's own exclude
+// list. Fast Fire Ship and Fervor confirmed directly by the site owner
+// (2026-09-08) — Varangians DO get both.
+const VARANGIANS_INCLUDE_NAMES = { units: ['Fast Fire Ship'], techs: ['Blast Furnace', 'Fervor'] };
+/* Danes-specific corrections, confirmed directly by the site owner
+   (2026-09-08) — same "layered on top of the shared base" shape as
+   Varangians' own block above. Guilds has a real TECH_IDS entry (15) but
+   isn't wired into any CIV_ARCHETYPES item yet (not scored anywhere
+   regardless of civ), so excluding it here doesn't change anything visible
+   yet — kept for correctness/future-proofing once it IS wired up. */
+const DANES_EXTRA_EXCLUDE_NAMES = {
+  units: ['Carrack', 'Arbalester', 'Hussar'],
+  techs: ['Two-Man Saw', 'Keep', 'Architecture', 'Guilds'],
+};
+// Blast Furnace and Fervor: present for Danes despite being in the shared
+// base's own exclude list, same divergence Varangians already has.
+const DANES_INCLUDE_NAMES = { techs: ['Blast Furnace', 'Fervor'] };
 function resolveIds(names, idMap) {
   const out = [];
   names.forEach(name => {
@@ -2222,9 +2271,15 @@ const VIKING_SAGAS_EXCLUDE = {
   techs: resolveIds(VIKING_SAGAS_EXCLUDE_NAMES.techs, TECH_IDS),
 };
 const VARANGIANS_EXCLUDE = {
-  units: [...VIKING_SAGAS_EXCLUDE.units, ...resolveIds(VARANGIANS_EXTRA_EXCLUDE_NAMES.units, UNIT_IDS)],
+  units: [...VIKING_SAGAS_EXCLUDE.units, ...resolveIds(VARANGIANS_EXTRA_EXCLUDE_NAMES.units, UNIT_IDS)]
+    .filter(id => !resolveIds(VARANGIANS_INCLUDE_NAMES.units, UNIT_IDS).includes(id)),
   techs: [...VIKING_SAGAS_EXCLUDE.techs, ...resolveIds(VARANGIANS_EXTRA_EXCLUDE_NAMES.techs, TECH_IDS)]
     .filter(id => !resolveIds(VARANGIANS_INCLUDE_NAMES.techs, TECH_IDS).includes(id)),
+};
+const DANES_EXCLUDE = {
+  units: [...VIKING_SAGAS_EXCLUDE.units, ...resolveIds(DANES_EXTRA_EXCLUDE_NAMES.units, UNIT_IDS)],
+  techs: [...VIKING_SAGAS_EXCLUDE.techs, ...resolveIds(DANES_EXTRA_EXCLUDE_NAMES.techs, TECH_IDS)]
+    .filter(id => !resolveIds(DANES_INCLUDE_NAMES.techs, TECH_IDS).includes(id)),
 };
 function applyManualNewCivData() {
   const realCivs = Object.keys(civData).filter(c => c !== 'Danes' && c !== 'Saxons' && c !== 'Varangians');
@@ -2257,14 +2312,15 @@ function applyManualNewCivData() {
   ['Traction Trebuchet', 'Xianbei Raider', 'Champi Warrior', 'Elite Champi Warrior', 'Fire Lancer', 'Elite Fire Lancer', 'Hei Guang Cavalry', 'Heavy Hei Guang Cavalry']
     .forEach(name => { const id = UNIT_IDS[name]; if (id != null) (Array.isArray(id) ? id : [id]).forEach(x => uniqueUnitIds.add(x)); });
   ['Danes', 'Saxons', 'Varangians'].forEach(civ => {
-    const exclude = civ === 'Varangians' ? VARANGIANS_EXCLUDE : VIKING_SAGAS_EXCLUDE;
+    const exclude = civ === 'Varangians' ? VARANGIANS_EXCLUDE : civ === 'Danes' ? DANES_EXCLUDE : VIKING_SAGAS_EXCLUDE;
     civData[civ] = {
       units: new Set([...allUnits].filter(id => !uniqueUnitIds.has(id) && !exclude.units.includes(id))),
       techs: new Set([...allTechs].filter(id => !exclude.techs.includes(id))),
     };
-    // Real units, no real IDs yet — see each sentinel's own comment above.
+    // Real units/techs, no real IDs yet — see each sentinel's own comment above.
     civData[civ].units.add(LONGSHIP_SENTINEL_ID);
     civData[civ].units.add(MOUNTED_CROSSBOWMAN_SENTINEL_ID);
+    civData[civ].techs.add(CRANEQUINS_SENTINEL_ID);
     civData[civ].units.add(VARANGIAN_GUARD_SENTINEL_ID);
     civData[civ].units.add(HEAVY_VARANGIAN_GUARD_SENTINEL_ID);
   });
