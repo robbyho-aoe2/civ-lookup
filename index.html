@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.14</div>
+    <div class="version">v2.15</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1068,8 +1068,12 @@ const MOUNTED_CROSSBOWMAN_EXTRA_CIVS = []; // TODO: fill in once known
    Mounted Crossbowman itself — no match anywhere in the cached aoe2techtree
    data.json (which predates The Viking Sagas entirely, confirmed: 53 civs,
    no Varangians). Placeholder sentinel, added to civData alongside
-   MOUNTED_CROSSBOWMAN_SENTINEL_ID for the same civs. */
-const CRANEQUINS_SENTINEL_ID = 900003;
+   MOUNTED_CROSSBOWMAN_SENTINEL_ID for the same civs.
+   900006, NOT 900003 — that value collides with JARL_SENTINEL_ID further
+   below (a real bug caught while adding the next two sentinels; harmless
+   in practice since Jarl lives in a `.units` Set and Cranequins in a
+   `.techs` Set, but fragile and confusing to leave, so renumbered). */
+const CRANEQUINS_SENTINEL_ID = 900006;
 
 /* Varangian Guard — Danes/Saxons/Varangians' shared Barracks regional unit
    (The Viking Sagas, 2026-09-22), named for all three, not Varangians-
@@ -1090,6 +1094,45 @@ const HEAVY_VARANGIAN_GUARD_SENTINEL_ID = 900005;
    per the site owner's request. Replace with the real ID once
    SiegeEngineers assigns one. */
 const JARL_SENTINEL_ID = 900003;
+
+/* Treadmill Crane and Siphons — real, EXISTING AoE2:DE techs that
+   SiegeEngineers/aoe2techtree's live feed simply doesn't track at all yet
+   (confirmed 2026-09-08 by searching the running page's own live-fetched
+   `techsById` directly — all 194 techs, no match under any name variant;
+   same count as the local cache, so this isn't a fetch failure, the
+   upstream project genuinely hasn't added these two). Unrelated to The
+   Viking Sagas — these are gaps in the wider roster's OWN data, not new-DLC
+   content. Site owner supplied real per-civ EXCLUSION lists directly (most
+   civs get both; these are who doesn't) — applied broadly across every
+   REAL (live-fetched) civ via applyBroadTechGaps() below, unlike the
+   sentinels above which only ever touch Danes/Saxons/Varangians' manually-
+   built civData. Deliberately NOT applied to Danes/Saxons/Varangians here —
+   the site owner scoped both lists as "besides the Viking Sagas civs,"
+   leaving their own status on these two unconfirmed; left un-added (scores
+   as "doesn't have") rather than guessed. Siphons: "adds explosive charge
+   attacks for the Fire Galley line when attacking ships" (site owner's own
+   description) — a Naval item. Treadmill Crane: an Eco item per the site
+   owner. */
+const TREADMILL_CRANE_SENTINEL_ID = 900007;
+const TREADMILL_CRANE_EXCLUDE_CIVS = ['Armenians','Bulgarians','Chinese','Cumans','Dravidians','Ethiopians','Franks','Goths','Hindustanis','Huns','Khitans','Khmer','Mongols','Persians','Romans','Shu','Sicilians','Slavs','Spanish','Teutons'];
+const SIPHONS_SENTINEL_ID = 900008;
+const SIPHONS_EXCLUDE_CIVS = ['Aztecs','Bulgarians','Burmese','Celts','Cumans','Ethiopians','Georgians','Gurjaras','Hindustanis','Huns','Incas','Japanese','Lithuanians','Magyars','Malians','Maya','Muisca','Poles','Romans','Slavs','Tatars','Tupi','Vietnamese','Wei'];
+/* Incendiaries — a THIRD gap in the same "SiegeEngineers hasn't caught up"
+   category, but the opposite shape from the two above: an Imperial-age
+   Naval tech requiring Siphons as a prerequisite ("Fire-Galley-line ships
+   detonate when sunk, dealing damage around them" — site owner's own
+   description) that only a SMALL, specific set of civs get, not "most
+   civs except these." Modeled as an INCLUDE list, not an exclude list. */
+const INCENDIARIES_SENTINEL_ID = 900009;
+const INCENDIARIES_INCLUDE_CIVS = ['Armenians','Bohemians','Burgundians','Dravidians','Goths','Italians','Jurchens','Khitans','Koreans','Persians','Saracens','Turks'];
+function applyBroadTechGaps() {
+  Object.keys(civData).forEach(civ => {
+    if (civ === 'Danes' || civ === 'Saxons' || civ === 'Varangians') return;
+    if (!TREADMILL_CRANE_EXCLUDE_CIVS.includes(civ)) civData[civ].techs.add(TREADMILL_CRANE_SENTINEL_ID);
+    if (!SIPHONS_EXCLUDE_CIVS.includes(civ)) civData[civ].techs.add(SIPHONS_SENTINEL_ID);
+    if (INCENDIARIES_INCLUDE_CIVS.includes(civ)) civData[civ].techs.add(INCENDIARIES_SENTINEL_ID);
+  });
+}
 
 /* Khitans replace Farms with Pastures, which have their own 3-tier upgrade
    chain (Livestock Husbandry / Enclosures / Grazing Grasslands) matching the
@@ -1579,6 +1622,7 @@ const CIV_ARCHETYPES = [
     {t:'unit',id:691,extra:[2633]},{t:'unit',id:420},{t:'unit',id:528},{t:'unit',id:539},{t:'unit',id:2628},
     {t:'tech',id:35},{t:'tech',id:34},{t:'tech',id:375},{t:'tech',id:374},{t:'tech',id:373},{t:'tech',id:47},
     {t:'tech',id:201},{t:'tech',id:68},{t:'tech',id:75},{t:'tech',id:907},
+    {t:'tech',id:SIPHONS_SENTINEL_ID},{t:'tech',id:INCENDIARIES_SENTINEL_ID},
   ]},
   {emoji:'✝',icon:'monk',label:'Monk',bonusKey:'Monastery',items:[
     {t:'unit',id:125},
@@ -1593,6 +1637,7 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:12,extra:[1012]},
     {t:'tech',id:221},{t:'tech',id:202},{t:'tech',id:203},
     {t:'tech',id:182},{t:'tech',id:279},
+    {t:'tech',id:15},{t:'tech',id:TREADMILL_CRANE_SENTINEL_ID},
   ]},
   {emoji:'🏰',icon:'defensive',label:'Defensive',bonusKey:'Defensive',items:[
     {t:'tech',id:379},{t:'tech',id:50},{t:'tech',id:51},
@@ -1955,6 +2000,7 @@ async function loadData() {
     const raw = await res.json();
     parseRaw(raw);
     applyManualNewCivData();
+    applyBroadTechGaps();
     dataLoaded = true;
     invalidateGradeCaches();
     render();
