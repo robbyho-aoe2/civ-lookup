@@ -240,7 +240,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.89</div>
+  <div class="version">v0.90</div>
 </div>
 
 <script>
@@ -2536,6 +2536,11 @@ const DATA = {
           "resource": "gold",
           "value": 100,
           "note": "Blacksmith upgrades cost no gold -- zeroes only the gold component of every real Blacksmith tech (Forging/Iron Casting/Blast Furnace, the 3 armor lines, Fletching/Bodkin Arrow/Bracer, the 3 archer-armor lines, Gambesons), food/wood components (if any) unaffected"
+        },
+        {
+          "type": "tech-gold-bonus",
+          "value": 20,
+          "note": "+20 gold for each technology researched -- user-confirmed scope: eco-line techs (Double-Bit Axe etc.), combat-tech checkboxes (Blacksmith/Stable/Archery Range/Monastery, Bloodlines included), mandatory tier upgrades (Spearman->Pikeman, a real priced technology in-game), and Loom. NOT Age-ups -- a structurally distinct action, explicitly excluded"
         }
       ],
       "unavailableUnitLines": [
@@ -3442,7 +3447,7 @@ function mergeWithAgeUps(goalItems, ageItems) {
 // accuracy for a Villager-boom age-up by not bundling filler buildings
 // with the age-up they were deferred for — don't re-duplicate this again,
 // reuse this instead.
-function resolveSequential(itemList, rates, villRate, startTime, startVills, pool, alloc, openingSequence, villagerFoodCost, farmWoodRatio) {
+function resolveSequential(itemList, rates, villRate, startTime, startVills, pool, alloc, openingSequence, villagerFoodCost, farmWoodRatio, techGoldPerTech) {
   let t = startTime, v = startVills, p = pool, a = { ...alloc };
   let ri = 0;
   while (ri < itemList.length) {
@@ -3463,6 +3468,14 @@ function resolveSequential(itemList, rates, villRate, startTime, startVills, poo
     const r = simulateItemReady(simItem, rates, villRate, t, v, p, openingSequence, a, villagerFoodCost, farmWoodRatio);
     if (!r) return null;
     t = r.time; v = r.vills; p = r.pool;
+    // Spanish: +20 gold per real technology in this resolved batch — see
+    // techGoldBonus's own comment. mergedItems (not simItem, which for an
+    // age-up bundle is a synthetic non-tech wrapper) is where techCount
+    // actually lives, summed the same way cost already is above.
+    if (techGoldPerTech) {
+      const techCount = mergedItems.reduce((s, it) => s + (it.techCount || 0), 0);
+      if (techCount > 0) p.gold += techCount * techGoldPerTech;
+    }
     RES.forEach(res => { a[res] += r.assigned[res]; });
     ri += mergedItems.length;
   }
@@ -4601,7 +4614,10 @@ function stageMandatoryItems(targets, civ, allIn, haveSet, fromAgeIdx, extraItem
       const tierDiscount = (civ?.ecoBonuses || []).find(b => b.type === 'tier-upgrade-cost-pct' && b.tierName === t.name);
       let cost = freeUpgrade ? { food: 0, wood: 0, gold: 0, stone: 0 } : costForCiv(t.upgradeCost, civ);
       if (tierDiscount) RES.forEach(r => { if (cost[r]) cost[r] = Math.round(cost[r] * (1 - tierDiscount.value / 100)); });
-      items.push({ name: `${line.tiers[i - 1].name} → ${t.name}`, cost, age: effectiveTierAge(t, civ) });
+      // Spanish: a real, priced technology in-game (just with no modeled
+      // research delay here) — counts toward "+20 gold per tech researched"
+      // same as any other tech (see techGoldBonus's own comment).
+      items.push({ name: `${line.tiers[i - 1].name} → ${t.name}`, cost, age: effectiveTierAge(t, civ), techCount: 1 });
     }
   });
 
@@ -4807,6 +4823,21 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
   let tcExtra = 0;
   let millExtra = 0;
   const sheepMillBonus = (civ?.ecoBonuses || []).find(b => b.type === 'sheep-mill-garrison-bonus');
+  // Spanish: "+20 gold for each technology researched" — ANY real tech,
+  // user-confirmed scope: eco-line techs (Double-Bit Axe etc.), combat-tech
+  // checkboxes (Blacksmith/Stable/Archery Range/Monastery, Bloodlines
+  // included), mandatory tier upgrades (Spearman->Pikeman — a real priced
+  // technology in-game, just with no modeled research delay here), and Loom
+  // — but explicitly NOT Age-ups (a structurally distinct item type in this
+  // file, `isAgeUp`, and user-confirmed excluded). Every real "a tech just
+  // got researched" item in this file is tagged `techCount:1` at its own
+  // construction site (grep `techCount:` for the full list) — this flows
+  // through resolveSequential/runSequential's existing per-resource cost-sum
+  // reduce (one more field summed the same way `cost` already is) so it
+  // survives being bundled into a deferred-items-plus-age-up merge without
+  // needing every construction site to also know how/when its own item will
+  // eventually get resolved.
+  const techGoldBonus = (civ?.ecoBonuses || []).find(b => b.type === 'tech-gold-bonus');
   // Tracks whether Loom has actually been bundled into the winning path yet
   // — for a non-Villager target it's set the instant the (unconditional,
   // once-per-plan) mandatory-prefix push below fires. For a Villager
@@ -4869,6 +4900,14 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence, cumAlloc, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(levels), civ));
       if (!r) { checkpoints.push({ label: `${simItem.name} — past 60 min, add more Town Centers`, blocked: true }); anyBlocked = true; ri += mergedItems.length; continue; }
       cursorTime = r.time; cursorVills = r.vills; pool = r.pool;
+      // Spanish: +20 gold per real technology in this resolved batch — see
+      // techGoldBonus's own comment above. mergedItems (not simItem, which
+      // for an age-up bundle is a synthetic non-tech wrapper) is where
+      // techCount actually lives.
+      if (techGoldBonus) {
+        const techCount = mergedItems.reduce((s, it) => s + (it.techCount || 0), 0);
+        if (techCount > 0) pool.gold += techCount * techGoldBonus.value;
+      }
       // Ethiopians (+100 food/+100 gold)/Dravidians (+200 wood): a flat
       // resource credit the instant an age-up completes — real, one-time
       // income landing exactly like the Tatars' per-TC sheep credit does,
@@ -5157,7 +5196,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // (Villager included), unlike the paid case below.
     if (stageResults.length === 0 && loomOn && !allIn && free.has('loom')) {
       const loom = DATA.ecoTechs.find(t => t.id === 'loom');
-      extraItems.push({ name: loom.name, cost: { food: 0, wood: 0, gold: 0, stone: 0 }, tcQueue: false, researchTime: 0, queueSeconds: 0, age: loom.age });
+      extraItems.push({ name: loom.name, cost: { food: 0, wood: 0, gold: 0, stone: 0 }, tcQueue: false, researchTime: 0, queueSeconds: 0, age: loom.age, techCount: 1 });
       loomResearched = true;
     }
     // Villager targets are excluded here — their own age-up (if any) isn't
@@ -5168,7 +5207,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // an end-of-plan fallback if that move never fires — see loomResearched.
     if (stageResults.length === 0 && loomOn && !allIn && !free.has('loom') && !line.isVillager) {
       const loom = DATA.ecoTechs.find(t => t.id === 'loom');
-      extraItems.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age });
+      extraItems.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age, techCount: 1 });
       loomResearched = true;
     }
     // A genuinely alternate path with one specific eco-tech forced in early
@@ -5184,7 +5223,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     if (stageResults.length === 0 && forcedEarlyEcoTechId && !free.has(forcedEarlyEcoTechId)) {
       const forced = DATA.ecoTechs.find(t => t.id === forcedEarlyEcoTechId);
       if (forced) {
-        extraItems.push({ name: forced.name, cost: costForCiv(forced.cost, civ), tcQueue: forced.tcQueue, researchTime: forced.researchTime, queueSeconds: forced.queueSeconds, deferToEnd: true, age: forced.age });
+        extraItems.push({ name: forced.name, cost: costForCiv(forced.cost, civ), tcQueue: forced.tcQueue, researchTime: forced.researchTime, queueSeconds: forced.queueSeconds, deferToEnd: true, age: forced.age, techCount: 1 });
         // Mark this tier as already-researched for the LATER eco-tech
         // search (which tracks its own levels[line] independently) — else
         // it would offer this exact same tier again as a move, researching
@@ -5230,7 +5269,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         // deferred item. This used to be silently skipped whenever `free`
         // matched, never modeled at all even when checked — fixed here.
         if (free.has(id)) {
-          extraItems.push({ name: t.name, cost: { food: 0, wood: 0, gold: 0, stone: 0 }, queueSeconds: 0, deferToEnd: true, age: t.age });
+          extraItems.push({ name: t.name, cost: { food: 0, wood: 0, gold: 0, stone: 0 }, queueSeconds: 0, deferToEnd: true, age: t.age, techCount: 1 });
           return;
         }
         // Gate the tech behind its own building actually existing first — a
@@ -5283,7 +5322,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         // civ today, so they're untouched by this bonus, same as before.
         const speedBonus = (civ?.ecoBonuses || []).find(b => b.type === 'unit-speed-pct' && b.lines.includes(u.line.id));
         const techTime = speedBonus ? t.queueSeconds / (1 + speedBonus.value / 100) : t.queueSeconds;
-        extraItems.push({ name: t.name, cost: techCost, queueSeconds: techTime, deferToEnd: true, age: t.age });
+        extraItems.push({ name: t.name, cost: techCost, queueSeconds: techTime, deferToEnd: true, age: t.age, techCount: 1 });
       });
     });
     const mandatoryItems = stageMandatoryItems(resolvedUnits.map(({ line, tierIdx, buildingCount }) => ({ line, tierIdx, buildingCount })), civ, allIn, haveSet, reachedAgeIdx, extraItems);
@@ -5483,16 +5522,32 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         // special-casing needed.
         const isFree = free.has(tech.id);
         const item = isFree
-          ? { name: tech.name, cost: { food: 0, wood: 0, gold: 0, stone: 0 }, tcQueue: false, researchTime: 0, queueSeconds: 0, age: tech.age }
-          : { name: tech.name, cost: costForCiv(tech.cost, civ), tcQueue: tech.tcQueue, researchTime: tech.researchTime, queueSeconds: tech.queueSeconds, age: tech.age };
+          ? { name: tech.name, cost: { food: 0, wood: 0, gold: 0, stone: 0 }, tcQueue: false, researchTime: 0, queueSeconds: 0, age: tech.age, techCount: 1 }
+          : { name: tech.name, cost: costForCiv(tech.cost, civ), tcQueue: tech.tcQueue, researchTime: tech.researchTime, queueSeconds: tech.queueSeconds, age: tech.age, techCount: 1 };
         const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc, effectiveVillagerFoodCost(civ, effectiveAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ));
         if (!r) return;
+        // Spanish: +20 gold the instant this real eco-tech line resolves —
+        // one move here is always exactly one technology, no merging needed
+        // (unlike the deferred/age-up-bundle case resolveSequential/
+        // runSequential handle). Applied to the SEARCH's own exploration
+        // state too, not just item.techCount's replay-time credit above —
+        // without this the search would systematically undervalue how much
+        // gold is really available along a Spanish path while deciding
+        // which moves are worth taking, biasing it away from the real
+        // optimum even though the final replayed numbers would still (via
+        // techCount) come out internally consistent on whichever path it
+        // happened to pick.
+        if (techGoldBonus) r.pool.gold += techGoldBonus.value;
         const nextLevels = { ...cur.levels, [id]: cur.levels[id] + 1 };
         const key = stateKey(nextLevels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, cur.castleAdvanced);
         const existing = finalized.get(key);
         if (existing && existing.time <= r.time) return;
         const nextAlloc = { ...cur.alloc };
         RES.forEach(res => { nextAlloc[res] += r.assigned[res]; });
+        // Wei's free-villager-per-tech bonus is applied only during replay
+        // (see the 'tech' move handling further down, pre-existing) — not
+        // here in the search's own exploration, matching how that bonus was
+        // already shipped; not revisited by this Spanish-focused change.
         const next = { levels: nextLevels, tcExtra: cur.tcExtra, millExtra: cur.millExtra, castleAdvanced: cur.castleAdvanced, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
         finalized.set(key, next);
         cameFrom.set(key, { fromKey: curKey, move: { type: 'tech', id, item } });
@@ -5557,10 +5612,10 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         const includesLoom = stageIdx === 0 && loomOn && !allIn && !free.has('loom') && !loomResearched;
         if (includesLoom) {
           const loom = DATA.ecoTechs.find(t => t.id === 'loom');
-          fillerItems.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age });
+          fillerItems.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age, techCount: 1 });
         }
         const ageItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], AGE_ORDER[requiredExtraTcAgeIdx], civ));
-        const resolved = resolveSequential(ageItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ));
+        const resolved = resolveSequential(ageItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ), techGoldBonus?.value);
         if (resolved) {
           // Reaching THIS age-up also means real Castle Age for every civ
           // except Cumans (whose requiredExtraTcAgeIdx is Feudal, not
@@ -5596,7 +5651,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           });
         }
         const castleAgeItems = mergeWithAgeUps(fillerItems2, ageUpPending('Feudal', 'Castle', civ));
-        const resolvedCastle = resolveSequential(castleAgeItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ));
+        const resolvedCastle = resolveSequential(castleAgeItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ), techGoldBonus?.value);
         if (resolvedCastle) {
           const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, true);
           const existing = finalized.get(key);
@@ -5925,7 +5980,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
   // ignore the time this just added.
   if (loomOn && !allIn && !free.has('loom') && !loomResearched) {
     const loom = DATA.ecoTechs.find(t => t.id === 'loom');
-    runSequential([{ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, age: loom.age }], ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra, reachedAgeIdx));
+    runSequential([{ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, age: loom.age, techCount: 1 }], ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra, reachedAgeIdx));
     loomResearched = true;
     stageResults.forEach(sr => { if (sr.stageNumber === stageResults[stageResults.length - 1].stageNumber) sr.finishTime = Math.max(sr.finishTime, cursorTime); });
   }
