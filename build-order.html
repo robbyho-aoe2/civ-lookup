@@ -240,7 +240,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.87</div>
+  <div class="version">v0.88</div>
 </div>
 
 <script>
@@ -1315,7 +1315,7 @@ const DATA = {
           "type": "resource-longevity-pct",
           "value": 20,
           "scope": "hunted",
-          "note": "Hunted animals (boar, deer/chickens) last 20% longer -- boar has no visible effect in this model since headcount, not real quantity, caps its usable duration (see ARABIA_FOOD_SOURCES' bounded sources); deer/chicken hunt window genuinely extends when a hunt strategy is selected"
+          "note": "Hunted animals (boar, deer/chickens) last 20% longer -- boar's fixed 4-lurer headcount can't represent this as a longer window (ARABIA_FOOD_SOURCES' bounded sources), so it's modeled as an equivalent +20% boar gather rate instead (same 4 workers, same real time, 20% more food out); deer/chicken hunt window genuinely extends in duration when a hunt strategy is selected. NOT sheep -- not a hunted animal."
         }
       ],
       "unavailableUnitLines": [
@@ -2032,7 +2032,7 @@ const DATA = {
           "type": "resource-longevity-pct",
           "value": 15,
           "scope": "all",
-          "note": "Resources last 15% longer -- sheep/boar have no visible effect in this model (bounded sources, capped by real headcount not quantity); berries and hunted-animal windows genuinely extend. The real gold/stone-mining-longevity half of this bonus is NOT modeled -- no stockpile/depletion tracking exists for those resources (a deliberate, already-established scope boundary, same as the rest of this real-food-quantity redesign)"
+          "note": "Resources last 15% longer -- sheep/boar's fixed headcount (2 shepherds/4 lurers, ARABIA_FOOD_SOURCES' bounded sources) can't represent this as a longer window, so it's modeled as an equivalent +15% gather rate instead (same workers, same real time, 15% more food out -- e.g. 8 sheep x 1.15 total food at the standard rate); berries and hunted-animal windows genuinely extend in duration. The real gold/stone-mining-longevity half of this bonus is NOT modeled -- no stockpile/depletion tracking exists for those resources (a deliberate, already-established scope boundary, same as the rest of this real-food-quantity redesign)"
         }
       ],
       "unavailableUnitLines": [
@@ -3938,19 +3938,28 @@ function chooseOpeningSequence(stages, civ, huntConfig, mapId = 'arabia') {
   // longer" — the long-blocked `resource-longevity-pct` design question is
   // resolved by this same real-quantity architecture: a longevity bonus is
   // just a totalFood multiplier, same mechanism Gurjaras' extra bushes
-  // already use. Real, but ONLY VISIBLE on elastic sources (berries, hunt)
-  // — sheep/boar are `bounded` (see ARABIA_FOOD_SOURCES/foodPhaseSlotCount
-  // above), meaning their slot count is fixed at real headcount regardless
-  // of totalFood, so a longevity bonus genuinely has no effect on them in
-  // this model (you can't usefully station more than ~2 shepherds/4 lurers
-  // no matter how long the animals last — the same honest limitation
-  // already accepted for Gurjaras' own sheep bonus). Maya's `scope:'all'`
-  // covers berries + hunt (its real gold/stone-mining-longevity half stays
-  // explicitly out of scope, same as this whole redesign's original plan).
-  // Goths' `scope:'hunted'` covers boar (a no-op, bounded) + hunt only —
-  // NOT berries, since berries are gathered, not hunted.
+  // already use, for ELASTIC sources (berries, hunt). For BOUNDED sources
+  // (sheep/boar) — headcount fixed at 2/4 real dedicated workers regardless
+  // of totalFood, per ARABIA_FOOD_SOURCES/foodPhaseSlotCount above, so a
+  // slot-count-based duration extension has no representable effect there
+  // — the mathematically equivalent translation (same 2/4 workers, same
+  // real time, 15/20% more food) is a proportional RATE increase instead,
+  // the exact mechanism Jurchens' no-decay-meat-pct already uses for this
+  // identical bounded-source problem (folded into seq.sheepMult/huntingMult
+  // below, not here — user-confirmed: "8 sheep x 1.15 total food ... using
+  // the standard starting/decay rates" is equivalent to a straight 1.15x
+  // rate multiplier when headcount and elapsed time are both held fixed).
+  // Maya's `scope:'all'` covers sheep + boar (via rate) + berries + hunt
+  // (via totalFood) — its real gold/stone-mining-longevity half stays
+  // explicitly out of scope, same as this whole redesign's original plan.
+  // Goths' `scope:'hunted'` covers boar (via rate) + hunt (via totalFood)
+  // only — NOT sheep (herded, not hunted) and NOT berries (gathered, not
+  // hunted).
   const longevityBonus = (civ?.ecoBonuses || []).find(b => b.type === 'resource-longevity-pct');
-  const berriesLongevityMult = longevityBonus?.scope === 'all' ? 1 + longevityBonus.value / 100 : 1;
+  const longevityRateMult = longevityBonus ? 1 + longevityBonus.value / 100 : 1;
+  const sheepLongevityMult = longevityBonus?.scope === 'all' ? longevityRateMult : 1;
+  const boarLongevityMult = longevityBonus && (longevityBonus.scope === 'all' || longevityBonus.scope === 'hunted') ? longevityRateMult : 1;
+  const berriesLongevityMult = longevityBonus?.scope === 'all' ? longevityRateMult : 1;
   const berriesSource = {
     ...mapSources.berries,
     totalFood: (mapSources.berries.totalFood + (extraBushBonus?.count || 0) * 125) * berriesLongevityMult,
@@ -4011,9 +4020,14 @@ function chooseOpeningSequence(stages, civ, huntConfig, mapId = 'arabia') {
   // chicken numbers earlier").
   const huntingBonus = (civ?.ecoBonuses || []).find(b => b.type === 'hunting-rate-pct');
   const noDecayBonus = (civ?.ecoBonuses || []).find(b => b.type === 'no-decay-meat-pct');
-  const huntingMult = (huntingBonus ? 1 + huntingBonus.value / 100 : 1) * (noDecayBonus ? 1 + noDecayBonus.value / 100 : 1);
+  // boarLongevityMult/sheepLongevityMult (Maya/Goths, see resource-
+  // longevity-pct block above) compose into the same two multipliers as
+  // Jurchens' no-decay bonus, for the identical reason: both are real
+  // "food lasts longer" effects on a bounded (fixed-headcount) source,
+  // translated into a rate increase since slot count can't represent it.
+  const huntingMult = (huntingBonus ? 1 + huntingBonus.value / 100 : 1) * (noDecayBonus ? 1 + noDecayBonus.value / 100 : 1) * boarLongevityMult;
   seq.huntingMult = huntingMult;
-  seq.sheepMult = noDecayBonus ? 1 + noDecayBonus.value / 100 : 1;
+  seq.sheepMult = (noDecayBonus ? 1 + noDecayBonus.value / 100 : 1) * sheepLongevityMult;
   // `huntConfig` is {animal:'deer'|'chicken'|'none', deerStrategy,
   // chickenStrategy, level} — `animal` is which one the MAP actually rolled
   // (Arabia gets one or the other, never both), while deerStrategy AND
