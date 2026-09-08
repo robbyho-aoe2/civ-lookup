@@ -128,6 +128,7 @@ th.num,td.num{text-align:center;font-family:var(--font-mono);}
 .low-sample{opacity:.45;}
 .civ-controls{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
 .civ-ladder-toggle{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.region-toggle{flex-wrap:wrap;overflow:visible;}
 #weekly-archive-select{background:var(--surf);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-size:12px;font-weight:600;margin-bottom:14px;font-family:inherit;}
 .weekly-section{margin-top:20px;}
 .weekly-section:first-child{margin-top:0;}
@@ -370,13 +371,53 @@ async function loadAndRender() {
       pc: squadScope(squadsData.pc),
     };
 
-    render(content, binEntries, stats, bracketAgg, civsData, crossplayRows, squads, meta.lastUpdated, squadsData.lastUpdated);
+    render(content, binEntries, stats, bracketAgg, civsData, crossplayRows, squads, meta.lastUpdated, squadsData.lastUpdated, consolePlayers);
   } catch (e) {
     content.innerHTML = `<div class="error">Could not load player data: ${e.message}</div>`;
   }
 }
 
-function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows, squads, metaLastUpdated, squadsLastUpdated) {
+// Country is a 2-letter code from the player's AoE2Companion profile
+// (aoe2companion's own "country"/"countryIcon"/"countryName" fields,
+// captured by the player-data pipeline). "Latin America" and "Europe" are
+// cultural/regional groupings, not exhaustive ISO lists — a real player
+// from a country missing here just won't show up in that bucket yet;
+// extend the Set if one turns up. Latin America deliberately excludes
+// Mexico (its own bucket, per the original ask) and non-Latin Guianas
+// (Guyana/Suriname/French Guiana — English/Dutch/French-speaking, not
+// culturally "Latin"). Europe deliberately excludes France and the UK
+// (both already their own buckets).
+const LATAM_CODES = new Set([
+  'ar','bo','br','cl','co','cr','cu','do','ec','sv','gt','hn','ni','pa','py','pe','uy','ve','pr',
+]);
+const EUROPE_CODES = new Set([
+  'de','es','it','nl','be','at','ch','se','no','dk','fi','pl','pt','ie','cz','gr','hu','ro','bg',
+  'hr','sk','si','lt','lv','ee','is','lu','mt','cy','ru','ua','by','rs','al','mk','ba','me','md',
+  'li','mc','sm','va','ad','xk',
+]);
+const REGION_DEFS = [
+  { key: 'us',    label: 'USA',           match: c => c === 'us' },
+  { key: 'ca',    label: 'Canada',        match: c => c === 'ca' },
+  { key: 'mx',    label: 'Mexico',        match: c => c === 'mx' },
+  { key: 'gb',    label: 'UK',            match: c => c === 'gb' },
+  { key: 'fr',    label: 'France',        match: c => c === 'fr' },
+  { key: 'au',    label: 'Australia',     match: c => c === 'au' },
+  { key: 'latam', label: 'Latin America', match: c => LATAM_CODES.has(c) },
+  { key: 'europe',label: 'Europe',        match: c => EUROPE_CODES.has(c) },
+];
+// A player's ranking rating: the higher of their 1v1 Console / Team
+// Console ratings, whichever they have — "top Team and 1v1 elos when
+// applicable" reduced to one sortable list per region rather than two.
+function bestConsoleRating(p) {
+  const r1 = p.ratings && p.ratings['1v1 Console'];
+  const rt = p.ratings && p.ratings['Team Console'];
+  if (r1 == null && rt == null) return null;
+  if (r1 == null) return { rating: rt, ladder: 'Team Console' };
+  if (rt == null) return { rating: r1, ladder: '1v1 Console' };
+  return r1 >= rt ? { rating: r1, ladder: '1v1 Console' } : { rating: rt, ladder: 'Team Console' };
+}
+
+function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows, squads, metaLastUpdated, squadsLastUpdated, consolePlayers) {
   content.innerHTML = `
     <section id="weekly" class="card">
       <h2>Weekly Recap</h2>
@@ -481,6 +522,16 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       <h2>Console Arabia vs. PC Overall — Biggest Discrepancies</h2>
       <p class="desc">Recency-weighted (90-day half-life, same as Form mode elsewhere) win rate for 1v1 Console on Arabia specifically vs. 1v1 PC overall across all maps — civs that swing hardest between the two, sorted by |difference|. A large negative gap usually means a civ that rewards precise micro/APM; positive means a simpler, bonus-driven civ that holds up better without it.${updatedLabel(civsData.lastUpdated)}</p>
       <div class="civ-table-wrap"><table class="civ-table" id="cvp-table"></table></div>
+    </section>
+
+    <section id="regions" class="card">
+      <h2>Top Console Players by Region</h2>
+      <p class="desc">Ranked by each player's higher rating between 1v1 Console and Team Console. Country is self-reported on the player's AoE2Companion profile — a player who's never set theirs won't show up anywhere here yet, and this fills in as more players do.${updatedLabel(metaLastUpdated)}</p>
+      <div class="civ-controls">
+        <div class="civ-ladder-toggle region-toggle" id="region-toggle"></div>
+      </div>
+      <div class="civ-table-wrap"><table class="civ-table" id="region-table"></table></div>
+      <div id="region-expand-row" style="text-align:center;margin-top:10px"></div>
     </section>
   `;
 
@@ -1066,6 +1117,61 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     });
   }
   renderCvpTable();
+
+  // ---- top console players by region ----
+  const regionRows = {};
+  REGION_DEFS.forEach(def => {
+    regionRows[def.key] = consolePlayers
+      .filter(p => p.country && def.match(p.country))
+      .map(p => ({ ...p, best: bestConsoleRating(p) }))
+      .filter(p => p.best)
+      .sort((a, b) => b.best.rating - a.best.rating);
+  });
+  const REGION_SHOWN = 20;
+  let regionKey = REGION_DEFS[0].key;
+  let regionExpanded = false;
+  document.getElementById('region-toggle').innerHTML = REGION_DEFS.map((def, i) =>
+    `<button data-region="${def.key}" class="${i === 0 ? 'on' : ''}">${def.label}</button>`
+  ).join('');
+  function renderRegionTable() {
+    const rows = regionRows[regionKey] || [];
+    const tableEl = document.getElementById('region-table');
+    const expandEl = document.getElementById('region-expand-row');
+    if (!rows.length) {
+      tableEl.innerHTML = `<tbody><tr><td style="padding:16px 0;color:var(--text3);font-size:12px">No tracked console players with a rated ladder from this region yet.</td></tr></tbody>`;
+      expandEl.innerHTML = '';
+      return;
+    }
+    const shownRows = regionExpanded ? rows : rows.slice(0, REGION_SHOWN);
+    const thead = '<thead><tr><th>#</th><th>Player</th><th>Country</th><th class="num">Rating</th><th>Ladder</th></tr></thead>';
+    const tbody = '<tbody>' + shownRows.map((p, i) => `<tr>
+        <td class="num">${i + 1}</td>
+        <td><a href="player.html?id=${p.profileId}">${p.name}</a></td>
+        <td>${p.countryIcon || ''} ${p.countryName || ''}</td>
+        <td class="num">${p.best.rating.toLocaleString()}</td>
+        <td>${p.best.ladder}</td>
+      </tr>`).join('') + '</tbody>';
+    tableEl.innerHTML = thead + tbody;
+    if (rows.length > REGION_SHOWN) {
+      expandEl.innerHTML = `<button class="pr-toggle" style="font-size:11px;padding:3px 10px" id="region-expand-btn">${regionExpanded ? '▲ Show top 20' : `▼ Show all ${rows.length.toLocaleString()}`}</button>`;
+      document.getElementById('region-expand-btn').addEventListener('click', () => {
+        regionExpanded = !regionExpanded;
+        renderRegionTable();
+      });
+    } else {
+      expandEl.innerHTML = '';
+    }
+  }
+  renderRegionTable();
+  document.querySelectorAll('#region-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      regionKey = btn.dataset.region;
+      regionExpanded = false;
+      document.querySelectorAll('#region-toggle button').forEach(b => b.classList.toggle('on', b === btn));
+      renderRegionTable();
+    });
+  });
+
   loadAndRenderWeekly();
   loadAndRenderSnl();
 }
