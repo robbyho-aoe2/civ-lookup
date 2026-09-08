@@ -240,7 +240,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.90</div>
+  <div class="version">v0.91</div>
 </div>
 
 <script>
@@ -5544,11 +5544,28 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         if (existing && existing.time <= r.time) return;
         const nextAlloc = { ...cur.alloc };
         RES.forEach(res => { nextAlloc[res] += r.assigned[res]; });
-        // Wei's free-villager-per-tech bonus is applied only during replay
-        // (see the 'tech' move handling further down, pre-existing) — not
-        // here in the search's own exploration, matching how that bonus was
-        // already shipped; not revisited by this Spanish-focused change.
-        const next = { levels: nextLevels, tcExtra: cur.tcExtra, millExtra: cur.millExtra, castleAdvanced: cur.castleAdvanced, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
+        // Wei: "Free Villager for each economic upgrade researched" — real
+        // in-game text says "economic upgrade" specifically, an exact match
+        // for this loop (the only place the 5 real eco-tech lines — Double-
+        // Bit Axe, Wheelbarrow/Hand Cart, Gold/Stone Mining, etc. — are ever
+        // researched), never combat-tech checkboxes or Loom. BUG FIX: this
+        // bonus was already shipped (type `free-villager-per-tech`, applied
+        // during replay's 'tech' move handling below) but had ZERO effect on
+        // any reported finishTime — `finalized.forEach`'s bestTotal/bestRamp
+        // decision (which search state wins, and when the target completes)
+        // reads `state.vills` straight from THIS search's own `finalized`
+        // map, entirely before replay ever runs; replay only decorates the
+        // DISPLAYED checkpoints afterward, on a separately-tracked
+        // cursorVills that bestTotal/bestRamp never look at. Credited here
+        // too now, exactly mirroring how Spanish's techGoldBonus above
+        // already has to reach both the search's own exploration state (for
+        // correct path-choosing) and the replay-time credit (for correct
+        // display) — the two are independent tracked quantities, so this
+        // is not a double-count with the pre-existing replay-side credit.
+        const weiVillagerBonus = (civ?.ecoBonuses || []).find(b => b.type === 'free-villager-per-tech');
+        let nextVills = r.vills;
+        if (weiVillagerBonus) { nextVills += 1; nextAlloc.food += 1; }
+        const next = { levels: nextLevels, tcExtra: cur.tcExtra, millExtra: cur.millExtra, castleAdvanced: cur.castleAdvanced, time: r.time, vills: nextVills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
         finalized.set(key, next);
         cameFrom.set(key, { fromKey: curKey, move: { type: 'tech', id, item } });
         frontier.push(next);
