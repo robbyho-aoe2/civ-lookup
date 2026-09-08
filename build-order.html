@@ -240,7 +240,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.86</div>
+  <div class="version">v0.87</div>
 </div>
 
 <script>
@@ -1310,6 +1310,12 @@ const DATA = {
           "lines": ["militia-line", "spearman-line", "eagle-line"],
           "ratesByAge": [15, 20, 25, 30],
           "note": "Infantry costs -15/20/25/30% in Dark/Feudal/Castle/Imperial Age"
+        },
+        {
+          "type": "resource-longevity-pct",
+          "value": 20,
+          "scope": "hunted",
+          "note": "Hunted animals (boar, deer/chickens) last 20% longer -- boar has no visible effect in this model since headcount, not real quantity, caps its usable duration (see ARABIA_FOOD_SOURCES' bounded sources); deer/chicken hunt window genuinely extends when a hunt strategy is selected"
         }
       ],
       "unavailableUnitLines": [
@@ -2021,6 +2027,12 @@ const DATA = {
           "delta": { "food": -50, "wood": 0, "gold": 0, "stone": 0 },
           "villagerDelta": 1,
           "note": "Start with +1 villager, but -50 food"
+        },
+        {
+          "type": "resource-longevity-pct",
+          "value": 15,
+          "scope": "all",
+          "note": "Resources last 15% longer -- sheep/boar have no visible effect in this model (bounded sources, capped by real headcount not quantity); berries and hunted-animal windows genuinely extend. The real gold/stone-mining-longevity half of this bonus is NOT modeled -- no stockpile/depletion tracking exists for those resources (a deliberate, already-established scope boundary, same as the rest of this real-food-quantity redesign)"
         }
       ],
       "unavailableUnitLines": [
@@ -3922,9 +3934,27 @@ function chooseOpeningSequence(stages, civ, huntConfig, mapId = 'arabia') {
   // entirely (that hack extended a fixed 10-slot guess proportionally;
   // this instead recomputes the real duration from the real bigger pool).
   const extraBushBonus = (civ?.ecoBonuses || []).find(b => b.type === 'extra-berry-bushes');
-  const berriesSource = extraBushBonus
-    ? { ...mapSources.berries, totalFood: mapSources.berries.totalFood + extraBushBonus.count * 125 }
-    : mapSources.berries;
+  // Maya "Resources last 15% longer" / Goths "Hunted animals last 20%
+  // longer" — the long-blocked `resource-longevity-pct` design question is
+  // resolved by this same real-quantity architecture: a longevity bonus is
+  // just a totalFood multiplier, same mechanism Gurjaras' extra bushes
+  // already use. Real, but ONLY VISIBLE on elastic sources (berries, hunt)
+  // — sheep/boar are `bounded` (see ARABIA_FOOD_SOURCES/foodPhaseSlotCount
+  // above), meaning their slot count is fixed at real headcount regardless
+  // of totalFood, so a longevity bonus genuinely has no effect on them in
+  // this model (you can't usefully station more than ~2 shepherds/4 lurers
+  // no matter how long the animals last — the same honest limitation
+  // already accepted for Gurjaras' own sheep bonus). Maya's `scope:'all'`
+  // covers berries + hunt (its real gold/stone-mining-longevity half stays
+  // explicitly out of scope, same as this whole redesign's original plan).
+  // Goths' `scope:'hunted'` covers boar (a no-op, bounded) + hunt only —
+  // NOT berries, since berries are gathered, not hunted.
+  const longevityBonus = (civ?.ecoBonuses || []).find(b => b.type === 'resource-longevity-pct');
+  const berriesLongevityMult = longevityBonus?.scope === 'all' ? 1 + longevityBonus.value / 100 : 1;
+  const berriesSource = {
+    ...mapSources.berries,
+    totalFood: (mapSources.berries.totalFood + (extraBushBonus?.count || 0) * 125) * berriesLongevityMult,
+  };
   const berriesSlots = foodPhaseSlotCount(berriesSource);
 
   // The FORCED/scripted array itself stays SHORT — sheep+boar+wood+stone
@@ -4009,7 +4039,10 @@ function chooseOpeningSequence(stages, civ, huntConfig, mapId = 'arabia') {
     // level-keyed Mill rates, never the window length). Carved out of the
     // SAME berries tail (concurrent with berries, not sequential, matching
     // the confirmed real consumption order), so it can never exceed it.
-    const qty = huntQuantity(deerStrategy, chickenStrategy, huntConfig.level);
+    // Maya (scope:'all') / Goths (scope:'hunted') both reach deer/chicken —
+    // real hunted animals, same real-quantity extension berries gets above.
+    const huntLongevityMult = longevityBonus && (longevityBonus.scope === 'all' || longevityBonus.scope === 'hunted') ? 1 + longevityBonus.value / 100 : 1;
+    const qty = huntQuantity(deerStrategy, chickenStrategy, huntConfig.level) * huntLongevityMult;
     const rawHuntSlots = foodPhaseSlotCount({ totalFood: qty, headcount: hunt.workers, rate: hunt.rate, bounded: false });
     seq.huntSlots = Math.min(berriesSlots, rawHuntSlots);
   } else {
