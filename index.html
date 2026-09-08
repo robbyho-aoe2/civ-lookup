@@ -250,7 +250,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.13</div>
+    <div class="version">v2.14</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1537,11 +1537,25 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:CRANEQUINS_SENTINEL_ID},
   ]},
   {emoji:'⚔️',icon:'cavalry',label:'Cavalry',bonusKey:'Cavalry',restrictTo:['Armenians','Bengalis','Berbers','Bohemians','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Dravidians','Ethiopians','Franks','Georgians','Goths','Gurjaras','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Malay','Malians','Magyars','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu'],items:[
-    {t:'unit',id:[569,1813],extra:[1946,2568,1753,558]}, // Paladin — extra covers Persians' Savar (replaces Paladin entirely for them, not additive)
+    // Steppe Lancer: mixed case, verified directly against real civData
+    // (2026-09-08) — Cumans/Tatars/Mongols have Steppe Lancer AND a real
+    // Knight-line (additive, own EXTRA_UU_BONUS entry below); Jurchens/
+    // Khitans have Steppe Lancer with NO Knight-line at all (a true
+    // replacement, folded into THIS item's extra — same treatment as
+    // Persians' Savar on the same line). Previously both tiers sat as their
+    // own standalone items[] entries, inflating this archetype's shared
+    // denominator for all ~40 civs compared here, most of whom could never
+    // earn those 2 points — the exact anti-pattern the site owner's earlier
+    // "~74 unscored unique units" audit already fixed for other units late
+    // last week; this one predated that audit and got missed since it
+    // already had SOME scoring representation, just via the wrong
+    // mechanism. Site owner: "steppe lancers are being shown in cavalry,
+    // but mounted crossbowmen are being shown as +1 bonus... we need to
+    // clarify and get consistency throughout."
+    {t:'unit',id:[569,1813],extra:[1946,2568,1753,558,1372]}, // Paladin — extra covers Persians' Savar and Jurchens/Khitans' Elite Steppe Lancer (both replace Paladin entirely, not additive)
     {t:'unit',id:[441,1707]},
     {t:'unit',id:283,extra:[1946,2568,1753]},
     {t:'unit',id:38,extra:[1944,2566,1751]},
-    {t:'unit',id:1370},{t:'unit',id:1372},
     {t:'unit',id:1132},{t:'unit',id:1134},
     {t:'tech',id:435},{t:'tech',id:80},{t:'tech',id:82},{t:'tech',id:81},{t:'tech',id:39},
     {t:'tech',id:67},{t:'tech',id:68},{t:'tech',id:75},{t:'tech',id:45},{t:'tech',id:46},
@@ -1730,6 +1744,12 @@ const EXTRA_UU_BONUS = {
     { ids:[869], civs:['Magyars'], note:'Magyar Huszar — fast raiding cavalry' },
     { ids:[876], civs:['Slavs'], note:'Boyar — durable heavy cavalry' },
     { ids:[JARL_SENTINEL_ID], civs:['Varangians'], note:'Jarl — Varangians\' own Castle-trained unique unit' },
+    // Steppe Lancer, additive half only — Cumans/Tatars/Mongols have a real
+    // Knight-line too (verified against civData directly). Jurchens/Khitans
+    // have NO Knight-line at all, so for them it's a true replacement
+    // instead, folded into the Paladin item's own `extra` above — not
+    // listed here, or they'd double-count.
+    { ids:[1370], civs:['Cumans','Tatars','Mongols'], note:'Steppe Lancer — ranged-melee cavalry option alongside their normal roster' },
   ],
   Infantry: [
     { ids:[2582,2584], civs:['Tupi'], note:'Ibirapema Warrior — unique ranged-infantry hybrid' },
