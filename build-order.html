@@ -249,7 +249,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.00</div>
+    <div class="version">v1.01</div>
   </div>
 </div>
 
@@ -7606,7 +7606,11 @@ function renderOptimizeStages() {
   // the normal "+ Add Stage" flow). Sits next to the Target picker, not
   // inside it — its own row, always rendered for stage 0 regardless of
   // whether that stage currently holds a real unit target or an ageGoal.
-  const AGE_GOAL_LABELS = { feudal: ['Fast Feudal', '~17-20 pop'], castle: ['Fast Castle', '~22-26 pop, Castle Age'], imperial: ['Fast Imp', '~26-30 pop, Imperial Age'] };
+  // Fast Imp pill temporarily removed (2026-09-09): its Castle->Imperial leg
+  // doesn't have the backward-scheduling gold lookahead Fast Castle got in
+  // commit 1522476 yet, so its numbers are known-stale until that follow-up
+  // work lands — see project_build_order_optimize_mode.md memory.
+  const AGE_GOAL_LABELS = { feudal: ['Fast Feudal', '~17-20 pop'], castle: ['Fast Castle', '~22-26 pop, Castle Age'] };
   const ageGoalPills = stage => `<div class="age-goal-pills" data-stage-idx="0" style="display:flex;gap:6px;flex-wrap:wrap;margin:${stage.ageGoal ? '2px 0 10px' : '2px 0 10px'};">
     ${Object.entries(AGE_GOAL_LABELS).map(([key, [label, title]]) => `<button type="button" class="age-goal-btn" data-age-goal="${key}" title="${title}" style="flex:none;padding:6px 12px;font-size:12px;border-radius:20px;cursor:pointer;font-family:inherit;font-weight:600;${stage.ageGoal === key ? 'border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);' : 'border:1px solid var(--border2);background:var(--bg);color:var(--text2);'}">${label}</button>`).join('')}
   </div>`;
