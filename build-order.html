@@ -240,7 +240,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.95</div>
+  <div class="version">v0.96</div>
 </div>
 
 <script>
@@ -3667,7 +3667,22 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
         need.forEach(r => {
           if (saved[r] >= item.cost[r]) return;
           const remaining = item.cost[r] - saved[r];
-          const curRate = assigned[r] * rates[r];
+          // Real throughput on r right now — existing (pre-this-call)
+          // gatherers' flat rate PLUS this call's own precisely-tracked
+          // assignedRate (phase-aware, e.g. food) — same expression the
+          // `saved` accumulation below already trusts. Real bug this fixes:
+          // using only `assigned[r] * rates[r]` (this call's own new
+          // villagers) made an established 20+-villager food/wood economy
+          // look exactly as unstaffed as gold's genuine 0 existing gatherers
+          // (both curRate=0 -> eta=Infinity) until a new villager happened
+          // to land there THIS call — so a small, fresh, genuinely urgent
+          // need (Castle's 200 gold) only ever won the tie-break once, then
+          // got out-ranked by food/wood's artificially-inflated apparent
+          // urgency for the rest of the game. Confirmed via a real Fast
+          // Castle run: gold never got more than 1 dedicated gatherer the
+          // whole way to Castle Age, exactly matching the user's own
+          // diagnosis ("normally you'd have 2-3 villagers on gold").
+          const curRate = (existingAlloc?.[r] || 0) * rates[r] + assignedRate[r];
           const eta = curRate > 0 ? remaining / curRate : Infinity;
           if (eta > worstEta) { worstEta = eta; target = r; }
         });
@@ -5134,17 +5149,29 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         fillerItems.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age, techCount: 1 });
       }
       const feudalItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], 'Feudal', civ));
-      const resolved = resolveSequential(feudalItems, ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra, reachedAgeIdx), cursorTime, cursorVills, pool, cumAlloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(levels), civ), techGoldBonus?.value);
-      if (!resolved) {
+      // runSequential (the shared closure Castle/Imperial's own age-up
+      // replay already uses below) instead of the standalone
+      // resolveSequential — it mutates cursorTime/cursorVills/pool/
+      // cumAlloc directly AND, critically, builds/charges the real Lumber
+      // Camp/Mill/Mining Camp (builtResources) an opening actually needs
+      // once it starts gathering food/wood at all, plus pushes its own
+      // "Reached Feudal Age" checkpoint for the age-up item and applies
+      // Ethiopians/Dravidians/Bengalis' age-up bonuses. resolveSequential
+      // has none of that (no side-effecting checkpoints, no builtResources
+      // tracking) — the real reason Fast Feudal was still showing no
+      // buildings even after the filler-Barracks fix above: the ACTUAL
+      // Lumber Camp/Mill construction (the buildings the 2-building
+      // requirement above is implicitly counting as already satisfied,
+      // same proxy the non-preset Villager age-up move already relies on)
+      // was silently never being built or charged for.
+      const anyBlocked = runSequential(feudalItems, ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra, reachedAgeIdx));
+      if (anyBlocked) {
         checkpoints.push({ label: 'Reach Feudal Age — past 60 min, add more Town Centers', blocked: true });
         stageResults.push({ line: null, ageGoal: 'feudal', stageNumber: stageIdx + 1, finishTime: null, tcCount: 1 + tcExtra });
         break;
       }
-      cursorTime = resolved.time; cursorVills = resolved.vills; pool = resolved.pool;
-      RES.forEach(r => { cumAlloc[r] = resolved.alloc[r]; });
       reachedAgeIdx = Math.max(reachedAgeIdx, ageIndex('Feudal'));
       if (includesLoom) loomResearched = true;
-      checkpoints.push({ label: 'Reached Feudal Age', time: cursorTime, vills: cursorVills, split: null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, pool: { ...pool }, kind: 'age', ageName: 'Feudal' });
       stageResults.push({ line: null, ageGoal: 'feudal', stageNumber: stageIdx + 1, finishTime: cursorTime, tcCount: 1 + tcExtra });
       continue;
     }
