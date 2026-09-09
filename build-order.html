@@ -240,7 +240,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.93</div>
+  <div class="version">v0.94</div>
 </div>
 
 <script>
@@ -3968,7 +3968,7 @@ function chooseOpeningSequence(stages, civ, huntConfig, mapId = 'arabia') {
   // totalFood), so the passive-garrison sheep never fed sheepSlots in the
   // first place. Documented here rather than silently coincidental.
 
-  const needsStone = stages.some(s => s.units.some(u => buildingChainItems(u.line.building, civ, new Set()).some(it => (it.cost?.stone || 0) > 0)));
+  const needsStone = stages.some(s => !s.ageGoal && s.units.some(u => buildingChainItems(u.line.building, civ, new Set()).some(it => (it.cost?.stone || 0) > 0)));
   // Real players sending 2-3 villagers to a Castle's 650 stone don't wait
   // until Castle Age hits to start — see this same constant's original,
   // fuller comment (now removed) at the old module-level BG_STONE_SEQUENCE
@@ -4735,7 +4735,7 @@ function withQuantityTail(trial, qty, buildingCount, tierName, trainTime, target
 const _optimizeMemo = new Map();
 function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ, efficiency, foodStrategy, forcedEarlyEcoTechId) {
   const memoKey = JSON.stringify([
-    stages.map(s => s.units.map(u => [u.line?.id, u.tierIdx, u.buildingCount ?? null, u.goalType || 'sustain', u.qty ?? null, u.combatTechIds ? [...u.combatTechIds].sort() : null])),
+    stages.map(s => s.ageGoal ? ['ageGoal', s.ageGoal] : s.units.map(u => [u.line?.id, u.tierIdx, u.buildingCount ?? null, u.goalType || 'sustain', u.qty ?? null, u.combatTechIds ? [...u.combatTechIds].sort() : null])),
     loomOn, allIn, civ?.id ?? null, efficiency ?? 100, foodStrategy ?? 'none', forcedEarlyEcoTechId ?? null,
   ]);
   if (_optimizeMemo.has(memoKey)) return _optimizeMemo.get(memoKey);
@@ -4750,7 +4750,10 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
   // A stage's own sort-order age is the LATEST among its units (a multi-
   // unit stage with Archer+Knight sorts by Knight's Castle, not Archer's
   // Feudal) — degenerates to the single unit's own age unchanged.
-  const stageAgeIdx = s => Math.max(...s.units.map(u => ageIndex(u.line.tiers[u.tierIdx].age)));
+  // An ageGoal stage sorts as Dark Age (0) — always first, regardless of
+  // input order (belt-and-suspenders on top of the UI already restricting
+  // it to stage 0 only).
+  const stageAgeIdx = s => s.ageGoal ? 0 : Math.max(...s.units.map(u => ageIndex(u.line.tiers[u.tierIdx].age)));
   const sortedStages = [...stages].sort((a, b) => stageAgeIdx(a) - stageAgeIdx(b));
   const effFactor = (efficiency ?? 100) / 100;
   // A single "how efficiently is this economy actually running vs. the
@@ -5089,7 +5092,50 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // (Villager target, 'quantity' goal) — safe because both are UI-
     // restricted to units.length === 1 (a multi-unit stage only supports
     // Constant Production, and can't include the Villager line at all).
-    const units = stage.units;
+    // Fast Feudal/Castle/Imp opening presets (stage 0 only, UI-enforced) —
+    // "reach this age as fast as possible" instead of a real unit target.
+    // Feudal is handled as its own lightweight branch, resolved directly and
+    // `continue`d past, rather than folded into the search below: the
+    // Villager-line search's `ageAdvanced` flag does NOT reliably mean
+    // "Feudal reached" — for every civ except Cumans, `requiredExtraTcAgeIdx`
+    // is Castle, so the real `age-up` move's own `ageUpPending` bundles
+    // Dark→Feudal→Castle into ONE transaction and `ageAdvanced` only flips
+    // once the WHOLE bundle resolves. Untangling that bundle to expose an
+    // intermediate "Feudal reached" state inside the search would be far
+    // more invasive than just resolving the (real: no eco-tech/extra-TC
+    // decision is worth making before Feudal is even reached) simpler
+    // transaction directly with the same `ageUpPending`/`resolveSequential`
+    // primitives the real age-up move already uses internally.
+    if (stage.ageGoal === 'feudal') {
+      const includesLoom = loomOn && !allIn && !free.has('loom') && !loomResearched;
+      const loomItems = includesLoom ? [(() => {
+        const loom = DATA.ecoTechs.find(t => t.id === 'loom');
+        return { name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age };
+      })()] : [];
+      const feudalItems = mergeWithAgeUps(loomItems, ageUpPending(AGE_ORDER[reachedAgeIdx], 'Feudal', civ));
+      const resolved = resolveSequential(feudalItems, ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra, reachedAgeIdx), cursorTime, cursorVills, pool, cumAlloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(levels), civ), techGoldBonus?.value);
+      if (!resolved) {
+        checkpoints.push({ label: 'Reach Feudal Age — past 60 min, add more Town Centers', blocked: true });
+        stageResults.push({ line: null, ageGoal: 'feudal', stageNumber: stageIdx + 1, finishTime: null, tcCount: 1 + tcExtra });
+        break;
+      }
+      cursorTime = resolved.time; cursorVills = resolved.vills; pool = resolved.pool;
+      RES.forEach(r => { cumAlloc[r] = resolved.alloc[r]; });
+      reachedAgeIdx = Math.max(reachedAgeIdx, ageIndex('Feudal'));
+      if (includesLoom) loomResearched = true;
+      checkpoints.push({ label: 'Reached Feudal Age', time: cursorTime, vills: cursorVills, split: null, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, pool: { ...pool }, kind: 'age', ageName: 'Feudal' });
+      stageResults.push({ line: null, ageGoal: 'feudal', stageNumber: stageIdx + 1, finishTime: cursorTime, tcCount: 1 + tcExtra });
+      continue;
+    }
+    // Fast Castle/Imp DO reuse the full Villager-line search below (their
+    // `ageAdvanced`-adjacent flags — `castleAdvanced`/the new
+    // `imperialAdvanced` — ARE reliable "this real age was reached" signals
+    // for every civ, unlike `ageAdvanced` itself) — synthesize a stand-in
+    // Villager unit so `line.isVillager` is true and the entire existing
+    // block runs unchanged; only the winner-selection and final-checkpoint
+    // branches below need to know about `stage.ageGoal`.
+    const villagerLineStandIn = { id: 'villager', name: 'Villager', building: 'Town Center', isVillager: true, cost: DATA.villager.cost, pop: 1, tiers: [{ name: 'Villager', age: 'Dark', trainTime: DATA.villager.trainTime }] };
+    const units = stage.ageGoal ? [{ line: villagerLineStandIn, tierIdx: 0, goalType: 'sustain', qty: Infinity }] : stage.units;
     const line = units[0].line, tierIdx = units[0].tierIdx;
     // Villager targets are the one case that still reads a bare `qty` off
     // unit 0 directly (their own goalType/qty handling is special-cased by
@@ -5501,10 +5547,10 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // requiredExtraTcAgeIdx already IS Castle, so this just tracks
     // `ageAdvanced` in lockstep and never adds a real extra move for them.
     const startCastleAdvanced = requiredExtraTcAgeIdx >= ageIndex('Castle') ? startAgeAdvanced : reachedAgeIdx >= ageIndex('Castle');
-    function stateKey(lv, tc, ageAdvanced, trainingPaused, millExtra, castleAdvanced) { return relevantLines.map(id => lv[id]).join(',') + '|' + tc + '|' + (ageAdvanced ? 1 : 0) + '|' + (trainingPaused ? 1 : 0) + '|' + (millExtra || 0) + '|' + (castleAdvanced ? 1 : 0); }
+    function stateKey(lv, tc, ageAdvanced, trainingPaused, millExtra, castleAdvanced, imperialAdvanced) { return relevantLines.map(id => lv[id]).join(',') + '|' + tc + '|' + (ageAdvanced ? 1 : 0) + '|' + (trainingPaused ? 1 : 0) + '|' + (millExtra || 0) + '|' + (castleAdvanced ? 1 : 0) + '|' + (imperialAdvanced ? 1 : 0); }
 
-    const startState = { levels: { ...levels }, tcExtra, millExtra, castleAdvanced: startCastleAdvanced, time: cursorTime, vills: cursorVills, pool, alloc: { ...cumAlloc }, ageAdvanced: startAgeAdvanced, trainingPaused: false };
-    const startKey = stateKey(startState.levels, startState.tcExtra, startState.ageAdvanced, startState.trainingPaused, startState.millExtra, startState.castleAdvanced);
+    const startState = { levels: { ...levels }, tcExtra, millExtra, castleAdvanced: startCastleAdvanced, imperialAdvanced: false, time: cursorTime, vills: cursorVills, pool, alloc: { ...cumAlloc }, ageAdvanced: startAgeAdvanced, trainingPaused: false };
+    const startKey = stateKey(startState.levels, startState.tcExtra, startState.ageAdvanced, startState.trainingPaused, startState.millExtra, startState.castleAdvanced, startState.imperialAdvanced);
     const finalized = new Map([[startKey, startState]]);
     const cameFrom = new Map();
     const frontier = [startState];
@@ -5512,7 +5558,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
 
     while (frontier.length) {
       const cur = popMinTime(frontier);
-      const curKey = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, cur.castleAdvanced);
+      const curKey = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, cur.castleAdvanced, cur.imperialAdvanced);
       if (finalized.get(curKey) !== cur) continue;
       const rates = ratesForOptimize(civ, techIdsFor(cur.levels));
       // Prioritize Military (all-in): once the mandatory prefix has
@@ -5578,7 +5624,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         // happened to pick.
         if (techGoldBonus) r.pool.gold += techGoldBonus.value;
         const nextLevels = { ...cur.levels, [id]: cur.levels[id] + 1 };
-        const key = stateKey(nextLevels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, cur.castleAdvanced);
+        const key = stateKey(nextLevels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, cur.castleAdvanced, cur.imperialAdvanced);
         const existing = finalized.get(key);
         if (existing && existing.time <= r.time) return;
         const nextAlloc = { ...cur.alloc };
@@ -5604,7 +5650,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         const weiVillagerBonus = (civ?.ecoBonuses || []).find(b => b.type === 'free-villager-per-tech');
         let nextVills = r.vills;
         if (weiVillagerBonus) { nextVills += 1; nextAlloc.food += 1; }
-        const next = { levels: nextLevels, tcExtra: cur.tcExtra, millExtra: cur.millExtra, castleAdvanced: cur.castleAdvanced, time: r.time, vills: nextVills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
+        const next = { levels: nextLevels, tcExtra: cur.tcExtra, millExtra: cur.millExtra, castleAdvanced: cur.castleAdvanced, imperialAdvanced: cur.imperialAdvanced, time: r.time, vills: nextVills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
         finalized.set(key, next);
         cameFrom.set(key, { fromKey: curKey, move: { type: 'tech', id, item } });
         frontier.push(next);
@@ -5617,7 +5663,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // Non-Villager only, deliberately — the Villager-boom branch has its
       // own, already-tested age-up/tcExtra moves below; not touching them.
       if (allIn && !line.isVillager && !cur.trainingPaused) {
-        const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, true, cur.millExtra, cur.castleAdvanced);
+        const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, true, cur.millExtra, cur.castleAdvanced, cur.imperialAdvanced);
         const existing = finalized.get(key);
         if (!existing || existing.time > cur.time) {
           const next = { ...cur, trainingPaused: true };
@@ -5677,10 +5723,10 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           // except Cumans (whose requiredExtraTcAgeIdx is Feudal, not
           // Castle) — see startCastleAdvanced's own comment above.
           const nextCastleAdvanced = requiredExtraTcAgeIdx >= ageIndex('Castle') ? true : cur.castleAdvanced;
-          const key = stateKey(cur.levels, cur.tcExtra, true, cur.trainingPaused, cur.millExtra, nextCastleAdvanced);
+          const key = stateKey(cur.levels, cur.tcExtra, true, cur.trainingPaused, cur.millExtra, nextCastleAdvanced, cur.imperialAdvanced);
           const existing = finalized.get(key);
           if (!existing || existing.time > resolved.time) {
-            const next = { levels: cur.levels, tcExtra: cur.tcExtra, millExtra: cur.millExtra, castleAdvanced: nextCastleAdvanced, time: resolved.time, vills: resolved.vills, pool: resolved.pool, alloc: resolved.alloc, ageAdvanced: true, trainingPaused: cur.trainingPaused };
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra, millExtra: cur.millExtra, castleAdvanced: nextCastleAdvanced, imperialAdvanced: cur.imperialAdvanced, time: resolved.time, vills: resolved.vills, pool: resolved.pool, alloc: resolved.alloc, ageAdvanced: true, trainingPaused: cur.trainingPaused };
             finalized.set(key, next);
             cameFrom.set(key, { fromKey: curKey, move: { type: 'age-up', items: ageItems, includesLoom } });
             frontier.push(next);
@@ -5709,12 +5755,43 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         const castleAgeItems = mergeWithAgeUps(fillerItems2, ageUpPending('Feudal', 'Castle', civ));
         const resolvedCastle = resolveSequential(castleAgeItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ), techGoldBonus?.value);
         if (resolvedCastle) {
-          const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, true);
+          const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, true, cur.imperialAdvanced);
           const existing = finalized.get(key);
           if (!existing || existing.time > resolvedCastle.time) {
-            const next = { levels: cur.levels, tcExtra: cur.tcExtra, millExtra: cur.millExtra, castleAdvanced: true, time: resolvedCastle.time, vills: resolvedCastle.vills, pool: resolvedCastle.pool, alloc: resolvedCastle.alloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra, millExtra: cur.millExtra, castleAdvanced: true, imperialAdvanced: cur.imperialAdvanced, time: resolvedCastle.time, vills: resolvedCastle.vills, pool: resolvedCastle.pool, alloc: resolvedCastle.alloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
             finalized.set(key, next);
             cameFrom.set(key, { fromKey: curKey, move: { type: 'castle-age-up', items: castleAgeItems } });
+            frontier.push(next);
+          }
+        }
+      }
+
+      // Fast Imp opening preset only: Castle→Imperial, offered once real
+      // Castle Age is reached. Same shape as Cumans' own Feudal→Castle move
+      // just above (own ageUpPending/mergeWithAgeUps/resolveSequential call,
+      // own state-space dimension) — gated on `stage.ageGoal === 'imperial'`
+      // instead of a civ id, so it costs nothing (never explored, never
+      // added to the state space) for every other stage type.
+      if (line.isVillager && stage.ageGoal === 'imperial' && cur.castleAdvanced && !cur.imperialAdvanced) {
+        const scratchHaveSet3 = new Set(haveSet);
+        scratchHaveSet3.buildingCounts = new Map(haveSet.buildingCounts);
+        const genericVillagers3 = { food: 1, wood: 1, gold: 0, stone: 0 };
+        const fillerItems3 = [];
+        if (ageIndex('Imperial') > reachedAgeIdx) {
+          fillerBuildingsNeeded('Imperial', civ, genericVillagers3, scratchHaveSet3).forEach(name => {
+            const def = DATA.productionBuildings[name];
+            fillerItems3.push({ name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name), civ), age: effectiveBuildingAge(def.minAge, name, civ), deferToEnd: true, builders: buildersForBuilding(name) });
+          });
+        }
+        const imperialAgeItems = mergeWithAgeUps(fillerItems3, ageUpPending('Castle', 'Imperial', civ));
+        const resolvedImperial = resolveSequential(imperialAgeItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ), techGoldBonus?.value);
+        if (resolvedImperial) {
+          const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, cur.castleAdvanced, true);
+          const existing = finalized.get(key);
+          if (!existing || existing.time > resolvedImperial.time) {
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra, millExtra: cur.millExtra, castleAdvanced: cur.castleAdvanced, imperialAdvanced: true, time: resolvedImperial.time, vills: resolvedImperial.vills, pool: resolvedImperial.pool, alloc: resolvedImperial.alloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
+            finalized.set(key, next);
+            cameFrom.set(key, { fromKey: curKey, move: { type: 'imperial-age-up', items: imperialAgeItems } });
             frontier.push(next);
           }
         }
@@ -5768,12 +5845,12 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           // the starting TC's own credit is handled once at t=0 by
           // startingPoolForCiv instead.
           if (tcFoodBonus) r.pool.food += tcFoodBonus.value * k;
-          const key = stateKey(cur.levels, cur.tcExtra + k, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, cur.castleAdvanced);
+          const key = stateKey(cur.levels, cur.tcExtra + k, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, cur.castleAdvanced, cur.imperialAdvanced);
           const existing = finalized.get(key);
           if (!existing || existing.time > r.time) {
             const nextAlloc = { ...cur.alloc };
             RES.forEach(res => { nextAlloc[res] += r.assigned[res]; });
-            const next = { levels: cur.levels, tcExtra: cur.tcExtra + k, millExtra: cur.millExtra, castleAdvanced: cur.castleAdvanced, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra + k, millExtra: cur.millExtra, castleAdvanced: cur.castleAdvanced, imperialAdvanced: cur.imperialAdvanced, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
             finalized.set(key, next);
             cameFrom.set(key, { fromKey: curKey, move: { type: 'tc', item, count: k } });
             frontier.push(next);
@@ -5793,12 +5870,12 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         const item = { name: `${civ?.millName || 'Mill'} (Sheep)`, cost: { food: 0, wood: millCost, gold: 0, stone: 0 }, queueSeconds: multiBuilderTime(DATA.productionBuildings['Mill'].buildTimeSeconds, buildersForBuilding('Mill'), civ), age: DATA.productionBuildings['Mill'].minAge, builders: buildersForBuilding('Mill') };
         const r = simulateItemReady(item, rates, villRate, cur.time, cur.vills, cur.pool, openingSequence, cur.alloc, effectiveVillagerFoodCost(civ, effectiveAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ));
         if (r) {
-          const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra + 1, cur.castleAdvanced);
+          const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra + 1, cur.castleAdvanced, cur.imperialAdvanced);
           const existing = finalized.get(key);
           if (!existing || existing.time > r.time) {
             const nextAlloc = { ...cur.alloc };
             RES.forEach(res => { nextAlloc[res] += r.assigned[res]; });
-            const next = { levels: cur.levels, tcExtra: cur.tcExtra, millExtra: cur.millExtra + 1, castleAdvanced: cur.castleAdvanced, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
+            const next = { levels: cur.levels, tcExtra: cur.tcExtra, millExtra: cur.millExtra + 1, castleAdvanced: cur.castleAdvanced, imperialAdvanced: cur.imperialAdvanced, time: r.time, vills: r.vills, pool: r.pool, alloc: nextAlloc, ageAdvanced: cur.ageAdvanced, trainingPaused: cur.trainingPaused };
             finalized.set(key, next);
             cameFrom.set(key, { fromKey: curKey, move: { type: 'mill', item } });
             frontier.push(next);
@@ -5842,7 +5919,15 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         ? { villagers: villagersFromIncome(incomeInfo.totalIncome, rates).villagers, totalVillCeil: qty }
         : villagersFromIncome(incomeInfo.totalIncome, rates);
       let total, ramp = null;
-      if (state.vills >= totalVillCeil) {
+      if (stage.ageGoal === 'castle' || stage.ageGoal === 'imperial') {
+        // Fast Castle/Imp: the goal IS reaching the age, not any villager
+        // count — `castleAdvanced`/`imperialAdvanced` are reliable "this
+        // real age was reached" flags for every civ (see the big comment
+        // where `units` gets synthesized, above), so the winning state is
+        // simply whichever REACHED one has the minimum time. No ramp.
+        const reached = stage.ageGoal === 'castle' ? state.castleAdvanced : state.imperialAdvanced;
+        total = reached ? state.time : Infinity;
+      } else if (state.vills >= totalVillCeil) {
         total = state.time;
       } else {
         ramp = simulateRampToSustain(rates, villRate, state.vills, villagers, totalVillCeil, state.time, openingSequence, state.alloc, farmUpkeepRatio(techIds, civ));
@@ -5852,8 +5937,9 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     });
 
     if (bestKey == null) {
-      const blockedLabel2 = line.isVillager ? `${qty}x Villager` : resolvedUnits.map(u => `${u.buildingCount}x ${u.line.tiers[u.tierIdx].name}`).join(' + ');
+      const blockedLabel2 = stage.ageGoal ? `Reach ${stage.ageGoal === 'castle' ? 'Castle' : 'Imperial'} Age` : line.isVillager ? `${qty}x Villager` : resolvedUnits.map(u => `${u.buildingCount}x ${u.line.tiers[u.tierIdx].name}`).join(' + ');
       checkpoints.push({ label: `${blockedLabel2} — past 60 min, add more Town Centers`, blocked: true });
+      if (stage.ageGoal) { stageResults.push({ line: null, ageGoal: stage.ageGoal, stageNumber: stageIdx + 1, finishTime: null, tcCount: 1 + tcExtra }); break; }
       resolvedUnits.forEach((u, ui) => {
         stageResults.push({ line: u.line, tierIdx: u.tierIdx, buildingCount: u.buildingCount, goalType: u.goalType, qty: u.qty, stageNumber: stageIdx + 1, buildingCountAlternatives: buildingCountAlternativesByUnit[ui], villagers: {}, totalVillCeil: 0, rates: ratesForOptimize(civ, techIdsFor(levels)), totalIncome: { food: 0, wood: 0, gold: 0, stone: 0 }, farmUpkeepWoodPerSec: 0, houseWoodPerSec: 0, finishTime: null, tcCount: 1 + tcExtra });
       });
@@ -5880,6 +5966,15 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       if (move.type === 'castle-age-up') {
         runSequential(move.items, ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra, reachedAgeIdx));
         reachedAgeIdx = Math.max(reachedAgeIdx, ageIndex('Castle'));
+        move.items.filter(it => !it.isAgeUp).forEach(it => {
+          if (!haveSet.has(it.name)) { haveSet.add(it.name); haveSet.buildingCounts.set(it.name, 1); }
+        });
+        return;
+      }
+      // Fast Imp preset only: Castle->Imperial, same shape again.
+      if (move.type === 'imperial-age-up') {
+        runSequential(move.items, ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra, reachedAgeIdx));
+        reachedAgeIdx = Math.max(reachedAgeIdx, ageIndex('Imperial'));
         move.items.filter(it => !it.isAgeUp).forEach(it => {
           if (!haveSet.has(it.name)) { haveSet.add(it.name); haveSet.buildingCounts.set(it.name, 1); }
         });
@@ -5920,6 +6015,25 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         label: line.isVillager ? `${qty}x Villager complete` : `Reach sustain (${bestVillCeil} villagers for ${resolvedUnits.map(u => `${u.buildingCount}x ${u.line.tiers[u.tierIdx].name}`).join(' + ')})`,
         time: cursorTime, vills: cursorVills, split: bestRamp.assigned, houses: housesFor(cursorVills), alloc: { ...cumAlloc }, pool: { ...pool }, kind: line.isVillager ? 'complete' : 'sustain', buildNotes: rampBuildNotes,
       });
+    } else if (stage.ageGoal) {
+      // Fast Castle/Imp: bestRamp is always null (the winner-selection
+      // branch above never calls simulateRampToSustain for an ageGoal
+      // stage) — the goal is just reaching the age, already true the
+      // moment the winning state's own castleAdvanced/imperialAdvanced
+      // flag flipped. No separate checkpoint push needed here — the
+      // replay above (runSequential, ~line 5075) already pushes a
+      // "Reached X Age" checkpoint for every real age crossed within the
+      // (possibly bundled, e.g. Dark→Feudal→Castle in one transaction)
+      // age-up item(s) it just replayed; pushing our own here would just
+      // duplicate the exact one for our own target age (confirmed by
+      // testing: a Fast Castle run showed "Reached Castle Age" twice
+      // before this was caught). `continue`s straight past the villager-
+      // count scaling and per-unit tail logic below — both are keyed off
+      // `line.isVillager` (true for our synthesized stand-in unit too) and
+      // would otherwise run against a meaningless `qty:Infinity`,
+      // producing garbage Infinity-valued fields instead of a clean exit.
+      stageResults.push({ line: null, ageGoal: stage.ageGoal, stageNumber: stageIdx + 1, finishTime: cursorTime, tcCount: 1 + tcExtra });
+      continue;
     } else if (line.isVillager) {
       // Already had enough villagers purely from building TCs — no ramp
       // needed, but every OTHER path through here ends in a real "goal
@@ -6587,7 +6701,7 @@ let timelineAvailExpanded = false;
 // (which unit's own production building?), and this alternative isn't
 // worth the extra UI to disambiguate yet.
 function moreProductionBuildingsAlt(prefixStages, stage, civ, loomOn, allIn, efficiency, currentBuildingCount, currentFinishTime, foodStrategy) {
-  if (stage.units.length !== 1 || stage.units[0].line.isVillager) return null;
+  if (stage.ageGoal || stage.units.length !== 1 || stage.units[0].line.isVillager) return null;
   const unit = stage.units[0];
   const isQty = unit.goalType === 'quantity';
   let best = null;
@@ -6897,10 +7011,10 @@ function renderOptimizeResults() {
   const descEl = document.getElementById('results-desc');
   const bodyEl = document.getElementById('results-body');
   const stages = optimizeState.stages
-    .map(s => ({
+    .map(s => s.ageGoal ? { ageGoal: s.ageGoal, units: [] } : {
       units: s.units.map(u => ({ line: lines.find(l => l.id === u.lineId), tierIdx: u.tierIdx, buildingCount: u.buildingCount, combatTechIds: u.combatTechIds, goalType: u.goalType || 'sustain', qty: u.qty })).filter(u => u.line),
-    }))
-    .filter(s => s.units.length);
+    })
+    .filter(s => s.units.length || s.ageGoal);
   if (!stages.length) { descEl.textContent = 'Pick a unit above to optimize for.'; bodyEl.innerHTML = ''; return; }
 
   const result = buildStagedOptimizeTimeline(stages, optimizeState.loomOn, optimizeState.allIn, civ, optimizeState.efficiency, optimizeState.foodStrategy);
@@ -6909,7 +7023,9 @@ function renderOptimizeResults() {
   // 'quantity' stage's actual buildingCount is only known once the search
   // picks it, and stageResults is also already sorted the same way the
   // search itself processed stages (by target age), unlike the input order.
-  const srDesc = sr => sr.goalType === 'quantity'
+  const srDesc = sr => sr.ageGoal
+    ? `Reach ${sr.ageGoal === 'feudal' ? 'Feudal' : sr.ageGoal === 'castle' ? 'Castle' : 'Imperial'} Age ASAP`
+    : sr.goalType === 'quantity'
     ? `${sr.qty}x ${sr.line.tiers[sr.tierIdx].name} ASAP`
     : `${sr.buildingCount}x ${sr.line.tiers[sr.tierIdx].name} in constant production`;
   // A 'quantity' stage's trial loop already evaluates several buildingCount
@@ -6941,6 +7057,7 @@ function renderOptimizeResults() {
     : lastSr?.buildingCountAlternatives?.find(a => a.buildingCount === optimizeAltView);
   if (optimizeAltView != null && !activeAlt) optimizeAltView = null; // stale (e.g. stage/civ changed) — fall back to the real pick
   const altTabs = sr => {
+    if (sr.ageGoal) return ''; // nothing to pick a building-count alternative for
     const tab = (label, isActive, view) => `<button type="button" class="alt-tab-btn" data-alt-view="${view ?? ''}" style="flex:none;padding:5px 10px;font-size:11px;border-radius:var(--radius);cursor:pointer;font-family:inherit;${isActive ? 'border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);' : 'border:1px solid var(--border2);background:var(--bg);color:var(--text2);'}">${label}</button>`;
     const bestLabel = `Best: ${sr.buildingCount}x ${sr.line.building} (${fmtClock(sr.finishTime)})`;
     const buttons = [tab(bestLabel, optimizeAltView == null, null)]
@@ -6977,8 +7094,13 @@ function renderOptimizeResults() {
     ? `<p class="desc" style="color:var(--amberL);margin:-8px 0 14px;">Viewing the ${viewingAltLabel} alternative below (${fmtClock(displayResult.finishTime)}) — not the recommended pick.</p>`
     : '';
 
+  // A plan that's JUST an ageGoal stage (no unit stage added yet) has no
+  // villagers/rates/totalIncome at all — lastStage never sets them (see the
+  // ageGoal branch in the main per-stage loop) since there's no unit
+  // composition to report a split for. Guard both the stat tile and the
+  // bars below rather than calling renderVillagerBars with undefined data.
   const statRow = `<div class="stat-row">
-    <div class="stat-tile"><div class="label">Total Villagers</div><div class="value">${displayResult.totalVillCeil}</div></div>
+    <div class="stat-tile"><div class="label">Total Villagers</div><div class="value">${displayResult.villagers ? displayResult.totalVillCeil : '—'}</div></div>
     <div class="stat-tile"><div class="label">Town Centers</div><div class="value">${displayResult.tcCount}</div></div>
   </div>`;
 
@@ -6994,16 +7116,16 @@ function renderOptimizeResults() {
     const sameStageAsPrev = i > 0 && result.stageResults[i - 1].stageNumber === sr.stageNumber;
     return `
     <div class="pending-card">
-      <h3>Stage ${sr.stageNumber ?? i + 1}${sameStageAsPrev ? ' (same stage)' : ''}: ${srDesc(sr)}${sr.finishTime == null ? ' (blocked)' : ` — ${sr.goalType === 'quantity' ? 'done' : 'ready'} by ${fmtClock(sr.finishTime)}`}</h3>
-      ${sr.finishTime == null ? '' : renderVillagerBars(sr.villagers, sr.rates, sr.totalIncome, sr.farmUpkeepWoodPerSec, sr.houseWoodPerSec)}
+      <h3>Stage ${sr.stageNumber ?? i + 1}${sameStageAsPrev ? ' (same stage)' : ''}: ${srDesc(sr)}${sr.finishTime == null ? ' (blocked)' : ` — ${sr.ageGoal ? 'reached' : sr.goalType === 'quantity' ? 'done' : 'ready'} by ${fmtClock(sr.finishTime)}`}</h3>
+      ${sr.finishTime == null || sr.ageGoal ? '' : renderVillagerBars(sr.villagers, sr.rates, sr.totalIncome, sr.farmUpkeepWoodPerSec, sr.houseWoodPerSec)}
     </div>`;
   }).join('');
 
-  const bars = renderVillagerBars(displayResult.villagers, displayResult.rates, displayResult.totalIncome, displayResult.farmUpkeepWoodPerSec, displayResult.houseWoodPerSec);
+  const bars = displayResult.villagers ? renderVillagerBars(displayResult.villagers, displayResult.rates, displayResult.totalIncome, displayResult.farmUpkeepWoodPerSec, displayResult.houseWoodPerSec) : '';
   const buildingCounts = Object.fromEntries(displayResult.haveSet.buildingCounts);
 
   bodyEl.innerHTML = topTabs + viewingAltNote + statRow + '<div style="margin-top:18px">' + bars + '</div>' + stageBreakdown
-    + renderSetupCard(displayResult.villagers, civ, displayResult.haveSet.has('Castle'), displayResult.haveSet, buildingCounts, displayResult.tcCount - 1)
+    + renderSetupCard(displayResult.villagers || { food: 0, wood: 0, gold: 0, stone: 0 }, civ, displayResult.haveSet.has('Castle'), displayResult.haveSet, buildingCounts, displayResult.tcCount - 1)
     + renderTimelineCard(displayResult.checkpoints, displayResult.villRate, civ);
 
   bodyEl.querySelectorAll('.alt-tab-btn').forEach(btn => btn.addEventListener('click', () => {
@@ -7048,7 +7170,30 @@ function renderOptimizeStages() {
   const lines = allLinesForCiv(civ);
   const container = document.getElementById('optimize-stages');
 
+  // Fast Feudal/Castle/Imp opening presets — stage 0 only (a pure opening
+  // preset: "reach this age asap," then add a real unit stage after it via
+  // the normal "+ Add Stage" flow). Sits next to the Target picker, not
+  // inside it — its own row, always rendered for stage 0 regardless of
+  // whether that stage currently holds a real unit target or an ageGoal.
+  const AGE_GOAL_LABELS = { feudal: ['Fast Feudal', '~17-20 pop'], castle: ['Fast Castle', '~22-26 pop, Castle Age'], imperial: ['Fast Imp', '~26-30 pop, Imperial Age'] };
+  const ageGoalPills = stage => `<div class="age-goal-pills" data-stage-idx="0" style="display:flex;gap:6px;flex-wrap:wrap;margin:${stage.ageGoal ? '2px 0 10px' : '2px 0 10px'};">
+    ${Object.entries(AGE_GOAL_LABELS).map(([key, [label, title]]) => `<button type="button" class="age-goal-btn" data-age-goal="${key}" title="${title}" style="flex:none;padding:6px 12px;font-size:12px;border-radius:20px;cursor:pointer;font-family:inherit;font-weight:600;${stage.ageGoal === key ? 'border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);' : 'border:1px solid var(--border2);background:var(--bg);color:var(--text2);'}">${label}</button>`).join('')}
+  </div>`;
+
   container.innerHTML = optimizeState.stages.map((stage, i) => {
+    const removeStageBtnTop = optimizeState.stages.length > 1
+      ? `<button type="button" class="stage-remove" data-stage-idx="${i}" title="Remove this stage" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:16px;line-height:1;padding:0 4px;">×</button>` : '';
+    if (stage.ageGoal) {
+      const [label] = AGE_GOAL_LABELS[stage.ageGoal];
+      return `<div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-top:0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span class="tname">${optimizeState.stages.length > 1 ? 'Stage 1' : 'Target'}</span>
+          ${removeStageBtnTop}
+        </div>
+        ${ageGoalPills(stage)}
+        <p class="desc" style="margin:0;">${label}: reach that age as fast as possible — automatically deciding which economy upgrades and extra Town Centers (if any) are worth it along the way. Click "+ Add Stage" below to plan real unit training once that age is reached.</p>
+      </div>`;
+    }
     // Repair each unit's own lineId independently (a civ switch can orphan
     // any of them, not just the first) — same fallback the single-target
     // version always had, just looped now.
@@ -7119,10 +7264,21 @@ function renderOptimizeStages() {
         <span class="tname">${optimizeState.stages.length > 1 ? `Stage ${i + 1}` : 'Target'}</span>
         ${removeStageBtn}
       </div>
+      ${i === 0 ? ageGoalPills(stage) : ''}
       ${unitBlocks}
     </div>`;
   }).join('');
 
+  container.querySelectorAll('.age-goal-btn').forEach(btn => btn.addEventListener('click', () => {
+    const key = btn.dataset.ageGoal;
+    optimizeState.stages[0] = optimizeState.stages[0].ageGoal === key
+      // Already selected — click again to revert to a normal unit target,
+      // same default shape optimizeState itself starts with.
+      ? { units: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }] }
+      : { ageGoal: key };
+    renderOptimizeStages();
+    renderOptimizeResults();
+  }));
   container.querySelectorAll('.stage-unit-select').forEach(sel => sel.addEventListener('change', e => {
     const i = Number(e.target.dataset.stageIdx);
     const ui = Number(e.target.dataset.unitIdx);
@@ -7207,6 +7363,7 @@ document.getElementById('optimize-add-unit').addEventListener('click', () => {
   const civ = selectedCiv();
   const lines = allLinesForCiv(civ);
   const stage = optimizeState.stages[optimizeState.stages.length - 1];
+  if (stage.ageGoal) return; // nothing to add a concurrent unit to on an age-rush stage
   stage.units.push({ lineId: (lines[1] || lines[0]).id, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 });
   renderOptimizeStages();
   renderOptimizeResults();
