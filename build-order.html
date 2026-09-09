@@ -240,7 +240,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.96</div>
+  <div class="version">v0.97</div>
 </div>
 
 <script>
@@ -4302,25 +4302,100 @@ function startLabelFor(it) {
 // exactly where within the gap it fell — a reasonable approximation for a
 // planning estimate, not a literal script).
 function expandHouseCheckpoints(checkpoints, housesAlready, houseBaseline, housePopSpace, hasNoHouses) {
-  if (hasNoHouses) return checkpoints;
+  if (hasNoHouses) return reconcileSplits(checkpoints);
   const housesFor = v => housesAlready + Math.max(0, Math.ceil((v - houseBaseline) / housePopSpace));
   const expanded = [checkpoints[0]];
   for (let i = 1; i < checkpoints.length; i++) {
     const prev = checkpoints[i - 1], cur = checkpoints[i];
     if (cur.blocked || cur.kind === 'house' || cur.vills <= prev.vills) { expanded.push(cur); continue; }
     const fromCount = housesFor(prev.vills), toCount = housesFor(cur.vills);
+    // Real bug this fixes: a threshold-crossing house insertion correctly
+    // interpolated its own time/vills, but just cloned `prev.alloc`
+    // unchanged — so any new villagers born between `prev` and `cur` (this
+    // whole span is usually one multi-minute item resolution, e.g. funding
+    // an age-up) were invisible until `cur` dumped the ENTIRE span's growth
+    // as one big jump with no breakdown of when each part happened (user-
+    // reported: "it shows 4/1 on food/wood then it shows 13/3 but never
+    // indicates when the 2 extras go to wood"). Real per-villager routing
+    // isn't tracked outside simulateItemReady's own tick loop, so this
+    // LINEARLY interpolates each resource's alloc between the two known
+    // real snapshots (prev.alloc -> cur.alloc) at this threshold's own
+    // frac — an approximation of WHEN each assignment happened, not the
+    // exact resource of the Nth villager, but far more informative than a
+    // flat stale copy. `split: {}` is just a truthy marker opting this
+    // checkpoint into reconcileSplits below, which derives every shown
+    // checkpoint's real incremental split from alloc deltas in one pass —
+    // computing a delta here too would double-count once a real, later
+    // checkpoint's own pre-existing split (e.g. an age-up's) gets reconciled
+    // against the SAME alloc these interpolated rows already accounted for.
+    const fromAlloc = prev.alloc || { food: 0, wood: 0, gold: 0, stone: 0 };
+    const toAlloc = cur.alloc || fromAlloc;
     for (let k = fromCount + 1; k <= toCount; k++) {
       const thresholdVills = houseBaseline + (k - housesAlready - 1) * housePopSpace + 1;
       const frac = (thresholdVills - prev.vills) / (cur.vills - prev.vills);
+      const interpAlloc = {};
+      RES.forEach(r => { interpAlloc[r] = Math.round(fromAlloc[r] + frac * (toAlloc[r] - fromAlloc[r])); });
       expanded.push({
         label: 'Build 1 House', time: prev.time + frac * (cur.time - prev.time),
-        vills: thresholdVills, split: null, houses: k, houseDelta: 1,
-        alloc: { ...prev.alloc }, pool: { ...prev.pool }, kind: 'house',
+        vills: thresholdVills, split: {}, houses: k, houseDelta: 1,
+        alloc: interpAlloc, pool: { ...prev.pool }, kind: 'house',
       });
     }
     expanded.push(cur);
   }
-  return expanded;
+  return reconcileSplits(expanded);
+}
+
+// A checkpoint's own `split` (set by runSequential/resolveSequential) is the
+// FULL new-villager growth across whatever item it resolved — often a whole
+// multi-minute bundle (e.g. Loom + an age-up) — attributed entirely to that
+// bundle's own completion checkpoint, several rows after growth actually
+// happened. expandHouseCheckpoints above interpolates alloc at each
+// population threshold WITHIN that span, but a threshold rarely lands
+// EXACTLY at the bundle's own end — the leftover growth between the last
+// threshold and the real end previously vanished entirely, since it landed
+// on a checkpoint kind (a building's own "start" row, e.g. "Build Market")
+// that never carried a `split` field at all, not just on the bundle's final
+// checkpoint (whose own split then reconciled to a stale/incomplete value).
+// Real fix: show the delta at WHICHEVER checkpoint alloc first changes on,
+// not only the ones that happened to be tagged with a split originally —
+// several consecutive checkpoints can share ONE identical alloc snapshot
+// (cumAlloc only updates once per resolved item, not once per checkpoint
+// push), so tracking the last DIFFERENT alloc (not just the immediately
+// preceding row) finds the right "first changed" checkpoint regardless of
+// how many same-alloc rows separate the growth from where it's reported.
+function reconcileSplits(list) {
+  // Seeded from the FIRST checkpoint's own alloc (the free starting
+  // villagers, never a "sent" decision) rather than null — otherwise that
+  // first checkpoint reads as a change from nothing and spuriously gains a
+  // split double-counting those starting villagers on top of every real
+  // split downstream.
+  let lastAlloc = list[0]?.alloc || null;
+  let lastVills = list[0]?.vills ?? -Infinity;
+  return list.map((c, i) => {
+    if (i === 0 || c.blocked || !c.alloc) return c;
+    // A villager-count DROP means this checkpoint isn't a continuation at
+    // all — it's the start of a separate, re-simulated-from-scratch
+    // alternate scenario (e.g. "here's what N more Town Centers would look
+    // like instead") appended after the main timeline, same signal
+    // expandHouseCheckpoints' own house-insertion guard above already uses.
+    // Comparing it against the MAIN scenario's ending alloc would produce a
+    // meaningless negative-clamped-to-zero delta — just reseed the
+    // baseline here (keep whatever split it already had) instead.
+    if (c.vills < lastVills) { lastAlloc = c.alloc; lastVills = c.vills; return c; }
+    const changed = !lastAlloc || RES.some(r => c.alloc[r] !== lastAlloc[r]);
+    let out = c;
+    lastVills = c.vills;
+    if (changed) {
+      const split = {};
+      RES.forEach(r => { split[r] = Math.max(0, c.alloc[r] - (lastAlloc ? lastAlloc[r] : 0)); });
+      out = { ...c, split };
+      lastAlloc = c.alloc;
+    } else if (c.split) {
+      out = { ...c, split: null };
+    }
+    return out;
+  });
 }
 
 // ─── Shared income/rate math (used by both Constant Production and Optimize) ─
