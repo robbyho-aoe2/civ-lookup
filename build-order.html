@@ -240,7 +240,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.91</div>
+  <div class="version">v0.92</div>
 </div>
 
 <script>
@@ -589,6 +589,13 @@ const DATA = {
     { id:'trebuchet', name:'Trebuchet', building:'Siege Workshop', cost:{food:0,wood:200,gold:200,stone:0}, pop:1, tiers:[{ name:'Trebuchet', age:'Imperial', trainTime:50 }] },
     { id:'monk', name:'Monk', building:'Monastery', cost:{food:0,wood:0,gold:100,stone:0}, pop:1, tiers:[{ name:'Monk', age:'Castle', trainTime:51 }] },
     { id:'petard', name:'Petard', building:'Siege Workshop', cost:{food:65,wood:0,gold:20,stone:0}, pop:1, tiers:[{ name:'Petard', age:'Castle', trainTime:25 }] },
+    // Found via a full-roster audit against SiegeEngineers/aoe2techtree's
+    // per-civ tree JSON (data/trees/FRANKS.json, node_id 1105) — genuinely
+    // missing from this file entirely until now, unlike every other real
+    // unit which cross-checked clean. Universal (all 53 civs), Castle Age,
+    // Siege Workshop, no upgrade tiers — same real cost/time/HP as the
+    // live data source (120g/100w, 175HP, 36s train).
+    { id:'siege-tower', name:'Siege Tower', building:'Siege Workshop', cost:{food:0,wood:100,gold:120,stone:0}, pop:1, tiers:[{ name:'Siege Tower', age:'Castle', trainTime:36 }] },
   ],
   // Full civ roster (53 civs) — unique-unit stats and unavailableUnitLines
   // pulled programmatically from SiegeEngineers/aoe2techtree data.json;
