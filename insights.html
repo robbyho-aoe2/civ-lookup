@@ -352,6 +352,12 @@ async function loadAndRender() {
     // instead of just deduping them to one entry. Tie-break independently
     // here by whichever account has the higher bestConsoleRating instead.
     const regionDropIds = new Set(CROSSPLAY_EXCLUDE_IDS);
+    // MORIS0202 (12868111) was excluded from Crossplay Ceiling for a
+    // PC-elo reason that's specific to that insight — he genuinely plays
+    // console ranked on console and PC ranked on PC (a real, rare native
+    // split, not a smurf/crossplay case), so that exclusion doesn't apply
+    // here; Region only cares about his console rating/country, both real.
+    regionDropIds.delete(12868111);
     CROSSPLAY_DEDUP_PAIRS.forEach(([idA, idB]) => {
       const a = consolePlayers.find(p => p.profileId === idA);
       const b = consolePlayers.find(p => p.profileId === idB);
