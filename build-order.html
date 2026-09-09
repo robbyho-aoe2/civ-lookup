@@ -240,7 +240,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.92</div>
+  <div class="version">v0.93</div>
 </div>
 
 <script>
@@ -1121,7 +1121,10 @@ const DATA = {
       ],
       "ecoBonuses": [
         { "type": "building-cost-flat", "building": "Archery Range", "resource": "wood", "value": 75, "note": "Archery Ranges and Stables cost -75 wood" },
-        { "type": "building-cost-flat", "building": "Stable", "resource": "wood", "value": 75, "note": "Archery Ranges and Stables cost -75 wood" }
+        { "type": "building-cost-flat", "building": "Stable", "resource": "wood", "value": 75, "note": "Archery Ranges and Stables cost -75 wood" },
+        { "type": "building-age-override", "building": "Siege Workshop", "newAge": "Feudal", "note": "Siege Workshop and Battering Ram available in Feudal Age -- the building itself is the real bottleneck; the tier-age overrides below only matter once this unlocks it early" },
+        { "type": "tech-age-override", "unitTier": "Battering Ram", "newAge": "Feudal", "note": "Battering Ram available in Feudal Age instead of Castle" },
+        { "type": "tech-age-override", "unitTier": "Capped Ram", "newAge": "Castle", "note": "Capped Ram available in Castle Age instead of Imperial" }
       ],
       "unavailableUnitLines": [
         "eagle-line",
@@ -1165,7 +1168,9 @@ const DATA = {
       ],
       "ecoBonuses": [
         { "type": "age-up-resource-bonus", "delta": { "food": 0, "wood": 200, "gold": 0, "stone": 0 }, "note": "Receive +200 wood when advancing to the next Age" },
-        { "type": "tech-cost-pct", "building": "Barracks", "value": 50, "note": "Barracks technologies cost -50%" }
+        { "type": "tech-cost-pct", "building": "Barracks", "value": 50, "note": "Barracks technologies cost -50%" },
+        { "type": "unit-cost-pct", "line": "mangonel-line", "resource": "wood", "value": 33, "note": "Siege Weapons cost -33% wood" },
+        { "type": "unit-cost-pct", "line": "scorpion-line", "resource": "wood", "value": 33, "note": "Siege Weapons cost -33% wood" }
       ],
       "unavailableUnitLines": [
         "eagle-line",
@@ -1649,7 +1654,9 @@ const DATA = {
         }
       ],
       "ecoBonuses": [
-        { "type": "no-decay-meat-pct", "value": 16.3, "note": "100% of chicken/deer/boar/sheep meat with no decay (estimated from wild chickens' real ~86% capture rate)" }
+        { "type": "no-decay-meat-pct", "value": 16.3, "note": "100% of chicken/deer/boar/sheep meat with no decay (estimated from wild chickens' real ~86% capture rate)" },
+        { "type": "tech-cost-pct", "techId": "siege-engineers", "resource": "wood", "value": 75, "note": "Siege Engineers costs -75% wood -- the real bonus covers 'Siege and Fortification upgrades' broadly, but Siege Engineers is the only one of those this tool models as a researchable tech; no in-tool Fortification tech exists to attach the rest to" },
+        { "type": "tech-time-pct", "techId": "siege-engineers", "value": 100, "note": "Siege Engineers researches +100% faster" }
       ],
       "unavailableUnitLines": [
         "eagle-line",
@@ -3173,6 +3180,17 @@ function effectiveTierAge(tier, civ) {
   const override = (civ?.ecoBonuses || []).find(b => b.type === 'tech-age-override' && b.unitTier === tier.name);
   return override ? override.newAge : tier.age;
 }
+// Same shape as effectiveTierAge, for a production BUILDING's own minAge —
+// Cumans: "Siege Workshop and Battering Ram available in Feudal Age;
+// Capped Ram available in Castle Age" real civ bonus. Without this, the
+// Siege Workshop's global minAge:'Castle' (DATA.productionBuildings) blocks
+// Cumans from ever constructing it before Castle Age regardless of any
+// tier-level override on the Ram itself — this override has to fire FIRST,
+// the building is the actual bottleneck, not just the unit tier.
+function effectiveBuildingAge(minAge, buildingName, civ) {
+  const override = (civ?.ecoBonuses || []).find(b => b.type === 'building-age-override' && b.building === buildingName);
+  return override ? override.newAge : minAge;
+}
 // Khitans: "Skirmisher, Spearman-, and Scout Cavalry-line train and upgrade
 // +15% faster" — the train half. Matched by the unit LINE's own id (not the
 // tier), since the bonus covers every tier of these 3 lines uniformly. The
@@ -3535,7 +3553,7 @@ function buildingChainItems(buildingName, civ, haveSet) {
   const def = buildingName === 'Castle' ? DATA.castle : DATA.productionBuildings[buildingName];
   if (!def) return [];
   haveSet.add(buildingName);
-  return [{ name: buildingName, cost: costForCiv(def.cost, civ, buildingName), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(buildingName), civ), age: def.minAge, builders: buildersForBuilding(buildingName) }];
+  return [{ name: buildingName, cost: costForCiv(def.cost, civ, buildingName), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(buildingName), civ), age: effectiveBuildingAge(def.minAge, buildingName, civ), builders: buildersForBuilding(buildingName) }];
 }
 
 // Simulates constant villager production: new villagers are born at a fixed
@@ -4594,7 +4612,7 @@ function stageMandatoryItems(targets, civ, allIn, haveSet, fromAgeIdx, extraItem
           name: line.building,
           cost: RES.reduce((c, r) => { c[r] = (perCost[r] || 0) * extraCount; return c; }, {}),
           queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(line.building), civ),
-          age: def.minAge,
+          age: effectiveBuildingAge(def.minAge, line.building, civ),
           builders: buildersForBuilding(line.building),
         };
         // NOT deferred, unlike the first copy above — only that first copy
@@ -4638,7 +4656,7 @@ function stageMandatoryItems(targets, civ, allIn, haveSet, fromAgeIdx, extraItem
     if (ageIndex(age) > targetAgeIdx || ageIndex(age) <= fromAgeIdx) return;
     fillerBuildingsNeeded(age, civ, baselineVillagers, haveSet).forEach(name => {
       const def = DATA.productionBuildings[name];
-      const item = { name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name), civ), age: def.minAge, builders: buildersForBuilding(name) };
+      const item = { name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name), civ), age: effectiveBuildingAge(def.minAge, name, civ), builders: buildersForBuilding(name) };
       deferIfEarly(item);
       items.push(item);
     });
@@ -5314,7 +5332,15 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         // not the unit's OWN training building, so this applies correctly
         // regardless of which unit line the checkbox was checked from.
         let techCost = costForCiv(t.cost, civ);
-        const techBuildingDiscount = (civ?.ecoBonuses || []).find(b => b.type === 'tech-cost-pct' && b.building === requiredBuilding);
+        // `techId` (exact match) takes precedence over `building` (matches
+        // any combat tech at that building) when both could apply — Jurchens'
+        // "-75% wood on Siege Engineers" is scoped to that ONE tech, not
+        // every Siege-Workshop-building combat tech (Ballistics can also
+        // resolve to Siege Workshop here via requiredBuilding's own
+        // u.line.building fallback when checked from Scorpion — a
+        // pre-existing, unrelated quirk this techId scoping deliberately
+        // avoids inheriting into a new bonus).
+        const techBuildingDiscount = (civ?.ecoBonuses || []).find(b => b.type === 'tech-cost-pct' && (b.techId ? b.techId === id : b.building === requiredBuilding));
         if (techBuildingDiscount) {
           const resources = techBuildingDiscount.resource ? [techBuildingDiscount.resource] : RES;
           resources.forEach(r => { if (techCost[r]) techCost[r] = Math.round(techCost[r] * (1 - techBuildingDiscount.value / 100)); });
@@ -5328,7 +5354,13 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         // (Spearman→Pikeman etc.) have no modeled research time for ANY
         // civ today, so they're untouched by this bonus, same as before.
         const speedBonus = (civ?.ecoBonuses || []).find(b => b.type === 'unit-speed-pct' && b.lines.includes(u.line.id));
-        const techTime = speedBonus ? t.queueSeconds / (1 + speedBonus.value / 100) : t.queueSeconds;
+        // Jurchens: "Siege... upgrades research +100% faster" — scoped by
+        // exact techId (same reasoning as techBuildingDiscount above), not
+        // by unit line, since it's the TECH that researches faster
+        // regardless of which line's checkbox triggered it.
+        const techSpeedBonus = (civ?.ecoBonuses || []).find(b => b.type === 'tech-time-pct' && b.techId === id);
+        let techTime = speedBonus ? t.queueSeconds / (1 + speedBonus.value / 100) : t.queueSeconds;
+        if (techSpeedBonus) techTime = techTime / (1 + techSpeedBonus.value / 100);
         extraItems.push({ name: t.name, cost: techCost, queueSeconds: techTime, deferToEnd: true, age: t.age, techCount: 1 });
       });
     });
@@ -5619,7 +5651,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           if (ageIndex(age) > requiredExtraTcAgeIdx || ageIndex(age) <= reachedAgeIdx) return;
           fillerBuildingsNeeded(age, civ, genericVillagers, scratchHaveSet).forEach(name => {
             const def = DATA.productionBuildings[name];
-            fillerItems.push({ name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name), civ), age: def.minAge, deferToEnd: true, builders: buildersForBuilding(name) });
+            fillerItems.push({ name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name), civ), age: effectiveBuildingAge(def.minAge, name, civ), deferToEnd: true, builders: buildersForBuilding(name) });
           });
         });
         // A Villager target's own age-up (if it happens at all) is decided
@@ -5671,7 +5703,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         if (ageIndex('Castle') > reachedAgeIdx) {
           fillerBuildingsNeeded('Castle', civ, genericVillagers2, scratchHaveSet2).forEach(name => {
             const def = DATA.productionBuildings[name];
-            fillerItems2.push({ name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name), civ), age: def.minAge, deferToEnd: true, builders: buildersForBuilding(name) });
+            fillerItems2.push({ name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name), civ), age: effectiveBuildingAge(def.minAge, name, civ), deferToEnd: true, builders: buildersForBuilding(name) });
           });
         }
         const castleAgeItems = mergeWithAgeUps(fillerItems2, ageUpPending('Feudal', 'Castle', civ));
