@@ -240,7 +240,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.98</div>
+  <div class="version">v0.99</div>
 </div>
 
 <script>
@@ -3461,6 +3461,24 @@ function mergeWithAgeUps(goalItems, ageItems) {
     .map(({ item }) => item);
 }
 
+// Cost of the merge-boundary bundle starting at itemList[startIdx] — the
+// exact same deferToEnd-run-terminated-by-isAgeUp detection runSequential/
+// resolveSequential's own loops already do inline, factored out so a caller
+// can PEEK at the cost of the NEXT bundle without consuming it. Used to give
+// villager routing one bundle's worth of lookahead across an age-up boundary
+// (e.g. start crediting Castle's own gold cost as a real, weighable need
+// while still resolving the earlier Feudal-only bundle, instead of gold
+// being structurally invisible until Feudal's bundle finishes) — see
+// simulateItemReady's own `futureNeed` param.
+function mergedCostAt(itemList, startIdx) {
+  if (startIdx >= itemList.length) return null;
+  let runEnd = startIdx;
+  while (itemList[runEnd]?.deferToEnd) runEnd++;
+  const deferCount = itemList[runEnd]?.isAgeUp ? runEnd - startIdx : 0;
+  const mergedItems = deferCount > 0 ? itemList.slice(startIdx, startIdx + deferCount + 1) : [itemList[startIdx]];
+  return RES.reduce((c, r) => { c[r] = mergedItems.reduce((s, it) => s + (it.cost?.[r] || 0), 0); return c; }, {});
+}
+
 // Pure version of runSequential's own item-merging logic (a whole run of
 // consecutive deferToEnd items immediately followed by an age-up resolves
 // as ONE simultaneous transaction, not processed one at a time) — operates
@@ -3572,7 +3590,7 @@ function buildingChainItems(buildingName, civ, haveSet) {
 // Their labor still counts toward whatever they're assigned to (RES.forEach
 // below, not `need.forEach`) — it just may not help THIS item at all until
 // the script hands control back to the greedy algorithm.
-function simulateItemReady(item, rates, villRate, startTime, startVills, pool, openingSequence, existingAlloc, villagerFoodCost, farmWoodRatio, civ, builtResources) {
+function simulateItemReady(item, rates, villRate, startTime, startVills, pool, openingSequence, existingAlloc, villagerFoodCost, farmWoodRatio, civ, builtResources, backwardSchedule) {
   const need = RES.filter(r => item.cost[r] > 0);
   const minTime = startTime + (item.queueSeconds || 0);
   // Town Center techs (tcQueue:true) block villager production for their
@@ -3658,6 +3676,11 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
   const builtLocal = builtResources ? { ...builtResources } : null;
   const pendingRate = { food: 0, wood: 0, gold: 0, stone: 0 };
   const pendingReadyAt = { food: null, wood: null, gold: null, stone: null };
+  // How many villagers `backwardSchedule` has already forced onto each
+  // resource this call — separate from `assigned` since a scheduled
+  // resource can ALSO be a real (if trivial) `need` entry, same Loom-costs-
+  // gold case that made a plain need-membership check insufficient before.
+  const scheduledAssigned = { food: 0, wood: 0, gold: 0, stone: 0 };
   let vills = startVills;
   let t = startTime;
   const dt = 0.5;
@@ -3681,7 +3704,36 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
   while (t <= capT) {
     while (t >= nextBirth - 1e-9) {
       let target;
-      if (openingSequence && vills < openingSequence.length) {
+      // Backward-scheduled lookahead (see runSequential's own two-pass call
+      // — a baseline pass estimates when THIS bundle would finish with no
+      // diversion at all, then works backwards from that deadline: N workers
+      // gathering `futureNeed[r]` at `rates[r]` need `futureNeed[r]/(N*rate)`
+      // seconds, so the LATEST safe start is `deadline - thatDuration`).
+      // Takes priority over BOTH the scripted opening array and the greedy
+      // worst-ETA branch below — it's a deliberate, precomputed commitment,
+      // not a competing bid. An EARLIER greedy "worst ETA" version of this
+      // (gold competing directly via eta, using futureNeed as a target) was
+      // tried and reverted: gold's eta is Infinity the instant it's
+      // eligible, and Infinity beats any finite eta unconditionally, so it
+      // always won IMMEDIATELY (as early as structurally possible) rather
+      // than late — the literal opposite of the real strategy ("last 2
+      // vills go to gold"), and measurably SLOWER overall (949s vs 947.5s
+      // for Franks' Fast Castle) since it front-loaded the diversion when
+      // the current bundle's own need had the LEAST slack to spare it.
+      // Scheduling backward from a real deadline fixes this: the diversion
+      // now starts as LATE as the deadline allows, matching real play, and
+      // the total villager-seconds diverted (`futureNeed[r]/rate`) is
+      // mathematically the SAME regardless of N — using the user's own real
+      // N (2) costs nothing extra vs. any other choice.
+      if (backwardSchedule) {
+        for (const r of RES) {
+          const sch = backwardSchedule[r];
+          if (sch && t >= sch.startTime - 1e-9 && (scheduledAssigned[r] || 0) < sch.cap) { target = r; break; }
+        }
+      }
+      if (target) {
+        scheduledAssigned[target] = (scheduledAssigned[target] || 0) + 1;
+      } else if (openingSequence && vills < openingSequence.length) {
         target = openingSequence[vills];
       } else {
         target = need[0];
@@ -5036,7 +5088,23 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
   // reachable failure mode while testing a since-abandoned villager-cap
   // experiment — expensive enough combinations can still hit the internal
   // 60-min cap even without one).
-  function runSequential(itemList, rates, villRate) {
+  // `allowBackwardSchedule` (default true): whether this call's own bundles
+  // are allowed to anticipate their NEXT bundle's cost (see the two-pass
+  // backward-schedule computation below). Explicitly disabled by the
+  // 'age-up'/'castle-age-up' move replays specifically when
+  // `stage.ageGoal === 'imperial'` — their own itemList's LAST bundle
+  // (Castle) has no visibility into the SEPARATE 'imperial-age-up' move
+  // that follows it (a genuinely different itemList/runSequential call,
+  // own state-space dimension — see that move's own comment), so backward-
+  // scheduling Castle's own gold precisely (matching Fast Castle's real
+  // improvement) left Imperial's own still-unfixed, lookahead-blind
+  // resolution WITHOUT the accidental over-investment it had been leaning
+  // on, a real, measured regression (confirmed: Franks' Fast Imperial
+  // 1417s -> 1453.5s). Scoped narrowly — Fast Castle and any real (non-
+  // ageGoal) target that only ever needs ONE combined itemList are
+  // unaffected and keep the real fix. Revisit once the SAME backward-
+  // scheduling logic is extended across that move-type boundary too.
+  function runSequential(itemList, rates, villRate, allowBackwardSchedule = true) {
     let ri = 0;
     let anyBlocked = false;
     while (ri < itemList.length) {
@@ -5067,7 +5135,103 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       })() : mergedItems[0];
 
       const callStartTime = cursorTime, callStartVills = cursorVills;
-      const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence, cumAlloc, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(levels), civ), civ, builtResources);
+      // One bundle's worth of lookahead — the NEXT age-up bundle's own cost
+      // (e.g. Castle's, while still resolving Feudal's), not the whole rest
+      // of itemList — so a 3-bundle Fast Imperial chain doesn't anticipate
+      // Imperial's gold two transitions early; Castle's own bundle will
+      // separately anticipate Imperial once IT is the current bundle.
+      const futureNeed = mergedCostAt(itemList, ri + mergedItems.length);
+      // Backward-scheduled lookahead, two passes: a BASELINE pass (no
+      // diversion at all) estimates when this bundle would finish with no
+      // help — that's the real deadline the next bundle's own resource
+      // needs to be ready by. Working backwards from it: N workers
+      // gathering `futureNeed[r]` at `rates[r]` need `futureNeed[r]/(N*
+      // rate)` seconds, so the LATEST safe start is `deadline - that
+      // duration` — matching the real strategy (divert villagers as LATE
+      // as the deadline allows, not as early as structurally possible).
+      // Only a resource the baseline pass assigned ZERO workers to gets
+      // scheduled — one this bundle's own existing machinery (the scripted
+      // opening array, or a real cost) structurally never invests in
+      // otherwise (gold, with no cost in Feudal's own bundle and no
+      // scripted slot either). A resource the baseline DID naturally staff
+      // (wood, via the scripted array's own forced slots) doesn't need a
+      // separate push — scheduling it too was tried and reverted: its
+      // futureNeed (325, Market+Blacksmith) is a bigger raw number than
+      // gold's 200, so it kept winning a competing greedy comparison and
+      // starving both gold and the current bundle's own real food need.
+      // N=2 matches the user's own real Fast Castle strategy ("last 2
+      // vills go to gold") — and it's a free choice, not a guess: total
+      // diverted villager-time (`futureNeed[r]/rate`) is mathematically the
+      // same for any N, only WHEN the diversion starts changes.
+      let backwardSchedule = null;
+      // No civ-specific exclusions here on purpose — a same-bundle
+      // comparison can never distinguish a genuine regression from
+      // backward-scheduling's own by-design "sacrifice a little now for a
+      // bigger later win" trade (which looks like a same-bundle loss every
+      // time, whether or not the trade is actually worth it). Real civs
+      // where this trade ISN'T worth it (Huns, Bengalis, Chinese,
+      // Ethiopians, Goths, Hindustanis, Italians, Jurchens, Khitans — a
+      // real, found-by-testing list, not exhaustive) are instead handled
+      // by runSequentialBest, which runs the FULL itemList both ways and
+      // keeps whichever is actually faster — see its own comment.
+      if (allowBackwardSchedule && futureNeed && RES.some(r2 => futureNeed[r2] > 0)) {
+        const baseline = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence, cumAlloc, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(levels), civ), civ, builtResources);
+        if (baseline) {
+          const N = 2;
+          const schedule = {};
+          RES.forEach(r2 => {
+            if (!(futureNeed[r2] > 0) || (baseline.assigned[r2] || 0) > 0) return;
+            const rate = rates[r2];
+            if (!(rate > 0)) return;
+            // A resource already-scheduled by an EARLIER bundle (e.g. gold
+            // primed with 2 workers back in Feudal's own bundle) isn't
+            // simply excluded here — real bug this fixes: a binary "already
+            // has any existing workers" exclusion made a LATER bundle with
+            // a much BIGGER real need (Imperial's 800 gold vs Castle's 200)
+            // fall back entirely to the plain existingAlloc-aware greedy
+            // comparison for the remainder, with no deadline awareness at
+            // all — and 2 modest existing workers aren't nearly enough
+            // established throughput to keep gold from looking
+            // catastrophically behind for a long stretch once 800 becomes
+            // the target, so it kept winning "worst ETA" and starved food
+            // completely for 500+ seconds (confirmed: Imperial regressed
+            // 1417s -> 1453.5s with the naive exclusion, worse than not
+            // anticipating gold at all). Instead, credit however much the
+            // EXISTING throughput would gather on its own by the deadline,
+            // and only schedule MORE (on top of it) for the real shortfall.
+            // Also credit whatever's LEFT OVER in `baseline.pool` for r2 —
+            // real bug this fixes: Aztecs' +50 starting gold (a one-time
+            // pool credit, not ongoing throughput) wasn't counted at all,
+            // overstating the real shortfall (934.5s -> 940.5s regression).
+            // MUST be `baseline.pool` (post-bundle-completion), not the raw
+            // input `pool` — a second real bug caught immediately after:
+            // using the raw input pool double-counts the standard starting
+            // 50 gold every civ has, which Loom's own real 50-gold cost
+            // already fully consumes within THIS bundle (confirmed: Franks
+            // regressed 940.5s -> 950s using the raw pool, since it credited
+            // the SAME 50 gold as "extra and available" when it was already
+            // spent). `baseline.pool` is what's genuinely left AFTER the
+            // current bundle's own real cost is paid — the only honest
+            // "extra, available for the next bundle" figure.
+            const existingCoverage = (cumAlloc?.[r2] || 0) * rate * Math.max(0, baseline.time - cursorTime) + Math.max(0, baseline.pool?.[r2] || 0);
+            const shortfall = futureNeed[r2] - existingCoverage;
+            if (shortfall <= 0) return;
+            const timeNeeded = shortfall / (N * rate);
+            schedule[r2] = { startTime: Math.max(cursorTime, baseline.time - timeNeeded), cap: N };
+          });
+          if (Object.keys(schedule).length) backwardSchedule = schedule;
+        }
+      }
+      // No same-bundle "keep whichever is faster" check here — that
+      // comparison is structurally the wrong one (see runSequentialBest's
+      // own comment, which does this correctly at the FULL-itemList level
+      // instead): backward-scheduling's value proposition is sacrificing a
+      // little time in THIS bundle for a bigger win once the NEXT bundle
+      // reuses the head start, so this bundle's own isolated completion is
+      // *supposed* to look marginally worse on its own, every time, by
+      // design — a same-bundle comparison can't tell that apart from a
+      // genuine regression and would reject every case indiscriminately.
+      const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence, cumAlloc, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(levels), civ), civ, builtResources, backwardSchedule);
       if (!r) { checkpoints.push({ label: `${simItem.name} — past 60 min, add more Town Centers`, blocked: true }); anyBlocked = true; ri += mergedItems.length; continue; }
       cursorTime = r.time; cursorVills = r.vills; pool = r.pool;
       // Spanish: +20 gold per real technology in this resolved batch — see
@@ -5220,6 +5384,79 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       ri += mergedItems.length;
     }
     return anyBlocked;
+  }
+
+  // Snapshot/restore/capture helpers for runSequentialBest below — the
+  // exact set of outer-scope state runSequential itself mutates: `pool`
+  // (reassigned via `let`), `cumAlloc`/`builtResources` (const objects,
+  // mutated in place — RES.forEach copy, never `= {...}` reassignment,
+  // same established rule cumAlloc already follows elsewhere in this
+  // file), `checkpoints` (const array, push-only — truncate via `.length`
+  // to discard, `.slice()` to save what a trial added), `cursorTime`/
+  // `cursorVills` (plain `let` scalars).
+  function snapshotState() {
+    return {
+      checkpointsLen: checkpoints.length,
+      cursorTime, cursorVills,
+      pool: { ...pool },
+      cumAlloc: { ...cumAlloc },
+      builtResources: { ...builtResources },
+    };
+  }
+  function restoreState(snap) {
+    checkpoints.length = snap.checkpointsLen;
+    cursorTime = snap.cursorTime; cursorVills = snap.cursorVills;
+    RES.forEach(r => { pool[r] = snap.pool[r]; cumAlloc[r] = snap.cumAlloc[r]; builtResources[r] = snap.builtResources[r]; });
+  }
+  function captureAfter(snap) {
+    return {
+      newCheckpoints: checkpoints.slice(snap.checkpointsLen),
+      cursorTime, cursorVills,
+      pool: { ...pool },
+      cumAlloc: { ...cumAlloc },
+      builtResources: { ...builtResources },
+    };
+  }
+  function applyCapture(cap) {
+    checkpoints.push(...cap.newCheckpoints);
+    cursorTime = cap.cursorTime; cursorVills = cap.cursorVills;
+    RES.forEach(r => { pool[r] = cap.pool[r]; cumAlloc[r] = cap.cumAlloc[r]; builtResources[r] = cap.builtResources[r]; });
+  }
+  // Runs itemList TWICE — once allowing backward-scheduled lookahead
+  // throughout, once without — and keeps whichever REAL result (every
+  // bundle the itemList contains, not just one) is actually faster. This
+  // is the general safety net a same-bundle "compare scheduled vs
+  // baseline" comparison couldn't be (see runSequential's own note on
+  // that reverted attempt): backward-scheduling's value proposition is
+  // sacrificing a little time in an EARLIER bundle for a bigger win once
+  // a LATER bundle reuses the head start, so any same-bundle comparison
+  // rejects the trade by design, every time, even when it's genuinely
+  // worth it. Only comparing the FULL resolved itemList answers "was this
+  // worth it" correctly. Real regressions this replaces a growing,
+  // unsustainable civ-by-civ exclusion list for — Huns (`no-houses`),
+  // Bengalis (`age-up-villager-bonus`), Chinese, Ethiopians, Goths,
+  // Hindustanis, Italians, Jurchens, Khitans all came out slower WITH
+  // scheduling for their own real reasons; this function doesn't need to
+  // know why, it just keeps whichever trial is actually faster. When
+  // `allowBackwardSchedule` is false (Fast Imperial's own Feudal->Castle
+  // leg — see its own separate, cross-MOVE-boundary reason in the
+  // 'age-up'/'castle-age-up' replay handlers below), skips the trial
+  // entirely and just resolves once, at no extra cost.
+  function runSequentialBest(itemList, rates, villRate, allowBackwardSchedule) {
+    if (!allowBackwardSchedule) return runSequential(itemList, rates, villRate, false);
+    const snap = snapshotState();
+    const anyBlockedWith = runSequential(itemList, rates, villRate, true);
+    const withCapture = { anyBlocked: anyBlockedWith, ...captureAfter(snap) };
+    restoreState(snap);
+    const anyBlockedWithout = runSequential(itemList, rates, villRate, false);
+    const withoutCapture = { anyBlocked: anyBlockedWithout, ...captureAfter(snap) };
+    let winner;
+    if (withCapture.anyBlocked && !withoutCapture.anyBlocked) winner = withoutCapture;
+    else if (!withCapture.anyBlocked && withoutCapture.anyBlocked) winner = withCapture;
+    else winner = (withCapture.cursorTime <= withoutCapture.cursorTime) ? withCapture : withoutCapture;
+    if (winner === withCapture) { restoreState(snap); applyCapture(withCapture); }
+    // else: withoutCapture's effects are already the current state (it ran last).
+    return winner.anyBlocked;
   }
 
   const stageResults = [];
@@ -5611,7 +5848,12 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     pool = primed.pool;
 
     const stoneBefore = cumAlloc.stone;
-    const prefixBlocked = runSequential(primed.remaining, ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra, reachedAgeIdx));
+    // A real (non-ageGoal) multi-age target's own mandatory prefix — no
+    // cross-move-boundary concern the way the ageGoal presets' own
+    // Castle/Imperial split has (this itemList already contains every
+    // bundle it needs in one place), so runSequentialBest always runs its
+    // full with/without comparison here, not gated on stage.ageGoal.
+    const prefixBlocked = runSequentialBest(primed.remaining, ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra, reachedAgeIdx), true);
     if (prefixBlocked) {
       // Bail out the same way an unreachable Dijkstra state already does
       // below, rather than silently continuing with a cursorTime/
@@ -6128,7 +6370,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     path.forEach(move => {
       if (move.type === 'pause-training') { replayPaused = true; return; }
       if (move.type === 'age-up') {
-        runSequential(move.items, ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra, reachedAgeIdx));
+        runSequentialBest(move.items, ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra, reachedAgeIdx), stage.ageGoal !== 'imperial');
         reachedAgeIdx = Math.max(reachedAgeIdx, requiredExtraTcAgeIdx);
         if (move.includesLoom) loomResearched = true;
         move.items.filter(it => !it.isAgeUp).forEach(it => {
@@ -6139,7 +6381,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // Cumans-only second age-up (Feudal->Castle, unlocking the 3rd+ TC) —
       // same shape as 'age-up' above, just a different real target age.
       if (move.type === 'castle-age-up') {
-        runSequential(move.items, ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra, reachedAgeIdx));
+        runSequentialBest(move.items, ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra, reachedAgeIdx), stage.ageGoal !== 'imperial');
         reachedAgeIdx = Math.max(reachedAgeIdx, ageIndex('Castle'));
         move.items.filter(it => !it.isAgeUp).forEach(it => {
           if (!haveSet.has(it.name)) { haveSet.add(it.name); haveSet.buildingCounts.set(it.name, 1); }
