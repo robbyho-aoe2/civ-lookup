@@ -249,7 +249,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.02</div>
+    <div class="version">v1.03</div>
   </div>
 </div>
 
@@ -3500,7 +3500,7 @@ function mergedCostAt(itemList, startIdx) {
 // accuracy for a Villager-boom age-up by not bundling filler buildings
 // with the age-up they were deferred for — don't re-duplicate this again,
 // reuse this instead.
-function resolveSequential(itemList, rates, villRate, startTime, startVills, pool, alloc, openingSequence, villagerFoodCost, farmWoodRatio, techGoldPerTech) {
+function resolveSequential(itemList, rates, villRate, startTime, startVills, pool, alloc, openingSequence, villagerFoodCost, farmWoodRatio, techGoldPerTech, bufferSeconds) {
   let t = startTime, v = startVills, p = pool, a = { ...alloc };
   let ri = 0;
   while (ri < itemList.length) {
@@ -3518,7 +3518,13 @@ function resolveSequential(itemList, rates, villRate, startTime, startVills, poo
         queueSeconds: Math.max(0, ...deferred.filter(it => !it.tcQueue).map(it => it.queueSeconds || 0)),
       };
     })() : mergedItems[0];
-    const r = simulateItemReady(simItem, rates, villRate, t, v, p, openingSequence, a, villagerFoodCost, farmWoodRatio);
+    // Only the LAST remaining age-up bundle in this itemList gets the
+    // buffer — a Fast Castle itemList bundles BOTH "Advance to Feudal" and
+    // "Advance to Castle" as separate isAgeUp bundles in the same call, and
+    // applying bufferSeconds to both would silently double the intended
+    // one-time delay (and bank the surplus at the wrong, intermediate age).
+    const isFinalAgeUpBundle = simItem.isAgeUp && !itemList.slice(ri + mergedItems.length).some(it => it.isAgeUp);
+    const r = simulateItemReady(simItem, rates, villRate, t, v, p, openingSequence, a, villagerFoodCost, farmWoodRatio, undefined, undefined, undefined, isFinalAgeUpBundle ? bufferSeconds : undefined);
     if (!r) return null;
     t = r.time; v = r.vills; p = r.pool;
     // Spanish: +20 gold per real technology in this resolved batch — see
@@ -3600,7 +3606,7 @@ function buildingChainItems(buildingName, civ, haveSet) {
 // Their labor still counts toward whatever they're assigned to (RES.forEach
 // below, not `need.forEach`) — it just may not help THIS item at all until
 // the script hands control back to the greedy algorithm.
-function simulateItemReady(item, rates, villRate, startTime, startVills, pool, openingSequence, existingAlloc, villagerFoodCost, farmWoodRatio, civ, builtResources, backwardSchedule) {
+function simulateItemReady(item, rates, villRate, startTime, startVills, pool, openingSequence, existingAlloc, villagerFoodCost, farmWoodRatio, civ, builtResources, backwardSchedule, bufferSeconds) {
   const need = RES.filter(r => item.cost[r] > 0);
   const minTime = startTime + (item.queueSeconds || 0);
   // Town Center techs (tcQueue:true) block villager production for their
@@ -3710,6 +3716,13 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
   // user's explicit choice; a small floor (5%) keeps growth from ever
   // fully freezing rather than risking an infinite/blocked loop.
   let farmVills = openingSequence ? Math.max(0, (existingAlloc?.food || 0) - openingSequence.berriesEnd) : 0;
+  // Time-vs-resources buffer: once real `need` is first satisfied (readyAt),
+  // keep running the SAME loop (villager births stay unconditional, see
+  // nextBirth above — nothing here introduces idle TC time) until
+  // bufferSeconds more have elapsed, banking whatever accumulates in the
+  // meantime via the existing overshoot-carries-into-pool mechanic below,
+  // rather than stopping the instant the item is affordable.
+  let readyAt = null;
 
   while (t <= capT) {
     while (t >= nextBirth - 1e-9) {
@@ -3839,24 +3852,31 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
     });
     saved.food -= villagerFoodDrainPerSec * dt;
     if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) {
-      // The last dt tick almost always gathers slightly more than exactly
-      // needed (gather rate isn't evenly divisible into the remaining
-      // cost) — that overshoot is real banked surplus, not owed back to
-      // anyone, so it carries into the returned pool for the NEXT item to
-      // credit against. Previously discarded entirely, which is why
-      // "resources available" in the timeline never moved from whatever
-      // the starting stockpile happened to be — every item's own leftover
-      // was silently thrown away instead of accumulating.
-      // Broadened from `need` to every resource: the scripted opening (see
-      // BG_STONE_SEQUENCE) can now route villagers to a resource this
-      // particular item never asked for (stone, banked early for a LATER
-      // Castle item) — that gathered amount is real and must carry forward
-      // into the next item's pool the same way genuine `need` leftovers do,
-      // not get silently discarded because this item's own `need` never
-      // included it.
-      const leftoverPool = { ...pool };
-      RES.forEach(r => { leftoverPool[r] += saved[r] - (item.cost[r] || 0); });
-      return { time: t + tcDelay, vills, pool: leftoverPool, assigned, newVills: vills - startVills, firstAssignedAt, millAt };
+      if (readyAt == null) readyAt = t;
+      if (!bufferSeconds || t >= readyAt + bufferSeconds - 1e-9) {
+        // The last dt tick almost always gathers slightly more than exactly
+        // needed (gather rate isn't evenly divisible into the remaining
+        // cost) — that overshoot is real banked surplus, not owed back to
+        // anyone, so it carries into the returned pool for the NEXT item to
+        // credit against. Previously discarded entirely, which is why
+        // "resources available" in the timeline never moved from whatever
+        // the starting stockpile happened to be — every item's own leftover
+        // was silently thrown away instead of accumulating. When
+        // `bufferSeconds` deliberately keeps the loop running past the real
+        // funded instant, this same mechanic is what banks the EXTRA
+        // resources gathered during that buffer window — no separate
+        // "banked" accounting needed.
+        // Broadened from `need` to every resource: the scripted opening (see
+        // BG_STONE_SEQUENCE) can now route villagers to a resource this
+        // particular item never asked for (stone, banked early for a LATER
+        // Castle item) — that gathered amount is real and must carry forward
+        // into the next item's pool the same way genuine `need` leftovers do,
+        // not get silently discarded because this item's own `need` never
+        // included it.
+        const leftoverPool = { ...pool };
+        RES.forEach(r => { leftoverPool[r] += saved[r] - (item.cost[r] || 0); });
+        return { time: t + tcDelay, vills, pool: leftoverPool, assigned, newVills: vills - startVills, firstAssignedAt, millAt };
+      }
     }
     t += dt;
   }
@@ -4939,7 +4959,7 @@ function withQuantityTail(trial, qty, buildingCount, tierName, trainTime, target
 const _optimizeMemo = new Map();
 function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ, efficiency, foodStrategy, forcedEarlyEcoTechId) {
   const memoKey = JSON.stringify([
-    stages.map(s => s.ageGoal ? ['ageGoal', s.ageGoal] : s.units.map(u => [u.line?.id, u.tierIdx, u.buildingCount ?? null, u.goalType || 'sustain', u.qty ?? null, u.combatTechIds ? [...u.combatTechIds].sort() : null])),
+    stages.map(s => s.ageGoal ? ['ageGoal', s.ageGoal, s.ageUpBufferSeconds || 0] : s.units.map(u => [u.line?.id, u.tierIdx, u.buildingCount ?? null, u.goalType || 'sustain', u.qty ?? null, u.combatTechIds ? [...u.combatTechIds].sort() : null])),
     loomOn, allIn, civ?.id ?? null, efficiency ?? 100, foodStrategy ?? 'none', forcedEarlyEcoTechId ?? null,
   ]);
   if (_optimizeMemo.has(memoKey)) return _optimizeMemo.get(memoKey);
@@ -5114,7 +5134,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
   // ageGoal) target that only ever needs ONE combined itemList are
   // unaffected and keep the real fix. Revisit once the SAME backward-
   // scheduling logic is extended across that move-type boundary too.
-  function runSequential(itemList, rates, villRate, allowBackwardSchedule = true) {
+  function runSequential(itemList, rates, villRate, allowBackwardSchedule = true, bufferSeconds) {
     let ri = 0;
     let anyBlocked = false;
     while (ri < itemList.length) {
@@ -5241,7 +5261,15 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // *supposed* to look marginally worse on its own, every time, by
       // design — a same-bundle comparison can't tell that apart from a
       // genuine regression and would reject every case indiscriminately.
-      const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence, cumAlloc, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(levels), civ), civ, builtResources, backwardSchedule);
+      // Only the LAST remaining age-up bundle in this itemList gets the
+      // time-vs-resources buffer — a Fast Castle itemList bundles BOTH
+      // "Advance to Feudal" and "Advance to Castle" as separate isAgeUp
+      // bundles in this same loop, and applying bufferSeconds to both would
+      // silently double the intended one-time delay (and bank the surplus
+      // at the wrong, intermediate age) — see simulateItemReady's own
+      // bufferSeconds param comment.
+      const isFinalAgeUpBundle = simItem.isAgeUp && !itemList.slice(ri + mergedItems.length).some(it => it.isAgeUp);
+      const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence, cumAlloc, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(levels), civ), civ, builtResources, backwardSchedule, isFinalAgeUpBundle ? bufferSeconds : undefined);
       if (!r) { checkpoints.push({ label: `${simItem.name} — past 60 min, add more Town Centers`, blocked: true }); anyBlocked = true; ri += mergedItems.length; continue; }
       cursorTime = r.time; cursorVills = r.vills; pool = r.pool;
       // Spanish: +20 gold per real technology in this resolved batch — see
@@ -5452,13 +5480,13 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
   // leg — see its own separate, cross-MOVE-boundary reason in the
   // 'age-up'/'castle-age-up' replay handlers below), skips the trial
   // entirely and just resolves once, at no extra cost.
-  function runSequentialBest(itemList, rates, villRate, allowBackwardSchedule) {
-    if (!allowBackwardSchedule) return runSequential(itemList, rates, villRate, false);
+  function runSequentialBest(itemList, rates, villRate, allowBackwardSchedule, bufferSeconds) {
+    if (!allowBackwardSchedule) return runSequential(itemList, rates, villRate, false, bufferSeconds);
     const snap = snapshotState();
-    const anyBlockedWith = runSequential(itemList, rates, villRate, true);
+    const anyBlockedWith = runSequential(itemList, rates, villRate, true, bufferSeconds);
     const withCapture = { anyBlocked: anyBlockedWith, ...captureAfter(snap) };
     restoreState(snap);
-    const anyBlockedWithout = runSequential(itemList, rates, villRate, false);
+    const anyBlockedWithout = runSequential(itemList, rates, villRate, false, bufferSeconds);
     const withoutCapture = { anyBlocked: anyBlockedWithout, ...captureAfter(snap) };
     let winner;
     if (withCapture.anyBlocked && !withoutCapture.anyBlocked) winner = withoutCapture;
@@ -5538,7 +5566,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // requirement above is implicitly counting as already satisfied,
       // same proxy the non-preset Villager age-up move already relies on)
       // was silently never being built or charged for.
-      const anyBlocked = runSequential(feudalItems, ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra, reachedAgeIdx));
+      const anyBlocked = runSequential(feudalItems, ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra, reachedAgeIdx), true, stage.ageUpBufferSeconds || 0);
       if (anyBlocked) {
         checkpoints.push({ label: 'Reach Feudal Age — past 60 min, add more Town Centers', blocked: true });
         stageResults.push({ line: null, ageGoal: 'feudal', stageNumber: stageIdx + 1, finishTime: null, tcCount: 1 + tcExtra });
@@ -5546,7 +5574,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       }
       reachedAgeIdx = Math.max(reachedAgeIdx, ageIndex('Feudal'));
       if (includesLoom) loomResearched = true;
-      stageResults.push({ line: null, ageGoal: 'feudal', stageNumber: stageIdx + 1, finishTime: cursorTime, tcCount: 1 + tcExtra });
+      stageResults.push({ line: null, ageGoal: 'feudal', stageNumber: stageIdx + 1, finishTime: cursorTime, tcCount: 1 + tcExtra, pool: { ...pool } });
       continue;
     }
     // Fast Castle/Imp DO reuse the full Villager-line search below (their
@@ -6144,7 +6172,15 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           fillerItems.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age, techCount: 1 });
         }
         const ageItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], AGE_ORDER[requiredExtraTcAgeIdx], civ));
-        const resolved = resolveSequential(ageItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ), techGoldBonus?.value);
+        // Buffer only applies under the Fast Castle preset, and only to the
+        // move that actually REACHES Castle — a plain (non-preset) Villager
+        // target's own age-up has no UI exposing ageUpBufferSeconds, so this
+        // stays undefined for it regardless. For Cumans specifically,
+        // requiredExtraTcAgeIdx is Feudal (their extra-TC bonus), so THIS
+        // move only reaches Feudal — their real Castle transition is the
+        // separate move just below; buffering both would double the delay.
+        const isCastleReachingMove = stage.ageGoal === 'castle' && requiredExtraTcAgeIdx >= ageIndex('Castle');
+        const resolved = resolveSequential(ageItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ), techGoldBonus?.value, isCastleReachingMove ? (stage.ageUpBufferSeconds || 0) : undefined);
         if (resolved) {
           // Reaching THIS age-up also means real Castle Age for every civ
           // except Cumans (whose requiredExtraTcAgeIdx is Feudal, not
@@ -6180,7 +6216,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           });
         }
         const castleAgeItems = mergeWithAgeUps(fillerItems2, ageUpPending('Feudal', 'Castle', civ));
-        const resolvedCastle = resolveSequential(castleAgeItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ), techGoldBonus?.value);
+        const resolvedCastle = resolveSequential(castleAgeItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ), techGoldBonus?.value, stage.ageGoal === 'castle' ? (stage.ageUpBufferSeconds || 0) : undefined);
         if (resolvedCastle) {
           const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, true, cur.imperialAdvanced);
           const existing = finalized.get(key);
@@ -6380,7 +6416,12 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     path.forEach(move => {
       if (move.type === 'pause-training') { replayPaused = true; return; }
       if (move.type === 'age-up') {
-        runSequentialBest(move.items, ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra, reachedAgeIdx), stage.ageGoal !== 'imperial');
+        // Same isCastleReachingMove guard as the search-exploration side —
+        // for Cumans this 'age-up' move only reaches Feudal (their extra-TC
+        // bonus moves requiredExtraTcAgeIdx to Feudal), so it must NOT get
+        // the buffer too or their real Castle transition (the separate
+        // 'castle-age-up' move below) would end up delayed twice.
+        runSequentialBest(move.items, ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra, reachedAgeIdx), stage.ageGoal !== 'imperial', (stage.ageGoal === 'castle' && requiredExtraTcAgeIdx >= ageIndex('Castle')) ? (stage.ageUpBufferSeconds || 0) : undefined);
         reachedAgeIdx = Math.max(reachedAgeIdx, requiredExtraTcAgeIdx);
         if (move.includesLoom) loomResearched = true;
         move.items.filter(it => !it.isAgeUp).forEach(it => {
@@ -6391,7 +6432,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // Cumans-only second age-up (Feudal->Castle, unlocking the 3rd+ TC) —
       // same shape as 'age-up' above, just a different real target age.
       if (move.type === 'castle-age-up') {
-        runSequentialBest(move.items, ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra, reachedAgeIdx), stage.ageGoal !== 'imperial');
+        runSequentialBest(move.items, ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra, reachedAgeIdx), stage.ageGoal !== 'imperial', stage.ageGoal === 'castle' ? (stage.ageUpBufferSeconds || 0) : undefined);
         reachedAgeIdx = Math.max(reachedAgeIdx, ageIndex('Castle'));
         move.items.filter(it => !it.isAgeUp).forEach(it => {
           if (!haveSet.has(it.name)) { haveSet.add(it.name); haveSet.buildingCounts.set(it.name, 1); }
@@ -6459,7 +6500,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // `line.isVillager` (true for our synthesized stand-in unit too) and
       // would otherwise run against a meaningless `qty:Infinity`,
       // producing garbage Infinity-valued fields instead of a clean exit.
-      stageResults.push({ line: null, ageGoal: stage.ageGoal, stageNumber: stageIdx + 1, finishTime: cursorTime, tcCount: 1 + tcExtra });
+      stageResults.push({ line: null, ageGoal: stage.ageGoal, stageNumber: stageIdx + 1, finishTime: cursorTime, tcCount: 1 + tcExtra, pool: { ...pool } });
       continue;
     } else if (line.isVillager) {
       // Already had enough villagers purely from building TCs — no ramp
@@ -7442,7 +7483,7 @@ function renderOptimizeResults() {
   const descEl = document.getElementById('results-desc');
   const bodyEl = document.getElementById('results-body');
   const stages = optimizeState.stages
-    .map(s => s.ageGoal ? { ageGoal: s.ageGoal, units: [] } : {
+    .map(s => s.ageGoal ? { ageGoal: s.ageGoal, units: [], ageUpBufferSeconds: s.ageUpBufferSeconds || 0 } : {
       units: s.units.map(u => ({ line: lines.find(l => l.id === u.lineId), tierIdx: u.tierIdx, buildingCount: u.buildingCount, combatTechIds: u.combatTechIds, goalType: u.goalType || 'sustain', qty: u.qty })).filter(u => u.line),
     })
     .filter(s => s.units.length || s.ageGoal);
@@ -7535,6 +7576,16 @@ function renderOptimizeResults() {
     <div class="stat-tile"><div class="label">Town Centers</div><div class="value">${displayResult.tcCount}</div></div>
   </div>`;
 
+  // Surfaces the "Wait longer, bank more" slider's effect for the common
+  // single-stage ageGoal case (Fast Feudal/Castle with no unit stage added
+  // yet) — the same banked-pool figure the timeline's own "Available"
+  // column already tracks per checkpoint, just made visible here without
+  // requiring that column's manual expand click.
+  const bankedNoteFor = sr => sr?.ageGoal && sr.finishTime != null && sr.pool
+    ? `<p class="desc" style="margin:6px 0 0;">Banked at this point: ${RES.filter(r => Math.round(sr.pool[r]) > 0).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${Math.round(sr.pool[r])}</span>`).join(' ') || '—'}</p>`
+    : '';
+  const bankedNote = result.stageResults.length <= 1 ? bankedNoteFor(lastSr) : '';
+
   // A multi-stage plan gets one bar chart + stat line per stage (each
   // stage's own sustain point, not just the final one) — a single-stage
   // plan is exactly what it always showed.
@@ -7548,14 +7599,14 @@ function renderOptimizeResults() {
     return `
     <div class="pending-card">
       <h3>Stage ${sr.stageNumber ?? i + 1}${sameStageAsPrev ? ' (same stage)' : ''}: ${srDesc(sr)}${sr.finishTime == null ? ' (blocked)' : ` — ${sr.ageGoal ? 'reached' : sr.goalType === 'quantity' ? 'done' : 'ready'} by ${fmtClock(sr.finishTime)}`}</h3>
-      ${sr.finishTime == null || sr.ageGoal ? '' : renderVillagerBars(sr.villagers, sr.rates, sr.totalIncome, sr.farmUpkeepWoodPerSec, sr.houseWoodPerSec)}
+      ${sr.ageGoal ? bankedNoteFor(sr) : (sr.finishTime == null ? '' : renderVillagerBars(sr.villagers, sr.rates, sr.totalIncome, sr.farmUpkeepWoodPerSec, sr.houseWoodPerSec))}
     </div>`;
   }).join('');
 
   const bars = displayResult.villagers ? renderVillagerBars(displayResult.villagers, displayResult.rates, displayResult.totalIncome, displayResult.farmUpkeepWoodPerSec, displayResult.houseWoodPerSec) : '';
   const buildingCounts = Object.fromEntries(displayResult.haveSet.buildingCounts);
 
-  bodyEl.innerHTML = topTabs + viewingAltNote + statRow + '<div style="margin-top:18px">' + bars + '</div>' + stageBreakdown
+  bodyEl.innerHTML = topTabs + viewingAltNote + statRow + bankedNote + '<div style="margin-top:18px">' + bars + '</div>' + stageBreakdown
     + renderSetupCard(displayResult.villagers || { food: 0, wood: 0, gold: 0, stone: 0 }, civ, displayResult.haveSet.has('Castle'), displayResult.haveSet, buildingCounts, displayResult.tcCount - 1)
     + renderTimelineCard(displayResult.checkpoints, displayResult.villRate, civ);
 
@@ -7626,6 +7677,11 @@ function renderOptimizeStages() {
           ${removeStageBtnTop}
         </div>
         ${ageGoalPills(stage)}
+        <div class="age-buffer-row" style="display:flex;align-items:center;gap:8px;margin:2px 0 8px;">
+          <span class="tname">Wait longer, bank more</span>
+          <input type="range" class="age-buffer-slider" data-stage-idx="0" min="0" max="60" step="5" value="${stage.ageUpBufferSeconds || 0}" style="flex:1 1 120px;">
+          <span class="age-buffer-label">+${stage.ageUpBufferSeconds || 0}s</span>
+        </div>
         <p class="desc" style="margin:0;">${label}: reach that age as fast as possible — automatically deciding which economy upgrades and extra Town Centers (if any) are worth it along the way. Click "+ Add Stage" below to plan real unit training once that age is reached.</p>
       </div>`;
     }
@@ -7710,9 +7766,23 @@ function renderOptimizeStages() {
       // Already selected — click again to revert to a normal unit target,
       // same default shape optimizeState itself starts with.
       ? { units: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }] }
-      : { ageGoal: key };
+      // Buffer resets to 0 on a fresh preset selection — a newly-picked
+      // preset shouldn't inherit a stale delay from whatever was set before.
+      : { ageGoal: key, ageUpBufferSeconds: 0 };
     renderOptimizeStages();
     renderOptimizeResults();
+  }));
+  container.querySelectorAll('.age-buffer-slider').forEach(sl => sl.addEventListener('input', e => {
+    const v = Number(e.target.value);
+    optimizeState.stages[0].ageUpBufferSeconds = v;
+    // Deliberately don't call renderOptimizeStages() here — that would
+    // destroy/recreate this very <input type="range"> mid-drag, killing
+    // drag continuity. Only the label text updates live; the results panel
+    // re-renders debounced, same pattern as the Efficiency input.
+    const label = e.target.parentElement.querySelector('.age-buffer-label');
+    if (label) label.textContent = `+${v}s`;
+    clearTimeout(window.__ageBufferDebounce);
+    window.__ageBufferDebounce = setTimeout(renderOptimizeResults, 400);
   }));
   container.querySelectorAll('.stage-unit-select').forEach(sel => sel.addEventListener('change', e => {
     const i = Number(e.target.dataset.stageIdx);
