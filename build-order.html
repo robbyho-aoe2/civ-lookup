@@ -129,6 +129,9 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
 .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:4px;}
 .stat-tile{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;}
 .version{font-size:10px;color:var(--text3);margin-top:6px;}
+.footer{font-size:11px;color:var(--text3);text-align:center;margin-top:30px;padding-top:16px;border-top:1px solid var(--border);}
+.footer a{color:var(--text2);text-decoration:none;}
+.footer a:hover{color:var(--amberL);}
 .stat-tile .label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:4px;}
 .stat-tile .value{font-size:19px;font-weight:800;}
 
@@ -240,7 +243,14 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.99</div>
+  <div class="footer">
+    <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
+    <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
+    <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
+    Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
+    <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
+    <div class="version">v1.00</div>
+  </div>
 </div>
 
 <script>
