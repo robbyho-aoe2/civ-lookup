@@ -240,7 +240,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
   </div>
-  <div class="version">v0.94</div>
+  <div class="version">v0.95</div>
 </div>
 
 <script>
@@ -5107,12 +5107,33 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
     // transaction directly with the same `ageUpPending`/`resolveSequential`
     // primitives the real age-up move already uses internally.
     if (stage.ageGoal === 'feudal') {
+      // Real AoE2:DE rule: advancing out of Dark Age needs 2 qualifying
+      // buildings (Khmer: none at all; Incas' Settlement alone satisfies
+      // it) — already fully modeled by fillerBuildingsNeeded/
+      // qualifyingBuildingCount (DATA.ageUpBuildingReqs), the exact same
+      // mechanism the real (non-preset) Villager age-up move already uses
+      // just below. Missed on the first pass — Fast Feudal resolved
+      // straight to the age-up item with no buildings at all. Not
+      // speculative like that other call site's own scratch-haveSet copy
+      // (this stage's own age-up is the one deterministic step here, not
+      // one of many candidate search branches), so it mutates the real
+      // `haveSet` directly, same as the non-Villager mandatory-prefix path.
+      const genericVillagers = { food: 1, wood: 1, gold: 0, stone: 0 };
+      const fillerItems = [];
+      fillerBuildingsNeeded('Feudal', civ, genericVillagers, haveSet).forEach(name => {
+        const def = DATA.productionBuildings[name];
+        fillerItems.push({ name, cost: costForCiv(def.cost, civ, name), queueSeconds: multiBuilderTime(def.buildTimeSeconds, buildersForBuilding(name), civ), age: effectiveBuildingAge(def.minAge, name, civ), deferToEnd: true, builders: buildersForBuilding(name) });
+      });
+      // Same placement/ordering as the real Villager age-up move just below
+      // (buildings pushed first, Loom appended after) — and the same
+      // techCount:1 tag every other Loom construction site in this file
+      // already carries, needed for Spanish's tech-gold-bonus to reach it.
       const includesLoom = loomOn && !allIn && !free.has('loom') && !loomResearched;
-      const loomItems = includesLoom ? [(() => {
+      if (includesLoom) {
         const loom = DATA.ecoTechs.find(t => t.id === 'loom');
-        return { name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age };
-      })()] : [];
-      const feudalItems = mergeWithAgeUps(loomItems, ageUpPending(AGE_ORDER[reachedAgeIdx], 'Feudal', civ));
+        fillerItems.push({ name: loom.name, cost: loom.cost, tcQueue: true, researchTime: loom.researchTime, deferToEnd: true, age: loom.age, techCount: 1 });
+      }
+      const feudalItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], 'Feudal', civ));
       const resolved = resolveSequential(feudalItems, ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra, reachedAgeIdx), cursorTime, cursorVills, pool, cumAlloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(levels), civ), techGoldBonus?.value);
       if (!resolved) {
         checkpoints.push({ label: 'Reach Feudal Age — past 60 min, add more Town Centers', blocked: true });
