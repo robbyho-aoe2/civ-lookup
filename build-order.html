@@ -249,7 +249,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.01</div>
+    <div class="version">v1.02</div>
   </div>
 </div>
 
@@ -7780,10 +7780,22 @@ function renderOptimizeStages() {
   wireCombatTechCheckboxes(container);
 }
 
+// Carries forward whichever applicable "With Upgrades" techs an earlier
+// stage already checked — alreadyAddedCombatTechs (in the engine, spans
+// every stage) already prevents double-charging a tech re-checked here, so
+// this is purely fixing the checkbox DEFAULT to match reality: a tech
+// researched in Stage 1 is still researched by the time Stage 2 starts, the
+// user shouldn't have to manually re-check it every time.
+function inheritedCombatTechIds(priorStages, newLine, civ) {
+  const priorTechs = new Set(priorStages.flatMap(s => (s.units || []).flatMap(u => [...(u.combatTechIds || [])])));
+  const applicable = new Set(applicableCombatTechIds(newLine, civ));
+  return new Set([...priorTechs].filter(id => applicable.has(id)));
+}
 document.getElementById('optimize-add-stage').addEventListener('click', () => {
   const civ = selectedCiv();
   const lines = allLinesForCiv(civ);
-  optimizeState.stages.push({ units: [{ lineId: (lines[1] || lines[0]).id, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }] });
+  const newLine = lines[1] || lines[0];
+  optimizeState.stages.push({ units: [{ lineId: newLine.id, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9, combatTechIds: inheritedCombatTechIds(optimizeState.stages, newLine, civ) }] });
   renderOptimizeStages();
   renderOptimizeResults();
 });
@@ -7799,7 +7811,9 @@ document.getElementById('optimize-add-unit').addEventListener('click', () => {
   const lines = allLinesForCiv(civ);
   const stage = optimizeState.stages[optimizeState.stages.length - 1];
   if (stage.ageGoal) return; // nothing to add a concurrent unit to on an age-rush stage
-  stage.units.push({ lineId: (lines[1] || lines[0]).id, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 });
+  const newLine = lines[1] || lines[0];
+  const priorStages = optimizeState.stages.slice(0, optimizeState.stages.length - 1);
+  stage.units.push({ lineId: newLine.id, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9, combatTechIds: inheritedCombatTechIds(priorStages, newLine, civ) });
   renderOptimizeStages();
   renderOptimizeResults();
 });
