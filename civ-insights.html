@@ -76,7 +76,12 @@ select:focus{outline:none;border-color:var(--amber);}
       Lumber Camps purely for the bonus (nobody ever farms), vs. abandon that and
       build real farms instead (60 wood, 175 food capacity each, real depletion
       and rebuild). Computed live against this site's own Optimize-mode gather
-      rates and build costs — not a fixed snapshot.
+      rates and build costs — not a fixed snapshot. The only bottleneck on camp
+      count is real wood income: a new camp starts the instant 100 wood is
+      banked and its builder comes straight back to gathering once it's done
+      (no artificial cap on how many go up at once) — so the camp curve below
+      is exactly what that population's wood-gathering rate can fund, not an
+      assumed space or travel-time limit.
     </p>
     <div class="legend">
       <span><i class="dot camp"></i> Lumber Camps only</span>
@@ -97,6 +102,13 @@ select:focus{outline:none;border-color:var(--amber);}
           <option value="1">Horse Collar (250)</option>
           <option value="2">+ Heavy Plow (375)</option>
           <option value="3">+ Crop Rotation (550)</option>
+        </select>
+      </label>
+      <label for="carry-tech">Carry Capacity (gather speed, both sides):
+        <select id="carry-tech">
+          <option value="0">None</option>
+          <option value="1">Wheelbarrow (+12% food, +3% wood)</option>
+          <option value="2">+ Hand Cart (+20% food, +6% wood)</option>
         </select>
       </label>
     </div>
@@ -195,7 +207,7 @@ function campsOnly(targetElapsed, woodRate) {
 // the ratio a farm economy actually needs to sustain itself (wood income
 // must cover farm-rebuild upkeep). Farms deplete for real at 175 food and
 // need rebuilding, same as camps' own build cycle.
-function farmsOnly(targetElapsed, woodRate, farmYield) {
+function farmsOnly(targetElapsed, woodRate, farmYield, foodRate) {
   let t = START.t, v = START.v, pool = { ...START.pool };
   // full abandonment: no pre-built farms, no pre-committed wood force — everyone
   // not actively farming or mid-construction gathers wood while they wait for a
@@ -221,7 +233,7 @@ function farmsOnly(targetElapsed, woodRate, farmYield) {
     while (waitingFarmers > 0 && pool.wood >= FARM_COST) { pool.wood -= FARM_COST; waitingFarmers--; farmsBuilding.push({ readyAt: t + FARM_BUILD_TIME }); }
     for (let i = farmsBuilding.length - 1; i >= 0; i--) { if (t >= farmsBuilding[i].readyAt - 1e-9) { activeFarms.push({ remaining: farmYield }); farmsBuilding.splice(i, 1); } }
     for (let i = activeFarms.length - 1; i >= 0; i--) {
-      const gain = Math.min(activeFarms[i].remaining, RATES.food * dt);
+      const gain = Math.min(activeFarms[i].remaining, foodRate * dt);
       pool.food += gain; activeFarms[i].remaining -= gain;
       if (activeFarms[i].remaining <= 1e-9) { activeFarms.splice(i, 1); waitingFarmers++; }
     }
@@ -245,16 +257,26 @@ function woodRateForTier(tier) {
 // previous tier's capacity (same lookup farmUpkeepRatio's own real code
 // uses), not a multiplier.
 const FARM_YIELD_BY_TIER = [175, 250, 375, 550];
+// Carry Capacity line: Wheelbarrow/Hand Cart (build-order.html's real
+// DATA.ecoTechs values, `bonusByResource`) — Hand Cart's numbers are TOTALS
+// that REPLACE Wheelbarrow's rather than stacking on top of them (per
+// build-order.html's own in-code note on this exact tech line). Applies to
+// BOTH food (farm gather rate) and wood (camp-funding rate) simultaneously,
+// unlike Wood Chopping/Farm Yield which are each single-resource.
+const CARRY_TIER_BONUS = [{ food: 0, wood: 0 }, { food: 12, wood: 3 }, { food: 20, wood: 6 }];
 
 const DURATION = 900; // 15 minutes past Reached Feudal Age
 let A, B;
 function recompute() {
   const woodTier = Number(document.getElementById('wood-tech').value);
   const farmTier = Number(document.getElementById('farm-tech').value);
-  const woodRate = woodRateForTier(woodTier);
+  const carryTier = Number(document.getElementById('carry-tech').value);
+  const carry = CARRY_TIER_BONUS[carryTier];
+  const woodRate = woodRateForTier(woodTier) * (1 + carry.wood / 100);
   const farmYield = FARM_YIELD_BY_TIER[farmTier];
+  const foodRate = RATES.food * (1 + carry.food / 100);
   A = campsOnly(DURATION, woodRate);
-  B = farmsOnly(DURATION, woodRate, farmYield);
+  B = farmsOnly(DURATION, woodRate, farmYield, foodRate);
   renderAll();
 }
 const total = row => row.food + row.wood + row.stone;
@@ -310,29 +332,32 @@ function renderAll() {
   const rows = sampleTimes.map(s => {
     const ai = Math.round(s / 0.5), bi = ai;
     const a = A[Math.min(ai, A.length - 1)], b = B[Math.min(bi, B.length - 1)];
-    return { t: a.t, campsBuilt: a.campsBuilt, farmsActive: b.active,
-      aFood: Math.round(a.food), aWood: Math.round(a.wood), aStone: Math.round(a.stone),
-      bFood: Math.round(b.food), bWood: Math.round(b.wood), bStone: Math.round(b.stone),
-      delta: Math.round(total(a) - total(b)) };
+    const aTotal = Math.round(total(a)), bTotal = Math.round(total(b));
+    return { t: a.t, minutesSince: Math.round((a.t - START.t) / 60), campsBuilt: a.campsBuilt, farmsActive: b.active,
+      aFood: Math.round(a.food), aWood: Math.round(a.wood), aStone: Math.round(a.stone), aTotal,
+      bFood: Math.round(b.food), bWood: Math.round(b.wood), bStone: Math.round(b.stone), bTotal,
+      delta: aTotal - bTotal };
   });
   document.getElementById('data-table').innerHTML = `
     <thead><tr>
-      <th>Time</th><th class="num">Camps built</th>
-      <th class="num">Camp Food</th><th class="num">Camp Wood</th><th class="num">Camp Stone</th>
+      <th>Time</th><th class="num">Min. since</th><th class="num">Camps built</th>
+      <th class="num">Camp Food</th><th class="num">Camp Wood</th><th class="num">Camp Stone</th><th class="num">Camp Total</th>
       <th class="num">Farms active</th>
-      <th class="num">Farm Food</th><th class="num">Farm Wood</th><th class="num">Farm Stone</th>
+      <th class="num">Farm Food</th><th class="num">Farm Wood</th><th class="num">Farm Stone</th><th class="num">Farm Total</th>
       <th class="num">Δ (camp&nbsp;&minus;&nbsp;farm)</th>
     </tr></thead>
     <tbody>
       ${rows.map(r => `<tr>
-        <td>${fmtClock(r.t)}</td><td class="num">${r.campsBuilt}</td>
+        <td>${fmtClock(r.t)}</td><td class="num">${r.minutesSince}</td><td class="num">${r.campsBuilt}</td>
         <td class="num"><span class="res-pill food">${r.aFood}</span></td>
         <td class="num"><span class="res-pill wood">${r.aWood}</span></td>
         <td class="num"><span class="res-pill stone">${r.aStone}</span></td>
+        <td class="num" style="font-weight:700;">${r.aTotal}</td>
         <td class="num">${r.farmsActive}</td>
         <td class="num"><span class="res-pill food">${r.bFood}</span></td>
         <td class="num"><span class="res-pill wood">${r.bWood}</span></td>
         <td class="num"><span class="res-pill stone">${r.bStone}</span></td>
+        <td class="num" style="font-weight:700;">${r.bTotal}</td>
         <td class="num" style="color:${r.delta >= 0 ? 'var(--camp)' : 'var(--farm)'};font-weight:700;">${r.delta >= 0 ? '+' : ''}${r.delta}</td>
       </tr>`).join('')}
     </tbody>
@@ -342,6 +367,7 @@ function renderAll() {
 recompute();
 document.getElementById('wood-tech').addEventListener('change', recompute);
 document.getElementById('farm-tech').addEventListener('change', recompute);
+document.getElementById('carry-tech').addEventListener('change', recompute);
 </script>
 </body>
 </html>
