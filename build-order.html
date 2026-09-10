@@ -249,7 +249,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.04</div>
+    <div class="version">v1.05</div>
   </div>
 </div>
 
@@ -2377,6 +2377,26 @@ const DATA = {
         "elephant-archer-line"
       ,
         "steppe-lancer-line"]
+    },
+    // Deliberately minimal stub (2026-09-10) -- Saxons are a Viking Sagas
+    // DLC civ (see index.html's own CIV_BONUSES.Saxons, launching
+    // 2026-09-22) not otherwise in this file's 53-civ roster. Only the one
+    // eco-relevant bonus below (camp-resource-bonus) is modeled, to test
+    // whether it's worth exploiting for build-order timing -- their real
+    // "-5% Foot Soldiers per TC/Castle" and combat/naval bonuses are
+    // deliberately NOT modeled (irrelevant to Optimize's economy timing,
+    // scope-limited on purpose, not an oversight). No uniqueUnits/
+    // unavailableUnitLines either -- if this civ gets built out for real
+    // later, redo it properly against the same audit process the other
+    // 53 civs went through (see project_build_order_optimize_mode memory).
+    {
+      "id": "saxons",
+      "name": "Saxons",
+      "uniqueUnits": [],
+      "ecoBonuses": [
+        { "type": "camp-resource-bonus", "food": 50, "stone": 10, "note": "Mills, Lumber Camps, and Mining Camps provide +50 food and +10 stone when built" }
+      ],
+      "unavailableUnitLines": []
     },
     {
       "id": "shu",
@@ -5335,6 +5355,13 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         // 35s for one villager is a small friction relative to the rest of
         // the timeline; the wood cost is the part worth getting right.
         RES.forEach(r2 => { pool[r2] -= (s.cost?.[r2] || 0); });
+        // Saxons stub (see DATA.civs' own comment): Mill/Lumber Camp/Mining
+        // Camp each grant a flat resource credit the instant they're built
+        // — structureForResource only ever resolves to one of these three
+        // for this civ (no Settlement/Mule Cart bonus to compete with), so
+        // this is safe to apply unconditionally at every camp construction.
+        const campBonus = (civ?.ecoBonuses || []).find(b => b.type === 'camp-resource-bonus');
+        if (campBonus) { pool.food += campBonus.food || 0; pool.stone += campBonus.stone || 0; }
         // No `pool` on the CHECKPOINT itself on purpose: this checkpoint's
         // `time` is an INTERPOLATED moment partway through the current
         // (possibly merged/bundled) item's resolution, but `pool` only
@@ -5357,6 +5384,12 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           // Real cost, same reasoning as the generic reveal above — the
           // Mill needed for berries/hunt isn't free either.
           RES.forEach(r2 => { pool[r2] -= (s.cost?.[r2] || 0); });
+          // Saxons stub — same camp-resource-bonus credit as the generic
+          // reveal above, this is just the scripted-opening's own Mill
+          // trigger (berries/hunt) instead of the generic first-assignment
+          // one.
+          const millCampBonus = (civ?.ecoBonuses || []).find(b => b.type === 'camp-resource-bonus');
+          if (millCampBonus) { pool.food += millCampBonus.food || 0; pool.stone += millCampBonus.stone || 0; }
           // No `pool` on the checkpoint itself either — same interpolated-
           // timestamp reason as the gather checkpoint above.
           checkpoints.push({ label: s.name, time: r.millAt, vills: openingSequence.millIndex, split: { food: 1, wood: 0, gold: 0, stone: 0 }, houses: housesFor(openingSequence.millIndex), alloc: { ...cumAlloc }, kind: 'gather' });
