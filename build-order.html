@@ -249,7 +249,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.05</div>
+    <div class="version">v1.06</div>
   </div>
 </div>
 
@@ -3668,6 +3668,24 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
   // needs to be.) Only matters for `saved.food`, since nothing else this
   // item might need is affected by training a villager.
   const villagerFoodDrainPerSec = villRate * (villagerFoodCost ?? DATA.villager.cost.food);
+  // Same real cost this file's OWN Constant Production math already applies
+  // (`computeTotalIncome`'s `houseWoodPerSec`, ~line 4617) — every villRate
+  // villagers born need 1/housePopSpace of a new House to keep up, at
+  // DATA.houseCost wood each, an ongoing real wood cost Optimize mode's own
+  // checkpoint pool never actually charged for (confirmed: `housesFor`/
+  // `expandHouseCheckpoints` only ever computed a DISPLAY count and cloned
+  // the previous pool unchanged into each inserted "Build 1 House"
+  // checkpoint — a real gap, not a deliberate simplification, now fixed by
+  // applying the same drain mechanic villagerFoodDrainPerSec already uses).
+  // Gated on `civ` being provided, matching the existing camp-cost/build-
+  // time asymmetry — resolveSequential's own simpler search-exploration
+  // calls (civ undefined) stay a true no-op here, same as they already are
+  // for camp modeling.
+  const hasNoHousesForDrain = (civ?.ecoBonuses || []).some(b => b.type === 'no-houses');
+  const housePopSpaceOverride = (civ?.ecoBonuses || []).find(b => b.type === 'house-pop-space');
+  const houseWoodDrainPerSec = (civ && !hasNoHousesForDrain)
+    ? villRate * DATA.houseCost / (housePopSpaceOverride ? housePopSpaceOverride.value : DATA.housePopSpace)
+    : 0;
 
   const assigned = { food: 0, wood: 0, gold: 0, stone: 0 };
   // Sum of each worker's OWN gather rate, as opposed to `assigned[r] *
@@ -3878,6 +3896,7 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
       if (existingWorkers || assigned[r]) saved[r] += (existingWorkers * rates[r] + assignedRate[r]) * dt;
     });
     saved.food -= villagerFoodDrainPerSec * dt;
+    saved.wood -= houseWoodDrainPerSec * dt;
     if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) {
       if (readyAtVills == null) readyAtVills = vills;
       if (!bufferVillagers || vills - readyAtVills >= bufferVillagers) {
