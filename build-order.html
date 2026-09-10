@@ -249,7 +249,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.03</div>
+    <div class="version">v1.04</div>
   </div>
 </div>
 
@@ -3500,7 +3500,7 @@ function mergedCostAt(itemList, startIdx) {
 // accuracy for a Villager-boom age-up by not bundling filler buildings
 // with the age-up they were deferred for — don't re-duplicate this again,
 // reuse this instead.
-function resolveSequential(itemList, rates, villRate, startTime, startVills, pool, alloc, openingSequence, villagerFoodCost, farmWoodRatio, techGoldPerTech, bufferSeconds) {
+function resolveSequential(itemList, rates, villRate, startTime, startVills, pool, alloc, openingSequence, villagerFoodCost, farmWoodRatio, techGoldPerTech, bufferVillagers) {
   let t = startTime, v = startVills, p = pool, a = { ...alloc };
   let ri = 0;
   while (ri < itemList.length) {
@@ -3521,10 +3521,10 @@ function resolveSequential(itemList, rates, villRate, startTime, startVills, poo
     // Only the LAST remaining age-up bundle in this itemList gets the
     // buffer — a Fast Castle itemList bundles BOTH "Advance to Feudal" and
     // "Advance to Castle" as separate isAgeUp bundles in the same call, and
-    // applying bufferSeconds to both would silently double the intended
+    // applying bufferVillagers to both would silently double the intended
     // one-time delay (and bank the surplus at the wrong, intermediate age).
     const isFinalAgeUpBundle = simItem.isAgeUp && !itemList.slice(ri + mergedItems.length).some(it => it.isAgeUp);
-    const r = simulateItemReady(simItem, rates, villRate, t, v, p, openingSequence, a, villagerFoodCost, farmWoodRatio, undefined, undefined, undefined, isFinalAgeUpBundle ? bufferSeconds : undefined);
+    const r = simulateItemReady(simItem, rates, villRate, t, v, p, openingSequence, a, villagerFoodCost, farmWoodRatio, undefined, undefined, undefined, isFinalAgeUpBundle ? bufferVillagers : undefined);
     if (!r) return null;
     t = r.time; v = r.vills; p = r.pool;
     // Spanish: +20 gold per real technology in this resolved batch — see
@@ -3606,7 +3606,7 @@ function buildingChainItems(buildingName, civ, haveSet) {
 // Their labor still counts toward whatever they're assigned to (RES.forEach
 // below, not `need.forEach`) — it just may not help THIS item at all until
 // the script hands control back to the greedy algorithm.
-function simulateItemReady(item, rates, villRate, startTime, startVills, pool, openingSequence, existingAlloc, villagerFoodCost, farmWoodRatio, civ, builtResources, backwardSchedule, bufferSeconds) {
+function simulateItemReady(item, rates, villRate, startTime, startVills, pool, openingSequence, existingAlloc, villagerFoodCost, farmWoodRatio, civ, builtResources, backwardSchedule, bufferVillagers) {
   const need = RES.filter(r => item.cost[r] > 0);
   const minTime = startTime + (item.queueSeconds || 0);
   // Town Center techs (tcQueue:true) block villager production for their
@@ -3716,13 +3716,20 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
   // user's explicit choice; a small floor (5%) keeps growth from ever
   // fully freezing rather than risking an infinite/blocked loop.
   let farmVills = openingSequence ? Math.max(0, (existingAlloc?.food || 0) - openingSequence.berriesEnd) : 0;
-  // Time-vs-resources buffer: once real `need` is first satisfied (readyAt),
-  // keep running the SAME loop (villager births stay unconditional, see
-  // nextBirth above — nothing here introduces idle TC time) until
-  // bufferSeconds more have elapsed, banking whatever accumulates in the
-  // meantime via the existing overshoot-carries-into-pool mechanic below,
-  // rather than stopping the instant the item is affordable.
-  let readyAt = null;
+  // Time-vs-resources buffer: once real `need` is first satisfied
+  // (readyAtVills), keep running the SAME loop (villager births stay
+  // unconditional, see nextBirth above — nothing here introduces idle TC
+  // time) until `bufferVillagers` MORE villagers have actually been born,
+  // banking whatever accumulates in the meantime via the existing overshoot-
+  // carries-into-pool mechanic below, rather than stopping the instant the
+  // item is affordable. Counting REAL births (not converting a villager
+  // count to an estimated seconds figure) is what makes this automatically
+  // civ-bonus-aware for free — `nextBirth`'s own cadence already reflects
+  // `villRate` (itself built from effectiveVillagerTrainTime's civ/age-
+  // scoped bonuses) and the wood-shortfall growthMult slowdown below, so
+  // there's no separate "how fast does THIS civ train villagers" logic to
+  // duplicate here.
+  let readyAtVills = null;
 
   while (t <= capT) {
     while (t >= nextBirth - 1e-9) {
@@ -3852,8 +3859,8 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
     });
     saved.food -= villagerFoodDrainPerSec * dt;
     if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) {
-      if (readyAt == null) readyAt = t;
-      if (!bufferSeconds || t >= readyAt + bufferSeconds - 1e-9) {
+      if (readyAtVills == null) readyAtVills = vills;
+      if (!bufferVillagers || vills - readyAtVills >= bufferVillagers) {
         // The last dt tick almost always gathers slightly more than exactly
         // needed (gather rate isn't evenly divisible into the remaining
         // cost) — that overshoot is real banked surplus, not owed back to
@@ -3862,8 +3869,8 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
         // "resources available" in the timeline never moved from whatever
         // the starting stockpile happened to be — every item's own leftover
         // was silently thrown away instead of accumulating. When
-        // `bufferSeconds` deliberately keeps the loop running past the real
-        // funded instant, this same mechanic is what banks the EXTRA
+        // `bufferVillagers` deliberately keeps the loop running past the
+        // real funded instant, this same mechanic is what banks the EXTRA
         // resources gathered during that buffer window — no separate
         // "banked" accounting needed.
         // Broadened from `need` to every resource: the scripted opening (see
@@ -4959,7 +4966,7 @@ function withQuantityTail(trial, qty, buildingCount, tierName, trainTime, target
 const _optimizeMemo = new Map();
 function buildStagedOptimizeTimeline(stages, loomOn, allIn, civ, efficiency, foodStrategy, forcedEarlyEcoTechId) {
   const memoKey = JSON.stringify([
-    stages.map(s => s.ageGoal ? ['ageGoal', s.ageGoal, s.ageUpBufferSeconds || 0] : s.units.map(u => [u.line?.id, u.tierIdx, u.buildingCount ?? null, u.goalType || 'sustain', u.qty ?? null, u.combatTechIds ? [...u.combatTechIds].sort() : null])),
+    stages.map(s => s.ageGoal ? ['ageGoal', s.ageGoal, s.ageUpBufferVillagers || 0] : s.units.map(u => [u.line?.id, u.tierIdx, u.buildingCount ?? null, u.goalType || 'sustain', u.qty ?? null, u.combatTechIds ? [...u.combatTechIds].sort() : null])),
     loomOn, allIn, civ?.id ?? null, efficiency ?? 100, foodStrategy ?? 'none', forcedEarlyEcoTechId ?? null,
   ]);
   if (_optimizeMemo.has(memoKey)) return _optimizeMemo.get(memoKey);
@@ -5134,7 +5141,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
   // ageGoal) target that only ever needs ONE combined itemList are
   // unaffected and keep the real fix. Revisit once the SAME backward-
   // scheduling logic is extended across that move-type boundary too.
-  function runSequential(itemList, rates, villRate, allowBackwardSchedule = true, bufferSeconds) {
+  function runSequential(itemList, rates, villRate, allowBackwardSchedule = true, bufferVillagers) {
     let ri = 0;
     let anyBlocked = false;
     while (ri < itemList.length) {
@@ -5264,12 +5271,12 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // Only the LAST remaining age-up bundle in this itemList gets the
       // time-vs-resources buffer — a Fast Castle itemList bundles BOTH
       // "Advance to Feudal" and "Advance to Castle" as separate isAgeUp
-      // bundles in this same loop, and applying bufferSeconds to both would
+      // bundles in this same loop, and applying bufferVillagers to both would
       // silently double the intended one-time delay (and bank the surplus
       // at the wrong, intermediate age) — see simulateItemReady's own
-      // bufferSeconds param comment.
+      // bufferVillagers param comment.
       const isFinalAgeUpBundle = simItem.isAgeUp && !itemList.slice(ri + mergedItems.length).some(it => it.isAgeUp);
-      const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence, cumAlloc, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(levels), civ), civ, builtResources, backwardSchedule, isFinalAgeUpBundle ? bufferSeconds : undefined);
+      const r = simulateItemReady(simItem, rates, villRate, cursorTime, cursorVills, pool, openingSequence, cumAlloc, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(levels), civ), civ, builtResources, backwardSchedule, isFinalAgeUpBundle ? bufferVillagers : undefined);
       if (!r) { checkpoints.push({ label: `${simItem.name} — past 60 min, add more Town Centers`, blocked: true }); anyBlocked = true; ri += mergedItems.length; continue; }
       cursorTime = r.time; cursorVills = r.vills; pool = r.pool;
       // Spanish: +20 gold per real technology in this resolved batch — see
@@ -5480,13 +5487,13 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
   // leg — see its own separate, cross-MOVE-boundary reason in the
   // 'age-up'/'castle-age-up' replay handlers below), skips the trial
   // entirely and just resolves once, at no extra cost.
-  function runSequentialBest(itemList, rates, villRate, allowBackwardSchedule, bufferSeconds) {
-    if (!allowBackwardSchedule) return runSequential(itemList, rates, villRate, false, bufferSeconds);
+  function runSequentialBest(itemList, rates, villRate, allowBackwardSchedule, bufferVillagers) {
+    if (!allowBackwardSchedule) return runSequential(itemList, rates, villRate, false, bufferVillagers);
     const snap = snapshotState();
-    const anyBlockedWith = runSequential(itemList, rates, villRate, true, bufferSeconds);
+    const anyBlockedWith = runSequential(itemList, rates, villRate, true, bufferVillagers);
     const withCapture = { anyBlocked: anyBlockedWith, ...captureAfter(snap) };
     restoreState(snap);
-    const anyBlockedWithout = runSequential(itemList, rates, villRate, false, bufferSeconds);
+    const anyBlockedWithout = runSequential(itemList, rates, villRate, false, bufferVillagers);
     const withoutCapture = { anyBlocked: anyBlockedWithout, ...captureAfter(snap) };
     let winner;
     if (withCapture.anyBlocked && !withoutCapture.anyBlocked) winner = withoutCapture;
@@ -5566,7 +5573,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // requirement above is implicitly counting as already satisfied,
       // same proxy the non-preset Villager age-up move already relies on)
       // was silently never being built or charged for.
-      const anyBlocked = runSequential(feudalItems, ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra, reachedAgeIdx), true, stage.ageUpBufferSeconds || 0);
+      const anyBlocked = runSequential(feudalItems, ratesForOptimize(civ, techIdsFor(levels)), villRateFor(tcExtra, reachedAgeIdx), true, stage.ageUpBufferVillagers || 0);
       if (anyBlocked) {
         checkpoints.push({ label: 'Reach Feudal Age — past 60 min, add more Town Centers', blocked: true });
         stageResults.push({ line: null, ageGoal: 'feudal', stageNumber: stageIdx + 1, finishTime: null, tcCount: 1 + tcExtra });
@@ -6174,13 +6181,13 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         const ageItems = mergeWithAgeUps(fillerItems, ageUpPending(AGE_ORDER[reachedAgeIdx], AGE_ORDER[requiredExtraTcAgeIdx], civ));
         // Buffer only applies under the Fast Castle preset, and only to the
         // move that actually REACHES Castle — a plain (non-preset) Villager
-        // target's own age-up has no UI exposing ageUpBufferSeconds, so this
+        // target's own age-up has no UI exposing ageUpBufferVillagers, so this
         // stays undefined for it regardless. For Cumans specifically,
         // requiredExtraTcAgeIdx is Feudal (their extra-TC bonus), so THIS
         // move only reaches Feudal — their real Castle transition is the
         // separate move just below; buffering both would double the delay.
         const isCastleReachingMove = stage.ageGoal === 'castle' && requiredExtraTcAgeIdx >= ageIndex('Castle');
-        const resolved = resolveSequential(ageItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ), techGoldBonus?.value, isCastleReachingMove ? (stage.ageUpBufferSeconds || 0) : undefined);
+        const resolved = resolveSequential(ageItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ), techGoldBonus?.value, isCastleReachingMove ? (stage.ageUpBufferVillagers || 0) : undefined);
         if (resolved) {
           // Reaching THIS age-up also means real Castle Age for every civ
           // except Cumans (whose requiredExtraTcAgeIdx is Feudal, not
@@ -6216,7 +6223,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
           });
         }
         const castleAgeItems = mergeWithAgeUps(fillerItems2, ageUpPending('Feudal', 'Castle', civ));
-        const resolvedCastle = resolveSequential(castleAgeItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ), techGoldBonus?.value, stage.ageGoal === 'castle' ? (stage.ageUpBufferSeconds || 0) : undefined);
+        const resolvedCastle = resolveSequential(castleAgeItems, ratesForOptimize(civ, techIdsFor(cur.levels)), villRateFor(cur.tcExtra, reachedAgeIdx), cur.time, cur.vills, cur.pool, cur.alloc, openingSequence, effectiveVillagerFoodCost(civ, reachedAgeIdx), farmUpkeepRatio(techIdsFor(cur.levels), civ), techGoldBonus?.value, stage.ageGoal === 'castle' ? (stage.ageUpBufferVillagers || 0) : undefined);
         if (resolvedCastle) {
           const key = stateKey(cur.levels, cur.tcExtra, cur.ageAdvanced, cur.trainingPaused, cur.millExtra, true, cur.imperialAdvanced);
           const existing = finalized.get(key);
@@ -6421,7 +6428,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
         // bonus moves requiredExtraTcAgeIdx to Feudal), so it must NOT get
         // the buffer too or their real Castle transition (the separate
         // 'castle-age-up' move below) would end up delayed twice.
-        runSequentialBest(move.items, ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra, reachedAgeIdx), stage.ageGoal !== 'imperial', (stage.ageGoal === 'castle' && requiredExtraTcAgeIdx >= ageIndex('Castle')) ? (stage.ageUpBufferSeconds || 0) : undefined);
+        runSequentialBest(move.items, ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra, reachedAgeIdx), stage.ageGoal !== 'imperial', (stage.ageGoal === 'castle' && requiredExtraTcAgeIdx >= ageIndex('Castle')) ? (stage.ageUpBufferVillagers || 0) : undefined);
         reachedAgeIdx = Math.max(reachedAgeIdx, requiredExtraTcAgeIdx);
         if (move.includesLoom) loomResearched = true;
         move.items.filter(it => !it.isAgeUp).forEach(it => {
@@ -6432,7 +6439,7 @@ function buildStagedOptimizeTimelineUncached(stages, loomOn, allIn, civ, efficie
       // Cumans-only second age-up (Feudal->Castle, unlocking the 3rd+ TC) —
       // same shape as 'age-up' above, just a different real target age.
       if (move.type === 'castle-age-up') {
-        runSequentialBest(move.items, ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra, reachedAgeIdx), stage.ageGoal !== 'imperial', stage.ageGoal === 'castle' ? (stage.ageUpBufferSeconds || 0) : undefined);
+        runSequentialBest(move.items, ratesForOptimize(civ, techIdsFor(levels)), replayPaused ? 0 : villRateFor(tcExtra, reachedAgeIdx), stage.ageGoal !== 'imperial', stage.ageGoal === 'castle' ? (stage.ageUpBufferVillagers || 0) : undefined);
         reachedAgeIdx = Math.max(reachedAgeIdx, ageIndex('Castle'));
         move.items.filter(it => !it.isAgeUp).forEach(it => {
           if (!haveSet.has(it.name)) { haveSet.add(it.name); haveSet.buildingCounts.set(it.name, 1); }
@@ -7421,21 +7428,31 @@ function renderCombatTechCheckboxes(stageIdx, unitIdx, line, civ) {
   const lineGroups = {};
   const standalone = [];
   techs.forEach(t => { if (t.line) (lineGroups[t.line] = lineGroups[t.line] || []).push(t); else standalone.push(t); });
-  const checked = optimizeState.stages[stageIdx].units[unitIdx].combatTechIds || new Set();
+  const { checked, locked } = effectiveCombatTechState(stageIdx, unitIdx, line, civ);
 
   // data-age hooks into the SAME .tier-dot.filled[data-age="..."] CSS
   // already used for the unit-tier dots elsewhere in this tool (Dark/
   // Feudal/Castle/Imperial colors) — reused here rather than inventing a
-  // new palette, per the site owner's own request.
+  // new palette, per the site owner's own request. A locked (inherited from
+  // an earlier stage) dot reuses the already-defined, previously-unused
+  // .tier-dot.disabled CSS — no new styling needed — and carries
+  // data-locked so the click handler ignores it; only the stage that
+  // originally researched it can un-check it.
   const dotRow = (label, lineTechs) => {
     const level = lineTechs.reduce((lv, t, i) => checked.has(t.id) ? i + 1 : lv, 0);
-    const dots = lineTechs.map((t, i) => `<span class="tier-dot${i < level ? ' filled' : ''}" data-age="${t.age}" data-combat-tech-dot="${t.id}" data-stage-idx="${stageIdx}" data-unit-idx="${unitIdx}" data-tier="${i}" data-line-ids="${lineTechs.map(x => x.id).join(',')}" title="${t.name} (${t.age})" style="cursor:pointer;"></span>`).join('');
+    const dots = lineTechs.map((t, i) => {
+      const isLocked = locked.has(t.id);
+      return `<span class="tier-dot${i < level ? ' filled' : ''}${isLocked ? ' disabled' : ''}" data-age="${t.age}" data-combat-tech-dot="${t.id}" data-stage-idx="${stageIdx}" data-unit-idx="${unitIdx}" data-tier="${i}" data-line-ids="${lineTechs.map(x => x.id).join(',')}" data-locked="${isLocked ? '1' : ''}" title="${t.name} (${t.age})${isLocked ? ' — already researched in an earlier stage' : ''}"></span>`;
+    }).join('');
     return `<div class="tech-line-row"><span class="tname">${label}</span><div class="tier-dots">${dots}</div></div>`;
   };
-  const checkboxRow = t => `<label class="tech-line-row" style="cursor:pointer;">
-    <input type="checkbox" data-combat-tech-single="${t.id}" data-stage-idx="${stageIdx}" data-unit-idx="${unitIdx}" ${checked.has(t.id) ? 'checked' : ''}>
+  const checkboxRow = t => {
+    const isLocked = locked.has(t.id);
+    return `<label class="tech-line-row" style="cursor:${isLocked ? 'not-allowed' : 'pointer'};${isLocked ? 'opacity:.6;' : ''}" title="${isLocked ? 'Already researched in an earlier stage' : ''}">
+    <input type="checkbox" data-combat-tech-single="${t.id}" data-stage-idx="${stageIdx}" data-unit-idx="${unitIdx}" ${checked.has(t.id) ? 'checked' : ''} ${isLocked ? 'disabled' : ''}>
     <span class="tname">${t.name}</span>
   </label>`;
+  };
 
   const rows = Object.entries(lineGroups).map(([, lineTechs]) => dotRow(lineTechs[0].lineLabel, lineTechs))
     .concat(standalone.map(checkboxRow));
@@ -7451,6 +7468,7 @@ function renderCombatTechCheckboxes(stageIdx, unitIdx, line, civ) {
 function wireCombatTechCheckboxes(container) {
   container.querySelectorAll('[data-combat-tech-dot]').forEach(dot => {
     dot.addEventListener('click', () => {
+      if (dot.dataset.locked === '1') return; // already researched in an earlier stage — only that stage can un-check it
       const stageIdx = Number(dot.dataset.stageIdx);
       const unitIdx = Number(dot.dataset.unitIdx);
       const tier = Number(dot.dataset.tier);
@@ -7483,8 +7501,17 @@ function renderOptimizeResults() {
   const descEl = document.getElementById('results-desc');
   const bodyEl = document.getElementById('results-body');
   const stages = optimizeState.stages
-    .map(s => s.ageGoal ? { ageGoal: s.ageGoal, units: [], ageUpBufferSeconds: s.ageUpBufferSeconds || 0 } : {
-      units: s.units.map(u => ({ line: lines.find(l => l.id === u.lineId), tierIdx: u.tierIdx, buildingCount: u.buildingCount, combatTechIds: u.combatTechIds, goalType: u.goalType || 'sustain', qty: u.qty })).filter(u => u.line),
+    .map((s, stageIdx) => s.ageGoal ? { ageGoal: s.ageGoal, units: [], ageUpBufferVillagers: s.ageUpBufferVillagers || 0 } : {
+      // combatTechIds here is the EFFECTIVE set (this unit's own explicit
+      // picks UNION whatever's inherited/locked from an earlier stage) —
+      // the simulation needs to know about an inherited tech even though it
+      // was never stored in this unit's own combatTechIds, same set
+      // renderCombatTechCheckboxes shows as checked (single source of
+      // truth, see effectiveCombatTechState).
+      units: s.units.map((u, unitIdx) => {
+        const line = lines.find(l => l.id === u.lineId);
+        return { line, tierIdx: u.tierIdx, buildingCount: u.buildingCount, combatTechIds: line ? effectiveCombatTechState(stageIdx, unitIdx, line, civ).checked : u.combatTechIds, goalType: u.goalType || 'sustain', qty: u.qty };
+      }).filter(u => u.line),
     })
     .filter(s => s.units.length || s.ageGoal);
   if (!stages.length) { descEl.textContent = 'Pick a unit above to optimize for.'; bodyEl.innerHTML = ''; return; }
@@ -7679,8 +7706,8 @@ function renderOptimizeStages() {
         ${ageGoalPills(stage)}
         <div class="age-buffer-row" style="display:flex;align-items:center;gap:8px;margin:2px 0 8px;">
           <span class="tname">Wait longer, bank more</span>
-          <input type="range" class="age-buffer-slider" data-stage-idx="0" min="0" max="60" step="5" value="${stage.ageUpBufferSeconds || 0}" style="flex:1 1 120px;">
-          <span class="age-buffer-label">+${stage.ageUpBufferSeconds || 0}s</span>
+          <input type="range" class="age-buffer-slider" data-stage-idx="0" min="0" max="10" step="1" value="${stage.ageUpBufferVillagers || 0}" style="flex:1 1 120px;">
+          <span class="age-buffer-label">+${stage.ageUpBufferVillagers || 0} vill${stage.ageUpBufferVillagers === 1 ? '' : 's'}</span>
         </div>
         <p class="desc" style="margin:0;">${label}: reach that age as fast as possible — automatically deciding which economy upgrades and extra Town Centers (if any) are worth it along the way. Click "+ Add Stage" below to plan real unit training once that age is reached.</p>
       </div>`;
@@ -7768,19 +7795,19 @@ function renderOptimizeStages() {
       ? { units: [{ lineId: null, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9 }] }
       // Buffer resets to 0 on a fresh preset selection — a newly-picked
       // preset shouldn't inherit a stale delay from whatever was set before.
-      : { ageGoal: key, ageUpBufferSeconds: 0 };
+      : { ageGoal: key, ageUpBufferVillagers: 0 };
     renderOptimizeStages();
     renderOptimizeResults();
   }));
   container.querySelectorAll('.age-buffer-slider').forEach(sl => sl.addEventListener('input', e => {
     const v = Number(e.target.value);
-    optimizeState.stages[0].ageUpBufferSeconds = v;
+    optimizeState.stages[0].ageUpBufferVillagers = v;
     // Deliberately don't call renderOptimizeStages() here — that would
     // destroy/recreate this very <input type="range"> mid-drag, killing
     // drag continuity. Only the label text updates live; the results panel
     // re-renders debounced, same pattern as the Efficiency input.
     const label = e.target.parentElement.querySelector('.age-buffer-label');
-    if (label) label.textContent = `+${v}s`;
+    if (label) label.textContent = `+${v} vill${v === 1 ? '' : 's'}`;
     clearTimeout(window.__ageBufferDebounce);
     window.__ageBufferDebounce = setTimeout(renderOptimizeResults, 400);
   }));
@@ -7850,22 +7877,31 @@ function renderOptimizeStages() {
   wireCombatTechCheckboxes(container);
 }
 
-// Carries forward whichever applicable "With Upgrades" techs an earlier
-// stage already checked — alreadyAddedCombatTechs (in the engine, spans
-// every stage) already prevents double-charging a tech re-checked here, so
-// this is purely fixing the checkbox DEFAULT to match reality: a tech
-// researched in Stage 1 is still researched by the time Stage 2 starts, the
-// user shouldn't have to manually re-check it every time.
-function inheritedCombatTechIds(priorStages, newLine, civ) {
-  const priorTechs = new Set(priorStages.flatMap(s => (s.units || []).flatMap(u => [...(u.combatTechIds || [])])));
-  const applicable = new Set(applicableCombatTechIds(newLine, civ));
-  return new Set([...priorTechs].filter(id => applicable.has(id)));
+// Effective "With Upgrades" state for one unit, derived fresh every call
+// rather than stored — `checked` is this unit's own explicit picks UNION
+// every tech checked+applicable in any EARLIER stage (a real, permanent
+// researched fact by the time this stage starts); `locked` is the inherited
+// subset, which this stage can't toggle off (only the stage that originally
+// researched it can). Computed live from optimizeState.stages every render,
+// so checking a box in an earlier stage while a later one is already open
+// updates that later stage's own display immediately on the next re-render
+// (which every checkbox/dot click already triggers via renderOptimizeStages
+// — see wireCombatTechCheckboxes) with no separate sync step needed.
+// alreadyAddedCombatTechs (in the engine) independently already prevents
+// double-charging a tech re-checked across stages — this only decides what
+// the UI shows/allows and what the simulation's own unit input receives.
+function effectiveCombatTechState(stageIdx, unitIdx, line, civ) {
+  const own = optimizeState.stages[stageIdx].units[unitIdx].combatTechIds || new Set();
+  const applicable = new Set(applicableCombatTechIds(line, civ));
+  const priorStages = optimizeState.stages.slice(0, stageIdx);
+  const inherited = new Set(priorStages.flatMap(s => (s.units || []).flatMap(u => [...(u.combatTechIds || [])])).filter(id => applicable.has(id)));
+  return { checked: new Set([...own, ...inherited]), locked: inherited };
 }
 document.getElementById('optimize-add-stage').addEventListener('click', () => {
   const civ = selectedCiv();
   const lines = allLinesForCiv(civ);
   const newLine = lines[1] || lines[0];
-  optimizeState.stages.push({ units: [{ lineId: newLine.id, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9, combatTechIds: inheritedCombatTechIds(optimizeState.stages, newLine, civ) }] });
+  optimizeState.stages.push({ units: [{ lineId: newLine.id, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9, combatTechIds: new Set() }] });
   renderOptimizeStages();
   renderOptimizeResults();
 });
@@ -7882,8 +7918,7 @@ document.getElementById('optimize-add-unit').addEventListener('click', () => {
   const stage = optimizeState.stages[optimizeState.stages.length - 1];
   if (stage.ageGoal) return; // nothing to add a concurrent unit to on an age-rush stage
   const newLine = lines[1] || lines[0];
-  const priorStages = optimizeState.stages.slice(0, optimizeState.stages.length - 1);
-  stage.units.push({ lineId: newLine.id, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9, combatTechIds: inheritedCombatTechIds(priorStages, newLine, civ) });
+  stage.units.push({ lineId: newLine.id, tierIdx: 0, buildingCount: 1, goalType: 'sustain', qty: 9, combatTechIds: new Set() });
   renderOptimizeStages();
   renderOptimizeResults();
 });
