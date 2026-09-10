@@ -25,14 +25,18 @@ header h1{font-size:20px;margin:0;}
 .card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
 .card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
 .card .desc{font-size:12px;color:var(--text2);margin:0 0 16px;line-height:1.6;}
-.res-pill{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--surf2);border:1px solid var(--border2);white-space:nowrap;}
+.res-pill{display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:700;padding:1px 5px;border-radius:20px;background:var(--surf2);border:1px solid var(--border2);white-space:nowrap;}
 .res-pill.food{color:var(--food);}
 .res-pill.wood{color:var(--wood);}
 .res-pill.stone{color:var(--stone);}
-table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;}
-th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;vertical-align:middle;}
-th{color:var(--text3);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.04em;white-space:nowrap;}
+table{width:100%;border-collapse:collapse;margin-top:6px;font-size:11px;}
+th,td{text-align:left;padding:4px 5px;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;vertical-align:middle;}
+th{color:var(--text3);font-weight:600;text-transform:uppercase;font-size:9px;letter-spacing:.03em;white-space:nowrap;}
+th.grp{text-align:center;font-size:10px;letter-spacing:.04em;}
+th.grp.camp-grp{color:var(--camp);border-bottom:1px solid var(--camp);}
+th.grp.farm-grp{color:var(--farm);border-bottom:1px solid var(--farm);}
 th.num,td.num{text-align:right;}
+td.divider,th.divider{border-left:1px solid var(--border2);}
 .overflow-x{overflow-x:auto;}
 .legend{display:flex;gap:18px;font-size:12px;margin:8px 0 14px;}
 .legend span{display:inline-flex;align-items:center;gap:6px;}
@@ -63,8 +67,8 @@ select:focus{outline:none;border-color:var(--amber);}
   <nav class="page-tabs">
     <a href="index.html">🏠 Auto Scout</a>
     <a href="insights.html">📊 Console Insights</a>
-    <a href="build-order.html">🛠️ Build Order</a>
     <a href="civ-insights.html" class="on">🧮 Civ Insights</a>
+    <a href="build-order.html">🛠️ Build Order</a>
   </nav>
 
   <div class="card">
@@ -339,26 +343,32 @@ function renderAll() {
       delta: aTotal - bTotal };
   });
   document.getElementById('data-table').innerHTML = `
-    <thead><tr>
-      <th>Time</th><th class="num">Min. since</th><th class="num">Camps built</th>
-      <th class="num">Camp Food</th><th class="num">Camp Wood</th><th class="num">Camp Stone</th><th class="num">Camp Total</th>
-      <th class="num">Farms active</th>
-      <th class="num">Farm Food</th><th class="num">Farm Wood</th><th class="num">Farm Stone</th><th class="num">Farm Total</th>
-      <th class="num">Δ (camp&nbsp;&minus;&nbsp;farm)</th>
-    </tr></thead>
+    <thead>
+      <tr>
+        <th rowspan="2">Time</th>
+        <th class="grp camp-grp" colspan="5">Camps</th>
+        <th class="grp farm-grp divider" colspan="5">Farms</th>
+        <th rowspan="2" class="num divider">Δ</th>
+      </tr>
+      <tr>
+        <th class="num">Built</th><th class="num">Food</th><th class="num">Wood</th><th class="num">Stone</th><th class="num">Total</th>
+        <th class="num divider">Active</th><th class="num">Food</th><th class="num">Wood</th><th class="num">Stone</th><th class="num">Total</th>
+      </tr>
+    </thead>
     <tbody>
       ${rows.map(r => `<tr>
-        <td>${fmtClock(r.t)}</td><td class="num">${r.minutesSince}</td><td class="num">${r.campsBuilt}</td>
+        <td>${fmtClock(r.t)}<span style="color:var(--text3);"> · ${r.minutesSince}m</span></td>
+        <td class="num">${r.campsBuilt}</td>
         <td class="num"><span class="res-pill food">${r.aFood}</span></td>
         <td class="num"><span class="res-pill wood">${r.aWood}</span></td>
         <td class="num"><span class="res-pill stone">${r.aStone}</span></td>
         <td class="num" style="font-weight:700;">${r.aTotal}</td>
-        <td class="num">${r.farmsActive}</td>
+        <td class="num divider">${r.farmsActive}</td>
         <td class="num"><span class="res-pill food">${r.bFood}</span></td>
         <td class="num"><span class="res-pill wood">${r.bWood}</span></td>
         <td class="num"><span class="res-pill stone">${r.bStone}</span></td>
         <td class="num" style="font-weight:700;">${r.bTotal}</td>
-        <td class="num" style="color:${r.delta >= 0 ? 'var(--camp)' : 'var(--farm)'};font-weight:700;">${r.delta >= 0 ? '+' : ''}${r.delta}</td>
+        <td class="num divider" style="color:${r.delta >= 0 ? 'var(--camp)' : 'var(--farm)'};font-weight:700;">${r.delta >= 0 ? '+' : ''}${r.delta}</td>
       </tr>`).join('')}
     </tbody>
   `;
