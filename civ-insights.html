@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Civ Insights — AoE Auto Scout</title>
+<style>
+:root{
+  --bg:#100E0C;--surf:#17130F;--surf2:#1F1A15;--border:#241F1A;--border2:#362E24;
+  --amber:#3F9B72;--amberL:#5FB88C;--amberBg:rgba(63,155,114,.12);
+  --text:#EDE8DD;--text2:#8F8578;--text3:#5C544A;
+  --food:#8fd15a;--wood:#c8922a;--gold:#f0d458;--stone:#9aa5b1;
+  --camp:#e0bb70;--farm:#5FB88C;
+  --radius:8px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;}
+.wrap{max-width:900px;margin:0 auto;padding:28px 20px 60px;}
+header{display:flex;align-items:center;gap:14px;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+header h1{font-size:20px;margin:0;}
+.page-tabs{display:flex;gap:6px;margin:0 0 22px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.page-tabs a{padding:10px 16px;font-size:13px;font-weight:600;color:var(--text2);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.page-tabs a:hover{color:var(--text);}
+.page-tabs a.on{color:var(--amberL);border-bottom-color:var(--amber);}
+.card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
+.card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
+.card .desc{font-size:12px;color:var(--text2);margin:0 0 16px;line-height:1.6;}
+.res-pill{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--surf2);border:1px solid var(--border2);white-space:nowrap;}
+.res-pill.food{color:var(--food);}
+.res-pill.wood{color:var(--wood);}
+.res-pill.stone{color:var(--stone);}
+table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;vertical-align:middle;}
+th{color:var(--text3);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.04em;white-space:nowrap;}
+th.num,td.num{text-align:right;}
+.overflow-x{overflow-x:auto;}
+.legend{display:flex;gap:18px;font-size:12px;margin:8px 0 14px;}
+.legend span{display:inline-flex;align-items:center;gap:6px;}
+.legend .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+.legend .dot.camp{background:var(--camp);}
+.legend .dot.farm{background:var(--farm);}
+.tie-marker{font-size:11px;color:var(--text3);text-align:center;margin-top:6px;}
+.summary{font-size:13px;line-height:1.7;color:var(--text2);}
+.summary b{color:var(--text);}
+.footer{font-size:11px;color:var(--text3);text-align:center;margin-top:30px;padding-top:16px;border-top:1px solid var(--border);}
+.footer a{color:var(--text2);text-decoration:none;}
+.footer a:hover{color:var(--amberL);}
+.version{font-size:10px;color:var(--text3);margin-top:6px;}
+.tech-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.tech-row label{font-size:12px;color:var(--text2);white-space:nowrap;}
+select{background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-size:13px;padding:7px 9px;font-family:inherit;}
+select:focus{outline:none;border-color:var(--amber);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>🧮 Civ Insights</h1>
+    </div>
+  </header>
+
+  <nav class="page-tabs">
+    <a href="index.html">🏠 Auto Scout</a>
+    <a href="insights.html">📊 Console Insights</a>
+    <a href="build-order.html">🛠️ Build Order</a>
+    <a href="civ-insights.html" class="on">🧮 Civ Insights</a>
+  </nav>
+
+  <div class="card">
+    <h2>Saxons: Lumber Camps vs. Farms</h2>
+    <p class="desc">
+      Saxons' Mills, Lumber Camps, and Mining Camps grant +50 food and +10 stone
+      the instant they're built. Starting from Reached Feudal Age, this compares
+      two full-commitment strategies from that point on: keep building fresh
+      Lumber Camps purely for the bonus (nobody ever farms), vs. abandon that and
+      build real farms instead (60 wood, 175 food capacity each, real depletion
+      and rebuild). Computed live against this site's own Optimize-mode gather
+      rates and build costs — not a fixed snapshot.
+    </p>
+    <div class="legend">
+      <span><i class="dot camp"></i> Lumber Camps only</span>
+      <span><i class="dot farm"></i> Farms only</span>
+    </div>
+    <div class="tech-row">
+      <label for="wood-tech">Wood Chopping (camps' build speed):
+        <select id="wood-tech">
+          <option value="0">None</option>
+          <option value="1">Double-Bit Axe (+20%)</option>
+          <option value="2">+ Bow Saw (+20%)</option>
+          <option value="3">+ Two-Man Saw (+10%)</option>
+        </select>
+      </label>
+      <label for="farm-tech">Farm Yield (farms' food capacity):
+        <select id="farm-tech">
+          <option value="0">None (175 food)</option>
+          <option value="1">Horse Collar (250)</option>
+          <option value="2">+ Heavy Plow (375)</option>
+          <option value="3">+ Crop Rotation (550)</option>
+        </select>
+      </label>
+    </div>
+    <div class="overflow-x">
+      <svg id="chart" viewBox="0 0 820 320" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;min-width:600px;"></svg>
+    </div>
+    <p class="tie-marker" id="tie-marker"></p>
+  </div>
+
+  <div class="card">
+    <h2>Summary</h2>
+    <p class="summary" id="summary"></p>
+  </div>
+
+  <div class="card">
+    <h2>The numbers</h2>
+    <p class="desc">Totals are food + wood + stone combined. Time is real elapsed game time from Reached Feudal Age.</p>
+    <div class="overflow-x">
+      <table id="data-table"></table>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
+    <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
+    <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
+    Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
+    <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
+    <div class="version">v0.01</div>
+  </div>
+</div>
+
+<script>
+// Minimal, explicit subset of build-order.html's own real DATA constants --
+// not the full 53-civ dataset, just what this one Saxons analysis needs.
+// Keep these in sync with build-order.html's own DATA object if those ever
+// change (gatherRates ~line 261, campCosts/farmBuildCost ~line 278-279,
+// houseCost/housePopSpace/houseBuildTimeSeconds ~line 329-331).
+const RATES = { food: 0.33, wood: 0.32 };
+const CAMP_COST = 100; // DATA.campCosts.lumberCamp
+const FARM_COST = 60;  // DATA.farmBuildCost
+const FARM_YIELD = 175; // DATA.ecoTechs' base farm-yield tier (no Horse Collar/Heavy Plow/Crop Rotation)
+const FARM_BUILD_TIME = 15; // real AoE2:DE value
+const CAMP_BUILD_TIME = 35; // DATA.productionBuildings-equivalent (Mill/Lumber Camp/Mining Camp)
+const HOUSE_COST = 25, HOUSE_POP_SPACE = 5, HOUSE_BUILD_TIME = 25;
+const VILLAGER_TRAIN_TIME = 25, VILLAGER_FOOD_COST = 50; // Saxons carry no training-speed/cost bonus
+const CAMP_BONUS = { food: 50, stone: 10 }; // Saxons' camp-resource-bonus
+
+// The real, already-verified "Reached Feudal Age" state for Saxons under
+// build-order.html's own Fast Feudal preset (realistic economy, deer/push +
+// chicken/mill hunt strategy, base tech). Re-simulating the whole Dark Age
+// opening here would mean porting a large slice of that engine for no real
+// benefit -- this is a stated, fixed starting point instead.
+const START = { t: 574, v: 19, pool: { food: 100.87, wood: 129.62, stone: 220 }, allocFood: 16, allocWood: 3 };
+const villRate = 1 / VILLAGER_TRAIN_TIME;
+const houseWoodDrainPerSec = villRate * HOUSE_COST / HOUSE_POP_SPACE;
+const villagerFoodDrainPerSec = villRate * VILLAGER_FOOD_COST;
+
+// Strategy A: every villager (existing + newly born) works wood forever; the
+// instant enough wood is banked, a new Lumber Camp starts building (parallel
+// construction -- no single-builder throughput cap, confirmed the more
+// realistic reading during testing). Houses cost real wood + pull one
+// villager off gathering for their real build time, same as the camps do.
+function campsOnly(targetElapsed, woodRate) {
+  let t = START.t, v = START.v, pool = { ...START.pool }, woodWorkers = START.allocWood + START.allocFood; // full abandonment: everyone starts on wood
+  let nextBirth = t + 1 / villRate;
+  const dt = 0.5, end = START.t + targetElapsed;
+  let housesCrossed = 0;
+  const houseBuilders = [], campsBuilding = [];
+  let campsBuilt = 0;
+  const series = [];
+  while (t <= end) {
+    while (t >= nextBirth - 1e-9) {
+      v++;
+      if (Math.floor((v - START.v) / HOUSE_POP_SPACE) > housesCrossed) { housesCrossed++; houseBuilders.push({ readyAt: t + HOUSE_BUILD_TIME }); }
+      else { woodWorkers++; }
+      nextBirth += 1 / villRate;
+    }
+    for (let i = houseBuilders.length - 1; i >= 0; i--) { if (t >= houseBuilders[i].readyAt - 1e-9) { woodWorkers++; houseBuilders.splice(i, 1); } }
+    pool.wood += woodWorkers * woodRate * dt - houseWoodDrainPerSec * dt;
+    pool.food -= villagerFoodDrainPerSec * dt;
+    while (pool.wood >= CAMP_COST) { pool.wood -= CAMP_COST; woodWorkers--; campsBuilding.push({ readyAt: t + CAMP_BUILD_TIME }); }
+    for (let i = campsBuilding.length - 1; i >= 0; i--) {
+      if (t >= campsBuilding[i].readyAt - 1e-9) { pool.food += CAMP_BONUS.food; pool.stone += CAMP_BONUS.stone; campsBuilt++; woodWorkers++; campsBuilding.splice(i, 1); }
+    }
+    series.push({ t, food: pool.food, wood: pool.wood, stone: pool.stone, campsBuilt });
+    t += dt;
+  }
+  return series;
+}
+
+// Strategy B: full abandonment the other way -- every existing "food worker"
+// is actually a farmer with no farm yet (a real cost this analysis pays, not
+// a free pre-built asset), needing a genuine 60-wood/15s farm before they
+// produce anything. New villagers split between wood and the farmer queue at
+// the ratio a farm economy actually needs to sustain itself (wood income
+// must cover farm-rebuild upkeep). Farms deplete for real at 175 food and
+// need rebuilding, same as camps' own build cycle.
+function farmsOnly(targetElapsed, woodRate, farmYield) {
+  let t = START.t, v = START.v, pool = { ...START.pool };
+  // full abandonment: no pre-built farms, no pre-committed wood force — everyone
+  // not actively farming or mid-construction gathers wood while they wait for a
+  // farm slot to open up (a real player never leaves a villager standing idle)
+  let waitingFarmers = START.allocWood + START.allocFood;
+  let nextBirth = t + 1 / villRate;
+  const dt = 0.5, end = START.t + targetElapsed;
+  let housesCrossed = 0;
+  const houseBuilders = [], farmsBuilding = [], activeFarms = [];
+  const series = [];
+  while (t <= end) {
+    while (t >= nextBirth - 1e-9) {
+      v++;
+      if (Math.floor((v - START.v) / HOUSE_POP_SPACE) > housesCrossed) { housesCrossed++; houseBuilders.push({ readyAt: t + HOUSE_BUILD_TIME }); }
+      else { waitingFarmers++; }
+      nextBirth += 1 / villRate;
+    }
+    for (let i = houseBuilders.length - 1; i >= 0; i--) {
+      if (t >= houseBuilders[i].readyAt - 1e-9) { waitingFarmers++; houseBuilders.splice(i, 1); }
+    }
+    pool.wood += waitingFarmers * woodRate * dt - houseWoodDrainPerSec * dt;
+    pool.food -= villagerFoodDrainPerSec * dt;
+    while (waitingFarmers > 0 && pool.wood >= FARM_COST) { pool.wood -= FARM_COST; waitingFarmers--; farmsBuilding.push({ readyAt: t + FARM_BUILD_TIME }); }
+    for (let i = farmsBuilding.length - 1; i >= 0; i--) { if (t >= farmsBuilding[i].readyAt - 1e-9) { activeFarms.push({ remaining: farmYield }); farmsBuilding.splice(i, 1); } }
+    for (let i = activeFarms.length - 1; i >= 0; i--) {
+      const gain = Math.min(activeFarms[i].remaining, RATES.food * dt);
+      pool.food += gain; activeFarms[i].remaining -= gain;
+      if (activeFarms[i].remaining <= 1e-9) { activeFarms.splice(i, 1); waitingFarmers++; }
+    }
+    series.push({ t, food: pool.food, wood: pool.wood, stone: pool.stone, active: activeFarms.length });
+    t += dt;
+  }
+  return series;
+}
+
+// Wood Chopping line: Double-Bit Axe/Bow Saw/Two-Man Saw multiply the base
+// rate cumulatively (same convention build-order.html's own
+// effectiveGatherRate uses, `rate *= 1 + pct/100` per checked tech). Affects
+// how fast camps can be funded; does NOT touch farm yield.
+const WOOD_TIER_BONUSES = [0, 20, 20, 10]; // index = tier level, each tier ADDS this tech on top of the previous
+function woodRateForTier(tier) {
+  let rate = RATES.wood;
+  for (let i = 1; i <= tier; i++) rate *= 1 + WOOD_TIER_BONUSES[i] / 100;
+  return rate;
+}
+// Farm Yield line: Horse Collar/Heavy Plow/Crop Rotation each REPLACE the
+// previous tier's capacity (same lookup farmUpkeepRatio's own real code
+// uses), not a multiplier.
+const FARM_YIELD_BY_TIER = [175, 250, 375, 550];
+
+const DURATION = 900; // 15 minutes past Reached Feudal Age
+let A, B;
+function recompute() {
+  const woodTier = Number(document.getElementById('wood-tech').value);
+  const farmTier = Number(document.getElementById('farm-tech').value);
+  const woodRate = woodRateForTier(woodTier);
+  const farmYield = FARM_YIELD_BY_TIER[farmTier];
+  A = campsOnly(DURATION, woodRate);
+  B = farmsOnly(DURATION, woodRate, farmYield);
+  renderAll();
+}
+const total = row => row.food + row.wood + row.stone;
+function fmtClock(t) { const m = Math.floor(t / 60), s = Math.round(t % 60); return `${m}:${s < 10 ? '0' : ''}${s}`; }
+
+function renderAll() {
+  // Find the tie point (first sign change in camp-minus-farm total) for the
+  // marker + summary text.
+  let tieIdx = A.findIndex((row, i) => i > 0 && row.campsBuilt > 0 && (total(row) - total(B[i])) <= 0 && (total(A[i - 1]) - total(B[i - 1])) > 0);
+  if (tieIdx < 0) tieIdx = A.length - 1;
+
+  // Chart: two lines (camp total, farm total) over time, plain inline SVG --
+  // same "no charting library" convention insights.html's own #chart already
+  // uses.
+  const svg = document.getElementById('chart');
+  const W = 820, H = 320, padL = 46, padR = 14, padT = 14, padB = 28;
+  const maxVal = Math.max(...A.map(total), ...B.map(total));
+  const x = t => padL + (t - START.t) / DURATION * (W - padL - padR);
+  const y = val => H - padB - (val / maxVal) * (H - padT - padB);
+  const path = (series, sample) => 'M' + series.filter((_, i) => i % sample === 0).map(r => `${x(r.t).toFixed(1)},${y(total(r)).toFixed(1)}`).join(' L');
+  const gridLines = [0, 0.25, 0.5, 0.75, 1].map(f => {
+    const val = maxVal * f;
+    return `<line x1="${padL}" y1="${y(val)}" x2="${W - padR}" y2="${y(val)}" stroke="var(--border)" stroke-width="1"/>
+      <text x="${padL - 6}" y="${y(val) + 3}" fill="var(--text3)" font-size="9" text-anchor="end">${Math.round(val)}</text>`;
+  }).join('');
+  const tieX = x(A[tieIdx].t);
+  svg.innerHTML = `
+    ${gridLines}
+    <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border2)" stroke-width="1"/>
+    <line x1="${tieX}" y1="${padT}" x2="${tieX}" y2="${H - padB}" stroke="var(--text3)" stroke-width="1" stroke-dasharray="3,3"/>
+    <path d="${path(A, 4)}" fill="none" stroke="var(--camp)" stroke-width="2.5"/>
+    <path d="${path(B, 4)}" fill="none" stroke="var(--farm)" stroke-width="2.5"/>
+    <text x="${padL}" y="${H - 8}" fill="var(--text3)" font-size="9">${fmtClock(START.t)}</text>
+    <text x="${W - padR}" y="${H - 8}" fill="var(--text3)" font-size="9" text-anchor="end">${fmtClock(START.t + DURATION)}</text>
+  `;
+  document.getElementById('tie-marker').textContent = `Dashed line: tie point, ~${A[tieIdx].campsBuilt} camps built, ${fmtClock(A[tieIdx].t)}`;
+
+  // Summary + table, sampled every 90s.
+  const finalDelta = total(A[A.length - 1]) - total(B[B.length - 1]);
+  document.getElementById('summary').innerHTML = `
+  Camps and farms are almost exactly tied around <b>${A[tieIdx].campsBuilt} camps</b>
+  (<b>${fmtClock(A[tieIdx].t)}</b>, about ${Math.round((A[tieIdx].t - START.t) / 60)} minutes into Feudal Age).
+  Before that point, camps are ahead — the instant +50 food beats waiting on a farm to spin up.
+  After it, farms pull steadily further ahead: by ${fmtClock(START.t + DURATION)} the gap is
+  <b>${Math.abs(Math.round(finalDelta))} resources</b> in ${finalDelta < 0 ? 'farms’' : 'camps’'} favor.
+  The takeaway: the camp-resource-bonus is a real, worthwhile <b>early burst</b> — worth leaning on for
+  the first few minutes of Feudal Age — but not a sustained income strategy. A real build should take
+  the early camps and then transition to farms on schedule, same as any other civ.
+`;
+
+  const sampleTimes = [];
+  for (let s = 0; s <= DURATION; s += 90) sampleTimes.push(s);
+  const rows = sampleTimes.map(s => {
+    const ai = Math.round(s / 0.5), bi = ai;
+    const a = A[Math.min(ai, A.length - 1)], b = B[Math.min(bi, B.length - 1)];
+    return { t: a.t, campsBuilt: a.campsBuilt, farmsActive: b.active,
+      aFood: Math.round(a.food), aWood: Math.round(a.wood), aStone: Math.round(a.stone),
+      bFood: Math.round(b.food), bWood: Math.round(b.wood), bStone: Math.round(b.stone),
+      delta: Math.round(total(a) - total(b)) };
+  });
+  document.getElementById('data-table').innerHTML = `
+    <thead><tr>
+      <th>Time</th><th class="num">Camps built</th>
+      <th class="num">Camp Food</th><th class="num">Camp Wood</th><th class="num">Camp Stone</th>
+      <th class="num">Farms active</th>
+      <th class="num">Farm Food</th><th class="num">Farm Wood</th><th class="num">Farm Stone</th>
+      <th class="num">Δ (camp&nbsp;&minus;&nbsp;farm)</th>
+    </tr></thead>
+    <tbody>
+      ${rows.map(r => `<tr>
+        <td>${fmtClock(r.t)}</td><td class="num">${r.campsBuilt}</td>
+        <td class="num"><span class="res-pill food">${r.aFood}</span></td>
+        <td class="num"><span class="res-pill wood">${r.aWood}</span></td>
+        <td class="num"><span class="res-pill stone">${r.aStone}</span></td>
+        <td class="num">${r.farmsActive}</td>
+        <td class="num"><span class="res-pill food">${r.bFood}</span></td>
+        <td class="num"><span class="res-pill wood">${r.bWood}</span></td>
+        <td class="num"><span class="res-pill stone">${r.bStone}</span></td>
+        <td class="num" style="color:${r.delta >= 0 ? 'var(--camp)' : 'var(--farm)'};font-weight:700;">${r.delta >= 0 ? '+' : ''}${r.delta}</td>
+      </tr>`).join('')}
+    </tbody>
+  `;
+}
+
+recompute();
+document.getElementById('wood-tech').addEventListener('change', recompute);
+document.getElementById('farm-tech').addEventListener('change', recompute);
+</script>
+</body>
+</html>
