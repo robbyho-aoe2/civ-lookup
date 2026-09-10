@@ -249,7 +249,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.06</div>
+    <div class="version">v1.07</div>
   </div>
 </div>
 
@@ -328,6 +328,7 @@ const DATA = {
   houseCost: 25, // wood
   startingResources: { food: 200, wood: 200, gold: 50, stone: 200 }, // standard random-map start
   housePopSpace: 5, // pop per house
+  houseBuildTimeSeconds: 25, // real AoE2:DE value (SiegeEngineers' data.json, internal_name HOUS)
   // Standard Normal-speed 1v1 age-up cost/research time, researched at the
   // Town Center like Loom/Wheelbarrow/Hand Cart (tcQueue-equivalent — blocks
   // villager production for the full research time). `toAge` is the age it
@@ -3683,9 +3684,22 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
   // for camp modeling.
   const hasNoHousesForDrain = (civ?.ecoBonuses || []).some(b => b.type === 'no-houses');
   const housePopSpaceOverride = (civ?.ecoBonuses || []).find(b => b.type === 'house-pop-space');
-  const houseWoodDrainPerSec = (civ && !hasNoHousesForDrain)
-    ? villRate * DATA.houseCost / (housePopSpaceOverride ? housePopSpaceOverride.value : DATA.housePopSpace)
-    : 0;
+  const housePopSpaceForHouses = housePopSpaceOverride ? housePopSpaceOverride.value : DATA.housePopSpace;
+  const modelHouses = civ && !hasNoHousesForDrain;
+  const houseWoodDrainPerSec = modelHouses ? villRate * DATA.houseCost / housePopSpaceForHouses : 0;
+  // Real build TIME, not just wood cost — a House takes a villager
+  // DATA.houseBuildTimeSeconds (25s) to build, same "contributes to nothing
+  // while under construction" idea as the camp build-time mechanic just
+  // below (builtLocal/pendingRate), just triggered by a population
+  // threshold instead of "first worker on a new resource." Modeled per-call
+  // against THIS call's own startVills as the baseline (not globally synced
+  // with the real cumulative house count elsewhere in the build) — same
+  // spirit of approximation houseWoodDrainPerSec's own continuous rate
+  // already accepts. `houseStuns` holds in-flight builders as
+  // `{readyAt, target, rate}`, resolved into assignedRate once ready,
+  // mirroring pendingRate/pendingReadyAt's own resolve-then-credit shape.
+  let housesCrossedThisCall = 0;
+  const houseStuns = [];
 
   const assigned = { food: 0, wood: 0, gold: 0, stone: 0 };
   // Sum of each worker's OWN gather rate, as opposed to `assigned[r] *
@@ -3862,7 +3876,19 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
       }
       vills++;
       assigned[target]++;
-      if (joinsPending) pendingRate[target] += workerRate; else assignedRate[target] += workerRate;
+      // House build-time stun: the villager whose birth crosses a house-
+      // pop-space threshold builds the House instead of joining `target`
+      // right away — contributes to NOTHING for houseBuildTimeSeconds, then
+      // joins normally. Independent of camp build-time (joinsPending) above;
+      // the rare birth that triggers both just serializes naturally (camp-
+      // pending resolves on its own schedule, this one on its own).
+      let buildsHouse = false;
+      if (modelHouses && Math.floor((vills - startVills) / housePopSpaceForHouses) > housesCrossedThisCall) {
+        housesCrossedThisCall++;
+        buildsHouse = true;
+      }
+      if (buildsHouse) houseStuns.push({ readyAt: t + DATA.houseBuildTimeSeconds, target, rate: workerRate });
+      else if (joinsPending) pendingRate[target] += workerRate; else assignedRate[target] += workerRate;
       if (isFarmer) farmVills++;
       if (!(target in firstAssignedAt)) firstAssignedAt[target] = t;
       const woodVills = (existingAlloc?.wood || 0) + assigned.wood;
@@ -3879,6 +3905,14 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
           pendingReadyAt[r] = null;
         }
       });
+    }
+    if (houseStuns.length) {
+      for (let i = houseStuns.length - 1; i >= 0; i--) {
+        if (t >= houseStuns[i].readyAt - 1e-9) {
+          assignedRate[houseStuns[i].target] += houseStuns[i].rate;
+          houseStuns.splice(i, 1);
+        }
+      }
     }
     RES.forEach(r => {
       // Existing, already-working villagers (from before this call started)
