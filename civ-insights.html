@@ -158,10 +158,10 @@ select:focus{outline:none;border-color:var(--amber);}
 
   <div class="card">
     <h2>Closing the Loop</h2>
-    <p class="desc">One more branch: right where switching to farms above finally took the lead for good — with that many active farms, that population, that exact resource pool — is it worth switching BACK to camps from there? The dashed line marks the same recovery point chart 2 ends on.</p>
+    <p class="desc">One more branch: right where switching to farms above finally took the lead for good — same population, same real resource pool at that moment — what if NEITHER side has anything built yet? No farms placed, no camps placed, both rebuilt from scratch. This is chart 1's exact question again, just replayed from a later population and time.</p>
     <div class="legend">
-      <span><i class="dot farm"></i> Keep going on farms</span>
-      <span><i class="dot camp"></i> Switch back to camps here</span>
+      <span><i class="dot camp"></i> Lumber Camps only</span>
+      <span><i class="dot farm"></i> Farms only</span>
     </div>
     <div class="overflow-x">
       <svg id="chart3" viewBox="0 0 820 320" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;min-width:600px;"></svg>
@@ -328,7 +328,7 @@ const DELTA_CAP = 600; // stop a DISPLAYED chart/table once the trailing side fa
 const total = row => row.food + row.wood + row.stone;
 function fmtClock(t) { const m = Math.floor(t / 60), s = Math.round(t % 60); return `${m}:${s < 10 ? '0' : ''}${s}`; }
 
-let A, B, C, D, tieIdx, cutoffIdx, switchCutoffIdx, xoverIdx2;
+let A, B, C, D, E, tieIdx, cutoffIdx, switchCutoffIdx, xoverIdx2;
 function recompute() {
   const woodTier = Number(document.getElementById('wood-tech').value);
   const farmTier = Number(document.getElementById('farm-tech').value);
@@ -380,13 +380,17 @@ function recompute() {
   for (let j = 0; j <= switchCutoffIdx; j++) { if (total(keepSeries[j]) > total(C[j])) lastKeepAhead = j; }
   xoverIdx2 = Math.min(lastKeepAhead + 1, switchCutoffIdx);
 
-  // Chart 3's "switch BACK to camps" branch: launch campsOnly from the
-  // ACTUAL farms state at chart 2's crossover (real population/pool, every
-  // current farmer/idle-waiter reallocated to wood) — closing the loop on
-  // whether flip-flopping back ever pays off. "Keep going on farms" needs
-  // no new simulation — it's just C continuing past xoverIdx2.
+  // Chart 3: closing the loop from chart 2's crossover state (real
+  // population/pool at that moment). BOTH branches assume no structures of
+  // either kind are standing yet — same full-abandonment convention as
+  // every other branch on this page — so this is a fair fight, not "camps
+  // from scratch vs. farms with a head start." Gets its OWN full
+  // SIM_DURATION runway (not whatever happens to remain of the original
+  // 20-minute window) so it has enough room to find a real, stable
+  // crossover rather than getting cut short by the outer ceiling.
   const backState = { t: C[xoverIdx2].t, v: C[xoverIdx2].v, food: C[xoverIdx2].food, wood: C[xoverIdx2].wood, stone: C[xoverIdx2].stone, headcount: C[xoverIdx2].active + C[xoverIdx2].waitingFarmers, campsBuilt: 0 };
-  D = campsOnly(SIM_DURATION - (backState.t - START.t), woodRate, backState);
+  D = campsOnly(SIM_DURATION, woodRate, backState);
+  E = farmsOnly(SIM_DURATION, woodRate, farmYield, foodRate, backState);
 
   renderAll();
 }
@@ -560,31 +564,22 @@ function renderAll() {
     </tbody>
   `;
 
-  // Chart 3: branch from chart 2's own crossover (xoverIdx2) above. "Keep
-  // going on farms" is just C continuing past xoverIdx2 (no new sim — same
-  // trajectory chart 2 already computed). "Switch back to camps" is D,
-  // launched from that exact farms state (real population/pool/headcount
-  // at that moment, every farmer/idle-waiter reallocated to wood).
-  const backSeries = C.slice(xoverIdx2);
-  const backCap = Math.min(backSeries.length, D.length) - 1;
-  let backCutoffIdx = -1;
-  for (let k = 1; k <= backCap; k++) {
-    if (total(backSeries[k]) - total(D[k]) >= DELTA_CAP) { backCutoffIdx = k; break; }
-  }
+  // Chart 3: from chart 2's crossover state, both sides rebuilt from
+  // scratch — camps (D) vs a FRESH farm economy (E, no pre-built farms
+  // inherited from C), same full-abandonment convention as charts 1 and 2.
+  // Structurally this is chart 1's exact question again, just replayed
+  // from a later population/time baseline: same ceiling-then-last-ahead
+  // tie-finding, same DELTA_CAP margin carrying the display past the real
+  // crossover instead of stopping right at it.
+  const backCap = Math.min(D.length, E.length) - 1;
+  let backCutoffIdx = D.findIndex((row, k) => row.campsBuilt > 0 && (total(E[k]) - total(row)) >= DELTA_CAP);
   if (backCutoffIdx < 0) backCutoffIdx = backCap;
-  const dispBackFarm = backSeries.slice(0, backCutoffIdx + 1), dispBackCamp = D.slice(0, backCutoffIdx + 1);
-  const backStartT = C[xoverIdx2].t, backEndT = dispBackFarm[dispBackFarm.length - 1].t;
-  const backDuration = Math.max(1, backEndT - backStartT);
-
-  // Same "last ahead" technique as charts 1 and 2 for any real (non-noise)
-  // moment camps retakes the lead — but here it may never happen at all,
-  // since camps starting fresh from scratch is giving up established
-  // active farms for zero benefit. Only draw/mention a crossover if camps
-  // is genuinely ahead at some point; otherwise the two lines just diverge.
   let lastCampAheadBack = -1;
-  for (let k = 0; k <= backCutoffIdx; k++) { if (total(dispBackCamp[k]) > total(dispBackFarm[k])) lastCampAheadBack = k; }
-  const hasBackXover = lastCampAheadBack >= 0;
-  const xoverIdx3 = hasBackXover ? Math.min(lastCampAheadBack + 1, backCutoffIdx) : 0;
+  for (let k = 0; k <= backCutoffIdx; k++) { if (total(D[k]) > total(E[k])) lastCampAheadBack = k; }
+  const xoverIdx3 = Math.min(Math.max(lastCampAheadBack + 1, 0), backCutoffIdx);
+  const dispBackCamp = D.slice(0, backCutoffIdx + 1), dispBackFarm = E.slice(0, backCutoffIdx + 1);
+  const backStartT = D[0].t, backEndT = dispBackCamp[dispBackCamp.length - 1].t;
+  const backDuration = Math.max(1, backEndT - backStartT);
 
   const svg3 = document.getElementById('chart3');
   const maxVal3 = Math.max(...dispBackFarm.map(total), ...dispBackCamp.map(total));
@@ -596,32 +591,31 @@ function renderAll() {
     return `<line x1="${padL}" y1="${y3(val)}" x2="${W - padR}" y2="${y3(val)}" stroke="var(--border)" stroke-width="1"/>
       <text x="${padL - 6}" y="${y3(val) + 3}" fill="var(--text3)" font-size="9" text-anchor="end">${Math.round(val)}</text>`;
   }).join('');
-  const xover3Line = hasBackXover ? `<line x1="${x3(dispBackFarm[xoverIdx3].t)}" y1="${padT}" x2="${x3(dispBackFarm[xoverIdx3].t)}" y2="${H - padB}" stroke="var(--text3)" stroke-width="1" stroke-dasharray="3,3"/>` : '';
+  const xover3X = x3(D[xoverIdx3].t);
   svg3.innerHTML = `
     ${gridLines3}
     <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border2)" stroke-width="1"/>
-    ${xover3Line}
-    <path d="${path3(dispBackFarm, 4)}" fill="none" stroke="var(--farm)" stroke-width="2.5"/>
+    <line x1="${xover3X}" y1="${padT}" x2="${xover3X}" y2="${H - padB}" stroke="var(--text3)" stroke-width="1" stroke-dasharray="3,3"/>
     <path d="${path3(dispBackCamp, 4)}" fill="none" stroke="var(--camp)" stroke-width="2.5"/>
+    <path d="${path3(dispBackFarm, 4)}" fill="none" stroke="var(--farm)" stroke-width="2.5"/>
     <text x="${padL}" y="${H - 8}" fill="var(--text3)" font-size="9">${fmtClock(backStartT)}</text>
     <text x="${W - padR}" y="${H - 8}" fill="var(--text3)" font-size="9" text-anchor="end">${fmtClock(backEndT)}</text>
   `;
-  const delta3 = Math.round(total(dispBackFarm[dispBackFarm.length - 1]) - total(dispBackCamp[dispBackCamp.length - 1]));
-  document.getElementById('tie-marker3').textContent = hasBackXover
-    ? `Dashed line: switching back to camps briefly regains the lead ${Math.round((dispBackFarm[xoverIdx3].t - backStartT) / 60)} min later (${fmtClock(dispBackFarm[xoverIdx3].t)}), before farms take back over. By ${fmtClock(backEndT)}, farms lead by ${Math.abs(delta3)} resources.`
-    : `No crossover this time — switching back to camps never catches up. By ${fmtClock(backEndT)} (${Math.round((backEndT - backStartT) / 60)} min later), staying on farms is ahead by ${Math.abs(delta3)} resources.`;
+  const delta3 = Math.round(total(dispBackCamp[dispBackCamp.length - 1]) - total(dispBackFarm[dispBackFarm.length - 1]));
+  document.getElementById('tie-marker3').textContent =
+    `Dashed line: tie point, ~${D[xoverIdx3].campsBuilt} camps built, ${fmtClock(D[xoverIdx3].t)}. By ${fmtClock(backEndT)}, ${delta3 < 0 ? 'farms' : 'camps'} lead by ${Math.abs(delta3)} resources.`;
 
-  // Table 3, mirroring table 2's shape, for "keep going on farms" vs
-  // "switch back to camps", sampled across chart 3's own re-zeroed window.
+  // Table 3, mirroring table 1's shape, for camps vs. a freshly-rebuilt
+  // farm economy, both from scratch, sampled across chart 3's own window.
   const sampleStep3 = Math.max(30, Math.round((backEndT - backStartT) / 10 / 30) * 30);
   const sampleTimes3 = [];
   for (let s = 0; s <= backEndT - backStartT; s += sampleStep3) sampleTimes3.push(s);
   if (sampleTimes3[sampleTimes3.length - 1] < backEndT - backStartT) sampleTimes3.push(backEndT - backStartT);
   const rows3 = sampleTimes3.map(s => {
-    const idx = Math.min(Math.round(s / 0.5), dispBackFarm.length - 1, dispBackCamp.length - 1);
-    const a = dispBackFarm[idx], b = dispBackCamp[idx];
+    const idx = Math.min(Math.round(s / 0.5), dispBackCamp.length - 1, dispBackFarm.length - 1);
+    const a = dispBackCamp[idx], b = dispBackFarm[idx];
     const aTotal = Math.round(total(a)), bTotal = Math.round(total(b));
-    return { t: a.t, minutesSince: Math.round((a.t - backStartT) / 60), farmsActive: a.active, campsBuilt: b.campsBuilt,
+    return { t: a.t, minutesSince: Math.round((a.t - backStartT) / 60), campsBuilt: a.campsBuilt, farmsActive: b.active,
       aFood: Math.round(a.food), aWood: Math.round(a.wood), aStone: Math.round(a.stone), aTotal,
       bFood: Math.round(b.food), bWood: Math.round(b.wood), bStone: Math.round(b.stone), bTotal,
       delta: aTotal - bTotal };
@@ -630,29 +624,29 @@ function renderAll() {
     <thead>
       <tr>
         <th rowspan="2">Time</th>
-        <th class="grp farm-grp" colspan="5">Keep Farms</th>
-        <th class="grp camp-grp divider" colspan="5">Switch Back to Camps</th>
+        <th class="grp camp-grp" colspan="5">Camps</th>
+        <th class="grp farm-grp divider" colspan="5">Farms (rebuilt)</th>
         <th rowspan="2" class="num divider">Δ</th>
       </tr>
       <tr>
-        <th class="num">Active</th><th class="num">Food</th><th class="num">Wood</th><th class="num">Stone</th><th class="num">Total</th>
-        <th class="num divider">Built</th><th class="num">Food</th><th class="num">Wood</th><th class="num">Stone</th><th class="num">Total</th>
+        <th class="num">Built</th><th class="num">Food</th><th class="num">Wood</th><th class="num">Stone</th><th class="num">Total</th>
+        <th class="num divider">Active</th><th class="num">Food</th><th class="num">Wood</th><th class="num">Stone</th><th class="num">Total</th>
       </tr>
     </thead>
     <tbody>
       ${rows3.map(r => `<tr>
         <td>${fmtClock(r.t)}<span style="color:var(--text3);"> · ${r.minutesSince}m</span></td>
-        <td class="num">${r.farmsActive}</td>
+        <td class="num">${r.campsBuilt}</td>
         <td class="num"><span class="res-pill food">${r.aFood}</span></td>
         <td class="num"><span class="res-pill wood">${r.aWood}</span></td>
         <td class="num"><span class="res-pill stone">${r.aStone}</span></td>
         <td class="num" style="font-weight:700;">${r.aTotal}</td>
-        <td class="num divider">${r.campsBuilt}</td>
+        <td class="num divider">${r.farmsActive}</td>
         <td class="num"><span class="res-pill food">${r.bFood}</span></td>
         <td class="num"><span class="res-pill wood">${r.bWood}</span></td>
         <td class="num"><span class="res-pill stone">${r.bStone}</span></td>
         <td class="num" style="font-weight:700;">${r.bTotal}</td>
-        <td class="num divider" style="color:${r.delta >= 0 ? 'var(--farm)' : 'var(--camp)'};font-weight:700;">${r.delta >= 0 ? '+' : ''}${r.delta}</td>
+        <td class="num divider" style="color:${r.delta >= 0 ? 'var(--camp)' : 'var(--farm)'};font-weight:700;">${r.delta >= 0 ? '+' : ''}${r.delta}</td>
       </tr>`).join('')}
     </tbody>
   `;
