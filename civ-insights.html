@@ -23,6 +23,16 @@ header h1{font-size:20px;margin:0;}
 .page-tabs a:hover{color:var(--text);}
 .page-tabs a.on{color:var(--amberL);border-bottom-color:var(--amber);}
 .card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
+details.section{margin-bottom:22px;}
+details.section .card{margin-bottom:0;border-radius:0;border-top:none;}
+details.section .card:first-of-type{border-top:1px solid var(--border);}
+details.section .card:last-of-type{border-radius:0 0 12px 12px;}
+details.section summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px 22px;color:var(--amberL);font-size:15px;font-weight:600;}
+details.section summary::-webkit-details-marker{display:none;}
+details.section summary::before{content:'▸';color:var(--text3);font-size:12px;transition:transform .15s;}
+details.section[open] summary{border-radius:12px 12px 0 0;}
+details.section[open] summary::before{transform:rotate(90deg);}
+details.section summary .summary-hint{color:var(--text3);font-weight:400;font-size:12px;margin-left:auto;}
 .card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
 .card .desc{font-size:12px;color:var(--text2);margin:0 0 16px;line-height:1.6;}
 .res-pill{display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:700;padding:1px 5px;border-radius:20px;background:var(--surf2);border:1px solid var(--border2);white-space:nowrap;}
@@ -140,51 +150,55 @@ select:focus{outline:none;border-color:var(--amber);}
     </div>
   </div>
 
-  <div class="card">
-    <h2>Since the Crossover</h2>
-    <p class="desc">A different question: once you're standing at the FOOD crossover marked above — with that many camps already built, that population, that exact resource pool — is it better to keep building Lumber Camps from there, or switch to farms starting from that committed state (not a fresh Reached-Feudal-Age start)? This chart starts at chart 1's colored dashed line, not its grey one.</p>
-    <div class="legend">
-      <span><i class="dot camp"></i> Keep building camps</span>
-      <span><i class="dot farm"></i> Switch to farms here</span>
-      <span><i class="dash camp"></i> Camps: food only</span>
-      <span><i class="dash farm"></i> Farms: food only</span>
+  <details class="section">
+    <summary>Since the Crossover <span class="summary-hint">branches from chart 1's food crossover</span></summary>
+    <div class="card">
+      <h2>Since the Crossover</h2>
+      <p class="desc">A different question: once you're standing at the FOOD crossover marked above — with that many camps already built, that population, that exact resource pool — is it better to keep building Lumber Camps from there, or switch to farms starting from that committed state (not a fresh Reached-Feudal-Age start)? This chart starts at chart 1's colored dashed line, not its grey one.</p>
+      <div class="legend">
+        <span><i class="dot camp"></i> Keep building camps</span>
+        <span><i class="dot farm"></i> Switch to farms here</span>
+        <span><i class="dash camp"></i> Camps: food only</span>
+        <span><i class="dash farm"></i> Farms: food only</span>
+      </div>
+      <div class="overflow-x">
+        <svg id="chart2" viewBox="0 0 820 320" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;min-width:600px;"></svg>
+      </div>
+      <p class="tie-marker" id="tie-marker2"></p>
     </div>
-    <div class="overflow-x">
-      <svg id="chart2" viewBox="0 0 820 320" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;min-width:600px;"></svg>
+    <div class="card">
+      <h2>The numbers, since the crossover</h2>
+      <p class="desc">Totals are food + wood + stone combined. Time is real elapsed game time, continuing from the food crossover above.</p>
+      <div class="overflow-x">
+        <table id="data-table-2"></table>
+      </div>
     </div>
-    <p class="tie-marker" id="tie-marker2"></p>
-  </div>
+  </details>
 
-  <div class="card">
-    <h2>The numbers, since the crossover</h2>
-    <p class="desc">Totals are food + wood + stone combined. Time is real elapsed game time, continuing from the food crossover above.</p>
-    <div class="overflow-x">
-      <table id="data-table-2"></table>
+  <details class="section">
+    <summary>Closing the Loop <span class="summary-hint">branches from chart 2's food crossover</span></summary>
+    <div class="card">
+      <h2>Closing the Loop</h2>
+      <p class="desc">One more branch: right at chart 2's OWN food crossover, marked above — same population, same real resource pool at that moment — what if NEITHER side has anything built yet? No farms placed, no camps placed, both rebuilt from scratch. This is chart 1's exact question again, just replayed from a later population and time.</p>
+      <div class="legend">
+        <span><i class="dot camp"></i> Lumber Camps only</span>
+        <span><i class="dot farm"></i> Farms only</span>
+        <span><i class="dash camp"></i> Camps: food only</span>
+        <span><i class="dash farm"></i> Farms: food only</span>
+      </div>
+      <div class="overflow-x">
+        <svg id="chart3" viewBox="0 0 820 320" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;min-width:600px;"></svg>
+      </div>
+      <p class="tie-marker" id="tie-marker3"></p>
     </div>
-  </div>
-
-  <div class="card">
-    <h2>Closing the Loop</h2>
-    <p class="desc">One more branch: right at chart 2's OWN food crossover, marked above — same population, same real resource pool at that moment — what if NEITHER side has anything built yet? No farms placed, no camps placed, both rebuilt from scratch. This is chart 1's exact question again, just replayed from a later population and time.</p>
-    <div class="legend">
-      <span><i class="dot camp"></i> Lumber Camps only</span>
-      <span><i class="dot farm"></i> Farms only</span>
-      <span><i class="dash camp"></i> Camps: food only</span>
-      <span><i class="dash farm"></i> Farms: food only</span>
+    <div class="card">
+      <h2>The numbers, closing the loop</h2>
+      <p class="desc">Totals are food + wood + stone combined. Time is real elapsed game time, continuing from the recovery point above.</p>
+      <div class="overflow-x">
+        <table id="data-table-3"></table>
+      </div>
     </div>
-    <div class="overflow-x">
-      <svg id="chart3" viewBox="0 0 820 320" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;min-width:600px;"></svg>
-    </div>
-    <p class="tie-marker" id="tie-marker3"></p>
-  </div>
-
-  <div class="card">
-    <h2>The numbers, closing the loop</h2>
-    <p class="desc">Totals are food + wood + stone combined. Time is real elapsed game time, continuing from the recovery point above.</p>
-    <div class="overflow-x">
-      <table id="data-table-3"></table>
-    </div>
-  </div>
+  </details>
 
   <div class="footer">
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
