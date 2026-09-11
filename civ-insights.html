@@ -142,7 +142,7 @@ select:focus{outline:none;border-color:var(--amber);}
 
   <div class="card">
     <h2>Since the Crossover</h2>
-    <p class="desc">A different question: once you're standing at the tie point above — with that many camps already built, that population, that exact resource pool — is it better to keep building Lumber Camps from there, or switch to farms starting from that committed state (not a fresh Reached-Feudal-Age start)? The dashed line marks the same tie point chart 1 ends on — this chart starts there.</p>
+    <p class="desc">A different question: once you're standing at the FOOD crossover marked above — with that many camps already built, that population, that exact resource pool — is it better to keep building Lumber Camps from there, or switch to farms starting from that committed state (not a fresh Reached-Feudal-Age start)? This chart starts at chart 1's colored dashed line, not its grey one.</p>
     <div class="legend">
       <span><i class="dot camp"></i> Keep building camps</span>
       <span><i class="dot farm"></i> Switch to farms here</span>
@@ -157,7 +157,7 @@ select:focus{outline:none;border-color:var(--amber);}
 
   <div class="card">
     <h2>The numbers, since the crossover</h2>
-    <p class="desc">Totals are food + wood + stone combined. Time is real elapsed game time, continuing from the tie point above.</p>
+    <p class="desc">Totals are food + wood + stone combined. Time is real elapsed game time, continuing from the food crossover above.</p>
     <div class="overflow-x">
       <table id="data-table-2"></table>
     </div>
@@ -165,7 +165,7 @@ select:focus{outline:none;border-color:var(--amber);}
 
   <div class="card">
     <h2>Closing the Loop</h2>
-    <p class="desc">One more branch: right where switching to farms above finally took the lead for good — same population, same real resource pool at that moment — what if NEITHER side has anything built yet? No farms placed, no camps placed, both rebuilt from scratch. This is chart 1's exact question again, just replayed from a later population and time.</p>
+    <p class="desc">One more branch: right at chart 2's OWN food crossover, marked above — same population, same real resource pool at that moment — what if NEITHER side has anything built yet? No farms placed, no camps placed, both rebuilt from scratch. This is chart 1's exact question again, just replayed from a later population and time.</p>
     <div class="legend">
       <span><i class="dot camp"></i> Lumber Camps only</span>
       <span><i class="dot farm"></i> Farms only</span>
@@ -349,7 +349,7 @@ function findCrossover(seriesA, seriesB, valueFn, ceilIdx) {
   return Math.min(Math.max(last + 1, 0), ceilIdx);
 }
 
-let A, B, C, D, E, tieIdx, cutoffIdx, switchCutoffIdx, xoverIdx2;
+let A, B, C, D, E, tieIdx, cutoffIdx, foodTieIdx, switchCutoffIdx, xoverIdx2, foodXoverIdx2;
 function recompute() {
   const woodTier = Number(document.getElementById('wood-tech').value);
   const farmTier = Number(document.getElementById('farm-tech').value);
@@ -375,29 +375,36 @@ function recompute() {
   cutoffIdx = A.findIndex((row, i) => row.campsBuilt > 0 && (total(B[i]) - total(row)) >= DELTA_CAP);
   if (cutoffIdx < 0) cutoffIdx = A.length - 1;
   tieIdx = findCrossover(A, B, total, cutoffIdx);
+  // Chart 1's FOOD-only crossover — this is the real branch point for
+  // chart 2 below (not the total-resources tie), since food is what
+  // actually separates first; the total tie lags behind it because camps'
+  // total is padded by leftover unspent wood and the stone bonus.
+  foodTieIdx = findCrossover(A, B, r => r.food, cutoffIdx);
 
   // Chart 2's "switch to farms" branch: launch farmsOnly from the ACTUAL
-  // camps-only state at the tie point (its real population, pool, and
-  // headcount — every current wood-gatherer becomes a would-be farmer),
-  // not from Reached Feudal Age again. The "keep building camps" branch
-  // needs no new simulation — it's just A continuing past tieIdx.
-  const switchState = { t: A[tieIdx].t, v: A[tieIdx].v, food: A[tieIdx].food, wood: A[tieIdx].wood, stone: A[tieIdx].stone, headcount: A[tieIdx].woodWorkers };
+  // camps-only state at chart 1's FOOD crossover (its real population,
+  // pool, and headcount — every current wood-gatherer becomes a would-be
+  // farmer), not from Reached Feudal Age again.
+  const switchState = { t: A[foodTieIdx].t, v: A[foodTieIdx].v, food: A[foodTieIdx].food, wood: A[foodTieIdx].wood, stone: A[foodTieIdx].stone, headcount: A[foodTieIdx].woodWorkers };
   C = farmsOnly(SIM_DURATION - (switchState.t - START.t), woodRate, farmYield, foodRate, switchState);
 
   // Chart 2's own real secondary crossover: switching costs a temporary dip
   // (everyone idle while the first farms get built), so "keep camps"
   // actually leads again for a few minutes before farms permanently take
   // over. Same ceiling-then-last-ahead technique as chart 1's tie point,
-  // just run on the keep-vs-switch pair instead of camps-vs-farms.
-  const keepSeries = A.slice(tieIdx);
+  // just run on the keep-vs-switch pair instead of camps-vs-farms. Also
+  // finds chart 2's own FOOD crossover, which is chart 3's real branch
+  // point below (not chart 2's total-resources crossover).
+  const keepSeries = A.slice(foodTieIdx);
   switchCutoffIdx = -1;
   for (let j = 1; j < Math.min(keepSeries.length, C.length); j++) {
     if (total(C[j]) - total(keepSeries[j]) >= DELTA_CAP) { switchCutoffIdx = j; break; }
   }
   if (switchCutoffIdx < 0) switchCutoffIdx = Math.min(keepSeries.length, C.length) - 1;
   xoverIdx2 = findCrossover(keepSeries, C, total, switchCutoffIdx);
+  foodXoverIdx2 = findCrossover(keepSeries, C, r => r.food, switchCutoffIdx);
 
-  // Chart 3: closing the loop from chart 2's crossover state (real
+  // Chart 3: closing the loop from chart 2's FOOD crossover state (real
   // population/pool at that moment). BOTH branches assume no structures of
   // either kind are standing yet — same full-abandonment convention as
   // every other branch on this page — so this is a fair fight, not "camps
@@ -405,7 +412,7 @@ function recompute() {
   // SIM_DURATION runway (not whatever happens to remain of the original
   // 20-minute window) so it has enough room to find a real, stable
   // crossover rather than getting cut short by the outer ceiling.
-  const backState = { t: C[xoverIdx2].t, v: C[xoverIdx2].v, food: C[xoverIdx2].food, wood: C[xoverIdx2].wood, stone: C[xoverIdx2].stone, headcount: C[xoverIdx2].active + C[xoverIdx2].waitingFarmers, campsBuilt: 0 };
+  const backState = { t: C[foodXoverIdx2].t, v: C[foodXoverIdx2].v, food: C[foodXoverIdx2].food, wood: C[foodXoverIdx2].wood, stone: C[foodXoverIdx2].stone, headcount: C[foodXoverIdx2].active + C[foodXoverIdx2].waitingFarmers, campsBuilt: 0 };
   D = campsOnly(SIM_DURATION, woodRate, backState);
   E = farmsOnly(SIM_DURATION, woodRate, farmYield, foodRate, backState);
 
@@ -434,8 +441,7 @@ function renderAll() {
       <text x="${padL - 6}" y="${y(val) + 3}" fill="var(--text3)" font-size="9" text-anchor="end">${Math.round(val)}</text>`;
   }).join('');
   const tieX = x(A[tieIdx].t);
-  const foodTieIdx = findCrossover(dispA, dispB, r => r.food, cutoffIdx);
-  const foodTieX = x(dispA[foodTieIdx].t);
+  const foodTieX = x(A[foodTieIdx].t);
   svg.innerHTML = `
     ${gridLines}
     <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border2)" stroke-width="1"/>
@@ -448,18 +454,19 @@ function renderAll() {
     <text x="${padL}" y="${H - 8}" fill="var(--text3)" font-size="9">${fmtClock(START.t)}</text>
     <text x="${W - padR}" y="${H - 8}" fill="var(--text3)" font-size="9" text-anchor="end">${fmtClock(displayEnd)}</text>
   `;
-  document.getElementById('tie-marker').textContent = `Grey dashed line: tie point (total resources), ~${A[tieIdx].campsBuilt} camps built, ${fmtClock(A[tieIdx].t)}. Colored dashed line: food-only crossover, ${fmtClock(dispA[foodTieIdx].t)}.`;
+  document.getElementById('tie-marker').textContent = `Grey dashed line: tie point (total resources), ~${A[tieIdx].campsBuilt} camps built, ${fmtClock(A[tieIdx].t)}. Colored dashed line: food-only crossover, ${fmtClock(A[foodTieIdx].t)} — this is where chart 2 below branches from.`;
 
   // Chart 2: branch from the tie point above. "Keep building camps" is just
-  // A continuing past tieIdx (no new sim — it's the same trajectory chart 1
-  // already computed). "Switch to farms" is C, launched from that exact
-  // camps-only state (real population/pool/headcount at the tie, not a
-  // fresh Reached-Feudal-Age start). switchCutoffIdx/xoverIdx2 were already
-  // pinned in recompute() (chart 3's "switch back to camps" branches off
-  // xoverIdx2, so both charts need the same indices).
-  const keepSeries = A.slice(tieIdx);
+  // A continuing past foodTieIdx (no new sim — it's the same trajectory
+  // chart 1 already computed). "Switch to farms" is C, launched from that
+  // exact camps-only state at chart 1's FOOD crossover (real population/
+  // pool/headcount there, not a fresh Reached-Feudal-Age start, and not
+  // chart 1's total-resources tie either). switchCutoffIdx/xoverIdx2/
+  // foodXoverIdx2 were already pinned in recompute() (chart 3 branches off
+  // foodXoverIdx2, so both charts need the same indices).
+  const keepSeries = A.slice(foodTieIdx);
   const dispKeep = keepSeries.slice(0, switchCutoffIdx + 1), dispSwitch = C.slice(0, switchCutoffIdx + 1);
-  const switchStartT = A[tieIdx].t, switchEndT = dispKeep[dispKeep.length - 1].t;
+  const switchStartT = A[foodTieIdx].t, switchEndT = dispKeep[dispKeep.length - 1].t;
   const switchDuration = Math.max(1, switchEndT - switchStartT);
 
   const svg2 = document.getElementById('chart2');
@@ -473,7 +480,6 @@ function renderAll() {
       <text x="${padL - 6}" y="${y2(val) + 3}" fill="var(--text3)" font-size="9" text-anchor="end">${Math.round(val)}</text>`;
   }).join('');
   const xover2X = x2(dispKeep[xoverIdx2].t);
-  const foodXoverIdx2 = findCrossover(dispKeep, dispSwitch, r => r.food, switchCutoffIdx);
   const foodXover2X = x2(dispKeep[foodXoverIdx2].t);
   svg2.innerHTML = `
     ${gridLines2}
@@ -489,7 +495,7 @@ function renderAll() {
   `;
   const delta2 = Math.round(total(dispSwitch[dispSwitch.length - 1]) - total(dispKeep[dispKeep.length - 1]));
   document.getElementById('tie-marker2').textContent =
-    `Grey dashed line: switching overtakes staying on camps for good ${Math.round((dispKeep[xoverIdx2].t - switchStartT) / 60)} min after the tie (${fmtClock(dispKeep[xoverIdx2].t)}). By ${fmtClock(switchEndT)} (${Math.round((switchEndT - switchStartT) / 60)} min after the tie), switching is ahead by ${Math.abs(delta2)} resources. Colored dashed line: food-only crossover, ${fmtClock(dispKeep[foodXoverIdx2].t)}.`;
+    `Grey dashed line: switching overtakes staying on camps for good ${Math.round((dispKeep[xoverIdx2].t - switchStartT) / 60)} min after this branch starts (${fmtClock(dispKeep[xoverIdx2].t)}). By ${fmtClock(switchEndT)} (${Math.round((switchEndT - switchStartT) / 60)} min later), switching is ahead by ${Math.abs(delta2)} resources. Colored dashed line: food-only crossover, ${fmtClock(dispKeep[foodXoverIdx2].t)} — this is where chart 3 below branches from.`;
 
   // Summary + table, sampled across the (now-trimmed) displayed window.
   const finalDelta = total(dispA[dispA.length - 1]) - total(dispB[dispB.length - 1]);
