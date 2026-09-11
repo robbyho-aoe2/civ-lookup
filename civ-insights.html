@@ -269,7 +269,8 @@ const FARM_YIELD_BY_TIER = [175, 250, 375, 550];
 // unlike Wood Chopping/Farm Yield which are each single-resource.
 const CARRY_TIER_BONUS = [{ food: 0, wood: 0 }, { food: 12, wood: 3 }, { food: 20, wood: 6 }];
 
-const DURATION = 900; // 15 minutes past Reached Feudal Age
+const SIM_DURATION = 1200; // hard ceiling: 20 minutes past Reached Feudal Age
+const DELTA_CAP = 600; // stop the DISPLAYED chart/table once farms lead the combined total by this much
 let A, B;
 function recompute() {
   const woodTier = Number(document.getElementById('wood-tech').value);
@@ -279,8 +280,8 @@ function recompute() {
   const woodRate = woodRateForTier(woodTier) * (1 + carry.wood / 100);
   const farmYield = FARM_YIELD_BY_TIER[farmTier];
   const foodRate = RATES.food * (1 + carry.food / 100);
-  A = campsOnly(DURATION, woodRate);
-  B = farmsOnly(DURATION, woodRate, farmYield, foodRate);
+  A = campsOnly(SIM_DURATION, woodRate);
+  B = farmsOnly(SIM_DURATION, woodRate, farmYield, foodRate);
   renderAll();
 }
 const total = row => row.food + row.wood + row.stone;
@@ -292,13 +293,22 @@ function renderAll() {
   let tieIdx = A.findIndex((row, i) => i > 0 && row.campsBuilt > 0 && (total(row) - total(B[i])) <= 0 && (total(A[i - 1]) - total(B[i - 1])) > 0);
   if (tieIdx < 0) tieIdx = A.length - 1;
 
+  // Trim the DISPLAYED window (chart + table) so it doesn't drag on long
+  // after the story's told: stop at the first point past the tie where
+  // farms lead the combined total by DELTA_CAP, or at the SIM_DURATION
+  // ceiling if that's never reached (e.g. a near-dead-even tech matchup).
+  let cutoffIdx = A.findIndex((row, i) => i > tieIdx && (total(B[i]) - total(row)) >= DELTA_CAP);
+  if (cutoffIdx < 0) cutoffIdx = A.length - 1;
+  const dispA = A.slice(0, cutoffIdx + 1), dispB = B.slice(0, cutoffIdx + 1);
+  const displayEnd = A[cutoffIdx].t, displayDuration = displayEnd - START.t;
+
   // Chart: two lines (camp total, farm total) over time, plain inline SVG --
   // same "no charting library" convention insights.html's own #chart already
   // uses.
   const svg = document.getElementById('chart');
   const W = 820, H = 320, padL = 46, padR = 14, padT = 14, padB = 28;
-  const maxVal = Math.max(...A.map(total), ...B.map(total));
-  const x = t => padL + (t - START.t) / DURATION * (W - padL - padR);
+  const maxVal = Math.max(...dispA.map(total), ...dispB.map(total));
+  const x = t => padL + (t - START.t) / displayDuration * (W - padL - padR);
   const y = val => H - padB - (val / maxVal) * (H - padT - padB);
   const path = (series, sample) => 'M' + series.filter((_, i) => i % sample === 0).map(r => `${x(r.t).toFixed(1)},${y(total(r)).toFixed(1)}`).join(' L');
   const gridLines = [0, 0.25, 0.5, 0.75, 1].map(f => {
@@ -311,28 +321,30 @@ function renderAll() {
     ${gridLines}
     <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border2)" stroke-width="1"/>
     <line x1="${tieX}" y1="${padT}" x2="${tieX}" y2="${H - padB}" stroke="var(--text3)" stroke-width="1" stroke-dasharray="3,3"/>
-    <path d="${path(A, 4)}" fill="none" stroke="var(--camp)" stroke-width="2.5"/>
-    <path d="${path(B, 4)}" fill="none" stroke="var(--farm)" stroke-width="2.5"/>
+    <path d="${path(dispA, 4)}" fill="none" stroke="var(--camp)" stroke-width="2.5"/>
+    <path d="${path(dispB, 4)}" fill="none" stroke="var(--farm)" stroke-width="2.5"/>
     <text x="${padL}" y="${H - 8}" fill="var(--text3)" font-size="9">${fmtClock(START.t)}</text>
-    <text x="${W - padR}" y="${H - 8}" fill="var(--text3)" font-size="9" text-anchor="end">${fmtClock(START.t + DURATION)}</text>
+    <text x="${W - padR}" y="${H - 8}" fill="var(--text3)" font-size="9" text-anchor="end">${fmtClock(displayEnd)}</text>
   `;
   document.getElementById('tie-marker').textContent = `Dashed line: tie point, ~${A[tieIdx].campsBuilt} camps built, ${fmtClock(A[tieIdx].t)}`;
 
-  // Summary + table, sampled every 90s.
-  const finalDelta = total(A[A.length - 1]) - total(B[B.length - 1]);
+  // Summary + table, sampled across the (now-trimmed) displayed window.
+  const finalDelta = total(dispA[dispA.length - 1]) - total(dispB[dispB.length - 1]);
   document.getElementById('summary').innerHTML = `
   Camps and farms are almost exactly tied around <b>${A[tieIdx].campsBuilt} camps</b>
   (<b>${fmtClock(A[tieIdx].t)}</b>, about ${Math.round((A[tieIdx].t - START.t) / 60)} minutes into Feudal Age).
   Before that point, camps are ahead — the instant +50 food beats waiting on a farm to spin up.
-  After it, farms pull steadily further ahead: by ${fmtClock(START.t + DURATION)} the gap is
+  After it, farms pull steadily further ahead: by ${fmtClock(displayEnd)} the gap is
   <b>${Math.abs(Math.round(finalDelta))} resources</b> in ${finalDelta < 0 ? 'farms’' : 'camps’'} favor.
   The takeaway: the camp-resource-bonus is a real, worthwhile <b>early burst</b> — worth leaning on for
   the first few minutes of Feudal Age — but not a sustained income strategy. A real build should take
   the early camps and then transition to farms on schedule, same as any other civ.
 `;
 
+  const sampleStep = Math.max(30, Math.round(displayDuration / 10 / 30) * 30);
   const sampleTimes = [];
-  for (let s = 0; s <= DURATION; s += 90) sampleTimes.push(s);
+  for (let s = 0; s <= displayDuration; s += sampleStep) sampleTimes.push(s);
+  if (sampleTimes[sampleTimes.length - 1] < displayDuration) sampleTimes.push(displayDuration);
   const rows = sampleTimes.map(s => {
     const ai = Math.round(s / 0.5), bi = ai;
     const a = A[Math.min(ai, A.length - 1)], b = B[Math.min(bi, B.length - 1)];
