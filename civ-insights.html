@@ -336,6 +336,18 @@ const SIM_DURATION = 1200; // hard ceiling: 20 minutes past Reached Feudal Age
 const DELTA_CAP = 600; // stop a DISPLAYED chart/table once the trailing side falls behind by this much
 const total = row => row.food + row.wood + row.stone;
 function fmtClock(t) { const m = Math.floor(t / 60), s = Math.round(t % 60); return `${m}:${s < 10 ? '0' : ''}${s}`; }
+// The last index (within [0, ceilIdx]) where valueFn(seriesA[i]) is still
+// ahead of valueFn(seriesB[i]), +1 — the same noise-robust crossover
+// technique used throughout this page for the total-resources tie points.
+// A camp completing is a discrete step, so the raw delta zigzags near any
+// real crossover; the LAST ahead tick before a bounded ceiling is the
+// lasting crossover, not the first sign flip (which can catch a one-tick
+// blip from a camp just starting construction).
+function findCrossover(seriesA, seriesB, valueFn, ceilIdx) {
+  let last = -1;
+  for (let i = 0; i <= ceilIdx; i++) { if (valueFn(seriesA[i]) > valueFn(seriesB[i])) last = i; }
+  return Math.min(Math.max(last + 1, 0), ceilIdx);
+}
 
 let A, B, C, D, E, tieIdx, cutoffIdx, switchCutoffIdx, xoverIdx2;
 function recompute() {
@@ -362,9 +374,7 @@ function recompute() {
   // ahead for several more minutes).
   cutoffIdx = A.findIndex((row, i) => row.campsBuilt > 0 && (total(B[i]) - total(row)) >= DELTA_CAP);
   if (cutoffIdx < 0) cutoffIdx = A.length - 1;
-  let lastCampAhead = -1;
-  for (let i = 0; i <= cutoffIdx; i++) { if (total(A[i]) > total(B[i])) lastCampAhead = i; }
-  tieIdx = Math.min(Math.max(lastCampAhead + 1, 0), cutoffIdx);
+  tieIdx = findCrossover(A, B, total, cutoffIdx);
 
   // Chart 2's "switch to farms" branch: launch farmsOnly from the ACTUAL
   // camps-only state at the tie point (its real population, pool, and
@@ -385,9 +395,7 @@ function recompute() {
     if (total(C[j]) - total(keepSeries[j]) >= DELTA_CAP) { switchCutoffIdx = j; break; }
   }
   if (switchCutoffIdx < 0) switchCutoffIdx = Math.min(keepSeries.length, C.length) - 1;
-  let lastKeepAhead = -1;
-  for (let j = 0; j <= switchCutoffIdx; j++) { if (total(keepSeries[j]) > total(C[j])) lastKeepAhead = j; }
-  xoverIdx2 = Math.min(lastKeepAhead + 1, switchCutoffIdx);
+  xoverIdx2 = findCrossover(keepSeries, C, total, switchCutoffIdx);
 
   // Chart 3: closing the loop from chart 2's crossover state (real
   // population/pool at that moment). BOTH branches assume no structures of
@@ -426,9 +434,12 @@ function renderAll() {
       <text x="${padL - 6}" y="${y(val) + 3}" fill="var(--text3)" font-size="9" text-anchor="end">${Math.round(val)}</text>`;
   }).join('');
   const tieX = x(A[tieIdx].t);
+  const foodTieIdx = findCrossover(dispA, dispB, r => r.food, cutoffIdx);
+  const foodTieX = x(dispA[foodTieIdx].t);
   svg.innerHTML = `
     ${gridLines}
     <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border2)" stroke-width="1"/>
+    <line x1="${foodTieX}" y1="${padT}" x2="${foodTieX}" y2="${H - padB}" stroke="var(--food)" stroke-width="1" stroke-dasharray="2,2" opacity="0.7"/>
     <line x1="${tieX}" y1="${padT}" x2="${tieX}" y2="${H - padB}" stroke="var(--text3)" stroke-width="1" stroke-dasharray="3,3"/>
     <path d="${path(dispA, 4, r => r.food)}" fill="none" stroke="var(--camp)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.65"/>
     <path d="${path(dispB, 4, r => r.food)}" fill="none" stroke="var(--farm)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.65"/>
@@ -437,7 +448,7 @@ function renderAll() {
     <text x="${padL}" y="${H - 8}" fill="var(--text3)" font-size="9">${fmtClock(START.t)}</text>
     <text x="${W - padR}" y="${H - 8}" fill="var(--text3)" font-size="9" text-anchor="end">${fmtClock(displayEnd)}</text>
   `;
-  document.getElementById('tie-marker').textContent = `Dashed line: tie point, ~${A[tieIdx].campsBuilt} camps built, ${fmtClock(A[tieIdx].t)}`;
+  document.getElementById('tie-marker').textContent = `Grey dashed line: tie point (total resources), ~${A[tieIdx].campsBuilt} camps built, ${fmtClock(A[tieIdx].t)}. Colored dashed line: food-only crossover, ${fmtClock(dispA[foodTieIdx].t)}.`;
 
   // Chart 2: branch from the tie point above. "Keep building camps" is just
   // A continuing past tieIdx (no new sim — it's the same trajectory chart 1
@@ -462,9 +473,12 @@ function renderAll() {
       <text x="${padL - 6}" y="${y2(val) + 3}" fill="var(--text3)" font-size="9" text-anchor="end">${Math.round(val)}</text>`;
   }).join('');
   const xover2X = x2(dispKeep[xoverIdx2].t);
+  const foodXoverIdx2 = findCrossover(dispKeep, dispSwitch, r => r.food, switchCutoffIdx);
+  const foodXover2X = x2(dispKeep[foodXoverIdx2].t);
   svg2.innerHTML = `
     ${gridLines2}
     <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border2)" stroke-width="1"/>
+    <line x1="${foodXover2X}" y1="${padT}" x2="${foodXover2X}" y2="${H - padB}" stroke="var(--food)" stroke-width="1" stroke-dasharray="2,2" opacity="0.7"/>
     <line x1="${xover2X}" y1="${padT}" x2="${xover2X}" y2="${H - padB}" stroke="var(--text3)" stroke-width="1" stroke-dasharray="3,3"/>
     <path d="${path2(dispKeep, 4, r => r.food)}" fill="none" stroke="var(--camp)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.65"/>
     <path d="${path2(dispSwitch, 4, r => r.food)}" fill="none" stroke="var(--farm)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.65"/>
@@ -475,7 +489,7 @@ function renderAll() {
   `;
   const delta2 = Math.round(total(dispSwitch[dispSwitch.length - 1]) - total(dispKeep[dispKeep.length - 1]));
   document.getElementById('tie-marker2').textContent =
-    `Dashed line: switching overtakes staying on camps for good ${Math.round((dispKeep[xoverIdx2].t - switchStartT) / 60)} min after the tie (${fmtClock(dispKeep[xoverIdx2].t)}). By ${fmtClock(switchEndT)} (${Math.round((switchEndT - switchStartT) / 60)} min after the tie), switching is ahead by ${Math.abs(delta2)} resources.`;
+    `Grey dashed line: switching overtakes staying on camps for good ${Math.round((dispKeep[xoverIdx2].t - switchStartT) / 60)} min after the tie (${fmtClock(dispKeep[xoverIdx2].t)}). By ${fmtClock(switchEndT)} (${Math.round((switchEndT - switchStartT) / 60)} min after the tie), switching is ahead by ${Math.abs(delta2)} resources. Colored dashed line: food-only crossover, ${fmtClock(dispKeep[foodXoverIdx2].t)}.`;
 
   // Summary + table, sampled across the (now-trimmed) displayed window.
   const finalDelta = total(dispA[dispA.length - 1]) - total(dispB[dispB.length - 1]);
@@ -587,9 +601,7 @@ function renderAll() {
   const backCap = Math.min(D.length, E.length) - 1;
   let backCutoffIdx = D.findIndex((row, k) => row.campsBuilt > 0 && (total(E[k]) - total(row)) >= DELTA_CAP);
   if (backCutoffIdx < 0) backCutoffIdx = backCap;
-  let lastCampAheadBack = -1;
-  for (let k = 0; k <= backCutoffIdx; k++) { if (total(D[k]) > total(E[k])) lastCampAheadBack = k; }
-  const xoverIdx3 = Math.min(Math.max(lastCampAheadBack + 1, 0), backCutoffIdx);
+  const xoverIdx3 = findCrossover(D, E, total, backCutoffIdx);
   const dispBackCamp = D.slice(0, backCutoffIdx + 1), dispBackFarm = E.slice(0, backCutoffIdx + 1);
   const backStartT = D[0].t, backEndT = dispBackCamp[dispBackCamp.length - 1].t;
   const backDuration = Math.max(1, backEndT - backStartT);
@@ -605,9 +617,12 @@ function renderAll() {
       <text x="${padL - 6}" y="${y3(val) + 3}" fill="var(--text3)" font-size="9" text-anchor="end">${Math.round(val)}</text>`;
   }).join('');
   const xover3X = x3(D[xoverIdx3].t);
+  const foodXoverIdx3 = findCrossover(dispBackCamp, dispBackFarm, r => r.food, backCutoffIdx);
+  const foodXover3X = x3(dispBackCamp[foodXoverIdx3].t);
   svg3.innerHTML = `
     ${gridLines3}
     <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border2)" stroke-width="1"/>
+    <line x1="${foodXover3X}" y1="${padT}" x2="${foodXover3X}" y2="${H - padB}" stroke="var(--food)" stroke-width="1" stroke-dasharray="2,2" opacity="0.7"/>
     <line x1="${xover3X}" y1="${padT}" x2="${xover3X}" y2="${H - padB}" stroke="var(--text3)" stroke-width="1" stroke-dasharray="3,3"/>
     <path d="${path3(dispBackCamp, 4, r => r.food)}" fill="none" stroke="var(--camp)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.65"/>
     <path d="${path3(dispBackFarm, 4, r => r.food)}" fill="none" stroke="var(--farm)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.65"/>
@@ -618,7 +633,7 @@ function renderAll() {
   `;
   const delta3 = Math.round(total(dispBackCamp[dispBackCamp.length - 1]) - total(dispBackFarm[dispBackFarm.length - 1]));
   document.getElementById('tie-marker3').textContent =
-    `Dashed line: tie point, ~${D[xoverIdx3].campsBuilt} camps built, ${fmtClock(D[xoverIdx3].t)}. By ${fmtClock(backEndT)}, ${delta3 < 0 ? 'farms' : 'camps'} lead by ${Math.abs(delta3)} resources.`;
+    `Grey dashed line: tie point, ~${D[xoverIdx3].campsBuilt} camps built, ${fmtClock(D[xoverIdx3].t)}. By ${fmtClock(backEndT)}, ${delta3 < 0 ? 'farms' : 'camps'} lead by ${Math.abs(delta3)} resources. Colored dashed line: food-only crossover, ${fmtClock(dispBackCamp[foodXoverIdx3].t)}.`;
 
   // Table 3, mirroring table 1's shape, for camps vs. a freshly-rebuilt
   // farm economy, both from scratch, sampled across chart 3's own window.
