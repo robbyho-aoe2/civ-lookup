@@ -156,6 +156,27 @@ select:focus{outline:none;border-color:var(--amber);}
     </div>
   </div>
 
+  <div class="card">
+    <h2>Closing the Loop</h2>
+    <p class="desc">One more branch: right where switching to farms above finally took the lead for good — with that many active farms, that population, that exact resource pool — is it worth switching BACK to camps from there? The dashed line marks the same recovery point chart 2 ends on.</p>
+    <div class="legend">
+      <span><i class="dot farm"></i> Keep going on farms</span>
+      <span><i class="dot camp"></i> Switch back to camps here</span>
+    </div>
+    <div class="overflow-x">
+      <svg id="chart3" viewBox="0 0 820 320" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;min-width:600px;"></svg>
+    </div>
+    <p class="tie-marker" id="tie-marker3"></p>
+  </div>
+
+  <div class="card">
+    <h2>The numbers, closing the loop</h2>
+    <p class="desc">Totals are food + wood + stone combined. Time is real elapsed game time, continuing from the recovery point above.</p>
+    <div class="overflow-x">
+      <table id="data-table-3"></table>
+    </div>
+  </div>
+
   <div class="footer">
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
@@ -197,13 +218,19 @@ const villagerFoodDrainPerSec = villRate * VILLAGER_FOOD_COST;
 // construction -- no single-builder throughput cap, confirmed the more
 // realistic reading during testing). Houses cost real wood + pull one
 // villager off gathering for their real build time, same as the camps do.
-function campsOnly(targetElapsed, woodRate) {
-  let t = START.t, v = START.v, pool = { ...START.pool }, woodWorkers = START.allocWood + START.allocFood; // full abandonment: everyone starts on wood
+// `startState` (optional) lets this same "keep/switch to camps" logic
+// launch from a MID-GAME state instead of Reached Feudal Age — used for the
+// "switch BACK to camps" branch of chart 3, mirroring farmsOnly's own
+// startState parameter below. Defaults to the real Reached-Feudal-Age
+// anchor.
+function campsOnly(targetElapsed, woodRate, startState) {
+  const s0 = startState || { t: START.t, v: START.v, food: START.pool.food, wood: START.pool.wood, stone: START.pool.stone, headcount: START.allocWood + START.allocFood, campsBuilt: 0 };
+  let t = s0.t, v = s0.v, pool = { food: s0.food, wood: s0.wood, stone: s0.stone }, woodWorkers = s0.headcount; // full abandonment: everyone starts on wood
   let nextBirth = t + 1 / villRate;
-  const dt = 0.5, end = START.t + targetElapsed;
-  let housesCrossed = 0;
+  const dt = 0.5, end = s0.t + targetElapsed;
+  let housesCrossed = Math.floor((v - START.v) / HOUSE_POP_SPACE);
   const houseBuilders = [], campsBuilding = [];
-  let campsBuilt = 0;
+  let campsBuilt = s0.campsBuilt;
   const series = [];
   while (t <= end) {
     while (t >= nextBirth - 1e-9) {
@@ -268,7 +295,7 @@ function farmsOnly(targetElapsed, woodRate, farmYield, foodRate, startState) {
       pool.food += gain; activeFarms[i].remaining -= gain;
       if (activeFarms[i].remaining <= 1e-9) { activeFarms.splice(i, 1); waitingFarmers++; }
     }
-    series.push({ t, food: pool.food, wood: pool.wood, stone: pool.stone, active: activeFarms.length });
+    series.push({ t, food: pool.food, wood: pool.wood, stone: pool.stone, active: activeFarms.length, v, waitingFarmers });
     t += dt;
   }
   return series;
@@ -301,7 +328,7 @@ const DELTA_CAP = 600; // stop a DISPLAYED chart/table once the trailing side fa
 const total = row => row.food + row.wood + row.stone;
 function fmtClock(t) { const m = Math.floor(t / 60), s = Math.round(t % 60); return `${m}:${s < 10 ? '0' : ''}${s}`; }
 
-let A, B, C, tieIdx;
+let A, B, C, D, tieIdx, cutoffIdx, switchCutoffIdx, xoverIdx2;
 function recompute() {
   const woodTier = Number(document.getElementById('wood-tech').value);
   const farmTier = Number(document.getElementById('farm-tech').value);
@@ -313,10 +340,22 @@ function recompute() {
   A = campsOnly(SIM_DURATION, woodRate);
   B = farmsOnly(SIM_DURATION, woodRate, farmYield, foodRate);
 
-  // Find the tie point (first sign change in camp-minus-farm total) — this is
-  // both chart 1's marker AND the real branch point for chart 2 below.
-  tieIdx = A.findIndex((row, i) => i > 0 && row.campsBuilt > 0 && (total(row) - total(B[i])) <= 0 && (total(A[i - 1]) - total(B[i - 1])) > 0);
-  if (tieIdx < 0) tieIdx = A.length - 1;
+  // Find the tie point — this is both chart 1's marker AND the real branch
+  // point for chart 2 below. First pin a search ceiling: the first point
+  // (once at least one camp has landed, skipping pre-camp noise) where
+  // farms lead the combined total by DELTA_CAP for good. Within that
+  // window, the tie is the LAST tick camps are still ahead, not the first
+  // sign flip — a camp START instantly spends 100 wood before its own
+  // bonus lands, and completions land in discrete +50/+10 bursts, so the
+  // raw delta zigzags hard (real bug: with strong Wood Chopping + Hand
+  // Cart, a single-tick dip from a camp just starting construction got
+  // picked up as "the tie" at essentially t=0, when camps were actually
+  // ahead for several more minutes).
+  cutoffIdx = A.findIndex((row, i) => row.campsBuilt > 0 && (total(B[i]) - total(row)) >= DELTA_CAP);
+  if (cutoffIdx < 0) cutoffIdx = A.length - 1;
+  let lastCampAhead = -1;
+  for (let i = 0; i <= cutoffIdx; i++) { if (total(A[i]) > total(B[i])) lastCampAhead = i; }
+  tieIdx = Math.min(Math.max(lastCampAhead + 1, 0), cutoffIdx);
 
   // Chart 2's "switch to farms" branch: launch farmsOnly from the ACTUAL
   // camps-only state at the tie point (its real population, pool, and
@@ -326,17 +365,36 @@ function recompute() {
   const switchState = { t: A[tieIdx].t, v: A[tieIdx].v, food: A[tieIdx].food, wood: A[tieIdx].wood, stone: A[tieIdx].stone, headcount: A[tieIdx].woodWorkers };
   C = farmsOnly(SIM_DURATION - (switchState.t - START.t), woodRate, farmYield, foodRate, switchState);
 
+  // Chart 2's own real secondary crossover: switching costs a temporary dip
+  // (everyone idle while the first farms get built), so "keep camps"
+  // actually leads again for a few minutes before farms permanently take
+  // over. Same ceiling-then-last-ahead technique as chart 1's tie point,
+  // just run on the keep-vs-switch pair instead of camps-vs-farms.
+  const keepSeries = A.slice(tieIdx);
+  switchCutoffIdx = -1;
+  for (let j = 1; j < Math.min(keepSeries.length, C.length); j++) {
+    if (total(C[j]) - total(keepSeries[j]) >= DELTA_CAP) { switchCutoffIdx = j; break; }
+  }
+  if (switchCutoffIdx < 0) switchCutoffIdx = Math.min(keepSeries.length, C.length) - 1;
+  let lastKeepAhead = -1;
+  for (let j = 0; j <= switchCutoffIdx; j++) { if (total(keepSeries[j]) > total(C[j])) lastKeepAhead = j; }
+  xoverIdx2 = Math.min(lastKeepAhead + 1, switchCutoffIdx);
+
+  // Chart 3's "switch BACK to camps" branch: launch campsOnly from the
+  // ACTUAL farms state at chart 2's crossover (real population/pool, every
+  // current farmer/idle-waiter reallocated to wood) — closing the loop on
+  // whether flip-flopping back ever pays off. "Keep going on farms" needs
+  // no new simulation — it's just C continuing past xoverIdx2.
+  const backState = { t: C[xoverIdx2].t, v: C[xoverIdx2].v, food: C[xoverIdx2].food, wood: C[xoverIdx2].wood, stone: C[xoverIdx2].stone, headcount: C[xoverIdx2].active + C[xoverIdx2].waitingFarmers, campsBuilt: 0 };
+  D = campsOnly(SIM_DURATION - (backState.t - START.t), woodRate, backState);
+
   renderAll();
 }
 
 function renderAll() {
 
-  // Trim the DISPLAYED window (chart + table) so it doesn't drag on long
-  // after the story's told: stop at the first point past the tie where
-  // farms lead the combined total by DELTA_CAP, or at the SIM_DURATION
-  // ceiling if that's never reached (e.g. a near-dead-even tech matchup).
-  let cutoffIdx = A.findIndex((row, i) => i > tieIdx && (total(B[i]) - total(row)) >= DELTA_CAP);
-  if (cutoffIdx < 0) cutoffIdx = A.length - 1;
+  // Trim the DISPLAYED window (chart + table) — cutoffIdx was already
+  // pinned in recompute() as part of finding the tie point above.
   const dispA = A.slice(0, cutoffIdx + 1), dispB = B.slice(0, cutoffIdx + 1);
   const displayEnd = A[cutoffIdx].t, displayDuration = displayEnd - START.t;
 
@@ -370,30 +428,13 @@ function renderAll() {
   // A continuing past tieIdx (no new sim — it's the same trajectory chart 1
   // already computed). "Switch to farms" is C, launched from that exact
   // camps-only state (real population/pool/headcount at the tie, not a
-  // fresh Reached-Feudal-Age start). Same DELTA_CAP-or-ceiling trim as
-  // chart 1, just re-zeroed at the tie point instead of START.
+  // fresh Reached-Feudal-Age start). switchCutoffIdx/xoverIdx2 were already
+  // pinned in recompute() (chart 3's "switch back to camps" branches off
+  // xoverIdx2, so both charts need the same indices).
   const keepSeries = A.slice(tieIdx);
-  const switchCap = Math.min(keepSeries.length, C.length) - 1;
-  let cutoff2 = -1;
-  for (let j = 1; j <= switchCap; j++) {
-    if (total(C[j]) - total(keepSeries[j]) >= DELTA_CAP) { cutoff2 = j; break; }
-  }
-  if (cutoff2 < 0) cutoff2 = switchCap;
-  const dispKeep = keepSeries.slice(0, cutoff2 + 1), dispSwitch = C.slice(0, cutoff2 + 1);
+  const dispKeep = keepSeries.slice(0, switchCutoffIdx + 1), dispSwitch = C.slice(0, switchCutoffIdx + 1);
   const switchStartT = A[tieIdx].t, switchEndT = dispKeep[dispKeep.length - 1].t;
   const switchDuration = Math.max(1, switchEndT - switchStartT);
-
-  // Real secondary crossover WITHIN chart 2: switching means every current
-  // wood-gatherer goes idle for a bit while farms get built, so "keep
-  // camps" (still popping instant bonuses) actually pulls back AHEAD for a
-  // few minutes before farms ramp up and switch overtakes for good. Camp
-  // completions are discrete +50/+10 bursts, so the raw delta zigzags near
-  // zero — find the LAST negative tick (not the first sign flip, which
-  // catches a transient one-tick blip) so the mark is the point switching
-  // takes the lead and stays there.
-  let lastNeg2 = -1;
-  for (let j = 0; j <= cutoff2; j++) { if (total(C[j]) - total(dispKeep[j]) < 0) lastNeg2 = j; }
-  const xoverIdx2 = Math.min(lastNeg2 + 1, cutoff2);
 
   const svg2 = document.getElementById('chart2');
   const maxVal2 = Math.max(...dispKeep.map(total), ...dispSwitch.map(total));
@@ -518,6 +559,103 @@ function renderAll() {
         <td class="num"><span class="res-pill stone">${r.bStone}</span></td>
         <td class="num" style="font-weight:700;">${r.bTotal}</td>
         <td class="num divider" style="color:${r.delta <= 0 ? 'var(--farm)' : 'var(--camp)'};font-weight:700;">${r.delta >= 0 ? '+' : ''}${r.delta}</td>
+      </tr>`).join('')}
+    </tbody>
+  `;
+
+  // Chart 3: branch from chart 2's own crossover (xoverIdx2) above. "Keep
+  // going on farms" is just C continuing past xoverIdx2 (no new sim — same
+  // trajectory chart 2 already computed). "Switch back to camps" is D,
+  // launched from that exact farms state (real population/pool/headcount
+  // at that moment, every farmer/idle-waiter reallocated to wood).
+  const backSeries = C.slice(xoverIdx2);
+  const backCap = Math.min(backSeries.length, D.length) - 1;
+  let backCutoffIdx = -1;
+  for (let k = 1; k <= backCap; k++) {
+    if (total(backSeries[k]) - total(D[k]) >= DELTA_CAP) { backCutoffIdx = k; break; }
+  }
+  if (backCutoffIdx < 0) backCutoffIdx = backCap;
+  const dispBackFarm = backSeries.slice(0, backCutoffIdx + 1), dispBackCamp = D.slice(0, backCutoffIdx + 1);
+  const backStartT = C[xoverIdx2].t, backEndT = dispBackFarm[dispBackFarm.length - 1].t;
+  const backDuration = Math.max(1, backEndT - backStartT);
+
+  // Same "last ahead" technique as charts 1 and 2 for any real (non-noise)
+  // moment camps retakes the lead — but here it may never happen at all,
+  // since camps starting fresh from scratch is giving up established
+  // active farms for zero benefit. Only draw/mention a crossover if camps
+  // is genuinely ahead at some point; otherwise the two lines just diverge.
+  let lastCampAheadBack = -1;
+  for (let k = 0; k <= backCutoffIdx; k++) { if (total(dispBackCamp[k]) > total(dispBackFarm[k])) lastCampAheadBack = k; }
+  const hasBackXover = lastCampAheadBack >= 0;
+  const xoverIdx3 = hasBackXover ? Math.min(lastCampAheadBack + 1, backCutoffIdx) : 0;
+
+  const svg3 = document.getElementById('chart3');
+  const maxVal3 = Math.max(...dispBackFarm.map(total), ...dispBackCamp.map(total));
+  const x3 = t => padL + (t - backStartT) / backDuration * (W - padL - padR);
+  const y3 = val => H - padB - (val / maxVal3) * (H - padT - padB);
+  const path3 = (series, sample) => 'M' + series.filter((_, i) => i % sample === 0).map(r => `${x3(r.t).toFixed(1)},${y3(total(r)).toFixed(1)}`).join(' L');
+  const gridLines3 = [0, 0.25, 0.5, 0.75, 1].map(f => {
+    const val = maxVal3 * f;
+    return `<line x1="${padL}" y1="${y3(val)}" x2="${W - padR}" y2="${y3(val)}" stroke="var(--border)" stroke-width="1"/>
+      <text x="${padL - 6}" y="${y3(val) + 3}" fill="var(--text3)" font-size="9" text-anchor="end">${Math.round(val)}</text>`;
+  }).join('');
+  const xover3Line = hasBackXover ? `<line x1="${x3(dispBackFarm[xoverIdx3].t)}" y1="${padT}" x2="${x3(dispBackFarm[xoverIdx3].t)}" y2="${H - padB}" stroke="var(--text3)" stroke-width="1" stroke-dasharray="3,3"/>` : '';
+  svg3.innerHTML = `
+    ${gridLines3}
+    <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border2)" stroke-width="1"/>
+    ${xover3Line}
+    <path d="${path3(dispBackFarm, 4)}" fill="none" stroke="var(--farm)" stroke-width="2.5"/>
+    <path d="${path3(dispBackCamp, 4)}" fill="none" stroke="var(--camp)" stroke-width="2.5"/>
+    <text x="${padL}" y="${H - 8}" fill="var(--text3)" font-size="9">${fmtClock(backStartT)}</text>
+    <text x="${W - padR}" y="${H - 8}" fill="var(--text3)" font-size="9" text-anchor="end">${fmtClock(backEndT)}</text>
+  `;
+  const delta3 = Math.round(total(dispBackFarm[dispBackFarm.length - 1]) - total(dispBackCamp[dispBackCamp.length - 1]));
+  document.getElementById('tie-marker3').textContent = hasBackXover
+    ? `Dashed line: switching back to camps briefly regains the lead ${Math.round((dispBackFarm[xoverIdx3].t - backStartT) / 60)} min later (${fmtClock(dispBackFarm[xoverIdx3].t)}), before farms take back over. By ${fmtClock(backEndT)}, farms lead by ${Math.abs(delta3)} resources.`
+    : `No crossover this time — switching back to camps never catches up. By ${fmtClock(backEndT)} (${Math.round((backEndT - backStartT) / 60)} min later), staying on farms is ahead by ${Math.abs(delta3)} resources.`;
+
+  // Table 3, mirroring table 2's shape, for "keep going on farms" vs
+  // "switch back to camps", sampled across chart 3's own re-zeroed window.
+  const sampleStep3 = Math.max(30, Math.round((backEndT - backStartT) / 10 / 30) * 30);
+  const sampleTimes3 = [];
+  for (let s = 0; s <= backEndT - backStartT; s += sampleStep3) sampleTimes3.push(s);
+  if (sampleTimes3[sampleTimes3.length - 1] < backEndT - backStartT) sampleTimes3.push(backEndT - backStartT);
+  const rows3 = sampleTimes3.map(s => {
+    const idx = Math.min(Math.round(s / 0.5), dispBackFarm.length - 1, dispBackCamp.length - 1);
+    const a = dispBackFarm[idx], b = dispBackCamp[idx];
+    const aTotal = Math.round(total(a)), bTotal = Math.round(total(b));
+    return { t: a.t, minutesSince: Math.round((a.t - backStartT) / 60), farmsActive: a.active, campsBuilt: b.campsBuilt,
+      aFood: Math.round(a.food), aWood: Math.round(a.wood), aStone: Math.round(a.stone), aTotal,
+      bFood: Math.round(b.food), bWood: Math.round(b.wood), bStone: Math.round(b.stone), bTotal,
+      delta: aTotal - bTotal };
+  });
+  document.getElementById('data-table-3').innerHTML = `
+    <thead>
+      <tr>
+        <th rowspan="2">Time</th>
+        <th class="grp farm-grp" colspan="5">Keep Farms</th>
+        <th class="grp camp-grp divider" colspan="5">Switch Back to Camps</th>
+        <th rowspan="2" class="num divider">Δ</th>
+      </tr>
+      <tr>
+        <th class="num">Active</th><th class="num">Food</th><th class="num">Wood</th><th class="num">Stone</th><th class="num">Total</th>
+        <th class="num divider">Built</th><th class="num">Food</th><th class="num">Wood</th><th class="num">Stone</th><th class="num">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows3.map(r => `<tr>
+        <td>${fmtClock(r.t)}<span style="color:var(--text3);"> · ${r.minutesSince}m</span></td>
+        <td class="num">${r.farmsActive}</td>
+        <td class="num"><span class="res-pill food">${r.aFood}</span></td>
+        <td class="num"><span class="res-pill wood">${r.aWood}</span></td>
+        <td class="num"><span class="res-pill stone">${r.aStone}</span></td>
+        <td class="num" style="font-weight:700;">${r.aTotal}</td>
+        <td class="num divider">${r.campsBuilt}</td>
+        <td class="num"><span class="res-pill food">${r.bFood}</span></td>
+        <td class="num"><span class="res-pill wood">${r.bWood}</span></td>
+        <td class="num"><span class="res-pill stone">${r.bStone}</span></td>
+        <td class="num" style="font-weight:700;">${r.bTotal}</td>
+        <td class="num divider" style="color:${r.delta >= 0 ? 'var(--farm)' : 'var(--camp)'};font-weight:700;">${r.delta >= 0 ? '+' : ''}${r.delta}</td>
       </tr>`).join('')}
     </tbody>
   `;
