@@ -43,6 +43,9 @@ td.divider,th.divider{border-left:1px solid var(--border2);}
 .legend .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
 .legend .dot.camp{background:var(--camp);}
 .legend .dot.farm{background:var(--farm);}
+.legend .dash{width:14px;height:0;border-top:2px dashed currentColor;display:inline-block;opacity:.75;}
+.legend .dash.camp{color:var(--camp);}
+.legend .dash.farm{color:var(--farm);}
 .tie-marker{font-size:11px;color:var(--text3);text-align:center;margin-top:6px;}
 .summary{font-size:13px;line-height:1.7;color:var(--text2);}
 .summary b{color:var(--text);}
@@ -90,6 +93,8 @@ select:focus{outline:none;border-color:var(--amber);}
     <div class="legend">
       <span><i class="dot camp"></i> Lumber Camps only</span>
       <span><i class="dot farm"></i> Farms only</span>
+      <span><i class="dash camp"></i> Camps: food only</span>
+      <span><i class="dash farm"></i> Farms: food only</span>
     </div>
     <div class="tech-row">
       <label for="wood-tech">Wood Chopping (camps' build speed):
@@ -141,6 +146,8 @@ select:focus{outline:none;border-color:var(--amber);}
     <div class="legend">
       <span><i class="dot camp"></i> Keep building camps</span>
       <span><i class="dot farm"></i> Switch to farms here</span>
+      <span><i class="dash camp"></i> Camps: food only</span>
+      <span><i class="dash farm"></i> Farms: food only</span>
     </div>
     <div class="overflow-x">
       <svg id="chart2" viewBox="0 0 820 320" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;min-width:600px;"></svg>
@@ -162,6 +169,8 @@ select:focus{outline:none;border-color:var(--amber);}
     <div class="legend">
       <span><i class="dot camp"></i> Lumber Camps only</span>
       <span><i class="dot farm"></i> Farms only</span>
+      <span><i class="dash camp"></i> Camps: food only</span>
+      <span><i class="dash farm"></i> Farms: food only</span>
     </div>
     <div class="overflow-x">
       <svg id="chart3" viewBox="0 0 820 320" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;min-width:600px;"></svg>
@@ -410,7 +419,7 @@ function renderAll() {
   const maxVal = Math.max(...dispA.map(total), ...dispB.map(total));
   const x = t => padL + (t - START.t) / displayDuration * (W - padL - padR);
   const y = val => H - padB - (val / maxVal) * (H - padT - padB);
-  const path = (series, sample) => 'M' + series.filter((_, i) => i % sample === 0).map(r => `${x(r.t).toFixed(1)},${y(total(r)).toFixed(1)}`).join(' L');
+  const path = (series, sample, valueFn = total) => 'M' + series.filter((_, i) => i % sample === 0).map(r => `${x(r.t).toFixed(1)},${y(valueFn(r)).toFixed(1)}`).join(' L');
   const gridLines = [0, 0.25, 0.5, 0.75, 1].map(f => {
     const val = maxVal * f;
     return `<line x1="${padL}" y1="${y(val)}" x2="${W - padR}" y2="${y(val)}" stroke="var(--border)" stroke-width="1"/>
@@ -421,6 +430,8 @@ function renderAll() {
     ${gridLines}
     <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border2)" stroke-width="1"/>
     <line x1="${tieX}" y1="${padT}" x2="${tieX}" y2="${H - padB}" stroke="var(--text3)" stroke-width="1" stroke-dasharray="3,3"/>
+    <path d="${path(dispA, 4, r => r.food)}" fill="none" stroke="var(--camp)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.65"/>
+    <path d="${path(dispB, 4, r => r.food)}" fill="none" stroke="var(--farm)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.65"/>
     <path d="${path(dispA, 4)}" fill="none" stroke="var(--camp)" stroke-width="2.5"/>
     <path d="${path(dispB, 4)}" fill="none" stroke="var(--farm)" stroke-width="2.5"/>
     <text x="${padL}" y="${H - 8}" fill="var(--text3)" font-size="9">${fmtClock(START.t)}</text>
@@ -444,7 +455,7 @@ function renderAll() {
   const maxVal2 = Math.max(...dispKeep.map(total), ...dispSwitch.map(total));
   const x2 = t => padL + (t - switchStartT) / switchDuration * (W - padL - padR);
   const y2 = val => H - padB - (val / maxVal2) * (H - padT - padB);
-  const path2 = (series, sample) => 'M' + series.filter((_, i) => i % sample === 0).map(r => `${x2(r.t).toFixed(1)},${y2(total(r)).toFixed(1)}`).join(' L');
+  const path2 = (series, sample, valueFn = total) => 'M' + series.filter((_, i) => i % sample === 0).map(r => `${x2(r.t).toFixed(1)},${y2(valueFn(r)).toFixed(1)}`).join(' L');
   const gridLines2 = [0, 0.25, 0.5, 0.75, 1].map(f => {
     const val = maxVal2 * f;
     return `<line x1="${padL}" y1="${y2(val)}" x2="${W - padR}" y2="${y2(val)}" stroke="var(--border)" stroke-width="1"/>
@@ -455,6 +466,8 @@ function renderAll() {
     ${gridLines2}
     <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border2)" stroke-width="1"/>
     <line x1="${xover2X}" y1="${padT}" x2="${xover2X}" y2="${H - padB}" stroke="var(--text3)" stroke-width="1" stroke-dasharray="3,3"/>
+    <path d="${path2(dispKeep, 4, r => r.food)}" fill="none" stroke="var(--camp)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.65"/>
+    <path d="${path2(dispSwitch, 4, r => r.food)}" fill="none" stroke="var(--farm)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.65"/>
     <path d="${path2(dispKeep, 4)}" fill="none" stroke="var(--camp)" stroke-width="2.5"/>
     <path d="${path2(dispSwitch, 4)}" fill="none" stroke="var(--farm)" stroke-width="2.5"/>
     <text x="${padL}" y="${H - 8}" fill="var(--text3)" font-size="9">${fmtClock(switchStartT)}</text>
@@ -585,7 +598,7 @@ function renderAll() {
   const maxVal3 = Math.max(...dispBackFarm.map(total), ...dispBackCamp.map(total));
   const x3 = t => padL + (t - backStartT) / backDuration * (W - padL - padR);
   const y3 = val => H - padB - (val / maxVal3) * (H - padT - padB);
-  const path3 = (series, sample) => 'M' + series.filter((_, i) => i % sample === 0).map(r => `${x3(r.t).toFixed(1)},${y3(total(r)).toFixed(1)}`).join(' L');
+  const path3 = (series, sample, valueFn = total) => 'M' + series.filter((_, i) => i % sample === 0).map(r => `${x3(r.t).toFixed(1)},${y3(valueFn(r)).toFixed(1)}`).join(' L');
   const gridLines3 = [0, 0.25, 0.5, 0.75, 1].map(f => {
     const val = maxVal3 * f;
     return `<line x1="${padL}" y1="${y3(val)}" x2="${W - padR}" y2="${y3(val)}" stroke="var(--border)" stroke-width="1"/>
@@ -596,6 +609,8 @@ function renderAll() {
     ${gridLines3}
     <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border2)" stroke-width="1"/>
     <line x1="${xover3X}" y1="${padT}" x2="${xover3X}" y2="${H - padB}" stroke="var(--text3)" stroke-width="1" stroke-dasharray="3,3"/>
+    <path d="${path3(dispBackCamp, 4, r => r.food)}" fill="none" stroke="var(--camp)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.65"/>
+    <path d="${path3(dispBackFarm, 4, r => r.food)}" fill="none" stroke="var(--farm)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.65"/>
     <path d="${path3(dispBackCamp, 4)}" fill="none" stroke="var(--camp)" stroke-width="2.5"/>
     <path d="${path3(dispBackFarm, 4)}" fill="none" stroke="var(--farm)" stroke-width="2.5"/>
     <text x="${padL}" y="${H - 8}" fill="var(--text3)" font-size="9">${fmtClock(backStartT)}</text>
