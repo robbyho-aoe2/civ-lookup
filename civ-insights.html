@@ -468,9 +468,6 @@ function renderAll() {
   Before that point, camps are ahead — the instant +50 food beats waiting on a farm to spin up.
   After it, farms pull steadily further ahead: by ${fmtClock(displayEnd)} the gap is
   <b>${Math.abs(Math.round(finalDelta))} resources</b> in ${finalDelta < 0 ? 'farms’' : 'camps’'} favor.
-  The takeaway: the camp-resource-bonus is a real, worthwhile <b>early burst</b> — worth leaning on for
-  the first few minutes of Feudal Age — but not a sustained income strategy. A real build should take
-  the early camps and then transition to farms on schedule, same as any other civ.
 `;
 
   const sampleStep = Math.max(30, Math.round(displayDuration / 10 / 30) * 30);
