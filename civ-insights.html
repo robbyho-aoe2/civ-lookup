@@ -123,8 +123,21 @@ select:focus{outline:none;border-color:var(--amber);}
   </div>
 
   <div class="card">
+    <h2>Summary</h2>
+    <p class="summary" id="summary"></p>
+  </div>
+
+  <div class="card">
+    <h2>The numbers</h2>
+    <p class="desc">Totals are food + wood + stone combined. Time is real elapsed game time from Reached Feudal Age.</p>
+    <div class="overflow-x">
+      <table id="data-table"></table>
+    </div>
+  </div>
+
+  <div class="card">
     <h2>Since the Crossover</h2>
-    <p class="desc">A different question: once you're standing at the tie point above — with that many camps already built, that population, that exact resource pool — is it better to keep building Lumber Camps from there, or switch to farms starting from that committed state (not a fresh Reached-Feudal-Age start)?</p>
+    <p class="desc">A different question: once you're standing at the tie point above — with that many camps already built, that population, that exact resource pool — is it better to keep building Lumber Camps from there, or switch to farms starting from that committed state (not a fresh Reached-Feudal-Age start)? The dashed line marks the same tie point chart 1 ends on — this chart starts there.</p>
     <div class="legend">
       <span><i class="dot camp"></i> Keep building camps</span>
       <span><i class="dot farm"></i> Switch to farms here</span>
@@ -136,15 +149,10 @@ select:focus{outline:none;border-color:var(--amber);}
   </div>
 
   <div class="card">
-    <h2>Summary</h2>
-    <p class="summary" id="summary"></p>
-  </div>
-
-  <div class="card">
-    <h2>The numbers</h2>
-    <p class="desc">Totals are food + wood + stone combined. Time is real elapsed game time from Reached Feudal Age.</p>
+    <h2>The numbers, since the crossover</h2>
+    <p class="desc">Totals are food + wood + stone combined. Time is real elapsed game time, continuing from the tie point above.</p>
     <div class="overflow-x">
-      <table id="data-table"></table>
+      <table id="data-table-2"></table>
     </div>
   </div>
 
@@ -375,6 +383,18 @@ function renderAll() {
   const switchStartT = A[tieIdx].t, switchEndT = dispKeep[dispKeep.length - 1].t;
   const switchDuration = Math.max(1, switchEndT - switchStartT);
 
+  // Real secondary crossover WITHIN chart 2: switching means every current
+  // wood-gatherer goes idle for a bit while farms get built, so "keep
+  // camps" (still popping instant bonuses) actually pulls back AHEAD for a
+  // few minutes before farms ramp up and switch overtakes for good. Camp
+  // completions are discrete +50/+10 bursts, so the raw delta zigzags near
+  // zero — find the LAST negative tick (not the first sign flip, which
+  // catches a transient one-tick blip) so the mark is the point switching
+  // takes the lead and stays there.
+  let lastNeg2 = -1;
+  for (let j = 0; j <= cutoff2; j++) { if (total(C[j]) - total(dispKeep[j]) < 0) lastNeg2 = j; }
+  const xoverIdx2 = Math.min(lastNeg2 + 1, cutoff2);
+
   const svg2 = document.getElementById('chart2');
   const maxVal2 = Math.max(...dispKeep.map(total), ...dispSwitch.map(total));
   const x2 = t => padL + (t - switchStartT) / switchDuration * (W - padL - padR);
@@ -385,9 +405,11 @@ function renderAll() {
     return `<line x1="${padL}" y1="${y2(val)}" x2="${W - padR}" y2="${y2(val)}" stroke="var(--border)" stroke-width="1"/>
       <text x="${padL - 6}" y="${y2(val) + 3}" fill="var(--text3)" font-size="9" text-anchor="end">${Math.round(val)}</text>`;
   }).join('');
+  const xover2X = x2(dispKeep[xoverIdx2].t);
   svg2.innerHTML = `
     ${gridLines2}
     <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border2)" stroke-width="1"/>
+    <line x1="${xover2X}" y1="${padT}" x2="${xover2X}" y2="${H - padB}" stroke="var(--text3)" stroke-width="1" stroke-dasharray="3,3"/>
     <path d="${path2(dispKeep, 4)}" fill="none" stroke="var(--camp)" stroke-width="2.5"/>
     <path d="${path2(dispSwitch, 4)}" fill="none" stroke="var(--farm)" stroke-width="2.5"/>
     <text x="${padL}" y="${H - 8}" fill="var(--text3)" font-size="9">${fmtClock(switchStartT)}</text>
@@ -395,7 +417,7 @@ function renderAll() {
   `;
   const delta2 = Math.round(total(dispSwitch[dispSwitch.length - 1]) - total(dispKeep[dispKeep.length - 1]));
   document.getElementById('tie-marker2').textContent =
-    `By ${fmtClock(switchEndT)} (${Math.round((switchEndT - switchStartT) / 60)} min after the tie), switching to farms right there is ahead of continuing to build camps by ${Math.abs(delta2)} resources.`;
+    `Dashed line: switching overtakes staying on camps for good ${Math.round((dispKeep[xoverIdx2].t - switchStartT) / 60)} min after the tie (${fmtClock(dispKeep[xoverIdx2].t)}). By ${fmtClock(switchEndT)} (${Math.round((switchEndT - switchStartT) / 60)} min after the tie), switching is ahead by ${Math.abs(delta2)} resources.`;
 
   // Summary + table, sampled across the (now-trimmed) displayed window.
   const finalDelta = total(dispA[dispA.length - 1]) - total(dispB[dispB.length - 1]);
@@ -450,6 +472,52 @@ function renderAll() {
         <td class="num"><span class="res-pill stone">${r.bStone}</span></td>
         <td class="num" style="font-weight:700;">${r.bTotal}</td>
         <td class="num divider" style="color:${r.delta >= 0 ? 'var(--camp)' : 'var(--farm)'};font-weight:700;">${r.delta >= 0 ? '+' : ''}${r.delta}</td>
+      </tr>`).join('')}
+    </tbody>
+  `;
+
+  // Table 2, mirroring table 1's shape, but for the "keep camps" vs "switch
+  // to farms" comparison, sampled across chart 2's own (re-zeroed) window.
+  const sampleStep2 = Math.max(30, Math.round((switchEndT - switchStartT) / 10 / 30) * 30);
+  const sampleTimes2 = [];
+  for (let s = 0; s <= switchEndT - switchStartT; s += sampleStep2) sampleTimes2.push(s);
+  if (sampleTimes2[sampleTimes2.length - 1] < switchEndT - switchStartT) sampleTimes2.push(switchEndT - switchStartT);
+  const rows2 = sampleTimes2.map(s => {
+    const idx = Math.min(Math.round(s / 0.5), dispKeep.length - 1, dispSwitch.length - 1);
+    const a = dispKeep[idx], b = dispSwitch[idx];
+    const aTotal = Math.round(total(a)), bTotal = Math.round(total(b));
+    return { t: a.t, minutesSince: Math.round((a.t - switchStartT) / 60), campsBuilt: a.campsBuilt, farmsActive: b.active,
+      aFood: Math.round(a.food), aWood: Math.round(a.wood), aStone: Math.round(a.stone), aTotal,
+      bFood: Math.round(b.food), bWood: Math.round(b.wood), bStone: Math.round(b.stone), bTotal,
+      delta: aTotal - bTotal };
+  });
+  document.getElementById('data-table-2').innerHTML = `
+    <thead>
+      <tr>
+        <th rowspan="2">Time</th>
+        <th class="grp camp-grp" colspan="5">Keep Camps</th>
+        <th class="grp farm-grp divider" colspan="5">Switch to Farms</th>
+        <th rowspan="2" class="num divider">Δ</th>
+      </tr>
+      <tr>
+        <th class="num">Built</th><th class="num">Food</th><th class="num">Wood</th><th class="num">Stone</th><th class="num">Total</th>
+        <th class="num divider">Active</th><th class="num">Food</th><th class="num">Wood</th><th class="num">Stone</th><th class="num">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows2.map(r => `<tr>
+        <td>${fmtClock(r.t)}<span style="color:var(--text3);"> · ${r.minutesSince}m</span></td>
+        <td class="num">${r.campsBuilt}</td>
+        <td class="num"><span class="res-pill food">${r.aFood}</span></td>
+        <td class="num"><span class="res-pill wood">${r.aWood}</span></td>
+        <td class="num"><span class="res-pill stone">${r.aStone}</span></td>
+        <td class="num" style="font-weight:700;">${r.aTotal}</td>
+        <td class="num divider">${r.farmsActive}</td>
+        <td class="num"><span class="res-pill food">${r.bFood}</span></td>
+        <td class="num"><span class="res-pill wood">${r.bWood}</span></td>
+        <td class="num"><span class="res-pill stone">${r.bStone}</span></td>
+        <td class="num" style="font-weight:700;">${r.bTotal}</td>
+        <td class="num divider" style="color:${r.delta <= 0 ? 'var(--farm)' : 'var(--camp)'};font-weight:700;">${r.delta >= 0 ? '+' : ''}${r.delta}</td>
       </tr>`).join('')}
     </tbody>
   `;
