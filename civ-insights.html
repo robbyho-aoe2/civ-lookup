@@ -46,6 +46,8 @@ th.grp{text-align:center;font-size:10px;letter-spacing:.04em;}
 th.grp.camp-grp{color:var(--camp);border-bottom:1px solid var(--camp);}
 th.grp.farm-grp{color:var(--farm);border-bottom:1px solid var(--farm);}
 th.num,td.num{text-align:right;}
+th.sortable{cursor:pointer;user-select:none;}
+th.sortable:hover{color:var(--text);}
 td.divider,th.divider{border-left:1px solid var(--border2);}
 .overflow-x{overflow-x:auto;}
 .legend{display:flex;gap:18px;font-size:12px;margin:8px 0 14px;}
@@ -83,6 +85,29 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="civ-insights.html" class="on">🧮 Civ Insights</a>
     <a href="build-order.html">🛠️ Build Order</a>
   </nav>
+
+  <div class="card">
+    <h2>Reached Feudal Age — All Civs</h2>
+    <p class="desc">
+      Every civ, run through this site's own real Fast Feudal engine (the same one that
+      produces the "Reached Feudal Age" anchor used throughout this page) — a standardized
+      opening (Loom, deer-push/chicken-mill hunting, realistic economy pacing, no scripted
+      military) taken to ~19 population, with each civ's own real economic bonuses applied.
+      Only the differences ARE the civ bonuses; nothing else about the build varies.
+    </p>
+    <p class="desc" id="feudal-table-status">Computing all 53 civs' openings…</p>
+    <div class="overflow-x">
+      <table id="feudal-civ-table"></table>
+    </div>
+    <p class="desc" style="margin-top:10px;">
+      Coverage caveat: this site's build-order engine models each civ's real economic bonuses
+      individually, and that coverage is still being filled in — a civ whose bonus isn't modeled
+      yet will show up here identical to a civ with no bonus at all, even though its real game
+      state would differ. Treat a civ's row as a floor on what it should look like, not
+      necessarily the full picture.
+    </p>
+  </div>
+  <iframe id="engine-frame" src="build-order.html" style="display:none" title="build-order engine (hidden)"></iframe>
 
   <div class="card">
     <h2>Saxons: Lumber Camps vs. Farms</h2>
@@ -712,6 +737,93 @@ recompute();
 document.getElementById('wood-tech').addEventListener('change', recompute);
 document.getElementById('farm-tech').addEventListener('change', recompute);
 document.getElementById('carry-tech').addEventListener('change', recompute);
+
+// "Reached Feudal Age — All Civs" table: runs build-order.html's OWN real
+// Fast Feudal engine (buildStagedOptimizeTimeline) for every civ, inside a
+// hidden iframe. This is the one place on the site that reaches outside its
+// own inline script — reusing that engine directly (rather than a second,
+// hand-rolled copy of thousands of lines of opening/eco-bonus logic) is the
+// only realistic way to keep this honest and in sync with the real thing.
+// `iframe.contentWindow.eval(...)` (not direct property access) is
+// deliberate: build-order.html declares `DATA` with `const`, which is a
+// top-level lexical binding, not a `window` property — indirect eval run
+// through that frame's own `eval` executes inside its global script scope
+// and can see it, the same way this page's own top-level `let`s are
+// reachable from devtools but not from `window.tieIdx` etc.
+const FEUDAL_STAGE = [{ ageGoal: 'feudal', ageUpBufferVillagers: 0 }];
+const FEUDAL_FOOD_STRATEGY = { animal: 'deer', deerStrategy: 'push', chickenStrategy: 'mill', level: 2 };
+function computeFeudalTable() {
+  const frame = document.getElementById('engine-frame');
+  const statusEl = document.getElementById('feudal-table-status');
+  let civs;
+  try {
+    civs = frame.contentWindow.eval('DATA.civs.map(c => ({ id: c.id, name: c.name }))');
+  } catch (e) {
+    statusEl.textContent = 'Could not load the build-order engine (' + e.message + ').';
+    return;
+  }
+  const rows = [];
+  for (const c of civs) {
+    let cp;
+    try {
+      cp = frame.contentWindow.eval(`
+        (function() {
+          const civ = DATA.civs.find(c => c.id === ${JSON.stringify(c.id)});
+          const result = buildStagedOptimizeTimeline(${JSON.stringify(FEUDAL_STAGE)}, true, false, civ, 85, ${JSON.stringify(FEUDAL_FOOD_STRATEGY)}, undefined);
+          const reached = result.checkpoints.find(cp => cp.label === 'Reached Feudal Age');
+          return JSON.stringify(reached || null);
+        })()
+      `);
+    } catch (e) {
+      cp = null;
+    }
+    const reached = cp ? JSON.parse(cp) : null;
+    if (!reached) { rows.push({ id: c.id, name: c.name, error: true }); continue; }
+    const p = reached.pool;
+    rows.push({ id: c.id, name: c.name, t: reached.time, v: reached.vills, food: p.food, wood: p.wood, gold: p.gold, stone: p.stone, total: p.food + p.wood + p.gold + p.stone });
+  }
+  renderFeudalTable(rows);
+}
+let feudalSort = { key: 't', dir: 1 };
+let feudalRows = [];
+function renderFeudalTable(rows) {
+  if (rows) feudalRows = rows;
+  const ok = feudalRows.filter(r => !r.error), failed = feudalRows.filter(r => r.error);
+  const sorted = [...ok].sort((a, b) => (a[feudalSort.key] - b[feudalSort.key]) * feudalSort.dir);
+  const statusEl = document.getElementById('feudal-table-status');
+  statusEl.textContent = failed.length
+    ? `${ok.length} of ${feudalRows.length} civs computed — ${failed.length} failed to resolve (${failed.map(f => f.name).join(', ')}).`
+    : `All ${ok.length} civs computed. Click a column header to sort.`;
+  const cols = [
+    ['name', 'Civ', false], ['t', 'Time', true], ['v', 'Villagers', true],
+    ['food', 'Food', true], ['wood', 'Wood', true], ['gold', 'Gold', true], ['stone', 'Stone', true], ['total', 'Total', true],
+  ];
+  document.getElementById('feudal-civ-table').innerHTML = `
+    <thead><tr>
+      ${cols.map(([key, label, num]) => `<th class="${num ? 'num' : ''} sortable" data-sort-key="${key}">${label}${feudalSort.key === key ? (feudalSort.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}
+    </tr></thead>
+    <tbody>
+      ${sorted.map(r => `<tr>
+        <td>${r.name}</td>
+        <td class="num">${fmtClock(r.t)}</td>
+        <td class="num">${r.v}</td>
+        <td class="num"><span class="res-pill food">${Math.round(r.food)}</span></td>
+        <td class="num"><span class="res-pill wood">${Math.round(r.wood)}</span></td>
+        <td class="num">${Math.round(r.gold)}</td>
+        <td class="num"><span class="res-pill stone">${Math.round(r.stone)}</span></td>
+        <td class="num" style="font-weight:700;">${Math.round(r.total)}</td>
+      </tr>`).join('')}
+    </tbody>
+  `;
+  document.querySelectorAll('#feudal-civ-table th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.sortKey;
+      feudalSort = { key, dir: feudalSort.key === key ? -feudalSort.dir : 1 };
+      renderFeudalTable();
+    });
+  });
+}
+document.getElementById('engine-frame').addEventListener('load', computeFeudalTable);
 </script>
 </body>
 </html>
