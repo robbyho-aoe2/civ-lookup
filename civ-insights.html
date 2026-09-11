@@ -451,6 +451,8 @@ function renderAll() {
     <path d="${path(dispB, 4, r => r.food)}" fill="none" stroke="var(--farm)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.65"/>
     <path d="${path(dispA, 4)}" fill="none" stroke="var(--camp)" stroke-width="2.5"/>
     <path d="${path(dispB, 4)}" fill="none" stroke="var(--farm)" stroke-width="2.5"/>
+    <text x="${tieX}" y="${padT + 9}" fill="var(--text3)" font-size="9" text-anchor="middle">${fmtClock(A[tieIdx].t)}</text>
+    <text x="${foodTieX}" y="${padT + 21}" fill="var(--food)" font-size="9" text-anchor="middle">${fmtClock(A[foodTieIdx].t)}</text>
     <text x="${padL}" y="${H - 8}" fill="var(--text3)" font-size="9">${fmtClock(START.t)}</text>
     <text x="${W - padR}" y="${H - 8}" fill="var(--text3)" font-size="9" text-anchor="end">${fmtClock(displayEnd)}</text>
   `;
@@ -490,6 +492,8 @@ function renderAll() {
     <path d="${path2(dispSwitch, 4, r => r.food)}" fill="none" stroke="var(--farm)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.65"/>
     <path d="${path2(dispKeep, 4)}" fill="none" stroke="var(--camp)" stroke-width="2.5"/>
     <path d="${path2(dispSwitch, 4)}" fill="none" stroke="var(--farm)" stroke-width="2.5"/>
+    <text x="${xover2X}" y="${padT + 9}" fill="var(--text3)" font-size="9" text-anchor="middle">${fmtClock(dispKeep[xoverIdx2].t)}</text>
+    <text x="${foodXover2X}" y="${padT + 21}" fill="var(--food)" font-size="9" text-anchor="middle">${fmtClock(dispKeep[foodXoverIdx2].t)}</text>
     <text x="${padL}" y="${H - 8}" fill="var(--text3)" font-size="9">${fmtClock(switchStartT)}</text>
     <text x="${W - padR}" y="${H - 8}" fill="var(--text3)" font-size="9" text-anchor="end">${fmtClock(switchEndT)}</text>
   `;
@@ -634,6 +638,8 @@ function renderAll() {
     <path d="${path3(dispBackFarm, 4, r => r.food)}" fill="none" stroke="var(--farm)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.65"/>
     <path d="${path3(dispBackCamp, 4)}" fill="none" stroke="var(--camp)" stroke-width="2.5"/>
     <path d="${path3(dispBackFarm, 4)}" fill="none" stroke="var(--farm)" stroke-width="2.5"/>
+    <text x="${xover3X}" y="${padT + 9}" fill="var(--text3)" font-size="9" text-anchor="middle">${fmtClock(D[xoverIdx3].t)}</text>
+    <text x="${foodXover3X}" y="${padT + 21}" fill="var(--food)" font-size="9" text-anchor="middle">${fmtClock(dispBackCamp[foodXoverIdx3].t)}</text>
     <text x="${padL}" y="${H - 8}" fill="var(--text3)" font-size="9">${fmtClock(backStartT)}</text>
     <text x="${W - padR}" y="${H - 8}" fill="var(--text3)" font-size="9" text-anchor="end">${fmtClock(backEndT)}</text>
   `;
