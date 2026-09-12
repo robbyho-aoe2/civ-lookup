@@ -114,74 +114,74 @@ select:focus{outline:none;border-color:var(--amber);}
   </details>
   <iframe id="engine-frame" src="build-order.html" style="display:none" title="build-order engine (hidden)"></iframe>
 
-  <div class="card">
-    <h2>Saxons: Lumber Camps vs. Farms</h2>
-    <p class="desc">
-      Saxons' Mills, Lumber Camps, and Mining Camps grant +50 food and +10 stone
-      the instant they're built. Starting from Reached Feudal Age, this compares
-      two full-commitment strategies from that point on: keep building fresh
-      Lumber Camps purely for the bonus (nobody ever farms), vs. abandon that and
-      build real farms instead (60 wood, 175 food capacity each, real depletion
-      and rebuild). Computed live against this site's own Optimize-mode gather
-      rates and build costs — not a fixed snapshot. The only bottleneck on camp
-      count is real wood income: a new camp starts the instant 100 wood is
-      banked and its builder comes straight back to gathering once it's done
-      (no artificial cap on how many go up at once) — so the camp curve below
-      is exactly what that population's wood-gathering rate can fund, not an
-      assumed space or travel-time limit.
-    </p>
-    <div class="legend">
-      <span><i class="dot camp"></i> Lumber Camps only</span>
-      <span><i class="dot farm"></i> Farms only</span>
-      <span><i class="dash camp"></i> Camps: food only</span>
-      <span><i class="dash farm"></i> Farms: food only</span>
-    </div>
-    <div class="tech-row">
-      <label for="wood-tech">Wood Chopping (camps' build speed):
-        <select id="wood-tech">
-          <option value="0">None</option>
-          <option value="1">Double-Bit Axe (+20%)</option>
-          <option value="2">+ Bow Saw (+20%)</option>
-          <option value="3">+ Two-Man Saw (+10%)</option>
-        </select>
-      </label>
-      <label for="farm-tech">Farm Yield (farms' food capacity):
-        <select id="farm-tech">
-          <option value="0">None (175 food)</option>
-          <option value="1">Horse Collar (250)</option>
-          <option value="2">+ Heavy Plow (375)</option>
-          <option value="3">+ Crop Rotation (550)</option>
-        </select>
-      </label>
-      <label for="carry-tech">Carry Capacity (gather speed, both sides):
-        <select id="carry-tech">
-          <option value="0">None</option>
-          <option value="1">Wheelbarrow (+12% food, +3% wood)</option>
-          <option value="2">+ Hand Cart (+20% food, +6% wood)</option>
-        </select>
-      </label>
-    </div>
-    <div class="overflow-x">
-      <svg id="chart" viewBox="0 0 820 320" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;min-width:600px;"></svg>
-    </div>
-    <p class="tie-marker" id="tie-marker"></p>
-  </div>
-
-  <div class="card">
-    <h2>Summary</h2>
-    <p class="summary" id="summary"></p>
-  </div>
-
-  <div class="card">
-    <h2>The numbers</h2>
-    <p class="desc">Totals are food + wood + stone combined. Time is real elapsed game time from Reached Feudal Age.</p>
-    <div class="overflow-x">
-      <table id="data-table"></table>
-    </div>
-  </div>
-
   <details class="section">
-    <summary>Since the Crossover <span class="summary-hint">branches from chart 1's food crossover</span></summary>
+    <summary>Saxons: Lumber Camps vs. Farms <span class="summary-hint">3 charts — the tie, the food crossover, and closing the loop</span></summary>
+    <div class="card">
+      <h2>Saxons: Lumber Camps vs. Farms</h2>
+      <p class="desc">
+        Saxons' Mills, Lumber Camps, and Mining Camps grant +50 food and +10 stone
+        the instant they're built. Starting from Reached Feudal Age, this compares
+        two full-commitment strategies from that point on: keep building fresh
+        Lumber Camps purely for the bonus (nobody ever farms), vs. abandon that and
+        build real farms instead (60 wood, 175 food capacity each, real depletion
+        and rebuild). Computed live against this site's own Optimize-mode gather
+        rates and build costs — not a fixed snapshot. The only bottleneck on camp
+        count is real wood income: a new camp starts the instant 100 wood is
+        banked and its builder comes straight back to gathering once it's done
+        (no artificial cap on how many go up at once) — so the camp curve below
+        is exactly what that population's wood-gathering rate can fund, not an
+        assumed space or travel-time limit.
+      </p>
+      <div class="legend">
+        <span><i class="dot camp"></i> Lumber Camps only</span>
+        <span><i class="dot farm"></i> Farms only</span>
+        <span><i class="dash camp"></i> Camps: food only</span>
+        <span><i class="dash farm"></i> Farms: food only</span>
+      </div>
+      <div class="tech-row">
+        <label for="wood-tech">Wood Chopping (camps' build speed):
+          <select id="wood-tech">
+            <option value="0">None</option>
+            <option value="1">Double-Bit Axe (+20%)</option>
+            <option value="2">+ Bow Saw (+20%)</option>
+            <option value="3">+ Two-Man Saw (+10%)</option>
+          </select>
+        </label>
+        <label for="farm-tech">Farm Yield (farms' food capacity):
+          <select id="farm-tech">
+            <option value="0">None (175 food)</option>
+            <option value="1">Horse Collar (250)</option>
+            <option value="2">+ Heavy Plow (375)</option>
+            <option value="3">+ Crop Rotation (550)</option>
+          </select>
+        </label>
+        <label for="carry-tech">Carry Capacity (gather speed, both sides):
+          <select id="carry-tech">
+            <option value="0">None</option>
+            <option value="1">Wheelbarrow (+12% food, +3% wood)</option>
+            <option value="2">+ Hand Cart (+20% food, +6% wood)</option>
+          </select>
+        </label>
+      </div>
+      <div class="overflow-x">
+        <svg id="chart" viewBox="0 0 820 320" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;min-width:600px;"></svg>
+      </div>
+      <p class="tie-marker" id="tie-marker"></p>
+    </div>
+
+    <div class="card">
+      <h2>Summary</h2>
+      <p class="summary" id="summary"></p>
+    </div>
+
+    <div class="card">
+      <h2>The numbers</h2>
+      <p class="desc">Totals are food + wood + stone combined. Time is real elapsed game time from Reached Feudal Age.</p>
+      <div class="overflow-x">
+        <table id="data-table"></table>
+      </div>
+    </div>
+
     <div class="card">
       <h2>Since the Crossover</h2>
       <p class="desc">A different question: once you're standing at the FOOD crossover marked above — with that many camps already built, that population, that exact resource pool — is it better to keep building Lumber Camps from there, or switch to farms starting from that committed state (not a fresh Reached-Feudal-Age start)? This chart starts at chart 1's colored dashed line, not its grey one.</p>
@@ -203,10 +203,7 @@ select:focus{outline:none;border-color:var(--amber);}
         <table id="data-table-2"></table>
       </div>
     </div>
-  </details>
 
-  <details class="section">
-    <summary>Closing the Loop <span class="summary-hint">branches from chart 2's food crossover</span></summary>
     <div class="card">
       <h2>Closing the Loop</h2>
       <p class="desc">One more branch: right at chart 2's OWN food crossover, marked above — same population, same real resource pool at that moment — what if NEITHER side has anything built yet? No farms placed, no camps placed, both rebuilt from scratch. This is chart 1's exact question again, just replayed from a later population and time.</p>
