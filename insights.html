@@ -370,6 +370,9 @@ async function loadAndRender() {
       106515,   // The Enfo4387 — reclassified console->pc in player-data;
                 // kept here too so this insight updates immediately
                 // instead of waiting on the next aggregate rebuild.
+      23585701, // Tr14orce — genuinely plays both console and PC, not a
+                // smurf/crossplay case; excluded from this insight only
+                // (same reasoning as MORIS0202 below).
     ]);
     // KNOWN_ALT_GROUPS (declared at top level, shared with the Alts/Smurfs
     // section below) lists every confirmed same-person group, 2 or more
@@ -393,12 +396,14 @@ async function loadAndRender() {
     // instead of just deduping them to one entry. Tie-break independently
     // here by whichever account has the higher bestConsoleRating instead.
     const regionDropIds = new Set(CROSSPLAY_EXCLUDE_IDS);
-    // MORIS0202 (12868111) was excluded from Crossplay Ceiling for a
-    // PC-elo reason that's specific to that insight — he genuinely plays
-    // console ranked on console and PC ranked on PC (a real, rare native
-    // split, not a smurf/crossplay case), so that exclusion doesn't apply
-    // here; Region only cares about his console rating/country, both real.
+    // MORIS0202 (12868111) and Tr14orce (23585701) were excluded from
+    // Crossplay Ceiling for a PC-elo reason that's specific to that
+    // insight — they genuinely play console ranked on console and PC
+    // ranked on PC (a real, rare native split, not a smurf/crossplay
+    // case), so that exclusion doesn't apply here; Region only cares
+    // about their console rating/country, both real.
     regionDropIds.delete(12868111);
+    regionDropIds.delete(23585701);
     KNOWN_ALT_GROUPS.forEach(group => {
       let winner = group[0], winnerRating = -1;
       group.forEach(id => {
