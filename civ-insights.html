@@ -101,10 +101,6 @@ select:focus{outline:none;border-color:var(--amber);}
       </p>
       <p class="desc" id="feudal-table-status">Computing all 54 civs' openings…</p>
       <div class="overflow-x">
-        <svg id="feudal-scatter" viewBox="0 0 820 380" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;min-width:600px;"></svg>
-      </div>
-      <p class="desc" style="margin-top:6px;">Time to Reached Feudal Age (x) vs. total resources at that moment (y) — one dot per civ, hover for exact numbers. Labeled points are the real extremes (fastest/slowest, highest/lowest total).</p>
-      <div class="overflow-x">
         <table id="feudal-civ-table"></table>
       </div>
       <p class="desc" style="margin-top:10px;">
@@ -124,10 +120,13 @@ select:focus{outline:none;border-color:var(--amber);}
       <p class="desc">
         Same idea as the Feudal Age table above, one age further: this site's real Fast Castle
         engine, for every civ, with the same standardized opening (Loom, deer-push/chicken-mill
-        hunting, realistic pacing, no scripted military, the same real-player age-up buffer) —
-        only each civ's own real economic bonuses differ. A second age transition (and a much
-        bigger 800-food/200-gold cost) gives some bonuses — a second age-up resource credit,
-        tech-cost discounts on buildings that don't exist until Castle Age — more room to show up.
+        hunting, realistic pacing, no scripted military) — using this site's own real "Fast
+        Castle" preset exactly as it ships (no age-up buffer added, unlike the Feudal table
+        above), so this matches the same Fast Castle numbers you'd get clicking that preset
+        directly. Only each civ's own real economic bonuses differ. A second age transition (and
+        a much bigger 800-food/200-gold cost) gives some bonuses — a second age-up resource
+        credit, tech-cost discounts on buildings that don't exist until Castle Age — more room to
+        show up.
       </p>
       <p class="desc" id="castle-table-status">Computing all 54 civs' openings…</p>
       <div class="overflow-x">
@@ -793,7 +792,13 @@ document.getElementById('carry-tech').addEventListener('change', recompute);
 const AGE_TABLE_FOOD_STRATEGY = { animal: 'deer', deerStrategy: 'push', chickenStrategy: 'mill', level: 2 };
 const AGE_TABLES = {
   feudal: { stage: [{ ageGoal: 'feudal', ageUpBufferVillagers: 3 }], label: 'Reached Feudal Age', tableId: 'feudal-civ-table', statusId: 'feudal-table-status' },
-  castle: { stage: [{ ageGoal: 'castle', ageUpBufferVillagers: 3 }], label: 'Reached Castle Age', tableId: 'castle-civ-table', statusId: 'castle-table-status' },
+  // ageUpBufferVillagers:0 here, deliberately NOT the Feudal table's 3 --
+  // this matches the real "Fast Castle" pill's own default exactly (see
+  // build-order.html's age-goal-btn click handler, `{ ageGoal: key,
+  // ageUpBufferVillagers: 0 }`), per direct instruction: follow the real,
+  // already-shipped Fast Castle behavior rather than carrying over the
+  // Feudal-specific buffer override.
+  castle: { stage: [{ ageGoal: 'castle', ageUpBufferVillagers: 0 }], label: 'Reached Castle Age', tableId: 'castle-civ-table', statusId: 'castle-table-status' },
 };
 const ageTableRows = {}, ageTableSort = {};
 function computeAgeTable(key) {
@@ -830,7 +835,6 @@ function computeAgeTable(key) {
   ageTableRows[key] = rows;
   ageTableSort[key] = ageTableSort[key] || { key: 't', dir: 1 };
   renderAgeTable(key);
-  if (key === 'feudal') renderFeudalScatter(rows.filter(r => !r.error));
 }
 function renderAgeTable(key) {
   const cfg = AGE_TABLES[key];
@@ -872,41 +876,6 @@ function renderAgeTable(key) {
   });
 }
 
-// Scatter: time to Reached Feudal Age (x) vs. total resources at that
-// moment (y), one dot per civ — same "plain inline SVG, no charting
-// library" convention as every other chart on this page. Native <title>
-// elements give free hover tooltips with exact per-civ numbers; labeling
-// all 54 civs directly on the chart would be unreadable, so only the real
-// extremes (fastest/slowest time, highest/lowest total) get a text label.
-function renderFeudalScatter(rows) {
-  const svg = document.getElementById('feudal-scatter');
-  const W = 820, H = 380, padL = 50, padR = 20, padT = 16, padB = 34;
-  const xs = rows.map(r => r.t), ys = rows.map(r => r.total);
-  const xMin = Math.min(...xs), xMax = Math.max(...xs);
-  const yMax = Math.max(...ys);
-  const x = t => padL + (t - xMin) / (xMax - xMin) * (W - padL - padR);
-  const y = v => H - padB - v / yMax * (H - padT - padB);
-  const gridLines = [0, 0.25, 0.5, 0.75, 1].map(f => {
-    const val = yMax * f;
-    return `<line x1="${padL}" y1="${y(val)}" x2="${W - padR}" y2="${y(val)}" stroke="var(--border)" stroke-width="1"/>
-      <text x="${padL - 6}" y="${y(val) + 3}" fill="var(--text3)" font-size="9" text-anchor="end">${Math.round(val)}</text>`;
-  }).join('');
-  const points = rows.map(r => `<circle cx="${x(r.t).toFixed(1)}" cy="${y(r.total).toFixed(1)}" r="4" fill="var(--amberL)" opacity="0.75" stroke="var(--bg)" stroke-width="1"><title>${r.name}: ${fmtClock(r.t)}, ${r.v} villagers, ${Math.round(r.total)} total resources</title></circle>`).join('');
-  const byTime = [...rows].sort((a, b) => a.t - b.t);
-  const byTotal = [...rows].sort((a, b) => a.total - b.total);
-  const callouts = [byTime[0], byTime[byTime.length - 1], byTotal[0], byTotal[byTotal.length - 1]]
-    .filter((r, i, arr) => arr.findIndex(o => o.id === r.id) === i)
-    .map(r => `<text x="${x(r.t).toFixed(1)}" y="${(y(r.total) - 8).toFixed(1)}" fill="var(--text2)" font-size="9" text-anchor="middle">${r.name}</text>`).join('');
-  svg.innerHTML = `
-    ${gridLines}
-    <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border2)" stroke-width="1"/>
-    ${points}
-    ${callouts}
-    <text x="${padL}" y="${H - 8}" fill="var(--text3)" font-size="9">${fmtClock(xMin)}</text>
-    <text x="${W - padR}" y="${H - 8}" fill="var(--text3)" font-size="9" text-anchor="end">${fmtClock(xMax)}</text>
-    <text x="${(padL + W - padR) / 2}" y="${H - 8}" fill="var(--text3)" font-size="9" text-anchor="middle">time to Feudal Age →</text>
-  `;
-}
 document.getElementById('engine-frame').addEventListener('load', () => { computeAgeTable('feudal'); computeAgeTable('castle'); });
 </script>
 </body>
