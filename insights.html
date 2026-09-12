@@ -163,6 +163,14 @@ th.num,td.num{text-align:center;font-family:var(--font-mono);}
 .peak-value .peak-num{font-weight:700;color:var(--amberL);}
 .peak-value .cur-sub{font-size:10px;color:var(--text3);display:block;}
 .peak-legend{display:flex;gap:16px;align-items:center;margin-bottom:14px;font-size:12px;color:var(--text2);flex-wrap:wrap;}
+
+.alt-groups{display:flex;flex-direction:column;gap:8px;}
+.alt-group{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 0;font-size:13px;}
+.alt-group-member{color:var(--text2);padding:2px 0;text-decoration:none;}
+.alt-group-member:hover{color:var(--amberL);text-decoration:underline;}
+.alt-group-member.kept{color:var(--amberL);font-weight:600;}
+.alt-group-sep{color:var(--text3);margin:0 8px;}
+.alt-group-hint{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-left:auto;padding-left:10px;}
 </style>
 </head>
 <body>
@@ -187,6 +195,7 @@ th.num,td.num{text-align:center;font-family:var(--font-mono);}
     <a href="#intensity">Play Intensity</a>
     <a href="#civs">Civ Leaderboard</a>
     <a href="#crossplay">Crossplay Ceiling</a>
+    <a href="#alts">Alts/Smurfs</a>
     <a href="#squads">Top Squads</a>
     <a href="#console-vs-pc">Console vs PC</a>
     <a href="#regions">🌍 Top Players by Region</a>
@@ -284,6 +293,25 @@ function updatedLabel(iso) {
   return formatted ? `<span class="updated-label">Updated ${formatted}</span>` : '';
 }
 
+// Known alt/smurf groups: profileIds confirmed (by direct report) to be the
+// same real person playing under more than one tracked account. Each entry
+// is 2+ profileIds — kept as separate rows in players.json (that's the raw
+// tracking data) but merged here so a split rating/country doesn't quietly
+// distort the Crossplay Ceiling and Top Players by Region insights below.
+// The Alts/Smurfs section lists every group in full for reference.
+const KNOWN_ALT_GROUPS = [
+  [20168942, 12798178], // Combi I Chow / DS Chowde
+  [20945272, 13379095], // Steve Irwin6443 / ObelusCipher
+  [23790720, 12760988], // Dolphinjack7648 / Shadow8373
+  [23477132, 25840006], // ItsGutsAoE / KingSlaayerAoE (was LordSnowAoE)
+  [22759370, 24074346], // BillieDown / BillieDownn
+  [25767683, 25437131, 24924936, 21495993], // FI2 JRC / F12JRCRunsAoE / Cak Loek Pro / Treeman2490
+  [12484696, 16389471], // sologhost / Chiefboy AK
+  [24133272, 15424523], // NegiGen6000 / kkrieger5718
+  [14770440, 12637242], // beef clamps / old peenuts
+  [18487891, 13624096], // Reckless T8548 / CarefulTulip69
+];
+
 async function loadAndRender() {
   const content = document.getElementById('content');
   try {
@@ -341,22 +369,21 @@ async function loadAndRender() {
                 // kept here too so this insight updates immediately
                 // instead of waiting on the next aggregate rebuild.
     ]);
-    const CROSSPLAY_DEDUP_PAIRS = [
-      [20168942, 12798178], // Combi I Chow vs DS Chowde
-      [20945272, 13379095], // Steve Irwin6443 vs ObelusCipher
-      [23790720, 12760988], // Dolphinjack7648 vs Shadow8373
-      [23477132, 25840006], // ItsGutsAoE vs LordSnowAoE
-      [22759370, 24074346], // BillieDown vs BillieDownn
-    ];
+    // KNOWN_ALT_GROUPS (declared at top level, shared with the Alts/Smurfs
+    // section below) lists every confirmed same-person group, 2 or more
+    // profileIds each. For each group, keep whichever member has the
+    // highest PC crossplay peak and drop the rest from this leaderboard.
     const crossplayDropIds = new Set(CROSSPLAY_EXCLUDE_IDS);
-    CROSSPLAY_DEDUP_PAIRS.forEach(([idA, idB]) => {
-      const a = consolePlayers.find(p => p.profileId === idA);
-      const b = consolePlayers.find(p => p.profileId === idB);
-      const peakA = a?.peaks?.['1v1 PC']?.peak ?? -1;
-      const peakB = b?.peaks?.['1v1 PC']?.peak ?? -1;
-      crossplayDropIds.add(peakA >= peakB ? idB : idA);
+    KNOWN_ALT_GROUPS.forEach(group => {
+      let winner = group[0], winnerPeak = -1;
+      group.forEach(id => {
+        const p = consolePlayers.find(x => x.profileId === id);
+        const peak = p?.peaks?.['1v1 PC']?.peak ?? -1;
+        if (peak > winnerPeak) { winnerPeak = peak; winner = id; }
+      });
+      group.forEach(id => { if (id !== winner) crossplayDropIds.add(id); });
     });
-    // Same known-duplicate pairs, but the Region insight ranks by console
+    // Same known-duplicate groups, but the Region insight ranks by console
     // rating (not PC crossplay peak) — reusing crossplayDropIds' own
     // PC-peak tie-break can pick the account with the LOWER console rating,
     // which can also report a different (wrong) country than the one
@@ -370,12 +397,14 @@ async function loadAndRender() {
     // split, not a smurf/crossplay case), so that exclusion doesn't apply
     // here; Region only cares about his console rating/country, both real.
     regionDropIds.delete(12868111);
-    CROSSPLAY_DEDUP_PAIRS.forEach(([idA, idB]) => {
-      const a = consolePlayers.find(p => p.profileId === idA);
-      const b = consolePlayers.find(p => p.profileId === idB);
-      const ra = (a && bestConsoleRating(a)?.rating) ?? -1;
-      const rb = (b && bestConsoleRating(b)?.rating) ?? -1;
-      regionDropIds.add(ra >= rb ? idB : idA);
+    KNOWN_ALT_GROUPS.forEach(group => {
+      let winner = group[0], winnerRating = -1;
+      group.forEach(id => {
+        const p = consolePlayers.find(x => x.profileId === id);
+        const rating = (p && bestConsoleRating(p)?.rating) ?? -1;
+        if (rating > winnerRating) { winnerRating = rating; winner = id; }
+      });
+      group.forEach(id => { if (id !== winner) regionDropIds.add(id); });
     });
 
     const crossplayRows = consolePlayers
@@ -549,6 +578,12 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
         <summary id="crossplay-toggle-summary">View full list as table</summary>
         <table id="crossplay-table"></table>
       </details>
+    </section>
+
+    <section id="alts" class="card">
+      <h2>Alts / Smurfs</h2>
+      <p class="desc">Tracked accounts confirmed to be the same real person playing under more than one profile. Each stays as its own row in the raw tracking data, but is merged here — and in Crossplay Ceiling above and Top Players by Region below — so one person's rating isn't split or hidden across profiles. The highlighted name in each group is the one shown in those leaderboards.</p>
+      <div class="alt-groups" id="alt-groups"></div>
     </section>
 
     <section id="squads" class="card">
@@ -986,6 +1021,29 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
   const cpTableEl = document.getElementById('crossplay-table');
   cpTableEl.innerHTML = '<thead><tr><th class="num">#</th><th>Player</th><th class="num">Peak</th><th class="num">Current</th></tr></thead>' +
     '<tbody>' + crossplayRows.map((r, i) => `<tr><td class="num">${i + 1}</td><td><a href="${cpPlayerLink(r)}">${r.name}</a></td><td class="num">${r.peak.toLocaleString()}</td><td class="num">${r.current.toLocaleString()}</td></tr>`).join('') + '</tbody>';
+
+  // ---- alts / smurfs ----
+  // Highlight whichever member the Crossplay Ceiling dedupe above kept
+  // (highest PC peak), same winner logic, so the two sections agree.
+  const altGroupsEl = document.getElementById('alt-groups');
+  KNOWN_ALT_GROUPS.forEach(group => {
+    let winner = group[0], winnerPeak = -1;
+    group.forEach(id => {
+      const p = consolePlayers.find(x => x.profileId === id);
+      const peak = p?.peaks?.['1v1 PC']?.peak ?? -1;
+      if (peak > winnerPeak) { winnerPeak = peak; winner = id; }
+    });
+    const row = document.createElement('div');
+    row.className = 'alt-group';
+    row.innerHTML = group.map((id, i) => {
+      const p = consolePlayers.find(x => x.profileId === id);
+      const name = p ? p.name : `Unknown (${id})`;
+      const cls = id === winner ? 'alt-group-member kept' : 'alt-group-member';
+      const sep = i > 0 ? '<span class="alt-group-sep">↔</span>' : '';
+      return `${sep}<a class="${cls}" href="player.html?id=${id}">${name}</a>`;
+    }).join('') + `<span class="alt-group-hint">${group.length} profiles</span>`;
+    altGroupsEl.appendChild(row);
+  });
 
   // ---- top squads ----
   let squadLadder = 'all';
