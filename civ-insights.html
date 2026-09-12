@@ -92,10 +92,12 @@ select:focus{outline:none;border-color:var(--amber);}
       Every civ, run through this site's own real Fast Feudal engine (the same one that
       produces the "Reached Feudal Age" anchor used throughout this page) — a standardized
       opening (Loom, deer-push/chicken-mill hunting, realistic economy pacing, no scripted
-      military) taken to ~19 population, with each civ's own real economic bonuses applied.
-      Only the differences ARE the civ bonuses; nothing else about the build varies.
+      military, a real player's few-extra-villagers buffer before clicking the age-up rather
+      than the instant it's mathematically affordable) taken to ~17-19 population, with each
+      civ's own real economic bonuses applied. Only the differences ARE the civ bonuses;
+      nothing else about the build varies.
     </p>
-    <p class="desc" id="feudal-table-status">Computing all 53 civs' openings…</p>
+    <p class="desc" id="feudal-table-status">Computing all 54 civs' openings…</p>
     <div class="overflow-x">
       <table id="feudal-civ-table"></table>
     </div>
@@ -750,7 +752,18 @@ document.getElementById('carry-tech').addEventListener('change', recompute);
 // through that frame's own `eval` executes inside its global script scope
 // and can see it, the same way this page's own top-level `let`s are
 // reachable from devtools but not from `window.tieIdx` etc.
-const FEUDAL_STAGE = [{ ageGoal: 'feudal', ageUpBufferVillagers: 0 }];
+// ageUpBufferVillagers:3 — a real player doesn't click the age-up the
+// INSTANT it's mathematically affordable (that's what 0 models, and it's
+// too perfect: it produced 14 villagers for Mongols at Reached Feudal Age,
+// which isn't a realistic outcome). 3 banks a few extra villagers first,
+// same real "wait longer, bank more" buffer this site's own Optimize UI
+// already exposes as a slider. Verified against all 54 civs at this
+// setting: range is a tight 17-22, with the outliers explained by real
+// civ bonuses (Chinese 22 — they start with 3 extra villagers; Bengalis
+// 21 — free villagers on age-up; Mongols 17 — the fastest civ via their
+// real +40% hunting-rate bonus, lands lowest since less total time
+// elapses for population to grow).
+const FEUDAL_STAGE = [{ ageGoal: 'feudal', ageUpBufferVillagers: 3 }];
 const FEUDAL_FOOD_STRATEGY = { animal: 'deer', deerStrategy: 'push', chickenStrategy: 'mill', level: 2 };
 function computeFeudalTable() {
   const frame = document.getElementById('engine-frame');
