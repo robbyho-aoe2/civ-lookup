@@ -3629,7 +3629,37 @@ function buildingChainItems(buildingName, civ, haveSet) {
 // below, not `need.forEach`) — it just may not help THIS item at all until
 // the script hands control back to the greedy algorithm.
 function simulateItemReady(item, rates, villRate, startTime, startVills, pool, openingSequence, existingAlloc, villagerFoodCost, farmWoodRatio, civ, builtResources, backwardSchedule, bufferVillagers) {
-  const need = RES.filter(r => item.cost[r] > 0);
+  const need0 = RES.filter(r => item.cost[r] > 0);
+  // Real bug this fixes: if a `need` resource's drop-off isn't built yet,
+  // funding this item ALSO requires paying for that structure — the
+  // caller (runSequential's own reveal logic, right after this function
+  // returns) charges it separately, the instant that resource's first-ever
+  // worker gets assigned. Previously this function only waited for
+  // `item.cost` itself, so a bundle could be declared "ready" using
+  // exactly its own listed cost, then the caller's immediate follow-up
+  // structure charge (e.g. gold's first-ever Mining Camp, 100 wood, paid
+  // out of a merged Market+Blacksmith+age-up bundle) pushed the returned
+  // pool negative — spending wood that was never actually banked. Folding
+  // the pending structure cost into `fundCost` (the funding THRESHOLD
+  // used below, checked via `saved`) rather than into what actually gets
+  // netted out of the returned pool (still `item.cost`, unchanged — see
+  // the final leftoverPool computation) makes the wait long enough to
+  // really have it banked; the extra surplus that results is exactly what
+  // the caller's own separate deduction then consumes, matching how a
+  // structure charged mid-bundle already works when it ISN'T the first
+  // worker on that resource.
+  const fundCost = { ...item.cost };
+  if (builtResources && civ) {
+    const localBuilt = { ...builtResources };
+    need0.forEach(r => {
+      if (localBuilt[r]) return;
+      if (r === 'food' && openingSequence) return; // food's own structure (Mill/hunt) already has its own dedicated, separately-timed charge via millAt below
+      const s = structureForResource(r, civ);
+      s.covers.forEach(r2 => { localBuilt[r2] = true; });
+      RES.forEach(r2 => { fundCost[r2] = (fundCost[r2] || 0) + (s.cost?.[r2] || 0); });
+    });
+  }
+  const need = RES.filter(r => fundCost[r] > 0);
   const minTime = startTime + (item.queueSeconds || 0);
   // Town Center techs (tcQueue:true) block villager production for their
   // own research duration — added AFTER resources/queue are satisfied,
@@ -3645,11 +3675,17 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
   // with real resources already banked, not zero.
   const saved = { food: 0, wood: 0, gold: 0, stone: 0 };
   need.forEach(r => {
-    const credit = Math.min(pool[r], item.cost[r]);
-    saved[r] = credit;
-    pool[r] -= credit;
+    // Two different caps on purpose: the stockpile can cover the pending
+    // structure cost too (that's what `saved` — the funding-readiness
+    // check — credits against `fundCost` for), but only the item's OWN
+    // real cost ever actually leaves the returned `pool` here — the
+    // structure's cost is the caller's own separate deduction to make,
+    // same contract the final leftoverPool computation below keeps.
+    const itemCredit = Math.min(pool[r], item.cost[r] || 0);
+    saved[r] = Math.min(pool[r], fundCost[r]);
+    pool[r] -= itemCredit;
   });
-  if (need.every(r => saved[r] >= item.cost[r])) {
+  if (need.every(r => saved[r] >= fundCost[r])) {
     return { time: Math.max(startTime, minTime) + tcDelay, vills: startVills, pool, assigned: { food: 0, wood: 0, gold: 0, stone: 0 }, newVills: 0, firstAssignedAt: {}, millAt: null };
   }
 
@@ -3822,8 +3858,8 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
         target = need[0];
         let worstEta = -Infinity;
         need.forEach(r => {
-          if (saved[r] >= item.cost[r]) return;
-          const remaining = item.cost[r] - saved[r];
+          if (saved[r] >= fundCost[r]) return;
+          const remaining = fundCost[r] - saved[r];
           // Real throughput on r right now — existing (pre-this-call)
           // gatherers' flat rate PLUS this call's own precisely-tracked
           // assignedRate (phase-aware, e.g. food) — same expression the
@@ -3932,7 +3968,7 @@ function simulateItemReady(item, rates, villRate, startTime, startVills, pool, o
     });
     saved.food -= villagerFoodDrainPerSec * dt;
     saved.wood -= houseWoodDrainPerSec * dt;
-    if (need.every(r => saved[r] >= item.cost[r]) && t >= minTime) {
+    if (need.every(r => saved[r] >= fundCost[r]) && t >= minTime) {
       if (readyAtVills == null) readyAtVills = vills;
       if (!bufferVillagers || vills - readyAtVills >= bufferVillagers) {
         // The last dt tick almost always gathers slightly more than exactly
