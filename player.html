@@ -386,10 +386,15 @@ function findAltGroup(id) {
 // is separate from KNOWN_ALT_GROUPS).
 const IMPOSTER_ACCOUNTS = [
   { id: 24659170, impersonating: 12477800, note: 'Near-identical name to Ghost of 6am ("Ghost 0f 6am") — not confirmed to be the same real person.' },
+  { id: 26084405, impersonating: 3452279, note: 'Near-identical name to OleCrookedWoody ("OleCrookedW00dy") — not confirmed to be the same real person.' },
 ];
 function findImposterEntry(id) {
   const numId = Number(id);
   return IMPOSTER_ACCOUNTS.find(e => e.id === numId) || null;
+}
+function findImpersonators(id) {
+  const numId = Number(id);
+  return IMPOSTER_ACCOUNTS.filter(e => e.impersonating === numId);
 }
 
 function fmtDur(seconds) {
@@ -492,6 +497,16 @@ function render(content, entry, player) {
     ? `<div class="imposter-hint">⚠ Flagged as a possible impersonator of <a href="player.html?id=${imposterEntry.impersonating}">${imposterReal ? imposterReal.name : '#' + imposterEntry.impersonating}</a> — not confirmed to be the same real person. ${imposterEntry.note}</div>`
     : '';
 
+  const impersonators = findImpersonators(entry.profileId);
+  const impersonatorLinks = impersonators.map(e => {
+    const p = ALL_TRACKED.find(x => x.profileId === e.id);
+    const name = p ? p.name : `#${e.id}`;
+    return `<a href="player.html?id=${e.id}">${name}</a>`;
+  }).join(', ');
+  const impersonatorsHintHtml = impersonators.length
+    ? `<div class="imposter-hint">⚠ ${impersonatorLinks} ${impersonators.length > 1 ? 'are NOT' : 'is NOT'} ${entry.name} — just a near-identical name. Flagged as a possible impersonator, not confirmed to be the same real person.</div>`
+    : '';
+
   content.innerHTML = `
     <div class="card">
       <div class="player-hero">
@@ -502,6 +517,7 @@ function render(content, entry, player) {
       </div>
       ${entry.live ? `<div class="tracker-hint">Not part of the permanent AoE Auto Scout roster — this page was fetched live from AoE2Companion and won't be saved or refreshed automatically. <a href="${requestTrackingUrl(entry.name, entry.profileId)}" target="_blank" rel="noopener">Request ${entry.name} be tracked permanently</a> (form pre-filled), or ask in the <a href="https://discord.gg/2uRZG6qSyy" target="_blank" rel="noopener">Discord</a> or a <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank" rel="noopener">Fast Castle and Chill</a> video comment.</div>` : ''}
       ${imposterHintHtml}
+      ${impersonatorsHintHtml}
     </div>
     ${altsCardHtml}
 
