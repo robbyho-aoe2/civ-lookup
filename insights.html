@@ -196,6 +196,7 @@ th.num,td.num{text-align:center;font-family:var(--font-mono);}
     <a href="#civs">Civ Leaderboard</a>
     <a href="#crossplay">Crossplay Ceiling</a>
     <a href="#alts">Alts/Smurfs</a>
+    <a href="#imposters">Imposter Accounts</a>
     <a href="#squads">Top Squads</a>
     <a href="#console-vs-pc">Console vs PC</a>
     <a href="#regions">🌍 Top Players by Region</a>
@@ -302,7 +303,7 @@ function updatedLabel(iso) {
 const KNOWN_ALT_GROUPS = [
   [20168942, 12798178], // Combi I Chow / DS Chowde
   [20945272, 13379095], // Steve Irwin6443 / ObelusCipher
-  [23790720, 12760988, 23284031], // Dolphinjack7648 / Shadow8373 / #23284031
+  [23790720, 12760988, 23284031, 18667559], // Dolphinjack7648 / Shadow8373 / #23284031 / AlightOwl218
   [23477132, 25840006, 25065929], // ItsGutsAoE / KingSlaayerAoE (was LordSnowAoE) / boss_slewz2
   [22759370, 24074346], // BillieDown / BillieDownn
   [25767683, 25437131, 24924936, 21495993], // FI2 JRC / F12JRCRunsAoE / Cak Loek Pro / Treeman2490
@@ -318,6 +319,24 @@ const KNOWN_ALT_GROUPS = [
   [23317362, 23053270], // Im Race Cyst / I Move Soft
   [15171886, 12743207], // Smartwash7202 / Potatoes vlc
   [23671708, 22702087], // YaKintYa / D-Saboteur
+  [18518087, 14590893], // SpursCOYS216040 / IDWARE21
+  [23542892, 12477800], // gbetto / Ghost of 6am
+  [19283861, 11828362], // Beowolf4485 / Huskarls4
+  [25666181, 14653704], // Slimsadie1831 / Sleeeepjoe
+  [23009008, 23448013], // Pandaofpeace93 / pandosopoderoso
+  [15717181, 17719038], // KFC DIRECTOR / St0ned Cr0c
+  [14132480, 16267636], // SWISH 2EZ / swisher
+  [21657258, 12597326], // deathstar / Rowdy Squirrels
+];
+
+// Accounts flagged as a likely impersonator of a real, already-tracked
+// player — a near-identical name, but NOT confirmed to be the same real
+// person (unlike KNOWN_ALT_GROUPS, which is only for confirmed dupes).
+// Shown in their own "Imposter Accounts" list rather than merged into a
+// KNOWN_ALT_GROUPS entry, since merging would incorrectly imply they're
+// the same person.
+const IMPOSTER_ACCOUNTS = [
+  { id: 24659170, impersonating: 12477800, note: 'Near-identical name to Ghost of 6am ("Ghost 0f 6am") — not confirmed to be the same real person.' },
 ];
 
 async function loadAndRender() {
@@ -597,6 +616,12 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       <h2>Alts / Smurfs</h2>
       <p class="desc">Tracked accounts confirmed to be the same real person playing under more than one profile. Each stays as its own row in the raw tracking data, but is merged here — and in Crossplay Ceiling above and Top Players by Region below — so one person's rating isn't split or hidden across profiles. The highlighted name in each group is the one shown in those leaderboards.</p>
       <div class="alt-groups" id="alt-groups"></div>
+    </section>
+
+    <section id="imposters" class="card">
+      <h2>Imposter Accounts</h2>
+      <p class="desc">Accounts with a near-identical name to a real, already-tracked player — but NOT confirmed to be the same real person. Unlike Alts/Smurfs above, these are kept as fully separate entries everywhere on the site; this list exists only to flag the naming collision.</p>
+      <div class="alt-groups" id="imposter-rows"></div>
     </section>
 
     <section id="squads" class="card">
@@ -1056,6 +1081,22 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       return `${sep}<a class="${cls}" href="player.html?id=${id}">${name}</a>`;
     }).join('') + `<span class="alt-group-hint">${group.length} profiles</span>`;
     altGroupsEl.appendChild(row);
+  });
+
+  // ---- imposter accounts ----
+  const imposterRowsEl = document.getElementById('imposter-rows');
+  IMPOSTER_ACCOUNTS.forEach(entry => {
+    const imp = consolePlayers.find(x => x.profileId === entry.id);
+    const real = consolePlayers.find(x => x.profileId === entry.impersonating);
+    const impName = imp ? imp.name : `Unknown (${entry.id})`;
+    const realName = real ? real.name : `Unknown (${entry.impersonating})`;
+    const row = document.createElement('div');
+    row.className = 'alt-group';
+    row.innerHTML = `<a class="alt-group-member" href="player.html?id=${entry.id}">${impName}</a>` +
+      `<span class="alt-group-sep">⚠ impersonating</span>` +
+      `<a class="alt-group-member kept" href="player.html?id=${entry.impersonating}">${realName}</a>` +
+      `<div style="flex-basis:100%;font-size:11px;color:var(--text3);margin-top:4px;">${entry.note}</div>`;
+    imposterRowsEl.appendChild(row);
   });
 
   // ---- top squads ----

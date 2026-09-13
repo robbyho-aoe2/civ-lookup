@@ -106,6 +106,9 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
 .tracker-hint{font-size:11px;color:var(--text3);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-top:10px;}
 .tracker-hint a{color:var(--amberL);}
 .tracker-hint a:hover{text-decoration:none;}
+.imposter-hint{font-size:11px;color:var(--text2);background:var(--redBg);border:1px solid var(--redBd);border-radius:var(--radius);padding:10px 12px;margin-top:10px;}
+.imposter-hint a{color:var(--red);font-weight:700;}
+.imposter-hint a:hover{text-decoration:none;}
 </style>
 </head>
 <body>
@@ -347,7 +350,7 @@ function renderSearchResults(local, live) {
 const KNOWN_ALT_GROUPS = [
   [20168942, 12798178], // Combi I Chow / DS Chowde
   [20945272, 13379095], // Steve Irwin6443 / ObelusCipher
-  [23790720, 12760988, 23284031], // Dolphinjack7648 / Shadow8373 / #23284031
+  [23790720, 12760988, 23284031, 18667559], // Dolphinjack7648 / Shadow8373 / #23284031 / AlightOwl218
   [23477132, 25840006, 25065929], // ItsGutsAoE / KingSlaayerAoE (was LordSnowAoE) / boss_slewz2
   [22759370, 24074346], // BillieDown / BillieDownn
   [25767683, 25437131, 24924936, 21495993], // FI2 JRC / F12JRCRunsAoE / Cak Loek Pro / Treeman2490
@@ -363,10 +366,30 @@ const KNOWN_ALT_GROUPS = [
   [23317362, 23053270], // Im Race Cyst / I Move Soft
   [15171886, 12743207], // Smartwash7202 / Potatoes vlc
   [23671708, 22702087], // YaKintYa / D-Saboteur
+  [18518087, 14590893], // SpursCOYS216040 / IDWARE21
+  [23542892, 12477800], // gbetto / Ghost of 6am
+  [19283861, 11828362], // Beowolf4485 / Huskarls4
+  [25666181, 14653704], // Slimsadie1831 / Sleeeepjoe
+  [23009008, 23448013], // Pandaofpeace93 / pandosopoderoso
+  [15717181, 17719038], // KFC DIRECTOR / St0ned Cr0c
+  [14132480, 16267636], // SWISH 2EZ / swisher
+  [21657258, 12597326], // deathstar / Rowdy Squirrels
 ];
 function findAltGroup(id) {
   const numId = Number(id);
   return KNOWN_ALT_GROUPS.find(g => g.includes(numId)) || null;
+}
+
+// Kept in sync with insights.html's own IMPOSTER_ACCOUNTS — accounts
+// flagged as a likely impersonator of a real tracked player, NOT
+// confirmed to be the same real person (see insights.html for why this
+// is separate from KNOWN_ALT_GROUPS).
+const IMPOSTER_ACCOUNTS = [
+  { id: 24659170, impersonating: 12477800, note: 'Near-identical name to Ghost of 6am ("Ghost 0f 6am") — not confirmed to be the same real person.' },
+];
+function findImposterEntry(id) {
+  const numId = Number(id);
+  return IMPOSTER_ACCOUNTS.find(e => e.id === numId) || null;
 }
 
 function fmtDur(seconds) {
@@ -463,6 +486,12 @@ function render(content, entry, player) {
       <div class="similar-players" id="alts-players"></div>
     </div>` : '';
 
+  const imposterEntry = findImposterEntry(entry.profileId);
+  const imposterReal = imposterEntry ? ALL_TRACKED.find(p => p.profileId === imposterEntry.impersonating) : null;
+  const imposterHintHtml = imposterEntry
+    ? `<div class="imposter-hint">⚠ Flagged as a possible impersonator of <a href="player.html?id=${imposterEntry.impersonating}">${imposterReal ? imposterReal.name : '#' + imposterEntry.impersonating}</a> — not confirmed to be the same real person. ${imposterEntry.note}</div>`
+    : '';
+
   content.innerHTML = `
     <div class="card">
       <div class="player-hero">
@@ -472,6 +501,7 @@ function render(content, entry, player) {
         </div>
       </div>
       ${entry.live ? `<div class="tracker-hint">Not part of the permanent AoE Auto Scout roster — this page was fetched live from AoE2Companion and won't be saved or refreshed automatically. <a href="${requestTrackingUrl(entry.name, entry.profileId)}" target="_blank" rel="noopener">Request ${entry.name} be tracked permanently</a> (form pre-filled), or ask in the <a href="https://discord.gg/2uRZG6qSyy" target="_blank" rel="noopener">Discord</a> or a <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank" rel="noopener">Fast Castle and Chill</a> video comment.</div>` : ''}
+      ${imposterHintHtml}
     </div>
     ${altsCardHtml}
 
