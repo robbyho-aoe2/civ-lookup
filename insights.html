@@ -45,10 +45,13 @@ header .back:hover{color:var(--amberL);}
 .card h2{font-family:var(--font-display);font-weight:600;letter-spacing:.01em;font-size:16px;margin:0 0 4px;color:var(--amberL);}
 .card .desc{font-size:12px;color:var(--text2);margin:0 0 18px;}
 .card .sub-heading{font-size:13px;font-weight:700;margin:20px 0 4px;padding-top:16px;border-top:1px solid var(--border);color:var(--text);}
-details.card > summary{cursor:pointer;list-style:none;}
-details.card > summary::-webkit-details-marker{display:none;}
-details.card > summary::before{content:'▸ ';color:var(--text2);}
-details.card[open] > summary::before{content:'▾ ';}
+
+.card-peek{max-height:220px;overflow:hidden;position:relative;}
+.card-peek::after{content:'';position:absolute;left:0;right:0;bottom:0;height:56px;background:linear-gradient(to bottom, transparent, var(--surf));pointer-events:none;}
+.card-peek.expanded{max-height:none;}
+.card-peek.expanded::after{display:none;}
+.peek-toggle{display:block;width:100%;margin-top:10px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;}
+.peek-toggle:hover{color:var(--amberL);border-color:var(--amber);}
 
 .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;margin-bottom:20px;}
 .stat-tile{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;}
@@ -542,18 +545,21 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       <h2>Weekly Recap</h2>
       <p class="desc" id="weekly-desc">What happened in the console scene this week.</p>
       <select id="weekly-archive-select" style="display:none"></select>
-      <div id="weekly-content"><div class="loading">Loading weekly recap…</div></div>
+      <div class="card-peek" id="weekly-peek"><div id="weekly-content"><div class="loading">Loading weekly recap…</div></div></div>
+      <button class="peek-toggle" data-target="weekly-peek" type="button">Show more ▾</button>
     </section>
 
     <section id="snl" class="card">
       <h2>🌙 Saturday Night Live</h2>
       <p class="desc" id="snl-desc">Team Console 3v3/4v4 games, Saturday 6pm EDT through Sunday 3am EDT — a report lands here every Sunday morning.</p>
-      <div id="snl-content"><div class="loading">Loading…</div></div>
+      <div class="card-peek" id="snl-peek"><div id="snl-content"><div class="loading">Loading…</div></div></div>
+      <button class="peek-toggle" data-target="snl-peek" type="button">Show more ▾</button>
     </section>
 
     <section id="distribution" class="card">
       <h2>Console Players — Rating Distribution</h2>
       <p class="desc">${stats.withRating.toLocaleString()} rated players (of ${stats.total.toLocaleString()} tracked) · 1v1 Console rating, live from the latest backfill${updatedLabel(metaLastUpdated)}</p>
+      <div class="card-peek" id="distribution-peek">
       <div class="stat-row" id="stat-row"></div>
       <div class="chart-legend">
         <div class="chart-legend-item"><span class="legend-swatch-solid"></span>Players, bracket-colored (left axis)</div>
@@ -572,22 +578,28 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
         <summary>View as table</summary>
         <table id="data-table"></table>
       </details>
+      </div>
+      <button class="peek-toggle" data-target="distribution-peek" type="button">Show more ▾</button>
     </section>
 
     <section id="intensity" class="card">
       <h2>Play Intensity by Bracket</h2>
       <p class="desc">Share of games played vs. share of players — how much more (or less) each bracket plays relative to its population size. 1.0x means proportional; higher means that bracket plays more than its numbers alone would suggest.${updatedLabel(civsData.lastUpdated)}</p>
+      <div class="card-peek" id="intensity-peek">
       <div class="civ-ladder-toggle" id="intensity-range-toggle">
         <button data-range="all" class="on">All Time</button>
         <button data-range="year">This Year</button>
         <button data-range="90d">Last 90 Days</button>
       </div>
       <div class="ratio-rows" id="ratio-rows"></div>
+      </div>
+      <button class="peek-toggle" data-target="intensity-peek" type="button">Show more ▾</button>
     </section>
 
     <section id="civs" class="card">
       <h2>Civ Leaderboard by Bracket</h2>
       <p class="desc">Pick rate and win rate per civ, split by console skill bracket.${updatedLabel(civsData.lastUpdated)}</p>
+      <div class="card-peek" id="civs-peek">
       <div class="civ-controls">
         <div class="civ-ladder-toggle" id="civ-ladder-toggle">
           <button data-ladder="all" class="on">All Console</button>
@@ -600,11 +612,14 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       <div class="civ-table-wrap">
         <table class="civ-table" id="civ-table"></table>
       </div>
+      </div>
+      <button class="peek-toggle" data-target="civs-peek" type="button">Show more ▾</button>
     </section>
 
     <section id="crossplay" class="card">
       <h2>Crossplay Ceiling — Console Players on PC 1v1</h2>
       <p class="desc">The highest PC 1v1 (crossplay) rating each console player has ever reached.${updatedLabel(metaLastUpdated)}</p>
+      <div class="card-peek" id="crossplay-peek">
       <div class="stat-row" id="crossplay-stat-row"></div>
       <div class="peak-legend">
         <div class="chart-legend-item"><span class="legend-swatch-solid" style="background:var(--border2)"></span>Peak</div>
@@ -615,21 +630,27 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
         <summary id="crossplay-toggle-summary">View full list as table</summary>
         <table id="crossplay-table"></table>
       </details>
+      </div>
+      <button class="peek-toggle" data-target="crossplay-peek" type="button">Show more ▾</button>
     </section>
 
-    <details id="alts" class="card">
-      <summary><h2 style="display:inline">Alts / Smurfs</h2></summary>
+    <section id="alts" class="card">
+      <h2>Alts / Smurfs</h2>
       <p class="desc">Tracked accounts confirmed to be the same real person playing under more than one profile. Each stays as its own row in the raw tracking data, but is merged here — and in Crossplay Ceiling above and Top Players by Region below — so one person's rating isn't split or hidden across profiles. The highlighted name in each group is the one shown in those leaderboards.</p>
+      <div class="card-peek" id="alts-peek">
       <div class="alt-groups" id="alt-groups"></div>
 
       <h3 class="sub-heading">Imposter Accounts</h3>
       <p class="desc">Accounts with a near-identical name to a real, already-tracked player — but NOT confirmed to be the same real person. Unlike the alt/smurf groups above, these are kept as fully separate entries everywhere on the site; this list exists only to flag the naming collision.</p>
       <div class="alt-groups" id="imposter-rows"></div>
-    </details>
+      </div>
+      <button class="peek-toggle" data-target="alts-peek" type="button">Show more ▾</button>
+    </section>
 
     <section id="squads" class="card">
       <h2>Top Squads — Console Team Games</h2>
       <p class="desc">Tracked console players who repeatedly queue together as teammates on Team ladder games. Detection only sees teammates we already track, so this fills in as more players get backfilled — a real duo where one side isn't tracked yet won't show up until they are.${updatedLabel(squadsLastUpdated)}</p>
+      <div class="card-peek" id="squads-peek">
       <div class="civ-controls">
         <div class="civ-ladder-toggle" id="squad-ladder-toggle">
           <button data-ladder="all" class="on">All Team Games</button>
@@ -645,24 +666,41 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       </div>
       <div class="civ-table-wrap"><table class="civ-table" id="squad-table"></table></div>
       <div id="squad-expand-row" style="text-align:center;margin-top:10px"></div>
+      </div>
+      <button class="peek-toggle" data-target="squads-peek" type="button">Show more ▾</button>
     </section>
 
     <section id="console-vs-pc" class="card">
       <h2>Console Arabia vs. PC Overall — Biggest Discrepancies</h2>
       <p class="desc">Recency-weighted (90-day half-life, same as Form mode elsewhere) win rate for 1v1 Console on Arabia specifically vs. 1v1 PC overall across all maps — civs that swing hardest between the two, sorted by |difference|. A large negative gap usually means a civ that rewards precise micro/APM; positive means a simpler, bonus-driven civ that holds up better without it.${updatedLabel(civsData.lastUpdated)}</p>
+      <div class="card-peek" id="console-vs-pc-peek">
       <div class="civ-table-wrap"><table class="civ-table" id="cvp-table"></table></div>
+      </div>
+      <button class="peek-toggle" data-target="console-vs-pc-peek" type="button">Show more ▾</button>
     </section>
 
     <section id="regions" class="card">
       <h2>Top Console Players by Region</h2>
       <p class="desc">Ranked by each player's higher rating between 1v1 Console and Team Console. Country is self-reported on the player's AoE2Companion profile — a player who's never set theirs won't show up anywhere here yet, and this fills in as more players do.${updatedLabel(metaLastUpdated)}</p>
+      <div class="card-peek" id="regions-peek">
       <div class="civ-controls">
         <div class="civ-ladder-toggle region-toggle" id="region-toggle"></div>
       </div>
       <div class="civ-table-wrap"><table class="civ-table" id="region-table"></table></div>
       <div id="region-expand-row" style="text-align:center;margin-top:10px"></div>
+      </div>
+      <button class="peek-toggle" data-target="regions-peek" type="button">Show more ▾</button>
     </section>
   `;
+
+  document.querySelectorAll('.peek-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = document.getElementById(btn.dataset.target);
+      if (!target) return;
+      const expanded = target.classList.toggle('expanded');
+      btn.textContent = expanded ? 'Show less ▴' : 'Show more ▾';
+    });
+  });
 
   // ---- stat tiles ----
   const statRow = document.getElementById('stat-row');
