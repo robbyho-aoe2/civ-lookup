@@ -138,7 +138,7 @@ select:focus{outline:none;border-color:var(--amber);}
       </p>
     </div>
   </details>
-  <iframe id="engine-frame" src="build-order.html" style="display:none" title="build-order engine (hidden)"></iframe>
+  <iframe id="engine-frame" style="display:none" title="build-order engine (hidden)"></iframe>
 
   <details class="section">
     <summary>Saxons: Lumber Camps vs. Farms <span class="summary-hint">3 charts — the tie, the food crossover, and closing the loop</span></summary>
@@ -259,11 +259,19 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.01</div>
+    <div class="version">v0.02</div>
   </div>
 </div>
 
 <script>
+// Cache-bust the hidden engine iframe's src — without this, a browser
+// that already cached an OLD build-order.html (from before some fix
+// landed there) can keep serving it into this page indefinitely, even
+// after this page's own HTML updates, since the iframe's sub-resource is
+// cached independently of the parent document. Set via JS (not a static
+// src= attribute) so it's tied to this page's own load, always fresh.
+document.getElementById('engine-frame').src = 'build-order.html?v=' + Date.now();
+
 // Minimal, explicit subset of build-order.html's own real DATA constants --
 // not the full 53-civ dataset, just what this one Saxons analysis needs.
 // Keep these in sync with build-order.html's own DATA object if those ever
