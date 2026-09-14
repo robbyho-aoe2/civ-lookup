@@ -1069,10 +1069,30 @@ const LONGSHIP_SENTINEL_ID = 900001;
    base — 7 attack, 2 melee/0 pierce armor, 4 range, 2.5s attack speed
    (reload), 1.25 movement speed. Heavy — 8 attack, same 2/0 armor, same
    range/speeds. Cranequins (Imperial upgrade tech, confirmed earlier):
-   cost 300F/200G, effect "+1 range, +2 attack vs. Infantry". HP, cost,
-   trainTime, and age are still unconfirmed — needed before this can be
-   added as a real build-order.html uniqueUnit (that schema requires
-   cost+trainTime+age+building; building=Archery Range is known). */
+   cost 300F/200G, effect "+1 range, +2 attack vs. Infantry" (one preview
+   video's own claim of "ends with eight range" after this doesn't match
+   4+1=5 — likely a transcription slip, the site owner's direct "4 range"
+   is trusted over it).
+   HP and cost, back-derived (not directly stated) from TWO independent
+   early-access preview videos, cross-checked against each other:
+   video 1 states the unit costs "five more gold" than Cavalry Archer
+   (real cost wood:40/gold:60) and has "5 less HP" than Cavalry Archer
+   (real HP 50) — giving cost wood:40/gold:65, HP 45. Video 2 independently
+   confirms the cost: Franks' Ordonnance Companies tech (-40% gold,
+   confirmed cost 400F/250G) drops their Mounted Crossbowman to "40 wood
+   and 39 gold" — solving backward, 39 / 0.6 = 65 gold, exactly matching
+   video 1's derived cost. Treat cost wood:40/gold:65 as solid; HP 45 as
+   fairly solid (only one derivation path, but internally consistent).
+   trainTime and age are STILL the only unconfirmed fields — neither video
+   states them (only relative reload/attack-SPEED, a different stat from
+   training time). Given this unit explicitly "replaces Cavalry Archer"
+   for these civs (same tech-tree slot), Castle Age is a reasonable
+   inference for `age` if needed, but not yet treated as confirmed.
+   Building=Archery Range is known. The Heavy tier's own upgrade tech
+   (cost/research time to promote to Heavy Mounted Crossbowman) is a
+   separate still-unknown field too, needed before a build-order.html
+   uniqueUnit entry (which needs cost+trainTime+age+building at minimum,
+   plus upgradeCost/upgradeResearchTime for the Heavy tier) is complete. */
 const MOUNTED_CROSSBOWMAN_SENTINEL_ID = 900002;
 const MOUNTED_CROSSBOWMAN_EXTRA_CIVS = []; // TODO: fill in once known
 
@@ -1101,10 +1121,15 @@ const CRANEQUINS_SENTINEL_ID = 900006;
    Real combat stats, confirmed directly by the site owner (2026-09-15):
    base — 70 HP, 13 attack, 2 melee/1 pierce armor, 2/sec attack speed,
    1.05 movement speed. Elite — 70 HP, 17 attack, 2/2 armor, same speeds.
-   Shock Infantry class. Cost/trainTime/age still unconfirmed — needed
+   Shock Infantry class. Cost (also confirmed, via two independent early-
+   access preview videos cross-checked against the site owner's own
+   numbers): 65 Food / 45 Gold. Generates ~40 gold/min in combat when
+   attacking units (not buildings) per one preview video, independent of
+   civ — Danes/Varangians/Byzantines get no attack-speed bonus on this
+   unit, so their own faster-attack bonuses (where they have one) don't
+   change that base rate. trainTime and age STILL unconfirmed — needed
    before this can be added as a real build-order.html uniqueUnit (that
-   schema requires cost+trainTime+age+building; only "Barracks" is known
-   so far, from this same comment historically). */
+   schema requires cost+trainTime+age+building; only "Barracks" is known). */
 const VARANGIAN_GUARD_SENTINEL_ID = 900004;
 const HEAVY_VARANGIAN_GUARD_SENTINEL_ID = 900005;
 
