@@ -1516,11 +1516,7 @@ function renderWeeklyReport(report) {
   // the 2026-09-07 report can show real gainers/losers — bring this section
   // back then instead of showing undated "current standings" in the meantime.
 
-  return headline + `
-    <details class="table-toggle">
-      <summary>Show full recap (most games, rivalries, upsets, new players, civ popularity, movers, squads)</summary>
-      ${mostGames + rivalries + upsets + newPlayers + civPopularity + movers + squads}
-    </details>`;
+  return headline + mostGames + rivalries + upsets + newPlayers + civPopularity + movers + squads;
 }
 
 async function loadAndRenderWeekly() {
