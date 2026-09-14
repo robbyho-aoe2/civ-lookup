@@ -52,6 +52,14 @@ label{font-size:12px;color:var(--text2);}
 th .res-icon{width:24px;height:24px;vertical-align:-5px;}
 .cost-pills{display:flex;gap:5px;flex-wrap:wrap;}
 
+.uname[data-uname], [data-tech-tip]{cursor:help;}
+.hover-tip{position:fixed;z-index:50;display:none;max-width:220px;background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 10px;font-size:11px;color:var(--text2);box-shadow:0 4px 14px rgba(0,0,0,.4);pointer-events:none;}
+.hover-tip .hover-tip-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px;}
+.hover-tip-rows div{display:flex;justify-content:space-between;gap:10px;}
+.hover-tip-rows div+div{margin-top:2px;}
+.hover-tip-rows span{color:var(--text3);}
+.hover-tip-rows b{color:var(--text);font-variant-numeric:tabular-nums;}
+
 .tech-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
 @media (max-width:640px){.tech-grid{grid-template-columns:1fr;}}
 .tech-group h3{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin:0 0 8px;}
@@ -3002,6 +3010,179 @@ const RES_ICON = {
 };
 const TECH_GROUP_LABEL = { mill:'🌾 Farm (Mill)', tc:'🏛️ Town Center', blacksmith:'⚔️ Blacksmith', stable:'🐴 Stable', siege:'🎯 Siege Workshop' };
 
+// ─── Combat stats for hover tooltips (Army Composition unit names) ──────────
+// Base (un-upgraded-by-tech) HP/Attack/Armor/Range/Speed/LOS per tier, real
+// current AoE2:DE values — a reference lookup only, not consumed by any of
+// this tool's own cost/rate math. Keyed by unitLines id, one entry per tier
+// in the same order as that line's own `tiers` array. Scoped to the
+// standard 21-line roster + Villager; per-civ unique units aren't covered
+// (53 civs' worth of additional stats — out of scope for a hover reference).
+const UNIT_STATS = {
+  villager: [
+    { hp:25, attack:3, meleeArmor:0, pierceArmor:0, range:0, speed:0.8, los:4 },
+  ],
+  'militia-line': [
+    { hp:40, attack:4, meleeArmor:0, pierceArmor:1, range:0, speed:0.9, los:4 },
+    { hp:45, attack:6, meleeArmor:0, pierceArmor:1, range:0, speed:0.96, los:4 },
+    { hp:60, attack:9, meleeArmor:1, pierceArmor:1, range:0, speed:0.96, los:4 },
+    { hp:60, attack:12, meleeArmor:1, pierceArmor:1, range:0, speed:0.96, los:5 },
+    { hp:70, attack:13, meleeArmor:1, pierceArmor:2, range:0, speed:0.96, los:5 },
+  ],
+  'spearman-line': [
+    { hp:45, attack:3, meleeArmor:0, pierceArmor:0, range:0, speed:1.0, los:4 },
+    { hp:55, attack:4, meleeArmor:0, pierceArmor:0, range:0, speed:1.0, los:4 },
+    { hp:60, attack:6, meleeArmor:0, pierceArmor:0, range:0, speed:1.0, los:4 },
+  ],
+  'eagle-line': [
+    { hp:50, attack:4, meleeArmor:0, pierceArmor:2, range:0, speed:1.1, los:5 },
+    { hp:55, attack:7, meleeArmor:0, pierceArmor:3, range:0, speed:1.15, los:6 },
+    { hp:60, attack:9, meleeArmor:0, pierceArmor:4, range:0, speed:1.3, los:6 },
+  ],
+  'archer-line': [
+    { hp:30, attack:4, meleeArmor:0, pierceArmor:0, range:4, speed:0.96, los:6 },
+    { hp:35, attack:5, meleeArmor:0, pierceArmor:0, range:5, speed:0.96, los:7 },
+    { hp:40, attack:6, meleeArmor:0, pierceArmor:0, range:5, speed:0.96, los:7 },
+  ],
+  'skirmisher-line': [
+    { hp:30, attack:2, meleeArmor:0, pierceArmor:3, range:4, speed:0.96, los:6 },
+    { hp:35, attack:3, meleeArmor:0, pierceArmor:4, range:5, speed:0.96, los:7 },
+  ],
+  'cavalry-archer-line': [
+    { hp:50, attack:6, meleeArmor:0, pierceArmor:0, range:4, speed:1.4, los:5 },
+    { hp:60, attack:7, meleeArmor:1, pierceArmor:0, range:4, speed:1.4, los:6 },
+  ],
+  'scout-cavalry-line': [
+    { hp:45, attack:3, meleeArmor:0, pierceArmor:2, range:0, speed:1.2, los:4 },
+    { hp:60, attack:7, meleeArmor:0, pierceArmor:2, range:0, speed:1.5, los:4 },
+    { hp:75, attack:7, meleeArmor:0, pierceArmor:2, range:0, speed:1.5, los:4 },
+  ],
+  'knight-line': [
+    { hp:100, attack:10, meleeArmor:2, pierceArmor:2, range:0, speed:1.35, los:4 },
+    { hp:120, attack:12, meleeArmor:2, pierceArmor:2, range:0, speed:1.35, los:4 },
+    { hp:160, attack:14, meleeArmor:2, pierceArmor:3, range:0, speed:1.4, los:5 },
+  ],
+  'steppe-lancer-line': [
+    { hp:60, attack:9, meleeArmor:0, pierceArmor:1, range:1, speed:1.45, los:5 },
+    { hp:80, attack:11, meleeArmor:0, pierceArmor:2, range:1, speed:1.45, los:5 },
+  ],
+  'camel-line': [
+    { hp:100, attack:6, meleeArmor:0, pierceArmor:0, range:0, speed:1.45, los:5 },
+    { hp:120, attack:7, meleeArmor:0, pierceArmor:0, range:0, speed:1.45, los:5 },
+    { hp:140, attack:8, meleeArmor:0, pierceArmor:0, range:0, speed:1.45, los:5 },
+  ],
+  'battle-elephant-line': [
+    { hp:250, attack:12, meleeArmor:1, pierceArmor:2, range:0, speed:0.9, los:7 },
+    { hp:300, attack:14, meleeArmor:1, pierceArmor:3, range:0, speed:0.9, los:8 },
+  ],
+  'elephant-archer-line': [
+    { hp:170, attack:6, meleeArmor:0, pierceArmor:2, range:4, speed:0.7, los:6 },
+    { hp:200, attack:7, meleeArmor:0, pierceArmor:3, range:4, speed:0.7, los:7 },
+  ],
+  'mangonel-line': [
+    { hp:50, attack:40, meleeArmor:0, pierceArmor:6, range:7, speed:0.6, los:9 },
+    { hp:60, attack:50, meleeArmor:0, pierceArmor:7, range:8, speed:0.6, los:10 },
+    { hp:70, attack:75, meleeArmor:0, pierceArmor:8, range:8, speed:0.6, los:10 },
+  ],
+  'scorpion-line': [
+    { hp:40, attack:11, meleeArmor:0, pierceArmor:7, range:7, speed:0.65, los:9 },
+    { hp:60, attack:14, meleeArmor:1, pierceArmor:8, range:7, speed:0.65, los:9 },
+  ],
+  'ram-line': [
+    { hp:175, attack:2, meleeArmor:-3, pierceArmor:180, range:0, speed:0.6, los:3 },
+    { hp:200, attack:3, meleeArmor:-2, pierceArmor:190, range:0, speed:0.6, los:3 },
+    { hp:270, attack:4, meleeArmor:-1, pierceArmor:195, range:0, speed:0.6, los:3 },
+  ],
+  'hand-cannoneer': [
+    { hp:35, attack:17, meleeArmor:1, pierceArmor:0, range:7, speed:0.96, los:9 },
+  ],
+  'bombard-cannon': [
+    { hp:80, attack:40, meleeArmor:2, pierceArmor:5, range:12, speed:0.7, los:14 },
+  ],
+  trebuchet: [
+    { hp:150, attack:200, meleeArmor:1, pierceArmor:150, range:16, speed:0, los:19 },
+  ],
+  monk: [
+    { hp:30, attack:0, meleeArmor:0, pierceArmor:0, range:3, speed:0.7, los:11 },
+  ],
+  petard: [
+    { hp:50, attack:25, meleeArmor:0, pierceArmor:2, range:0, speed:0.8, los:4 },
+  ],
+  'siege-tower': [
+    { hp:175, attack:0, meleeArmor:-2, pierceArmor:100, range:0, speed:0.96, los:8 },
+  ],
+};
+
+// Total farm food capacity per tier of the Farm Capacity (Horse Collar/
+// Heavy Plow/Crop Rotation) line — see that line's own definition comment
+// above (DATA.ecoTechs) for why this is a capacity increase, not a rate
+// bonus, and so isn't carried as a bonusPct field there.
+const FARM_CAPACITY_TOTAL = { 'horse-collar': 250, 'heavy-plow': 375, 'crop-rotation': 550 };
+
+function unitStatsTooltipHtml(lineId, tierIdx) {
+  const tiers = UNIT_STATS[lineId];
+  const s = tiers && tiers[tierIdx];
+  if (!s) return null;
+  const rows = [['HP', s.hp], ['Attack', s.attack], ['Melee Armor', s.meleeArmor], ['Pierce Armor', s.pierceArmor]];
+  if (s.range) rows.push(['Range', s.range]);
+  rows.push(['Speed', s.speed], ['Line of Sight', s.los]);
+  return `<div class="hover-tip-rows">${rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>`;
+}
+
+function techTooltipHtml(techId) {
+  const t = DATA.ecoTechs.find(x => x.id === techId);
+  if (!t) return null;
+  const costHtml = RES.filter(r => t.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${t.cost[r]}</span>`).join('');
+  const time = t.researchTime ?? t.queueSeconds;
+  let effect = '';
+  if (t.bonusByResource) {
+    effect = Object.entries(t.bonusByResource).map(([r, p]) => `${RES_LABEL[r]} +${p}%`).join(', ');
+  } else if (t.bonusPct) {
+    effect = `+${t.bonusPct}% ${RES_LABEL[t.resource] || t.resource} gather rate`;
+  } else if (FARM_CAPACITY_TOTAL[t.id]) {
+    effect = `Farm food capacity → ${FARM_CAPACITY_TOTAL[t.id]}`;
+  }
+  return `<div class="hover-tip-title">${t.name} (${t.age})</div>
+    <div class="cost-pills" style="margin:4px 0;">${costHtml}</div>
+    <div>${time != null ? time + 's research' : ''}${effect ? (time != null ? ' · ' : '') + effect : ''}</div>`;
+}
+
+let hoverTipEl = null;
+function showHoverTip(target, html) {
+  if (!hoverTipEl) {
+    hoverTipEl = document.createElement('div');
+    hoverTipEl.className = 'hover-tip';
+    document.body.appendChild(hoverTipEl);
+  }
+  hoverTipEl.innerHTML = html;
+  hoverTipEl.style.display = 'block';
+  const r = target.getBoundingClientRect();
+  const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+  const tw = hoverTipEl.offsetWidth, th = hoverTipEl.offsetHeight;
+  let left = Math.min(Math.max(8, r.left), vw - tw - 8);
+  let top = r.bottom + 6;
+  if (top + th > vh - 8) top = r.top - th - 6;
+  hoverTipEl.style.left = left + 'px';
+  hoverTipEl.style.top = top + 'px';
+}
+function hideHoverTip() { if (hoverTipEl) hoverTipEl.style.display = 'none'; }
+document.addEventListener('mouseover', e => {
+  const uEl = e.target.closest('.uname[data-uname]');
+  if (uEl) {
+    const tierIdx = (lineState[uEl.dataset.uname] && lineState[uEl.dataset.uname].tierIdx) || 0;
+    const html = unitStatsTooltipHtml(uEl.dataset.uname, tierIdx);
+    if (html) showHoverTip(uEl, html);
+    return;
+  }
+  const tEl = e.target.closest('[data-tech-tip]');
+  if (tEl) {
+    const html = techTooltipHtml(tEl.dataset.techTip);
+    if (html) showHoverTip(tEl, html);
+  }
+});
+document.addEventListener('mouseout', e => {
+  if (e.target.closest('.uname[data-uname]') || e.target.closest('[data-tech-tip]')) hideHoverTip();
+});
+
 function fmtSecs(s) {
   if (!isFinite(s)) return '—';
   const m = Math.floor(s / 60), sec = Math.round(s % 60);
@@ -3096,7 +3277,7 @@ function renderTierLinesHtml(techs, free) {
     const dots = lineTechs.map((t, i) => {
       const isFree = free.has(t.id);
       const defaultChecked = lineHasFree && i === 0;
-      return `<span class="tier-dot${isFree ? ' free' : ''}" data-age="${t.age}" title="${t.name} (${t.age})${isFree ? ' — free for this civ, still gated by age' : ''}"></span><input type="checkbox" data-tech="${t.id}" ${defaultChecked ? 'checked' : ''} style="display:none">`;
+      return `<span class="tier-dot${isFree ? ' free' : ''}" data-age="${t.age}" data-tech-tip="${t.id}" title="${isFree ? 'Free for this civ, still gated by age' : ''}"></span><input type="checkbox" data-tech="${t.id}" ${defaultChecked ? 'checked' : ''} style="display:none">`;
     }).join('');
     return `<div class="tech-line-row">
       <span class="tname">${lineTechs[0].lineLabel}${lineHasFree ? '<span style="margin-left:5px;font-size:10px;color:var(--text3);font-weight:400;">free</span>' : ''}</span>
