@@ -22,6 +22,7 @@ header h1{font-size:20px;margin:0;}
 header .back{font-size:13px;color:var(--text2);text-decoration:none;}
 header .back:hover{color:var(--amberL);}
 .subtitle{font-size:13px;color:var(--text2);margin:2px 0 0;}
+.updated-note{font-size:11px;color:var(--text3);margin-top:6px;text-align:center;}
 
 .card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
 .card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
@@ -398,6 +399,24 @@ function findImpersonators(id) {
   return IMPOSTER_ACCOUNTS.filter(e => e.impersonating === numId);
 }
 
+// Each ladder's own meta.pulledDate (date-only, e.g. "2026-09-02") records
+// when that ladder was last fetched from data.aoe2companion.com — ladders
+// don't all refresh in the same pipeline pass, so this takes the most
+// recent one across every ladder that actually has match data.
+function latestPulledDate(player) {
+  let latest = null;
+  Object.values(player.ladders || {}).forEach(ld => {
+    const pd = ld.meta && ld.meta.pulledDate;
+    if (pd && (!latest || pd > latest)) latest = pd;
+  });
+  return latest;
+}
+function formatPulledDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  if (isNaN(d)) return dateStr;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+}
+
 function fmtDur(seconds) {
   const m = Math.floor(seconds / 60), s = Math.round(seconds % 60);
   return `${m}:${String(s).padStart(2, '0')}`;
@@ -508,6 +527,11 @@ function render(content, entry, player) {
     ? `<div class="imposter-hint">⚠ ${impersonatorLinks} ${impersonators.length > 1 ? 'are NOT' : 'is NOT'} ${entry.name} — just a near-identical name. Flagged as a possible impersonator, not confirmed to be the same real person.</div>`
     : '';
 
+  const lastUpdated = !entry.live ? latestPulledDate(player) : null;
+  const updatedNoteHtml = lastUpdated
+    ? `<div class="updated-note">Data last updated ${formatPulledDate(lastUpdated)}</div>`
+    : (entry.live ? `<div class="updated-note">Live data — fetched just now</div>` : '');
+
   content.innerHTML = `
     <div class="card">
       <div class="player-hero">
@@ -515,6 +539,7 @@ function render(content, entry, player) {
           <div class="player-name">${entry.countryIcon ? `<span title="${entry.countryName || ''}">${entry.countryIcon}</span> ` : ''}${entry.name}</div>
           <div class="player-badges" id="player-badges"></div>
         </div>
+        ${updatedNoteHtml}
       </div>
       ${entry.live ? `<div class="tracker-hint">Not part of the permanent AoE Auto Scout roster — this page was fetched live from AoE2Companion and won't be saved or refreshed automatically. <a href="${requestTrackingUrl(entry.name, entry.profileId)}" target="_blank" rel="noopener">Request ${entry.name} be tracked permanently</a> (form pre-filled), or ask in the <a href="https://discord.gg/2uRZG6qSyy" target="_blank" rel="noopener">Discord</a> or a <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank" rel="noopener">Fast Castle and Chill</a> video comment.</div>` : ''}
       ${imposterHintHtml}
