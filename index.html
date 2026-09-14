@@ -1090,7 +1090,16 @@ const CRANEQUINS_SENTINEL_ID = 900006;
    situation as Longship/Mounted Crossbowman above (no real ID yet). Two
    tiers tracked like every other two-tier unit line (both added to civData,
    only the TOP tier referenced as the archetype item — same "track the top
-   tier only" convention Heavy Cavalry Archer/Champion/etc. already use). */
+   tier only" convention Heavy Cavalry Archer/Champion/etc. already use).
+   Under the Sept 22 patch, also granted to Byzantines and Vikings — see
+   SEPT22_GAIN_VARANGIAN_GUARD_CIVS below.
+   Real combat stats, confirmed directly by the site owner (2026-09-15):
+   base — 70 HP, 13 attack, 2 melee/1 pierce armor, 2/sec attack speed,
+   1.05 movement speed. Elite — 70 HP, 17 attack, 2/2 armor, same speeds.
+   Shock Infantry class. Cost/trainTime/age still unconfirmed — needed
+   before this can be added as a real build-order.html uniqueUnit (that
+   schema requires cost+trainTime+age+building; only "Barracks" is known
+   so far, from this same comment historically). */
 const VARANGIAN_GUARD_SENTINEL_ID = 900004;
 const HEAVY_VARANGIAN_GUARD_SENTINEL_ID = 900005;
 
