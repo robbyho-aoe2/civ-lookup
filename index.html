@@ -1087,12 +1087,10 @@ const LONGSHIP_SENTINEL_ID = 900001;
    and 39 gold" — solving backward, 39 / 0.6 = 65 gold, exactly matching
    video 1's derived cost. Treat cost wood:40/gold:65 as solid; HP 45 as
    fairly solid (only one derivation path, but internally consistent).
-   trainTime and age are STILL the only unconfirmed fields — neither video
-   states them (only relative reload/attack-SPEED, a different stat from
-   training time). Given this unit explicitly "replaces Cavalry Archer"
-   for these civs (same tech-tree slot), Castle Age is a reasonable
-   inference for `age` if needed, but not yet treated as confirmed.
-   Building=Archery Range is known. The Heavy tier's own upgrade tech
+   Age confirmed directly by the site owner (2026-09-16): base tier
+   trains in Castle Age, Heavy in Imperial — matching the earlier
+   "replaces Cavalry Archer" inference exactly. trainTime is still the
+   only unconfirmed field. Building=Archery Range is known. The Heavy tier's own upgrade tech
    (cost/research time to promote to Heavy Mounted Crossbowman) is a
    separate still-unknown field too, needed before a build-order.html
    uniqueUnit entry (which needs cost+trainTime+age+building at minimum,
@@ -1131,9 +1129,11 @@ const CRANEQUINS_SENTINEL_ID = 900006;
    attacking units (not buildings) per one preview video, independent of
    civ — Danes/Varangians/Byzantines get no attack-speed bonus on this
    unit, so their own faster-attack bonuses (where they have one) don't
-   change that base rate. trainTime and age STILL unconfirmed — needed
-   before this can be added as a real build-order.html uniqueUnit (that
-   schema requires cost+trainTime+age+building; only "Barracks" is known). */
+   change that base rate. Age confirmed directly by the site owner
+   (2026-09-16): base tier trains in Castle Age, Elite in Imperial —
+   same pattern as Mounted Crossbowman above. trainTime is still the only
+   unconfirmed field — needed before this can be added as a real
+   build-order.html uniqueUnit (building=Barracks is known). */
 const VARANGIAN_GUARD_SENTINEL_ID = 900004;
 const HEAVY_VARANGIAN_GUARD_SENTINEL_ID = 900005;
 
