@@ -1131,9 +1131,13 @@ const CRANEQUINS_SENTINEL_ID = 900006;
    unit, so their own faster-attack bonuses (where they have one) don't
    change that base rate. Age confirmed directly by the site owner
    (2026-09-16): base tier trains in Castle Age, Elite in Imperial —
-   same pattern as Mounted Crossbowman above. trainTime is still the only
-   unconfirmed field — needed before this can be added as a real
-   build-order.html uniqueUnit (building=Barracks is known). */
+   same pattern as Mounted Crossbowman above. trainTime confirmed 30s
+   (also benefits from Gambesons). Every field now known for the base
+   tier — added as a real build-order.html uniqueUnit for Byzantines/
+   Vikings under the Sept 22 toggle (building=Barracks); Danes/Saxons/
+   Varangians still can't get it there since those civs aren't built out
+   in that file at all. Elite tier not modeled (matches that file's
+   existing no-Elite-for-uniques convention). */
 const VARANGIAN_GUARD_SENTINEL_ID = 900004;
 const HEAVY_VARANGIAN_GUARD_SENTINEL_ID = 900005;
 
