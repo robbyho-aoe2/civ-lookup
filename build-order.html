@@ -3230,6 +3230,28 @@ const SEPT22_UNIQUE_UNIT_ADDITIONS = {
   byzantines: [{ name: 'Varangian Guard', age: 'Castle', building: 'Barracks', cost: { food: 65, wood: 0, gold: 45, stone: 0 }, trainTime: 30, pop: 1 }],
   vikings: [{ name: 'Varangian Guard', age: 'Castle', building: 'Barracks', cost: { food: 65, wood: 0, gold: 45, stone: 0 }, trainTime: 30, pop: 1 }],
 };
+// Sept22 cost/trainTime tweaks to EXISTING per-civ unique units — all
+// fully specified in the original patch notes, applied as a partial merge
+// (only the changed resource/field) onto the matching uniqueUnit entry by
+// (civId, unit name) in allLinesForCiv. A few other items from the same
+// patch notes are deliberately NOT here: Muisca's Temple Guard attack
+// change, Vietnamese's Rattan Archer HP change, and its own Elite
+// Rattan Upgrade cost change — this file doesn't track combat stats OR
+// elite-tier upgrade costs for ANY unique unit at all (a pre-existing
+// simplification, not something newly skipped for this patch), so
+// there's no field to merge those onto yet.
+const SEPT22_UNIQUE_UNIT_OVERRIDES = {
+  bengalis: { Ratha: { trainTime: 24 } },
+  bohemians: { 'Hussite Wagon': { cost: { gold: 80 } } },
+  jurchens: { Grenadier: { cost: { food: 55, gold: 50 } } },
+  magyars: { 'Magyar Huszar': { trainTime: 18 } },
+  mapuche: { 'Bolas Rider': { cost: { wood: 50, gold: 55 } } },
+  portuguese: { 'Organ Gun': { trainTime: 28 } },
+  spanish: { Conquistador: { cost: { food: 75 }, trainTime: 26 }, Missionary: { cost: { food: 30 } } },
+  tupi: { 'Blackwood Archer': { cost: { wood: 40 } } },
+  shu: { 'War Chariot': { cost: { food: 75 }, trainTime: 32 } },
+  wei: { 'Xianbei Raider': { cost: { gold: 35 } } },
+};
 // Combat stats for the hover tooltip — ids match allLinesForCiv's own
 // `${civ.id}-unique-${i}` scheme (Byzantines' only existing uniqueUnit is
 // Cataphract at index 0, so Varangian Guard lands at index 1; Vikings
@@ -3591,8 +3613,14 @@ function allLinesForCiv(civ) {
     cost: DATA.villager.cost, pop: 1,
     tiers: [{ name: 'Villager', age: 'Dark', trainTime: DATA.villager.trainTime }],
   };
+  const civUnitOverrides = (PATCH_VERSION === 'sept22' && SEPT22_UNIQUE_UNIT_OVERRIDES[civ?.id]) || {};
+  const civUniqueUnits = (civ?.uniqueUnits || []).map(u => {
+    const ov = civUnitOverrides[u.name];
+    if (!ov) return u;
+    return { ...u, ...ov, cost: ov.cost ? { ...u.cost, ...ov.cost } : u.cost };
+  });
   const extraUnique = (PATCH_VERSION === 'sept22' && SEPT22_UNIQUE_UNIT_ADDITIONS[civ?.id]) || [];
-  const unique = ([...(civ?.uniqueUnits || []), ...extraUnique]).map((u, i) => ({
+  const unique = ([...civUniqueUnits, ...extraUnique]).map((u, i) => ({
     id: `${civ.id}-unique-${i}`, name: u.name, building: u.building,
     cost: u.cost, pop: u.pop, unique: true,
     tiers: [{ name: u.name, age: u.age, trainTime: u.trainTime }],
