@@ -593,6 +593,25 @@ const DATA = {
       { name:'Battle Elephant', age:'Castle', trainTime:24 },
       { name:'Elite Battle Elephant', age:'Imperial', trainTime:24, upgradeCost:{food:1100,wood:0,gold:700,stone:0}, upgradeResearchTime:100 },
     ]},
+    // Armored Elephant — a real, separate, already-released unit (NOT a
+    // Sept 22 addition itself, just gaining a LOS buff then), missing from
+    // this file's roster entirely until now. Real ID confirmed via
+    // index.html's own UNIT_IDS (1744/1746) and the real per-civ Unit list
+    // in the cached aoe2techtree data.json, which also gave real cost/
+    // trainTime/combat stats (see [[reference_aoe2techtree_data]]) —
+    // Bengalis, Dravidians, Gurjaras, Hindustanis only, matching the same
+    // 4-civ set as Elephant Archer below. Age not stored in that data
+    // (Unit entries have no Age field) — Castle/Imperial inferred from
+    // every other elephant line's own identical pattern. Elite upgrade
+    // cost/research time isn't in the cached data at all (not found under
+    // any name search) — borrowed from Battle Elephant's own real upgrade
+    // cost as a placeholder pending the real number, flagged here rather
+    // than left blank (an undefined upgradeCost on a tier1+ entry would be
+    // a first-of-its-kind gap in this file's data shape).
+    { id:'armored-elephant-line', name:'Armored Elephant', building:'Stable', cost:{food:120,wood:0,gold:95,stone:0}, pop:1, civRestriction:'Bengalis, Dravidians, Gurjaras, Hindustanis only', tiers:[
+      { name:'Armored Elephant', age:'Castle', trainTime:36 },
+      { name:'Elite Armored Elephant', age:'Imperial', trainTime:36, upgradeCost:{food:1100,wood:0,gold:700,stone:0}, upgradeResearchTime:100 },
+    ]},
     { id:'elephant-archer-line', name:'Elephant Archer', building:'Archery Range', cost:{food:60,wood:0,gold:80,stone:0}, pop:1, civRestriction:'Bengalis, Dravidians, Gurjaras only — not Hindustanis, who lost access to this unit', tiers:[
       { name:'Elephant Archer', age:'Castle', trainTime:32 },
       { name:'Elite Elephant Archer', age:'Imperial', trainTime:32, upgradeCost:{food:900,wood:0,gold:500,stone:0}, upgradeResearchTime:80 },
@@ -676,7 +695,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["parthian-tactics", "plate-barding-armor", "siege-engineers", "thumb-ring"]
     },
     {
@@ -714,7 +734,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["ring-archer-armor", "thumb-ring"]
     },
     {
@@ -794,7 +815,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["block-printing", "gambesons", "parthian-tactics", "sanctity"]
     },
     {
@@ -857,7 +879,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["bloodlines", "gambesons", "plate-barding-armor", "thumb-ring"]
     },
     {
@@ -889,7 +912,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["atonement", "bloodlines", "heresy", "parthian-tactics", "redemption", "thumb-ring"]
     },
     {
@@ -921,7 +945,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["atonement", "block-printing", "faith", "ring-archer-armor", "sanctity"]
     },
     {
@@ -964,7 +989,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["bloodlines", "gambesons", "heresy", "parthian-tactics", "ring-archer-armor", "siege-engineers", "theocracy", "thumb-ring"]
     },
     {
@@ -1008,7 +1034,8 @@ const DATA = {
         "hand-cannoneer",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["heresy", "leather-archer-armor", "ring-archer-armor", "thumb-ring"]
     },
     {
@@ -1037,7 +1064,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["blast-furnace", "bloodlines", "herbal-medicine", "parthian-tactics", "siege-engineers"]
     },
     {
@@ -1074,7 +1102,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["atonement", "block-printing", "bloodlines", "bracer", "illumination", "parthian-tactics", "plate-barding-armor", "redemption", "squires", "theocracy", "thumb-ring"]
     },
     {
@@ -1125,7 +1154,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["gambesons", "heresy", "parthian-tactics", "redemption", "siege-engineers"]
     },
     {
@@ -1158,7 +1188,8 @@ const DATA = {
         "hand-cannoneer",
         "bombard-cannon",
         "battle-elephant-line",
-        "elephant-archer-line"
+        "elephant-archer-line",
+        "armored-elephant-line"
       ],
       "unavailableTechs": ["block-printing", "bracer", "gambesons", "husbandry", "illumination", "redemption", "siege-engineers", "theocracy"]
     },
@@ -1237,7 +1268,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["block-printing", "bloodlines", "gambesons", "parthian-tactics", "plate-barding-armor", "redemption"]
     },
     {
@@ -1281,7 +1313,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["atonement", "bloodlines", "bracer", "parthian-tactics", "redemption", "ring-archer-armor", "thumb-ring"]
     },
     {
@@ -1317,7 +1350,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["atonement", "illumination", "ring-archer-armor", "thumb-ring"]
     },
     {
@@ -1363,7 +1397,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["arson", "atonement", "block-printing", "gambesons", "heresy", "parthian-tactics", "plate-barding-armor", "plate-mail-armor", "redemption", "siege-engineers", "thumb-ring"]
     },
     {
@@ -1516,7 +1551,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["block-printing", "gambesons", "herbal-medicine", "plate-mail-armor", "redemption", "ring-archer-armor", "siege-engineers", "theocracy"]
     },
     {
@@ -1568,7 +1604,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["atonement", "fervor", "gambesons"]
     },
     {
@@ -1611,7 +1648,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["gambesons", "heresy", "parthian-tactics", "siege-engineers"]
     },
     {
@@ -1646,7 +1684,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["heresy", "plate-barding-armor"]
     },
     {
@@ -1692,7 +1731,8 @@ const DATA = {
         "mangonel-line",
         "hand-cannoneer",
         "battle-elephant-line",
-        "elephant-archer-line"
+        "elephant-archer-line",
+        "armored-elephant-line"
       ],
       "unavailableTechs": ["faith", "heresy", "parthian-tactics", "plate-mail-armor", "redemption", "thumb-ring"]
     },
@@ -1759,7 +1799,8 @@ const DATA = {
         "hand-cannoneer",
         "bombard-cannon",
         "battle-elephant-line",
-        "elephant-archer-line"
+        "elephant-archer-line",
+        "armored-elephant-line"
       ],
       "unavailableTechs": ["blast-furnace", "block-printing", "bloodlines", "herbal-medicine", "redemption"]
     },
@@ -1790,7 +1831,8 @@ const DATA = {
         "bombard-cannon",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["atonement", "block-printing", "gambesons", "heresy", "plate-mail-armor", "squires", "thumb-ring"]
     },
     {
@@ -1839,7 +1881,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["atonement", "blast-furnace", "bloodlines", "heresy", "illumination", "parthian-tactics", "plate-barding-armor", "redemption"]
     },
     {
@@ -1882,7 +1925,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["blast-furnace", "gambesons", "parthian-tactics", "plate-mail-armor", "siege-engineers"]
     },
     {
@@ -1917,7 +1961,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["atonement", "faith", "gambesons", "plate-mail-armor", "redemption", "squires"]
     },
     {
@@ -1947,7 +1992,8 @@ const DATA = {
         "hand-cannoneer",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["bloodlines", "chain-barding-armor", "fervor", "gambesons", "parthian-tactics", "plate-barding-armor", "theocracy"]
     },
     {
@@ -1988,7 +2034,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["blast-furnace", "bracer", "gambesons", "illumination", "parthian-tactics", "siege-engineers"]
     },
     {
@@ -2041,7 +2088,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["block-printing", "bracer", "fervor", "gambesons", "illumination", "redemption", "squires", "thumb-ring"]
     },
     {
@@ -2086,7 +2134,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["gambesons", "illumination", "redemption", "siege-engineers"]
     },
     {
@@ -2115,7 +2164,8 @@ const DATA = {
         "hand-cannoneer",
         "bombard-cannon",
         "battle-elephant-line",
-        "elephant-archer-line"
+        "elephant-archer-line",
+        "armored-elephant-line"
       ],
       "unavailableTechs": ["block-printing", "gambesons", "illumination", "plate-barding-armor", "redemption", "ring-archer-armor", "sanctity", "theocracy"]
     },
@@ -2170,7 +2220,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["arson", "blast-furnace", "gambesons", "ring-archer-armor"]
     },
     {
@@ -2222,7 +2273,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["atonement", "bracer", "heresy", "illumination", "redemption", "sanctity", "siege-engineers"]
     },
     {
@@ -2271,7 +2323,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["atonement", "gambesons", "heresy", "illumination", "parthian-tactics", "plate-barding-armor", "ring-archer-armor"]
     },
     {
@@ -2314,7 +2367,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["illumination", "parthian-tactics", "squires"]
     },
     {
@@ -2364,7 +2418,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["arson", "bracer", "gambesons", "heresy", "parthian-tactics", "plate-mail-armor", "sanctity", "theocracy", "thumb-ring"]
     },
     {
@@ -2393,7 +2448,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"]
+        "steppe-lancer-line",
+        "armored-elephant-line"]
     },
     // Deliberately minimal stub (2026-09-10) -- Saxons are a Viking Sagas
     // DLC civ (see index.html's own CIV_BONUSES.Saxons, launching
@@ -2413,7 +2469,7 @@ const DATA = {
       "ecoBonuses": [
         { "type": "camp-resource-bonus", "food": 50, "stone": 10, "note": "Mills, Lumber Camps, and Mining Camps provide +50 food and +10 stone when built" }
       ],
-      "unavailableUnitLines": []
+      "unavailableUnitLines": ["armored-elephant-line"]
     },
     {
       "id": "shu",
@@ -2473,7 +2529,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["blast-furnace", "block-printing", "bloodlines", "herbal-medicine", "iron-casting", "parthian-tactics", "redemption", "sanctity"]
     },
     {
@@ -2509,7 +2566,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["atonement", "block-printing", "heresy", "parthian-tactics", "redemption", "ring-archer-armor", "theocracy", "thumb-ring"]
     },
     {
@@ -2551,7 +2609,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["bracer", "fervor", "heresy", "parthian-tactics", "thumb-ring"]
     },
     {
@@ -2610,7 +2669,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["parthian-tactics", "siege-engineers"]
     },
     {
@@ -2653,7 +2713,8 @@ const DATA = {
         "eagle-line",
         "bombard-cannon",
         "battle-elephant-line",
-        "elephant-archer-line"
+        "elephant-archer-line",
+        "armored-elephant-line"
       ],
       "unavailableTechs": ["chain-mail-armor", "faith", "gambesons", "heresy", "plate-mail-armor", "redemption", "sanctity", "theocracy"]
     },
@@ -2684,7 +2745,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["bracer", "husbandry", "parthian-tactics", "thumb-ring"]
     },
     {
@@ -2742,7 +2804,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["atonement", "blast-furnace", "block-printing", "fervor", "gambesons", "siege-engineers", "thumb-ring"]
     },
     {
@@ -2781,7 +2844,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["block-printing", "gambesons", "herbal-medicine", "illumination", "siege-engineers"]
     },
     {
@@ -2822,7 +2886,8 @@ const DATA = {
         "hand-cannoneer",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["blast-furnace", "fervor", "gambesons", "heresy", "parthian-tactics", "redemption"]
     },
     {
@@ -2876,7 +2941,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["bloodlines", "herbal-medicine", "husbandry", "illumination", "parthian-tactics", "plate-barding-armor", "redemption", "sanctity", "theocracy", "thumb-ring"]
     },
     {
@@ -2937,7 +3003,8 @@ const DATA = {
         "battle-elephant-line",
         "elephant-archer-line"
       ,
-        "steppe-lancer-line"],
+        "steppe-lancer-line",
+        "armored-elephant-line"],
       "unavailableTechs": ["atonement", "gambesons", "herbal-medicine", "heresy", "plate-barding-armor", "plate-mail-armor", "redemption", "siege-engineers"]
     },
     {
@@ -2997,7 +3064,8 @@ const DATA = {
       ,
         "steppe-lancer-line"],
       "unavailableTechs": ["block-printing", "gambesons", "heresy", "parthian-tactics", "ring-archer-armor", "siege-engineers", "thumb-ring"]
-    }
+    },
+        "armored-elephant-line"
   ],
 };
 
@@ -3081,6 +3149,15 @@ const UNIT_STATS = {
     { hp:250, attack:12, meleeArmor:1, pierceArmor:2, range:0, speed:0.9, los:7 },
     { hp:300, attack:14, meleeArmor:1, pierceArmor:3, range:0, speed:0.9, los:8 },
   ],
+  // Real stats from the cached aoe2techtree data.json (ids 1744/1746,
+  // confirmed via index.html's UNIT_IDS) — a mobile-siege-style kit
+  // (heavy pierce armor, negative melee armor, low attack), current/
+  // pre-Sept22 LOS shown here (4/4); the Sept22 LOS buff to 6 lives in
+  // SEPT22_UNIT_STATS_OVERRIDES below, not hardcoded into this base entry.
+  'armored-elephant-line': [
+    { hp:180, attack:4, meleeArmor:-2, pierceArmor:140, range:0, speed:0.6, los:4 },
+    { hp:220, attack:4, meleeArmor:-2, pierceArmor:150, range:0, speed:0.6, los:4 },
+  ],
   'elephant-archer-line': [
     { hp:230, attack:6, meleeArmor:0, pierceArmor:2, range:4, speed:0.9, los:7 },
     { hp:280, attack:7, meleeArmor:0, pierceArmor:2, range:4, speed:0.9, los:7 },
@@ -3138,6 +3215,7 @@ const SEPT22_UNIT_STATS_OVERRIDES = {
   'ram-line': [{ los: 5 }, { los: 5 }, { los: 5 }],
   'siege-tower': [{ los: 6 }],
   'mangonel-line': [null, { attack: 55, pierceArmor: 8 }],
+  'armored-elephant-line': [{ los: 6 }, { los: 6 }],
 };
 // Varangian Guard — a new Barracks unique unit granted to Byzantines and
 // Vikings under the Sept 22 patch (Danes/Saxons/Varangians also get it,
@@ -3484,9 +3562,26 @@ function effectiveBuildingAge(minAge, buildingName, civ) {
 // civ today (a pre-existing simplification, not something this bonus should
 // newly introduce for everyone), so there's nothing for that half of the
 // bonus to discount there.
+// Sept 22 train-time deltas — keyed by lineId then real tier NAME (not
+// index, so it can't silently point at the wrong tier if a line's tiers
+// array ever gets reordered). Read through getTierTrainTime so both the
+// Army Composition table's displayed "Train" cell and the real rate math
+// (effectiveTrainTime, below — the one place every villager-allocation/
+// Optimize-mode calculation actually reads trainTime from) agree.
+const SEPT22_TRAINTIME_OVERRIDES = {
+  'eagle-line': { 'Eagle Scout': 46 }, // 50s -> 46s, confirmed by the site owner; Eagle Warrior/Elite unchanged
+};
+function getTierTrainTime(line, tier) {
+  if (PATCH_VERSION === 'sept22' && line) {
+    const overrides = SEPT22_TRAINTIME_OVERRIDES[line.id];
+    if (overrides && overrides[tier.name] != null) return overrides[tier.name];
+  }
+  return tier.trainTime;
+}
 function effectiveTrainTime(tier, line, civ) {
   const bonus = (civ?.ecoBonuses || []).find(b => b.type === 'unit-speed-pct' && b.lines.includes(line?.id));
-  return bonus ? tier.trainTime / (1 + bonus.value / 100) : tier.trainTime;
+  const baseTrain = getTierTrainTime(line, tier);
+  return bonus ? baseTrain / (1 + bonus.value / 100) : baseTrain;
 }
 function currentAgeIndex() { return 0; } // every build now starts in Dark Age
 
@@ -3549,7 +3644,7 @@ function renderUnitTable() {
         <td class="uname" data-uname="${l.id}">${l.tiers[defaultTier].name}</td>
         <td>${tierCell}</td>
         <td><div class="cost-pills">${RES.filter(r => l.cost[r]).map(r => `<span class="res-pill ${r}">${RES_ICON[r]}${l.cost[r]}</span>`).join('')}</div></td>
-        <td class="num" data-traintime="${l.id}">${l.tiers[defaultTier].trainTime}s</td>
+        <td class="num" data-traintime="${l.id}">${getTierTrainTime(l, l.tiers[defaultTier])}s</td>
         <td class="num"><input type="number" class="qty-input" min="0" value="${lineState[l.id].buildings}" data-line-qty="${l.id}" ${buildingsTitle}></td>
       </tr>`;
     }).join('');
@@ -3571,7 +3666,7 @@ function renderUnitTable() {
         const state = lineState[line.id];
         state.tierIdx = i;
         dots.forEach((d, j) => d.classList.toggle('filled', j <= i));
-        document.querySelector(`[data-traintime="${line.id}"]`).textContent = line.tiers[i].trainTime + 's';
+        document.querySelector(`[data-traintime="${line.id}"]`).textContent = getTierTrainTime(line, line.tiers[i]) + 's';
         document.querySelector(`[data-uname="${line.id}"]`).textContent = line.tiers[i].name;
         renderResults();
       });
