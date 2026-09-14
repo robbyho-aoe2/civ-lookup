@@ -30,6 +30,9 @@ header .back:hover{color:var(--amberL);}
 .page-tabs a{padding:10px 16px;font-size:13px;font-weight:600;color:var(--text2);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;}
 .page-tabs a:hover{color:var(--text);}
 .page-tabs a.on{color:var(--amberL);border-bottom-color:var(--amber);}
+.patch-toggle{display:flex;width:fit-content;background:var(--surf);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin:0 0 22px;}
+.patch-toggle button{padding:7px 14px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;}
+.patch-toggle button.on{background:var(--amberBg);color:var(--amberL);}
 
 .card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
 .card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
@@ -188,6 +191,10 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <a href="civ-insights.html">🧮 Civ Insights</a>
     <a href="build-order.html" class="on">🛠️ Build Order</a>
   </nav>
+  <div class="patch-toggle" id="patch-toggle" title="Preview the Sept 22, 2026 balance patch + The Viking Sagas DLC before it's live — only a few combat stats are covered here so far.">
+    <button type="button" data-patch="current" class="on">Current Patch</button>
+    <button type="button" data-patch="sept22">Sept 22 Patch (Preview)</button>
+  </div>
 
   <div class="card">
     <h2>Choose a Tool</h2>
@@ -3118,9 +3125,44 @@ const UNIT_STATS = {
 // bonus, and so isn't carried as a bonusPct field there.
 const FARM_CAPACITY_TOTAL = { 'horse-collar': 250, 'heavy-plow': 375, 'crop-rotation': 550 };
 
+// Sept 22, 2026 balance patch preview (The Viking Sagas DLC launch) — real
+// patch notes given directly by the site owner, gated behind the same
+// Current/Sept 22 toggle as index.html (shared localStorage key, so the
+// choice carries over between pages). Only combat-STAT tooltip values are
+// covered here (Battering Ram-line/Siege Tower LOS, Onager attack/pierce
+// armor) — train-time changes (e.g. Eagle Scout 50s->46s) aren't included
+// yet since trainTime feeds this tool's own rate math in several places,
+// not just the hover tooltip, and needs its own careful pass. Per-tier
+// partial overrides, merged onto UNIT_STATS[lineId][tierIdx] at lookup time.
+const SEPT22_UNIT_STATS_OVERRIDES = {
+  'ram-line': [{ los: 5 }, { los: 5 }, { los: 5 }],
+  'siege-tower': [{ los: 6 }],
+  'mangonel-line': [null, { attack: 55, pierceArmor: 8 }],
+};
+let PATCH_VERSION = localStorage.getItem('aoe2-patch') === 'sept22' ? 'sept22' : 'current';
+
+function getUnitStats(lineId, tierIdx) {
+  const base = UNIT_STATS[lineId] && UNIT_STATS[lineId][tierIdx];
+  if (!base) return null;
+  const override = PATCH_VERSION === 'sept22' && SEPT22_UNIT_STATS_OVERRIDES[lineId] && SEPT22_UNIT_STATS_OVERRIDES[lineId][tierIdx];
+  return override ? { ...base, ...override } : base;
+}
+
+document.querySelectorAll('#patch-toggle button').forEach(btn => {
+  btn.classList.toggle('on', btn.dataset.patch === PATCH_VERSION);
+  btn.addEventListener('click', () => {
+    const version = btn.dataset.patch;
+    if (version === PATCH_VERSION) return;
+    PATCH_VERSION = version;
+    localStorage.setItem('aoe2-patch', version);
+    document.querySelectorAll('#patch-toggle button').forEach(b => b.classList.toggle('on', b.dataset.patch === version));
+    // Overrides only affect the hover tooltip (computed fresh per hover),
+    // not any pre-rendered DOM — no full re-render needed on toggle.
+  });
+});
+
 function unitStatsTooltipHtml(lineId, tierIdx) {
-  const tiers = UNIT_STATS[lineId];
-  const s = tiers && tiers[tierIdx];
+  const s = getUnitStats(lineId, tierIdx);
   if (!s) return null;
   const rows = [['HP', s.hp], ['Attack', s.attack], ['Melee Armor', s.meleeArmor], ['Pierce Armor', s.pierceArmor]];
   if (s.range) rows.push(['Range', s.range]);

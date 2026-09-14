@@ -73,6 +73,9 @@ header{
 .itype.tech{background:var(--purpleBg);color:var(--purple);}
 .mode-toggle{display:flex;background:var(--surf);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;flex-shrink:0;}
 .mode-btn{height:44px;padding:0 16px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:13px;font-weight:700;}
+.patch-toggle{display:flex;width:fit-content;background:var(--surf);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin:0 0 22px;}
+.patch-toggle button{padding:7px 14px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;}
+.patch-toggle button.on{background:var(--amberBg);color:var(--amberL);}
 .mode-btn.active{background:var(--amber);color:#1a0a00;}
 /* Archetypes */
 .arch-group-label{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
@@ -224,6 +227,10 @@ header{
     <a href="civ-insights.html">🧮 Civ Insights</a>
     <a href="build-order.html">🛠️ Build Order</a>
   </nav>
+  <div class="patch-toggle" id="patch-toggle" title="Preview the Sept 22, 2026 balance patch + The Viking Sagas DLC before it's live — SiegeEngineers/aoe2techtree won't have real data for it until release.">
+    <button type="button" data-patch="current" class="on">Current Patch</button>
+    <button type="button" data-patch="sept22">Sept 22 Patch (Preview)</button>
+  </div>
   <div id="error-msg"></div>
   <div id="player-load-progress"></div>
   <div class="search-row">
@@ -1126,6 +1133,129 @@ const SIPHONS_EXCLUDE_CIVS = ['Aztecs','Bulgarians','Burmese','Celts','Cumans','
    civs except these." Modeled as an INCLUDE list, not an exclude list. */
 const INCENDIARIES_SENTINEL_ID = 900009;
 const INCENDIARIES_INCLUDE_CIVS = ['Armenians','Bohemians','Burgundians','Dravidians','Goths','Italians','Jurchens','Khitans','Koreans','Persians','Saracens','Turks'];
+
+/* ================================================================
+   SEPT 22, 2026 PATCH PREVIEW — The Viking Sagas DLC launch balance
+   patch, given directly by the site owner well ahead of release (real
+   patch notes, not a guess) since SiegeEngineers/aoe2techtree won't have
+   this data until the patch is actually live. Gated entirely behind the
+   Current/Sept 22 toggle (PATCH_VERSION, below) so the CURRENT site
+   stays accurate right up until the real patch date — none of this
+   applies unless the user explicitly switches the toggle.
+   ================================================================ */
+
+// Two more Viking-Sagas-era sentinels, same "no real ID yet" situation as
+// the ones above (LONGSHIP_SENTINEL_ID etc.) — Heavy Mounted Crossbowman
+// is a real second tier (several civs explicitly gain "(Heavy) Mounted
+// Crossbowmen", others only the base tier — see SEPT22_MOUNTED_CROSSBOWMAN_CIVS
+// below). Ordonnance Companies is a brand-new Franks-exclusive Castle tech
+// (Mounted Crossbowmen -40% gold cost), confirmed by the site owner.
+const HEAVY_MOUNTED_CROSSBOWMAN_SENTINEL_ID = 900010;
+const ORDONNANCE_COMPANIES_SENTINEL_ID = 900011;
+
+// Cranequins (Mounted Crossbowman's own Imperial upgrade tech): confirmed
+// by the site owner — Imperial Age, cost 300 Food/200 Gold, effect "+1
+// range, +2 attack vs. Infantry" on Mounted Crossbowman. Not yet surfaced
+// as tooltip text anywhere (the DLC sentinels intentionally carry no real
+// stats block, same as Longship/Varangian Guard above), but recorded here
+// for whichever page eventually needs it.
+
+// Which civs gain Mounted Crossbowman access under the Sept 22 patch, and
+// whether they get the Heavy tier + Cranequins too — fills in the
+// MOUNTED_CROSSBOWMAN_EXTRA_CIVS TODO above, now that the site owner has
+// confirmed the real list. Danes/Saxons/Varangians already have this from
+// applyManualNewCivData() regardless of patch toggle.
+const SEPT22_MOUNTED_CROSSBOWMAN_CIVS = {
+  Bohemians: { heavy: false, cranequins: false },
+  Britons: { heavy: true, cranequins: true },
+  Burgundians: { heavy: false, cranequins: false },
+  Celts: { heavy: true, cranequins: false },
+  Franks: { heavy: true, cranequins: true },
+  Italians: { heavy: false, cranequins: false },
+  Poles: { heavy: true, cranequins: false },
+  Portuguese: { heavy: false, cranequins: false },
+  Sicilians: { heavy: true, cranequins: true },
+  Spanish: { heavy: true, cranequins: false },
+  Teutons: { heavy: true, cranequins: false },
+  Vikings: { heavy: false, cranequins: false },
+};
+// All of the above also lose Cavalry Archer access (base + Heavy tier,
+// whichever they had) in the same patch — losing the old regional
+// crossbow-cavalry unit as Mounted Crossbowman replaces it. Confirmed
+// per-civ list from the site owner; Chinese is a special case (loses only
+// the Heavy Cavalry Archer UPGRADE, keeps base Cavalry Archer) handled
+// separately below, not folded into this list.
+const SEPT22_LOSE_CAVALRY_ARCHER_CIVS = [
+  'Britons', 'Burgundians', 'Celts', 'Franks', 'Italians', 'Poles',
+  'Portuguese', 'Sicilians', 'Spanish', 'Teutons', 'Vikings',
+];
+
+// Byzantines and Vikings both gain (Elite) Varangian Guards — the same
+// shared regional unit Danes/Saxons/Varangians already have.
+const SEPT22_GAIN_VARANGIAN_GUARD_CIVS = ['Byzantines', 'Vikings'];
+
+// Treadmill Crane gain/loss deltas — applied ON TOP of the current
+// TREADMILL_CRANE_EXCLUDE_CIVS list (§ applyBroadTechGaps above).
+const SEPT22_TREADMILL_CRANE_GAIN_CIVS = ['Armenians', 'Franks', 'Goths', 'Shu']; // currently excluded, gains it
+const SEPT22_TREADMILL_CRANE_LOSE_CIVS = ['Bengalis', 'Bohemians', 'Celts', 'Saracens']; // currently has it, loses it
+
+// Single-tech/unit gain/loss deltas that don't fit the broader lists
+// above — each a real, already-tracked item (see UNIT_IDS/TECH_IDS), just
+// added to or removed from one civ's access set.
+const SEPT22_SINGLE_DELTAS = [
+  { civ: 'Portuguese', type: 'tech', name: 'Redemption', op: 'lose' },
+  { civ: 'Koreans', type: 'tech', name: 'Gambesons', op: 'lose' },
+  { civ: 'Vikings', type: 'tech', name: 'Gambesons', op: 'lose' },
+  { civ: 'Vietnamese', type: 'tech', name: 'Masonry', op: 'gain' },
+  // Chinese: loses only the Heavy Cavalry Archer UPGRADE — keeps base
+  // Cavalry Archer, unlike the full-line losses in
+  // SEPT22_LOSE_CAVALRY_ARCHER_CIVS above.
+  { civ: 'Chinese', type: 'unit', name: 'Heavy Cavalry Archer', op: 'lose' },
+];
+
+let PATCH_VERSION = localStorage.getItem('aoe2-patch') === 'sept22' ? 'sept22' : 'current';
+
+function applySept22PatchDeltas() {
+  Object.entries(SEPT22_MOUNTED_CROSSBOWMAN_CIVS).forEach(([civ, { heavy, cranequins }]) => {
+    if (!civData[civ]) return;
+    civData[civ].units.add(MOUNTED_CROSSBOWMAN_SENTINEL_ID);
+    if (heavy) civData[civ].units.add(HEAVY_MOUNTED_CROSSBOWMAN_SENTINEL_ID);
+    if (cranequins) civData[civ].techs.add(CRANEQUINS_SENTINEL_ID);
+  });
+  SEPT22_LOSE_CAVALRY_ARCHER_CIVS.forEach(civ => {
+    if (!civData[civ]) return;
+    civData[civ].units.delete(UNIT_IDS['Cavalry Archer']);
+    civData[civ].units.delete(UNIT_IDS['Heavy Cavalry Archer']);
+  });
+  SEPT22_GAIN_VARANGIAN_GUARD_CIVS.forEach(civ => {
+    if (!civData[civ]) return;
+    civData[civ].units.add(VARANGIAN_GUARD_SENTINEL_ID);
+    civData[civ].units.add(HEAVY_VARANGIAN_GUARD_SENTINEL_ID);
+  });
+  SEPT22_TREADMILL_CRANE_GAIN_CIVS.forEach(civ => { if (civData[civ]) civData[civ].techs.add(TREADMILL_CRANE_SENTINEL_ID); });
+  SEPT22_TREADMILL_CRANE_LOSE_CIVS.forEach(civ => { if (civData[civ]) civData[civ].techs.delete(TREADMILL_CRANE_SENTINEL_ID); });
+  if (civData['Franks']) civData['Franks'].techs.add(ORDONNANCE_COMPANIES_SENTINEL_ID);
+  SEPT22_SINGLE_DELTAS.forEach(({ civ, type, name, op }) => {
+    if (!civData[civ]) return;
+    const id = type === 'unit' ? UNIT_IDS[name] : TECH_IDS[name];
+    if (id == null) return;
+    civData[civ][type === 'unit' ? 'units' : 'techs'][op === 'gain' ? 'add' : 'delete'](id);
+  });
+}
+
+// Re-runs the full civData build pipeline from the cached raw fetch —
+// cheap (all in-memory), needed both at initial load and whenever the
+// patch toggle changes, since applySept22PatchDeltas mutates civData in
+// place and isn't safe to apply twice without a fresh parseRaw() first.
+let RAW_DATA = null;
+function rebuildCivData() {
+  if (!RAW_DATA) return;
+  parseRaw(RAW_DATA);
+  applyManualNewCivData();
+  applyBroadTechGaps();
+  if (PATCH_VERSION === 'sept22') applySept22PatchDeltas();
+  invalidateGradeCaches();
+}
 function applyBroadTechGaps() {
   Object.keys(civData).forEach(civ => {
     if (civ === 'Danes' || civ === 'Saxons' || civ === 'Varangians') return;
@@ -2015,12 +2145,9 @@ async function loadData() {
   try {
     const res = await fetch(DATA_URL);
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const raw = await res.json();
-    parseRaw(raw);
-    applyManualNewCivData();
-    applyBroadTechGaps();
+    RAW_DATA = await res.json();
+    rebuildCivData();
     dataLoaded = true;
-    invalidateGradeCaches();
     render();
     renderSuggestions();
     const el = document.getElementById('error-msg');
@@ -5810,6 +5937,18 @@ function renderSuggestions() {
    EVENTS
    ================================================================ */
 function initEvents() {
+  document.querySelectorAll('#patch-toggle button').forEach(btn => {
+    btn.classList.toggle('on', btn.dataset.patch === PATCH_VERSION);
+    btn.addEventListener('click', () => {
+      const version = btn.dataset.patch;
+      if (version === PATCH_VERSION) return;
+      PATCH_VERSION = version;
+      localStorage.setItem('aoe2-patch', version);
+      document.querySelectorAll('#patch-toggle button').forEach(b => b.classList.toggle('on', b.dataset.patch === version));
+      if (dataLoaded) { rebuildCivData(); render(); }
+    });
+  });
+
   isMobile = !window.matchMedia('(hover:hover) and (pointer:fine)').matches;
   let rankBadgeResizeTimer = null;
   window.addEventListener('resize', () => {
