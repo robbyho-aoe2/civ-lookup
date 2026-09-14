@@ -876,7 +876,21 @@ function renderAgeTable(key) {
   });
 }
 
-document.getElementById('engine-frame').addEventListener('load', () => { computeAgeTable('feudal'); computeAgeTable('castle'); });
+// The setTimeout here is load-bearing, not cosmetic — found via a real
+// bug report ("the page freezes on load") and confirmed with a bisection
+// test (a minimal harness iframe-ing the same build-order.html loaded
+// fine; this page pointed at a trivial dummy page loaded fine; only THIS
+// page + THIS iframe's own 'load' handler calling straight into it via
+// contentWindow.eval reproduced it). Calling into the iframe's script
+// context SYNCHRONOUSLY, in the same tick as its own 'load' event fires,
+// stalled the whole page for ~43 SECONDS every time (measured via
+// performance.getEntriesByType('navigation')[0].loadEventEnd) despite
+// every function involved (computeAgeTable itself: ~3ms) being fast in
+// isolation — deferring the cross-frame call by one macrotask avoids
+// whatever the browser is doing internally at that exact moment and
+// drops load time back to normal (worth re-testing if this file or its
+// own iframe-load-driven logic changes significantly again).
+document.getElementById('engine-frame').addEventListener('load', () => { setTimeout(() => { computeAgeTable('feudal'); computeAgeTable('castle'); }, 50); });
 </script>
 </body>
 </html>
