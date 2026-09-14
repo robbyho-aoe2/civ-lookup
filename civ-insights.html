@@ -145,7 +145,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <div class="card">
       <h2>Saxons: Lumber Camps vs. Farms</h2>
       <p class="desc">
-        Saxons' Mills, Lumber Camps, and Mining Camps grant +50 food and +10 stone
+        Saxons' Mills, Lumber Camps, and Mining Camps grant +35 food and +10 stone
         the instant they're built. Starting from Reached Feudal Age, this compares
         two full-commitment strategies from that point on: keep building fresh
         Lumber Camps purely for the bonus (nobody ever farms), vs. abandon that and
@@ -277,7 +277,7 @@ const FARM_BUILD_TIME = 15; // real AoE2:DE value
 const CAMP_BUILD_TIME = 35; // DATA.productionBuildings-equivalent (Mill/Lumber Camp/Mining Camp)
 const HOUSE_COST = 25, HOUSE_POP_SPACE = 5, HOUSE_BUILD_TIME = 25;
 const VILLAGER_TRAIN_TIME = 25, VILLAGER_FOOD_COST = 50; // Saxons carry no training-speed/cost bonus
-const CAMP_BONUS = { food: 50, stone: 10 }; // Saxons' camp-resource-bonus
+const CAMP_BONUS = { food: 35, stone: 10 }; // Saxons' camp-resource-bonus — corrected from the DLC's initial +50 food announcement to the confirmed Sept 22 launch value (early-access preview: "much more reasonable than the initial 50 food they announced")
 
 // The real, already-verified "Reached Feudal Age" state for Saxons under
 // build-order.html's own Fast Feudal preset (realistic economy, deer/push +
@@ -434,7 +434,7 @@ function recompute() {
   // farms lead the combined total by DELTA_CAP for good. Within that
   // window, the tie is the LAST tick camps are still ahead, not the first
   // sign flip — a camp START instantly spends 100 wood before its own
-  // bonus lands, and completions land in discrete +50/+10 bursts, so the
+  // bonus lands, and completions land in discrete +35/+10 bursts, so the
   // raw delta zigzags hard (real bug: with strong Wood Chopping + Hand
   // Cart, a single-tick dip from a camp just starting construction got
   // picked up as "the tie" at essentially t=0, when camps were actually
@@ -573,7 +573,7 @@ function renderAll() {
   document.getElementById('summary').innerHTML = `
   Camps and farms are almost exactly tied around <b>${A[tieIdx].campsBuilt} camps</b>
   (<b>${fmtClock(A[tieIdx].t)}</b>, about ${Math.round((A[tieIdx].t - START.t) / 60)} minutes into Feudal Age).
-  Before that point, camps are ahead — the instant +50 food beats waiting on a farm to spin up.
+  Before that point, camps are ahead — the instant +${CAMP_BONUS.food} food beats waiting on a farm to spin up.
   After it, farms pull steadily further ahead: by ${fmtClock(displayEnd)} the gap is
   <b>${Math.abs(Math.round(finalDelta))} resources</b> in ${finalDelta < 0 ? 'farms’' : 'camps’'} favor.
 `;
