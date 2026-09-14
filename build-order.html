@@ -3139,9 +3139,32 @@ const SEPT22_UNIT_STATS_OVERRIDES = {
   'siege-tower': [{ los: 6 }],
   'mangonel-line': [null, { attack: 55, pierceArmor: 8 }],
 };
+// Varangian Guard — a new Barracks unique unit granted to Byzantines and
+// Vikings under the Sept 22 patch (Danes/Saxons/Varangians also get it,
+// but those civs aren't built out in this file at all yet — see
+// project_sept22_patch_toggle memory). Combat stats and cost/trainTime/age
+// all confirmed directly by the site owner. Single tier only (Castle Age),
+// matching this file's existing convention of not modeling Elite/upgrade
+// tiers for unique units at all (e.g. Cataphract has no Elite entry
+// either) — the real unit does have an Imperial-age upgrade, just not
+// tracked here yet.
+const SEPT22_UNIQUE_UNIT_ADDITIONS = {
+  byzantines: [{ name: 'Varangian Guard', age: 'Castle', building: 'Barracks', cost: { food: 65, wood: 0, gold: 45, stone: 0 }, trainTime: 30, pop: 1 }],
+  vikings: [{ name: 'Varangian Guard', age: 'Castle', building: 'Barracks', cost: { food: 65, wood: 0, gold: 45, stone: 0 }, trainTime: 30, pop: 1 }],
+};
+// Combat stats for the hover tooltip — ids match allLinesForCiv's own
+// `${civ.id}-unique-${i}` scheme (Byzantines' only existing uniqueUnit is
+// Cataphract at index 0, so Varangian Guard lands at index 1; Vikings
+// already have 2 — Berserk, Longboat — so it lands at index 2). No `los`
+// given yet — unitStatsTooltipHtml skips that row when absent.
+const SEPT22_UNIQUE_UNIT_STATS = {
+  'byzantines-unique-1': [{ hp: 70, attack: 13, meleeArmor: 2, pierceArmor: 1, range: 0, speed: 1.05 }],
+  'vikings-unique-2': [{ hp: 70, attack: 13, meleeArmor: 2, pierceArmor: 1, range: 0, speed: 1.05 }],
+};
 let PATCH_VERSION = localStorage.getItem('aoe2-patch') === 'sept22' ? 'sept22' : 'current';
 
 function getUnitStats(lineId, tierIdx) {
+  if (PATCH_VERSION === 'sept22' && SEPT22_UNIQUE_UNIT_STATS[lineId]) return SEPT22_UNIQUE_UNIT_STATS[lineId][tierIdx] || null;
   const base = UNIT_STATS[lineId] && UNIT_STATS[lineId][tierIdx];
   if (!base) return null;
   const override = PATCH_VERSION === 'sept22' && SEPT22_UNIT_STATS_OVERRIDES[lineId] && SEPT22_UNIT_STATS_OVERRIDES[lineId][tierIdx];
@@ -3156,8 +3179,13 @@ document.querySelectorAll('#patch-toggle button').forEach(btn => {
     PATCH_VERSION = version;
     localStorage.setItem('aoe2-patch', version);
     document.querySelectorAll('#patch-toggle button').forEach(b => b.classList.toggle('on', b.dataset.patch === version));
-    // Overrides only affect the hover tooltip (computed fresh per hover),
-    // not any pre-rendered DOM — no full re-render needed on toggle.
+    // Sept22 can add/remove whole roster rows now (SEPT22_UNIQUE_UNIT_ADDITIONS),
+    // not just tooltip values — needs the same full re-render as a civ change.
+    renderTechGrid();
+    renderUnitTable();
+    renderOptimizeStages();
+    renderCivBonusList();
+    renderCurrentModeResults();
   });
 });
 
@@ -3166,7 +3194,8 @@ function unitStatsTooltipHtml(lineId, tierIdx) {
   if (!s) return null;
   const rows = [['HP', s.hp], ['Attack', s.attack], ['Melee Armor', s.meleeArmor], ['Pierce Armor', s.pierceArmor]];
   if (s.range) rows.push(['Range', s.range]);
-  rows.push(['Speed', s.speed], ['Line of Sight', s.los]);
+  rows.push(['Speed', s.speed]);
+  if (s.los != null) rows.push(['Line of Sight', s.los]);
   return `<div class="hover-tip-rows">${rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>`;
 }
 
@@ -3467,7 +3496,8 @@ function allLinesForCiv(civ) {
     cost: DATA.villager.cost, pop: 1,
     tiers: [{ name: 'Villager', age: 'Dark', trainTime: DATA.villager.trainTime }],
   };
-  const unique = (civ?.uniqueUnits || []).map((u, i) => ({
+  const extraUnique = (PATCH_VERSION === 'sept22' && SEPT22_UNIQUE_UNIT_ADDITIONS[civ?.id]) || [];
+  const unique = ([...(civ?.uniqueUnits || []), ...extraUnique]).map((u, i) => ({
     id: `${civ.id}-unique-${i}`, name: u.name, building: u.building,
     cost: u.cost, pop: u.pop, unique: true,
     tiers: [{ name: u.name, age: u.age, trainTime: u.trainTime }],
