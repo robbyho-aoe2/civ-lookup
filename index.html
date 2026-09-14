@@ -1063,11 +1063,16 @@ const LONGSHIP_SENTINEL_ID = 900001;
    situation as Longship above (no real ID yet) — but per the user, this
    one is ALSO being added to a number of EXISTING civs on release day,
    not just the three new ones, unlike Longship/Varangian Guard which stay
-   Viking-Sagas-exclusive. Which existing civs isn't confirmed yet — only
-   wired up for Danes/Saxons below for now; extend
-   MOUNTED_CROSSBOWMAN_EXTRA_CIVS (and re-run the civData wiring for those,
-   once real — they won't come from applyManualNewCivData, which only
-   touches Danes/Saxons) once the list is known. */
+   Viking-Sagas-exclusive. Real per-civ list now confirmed and wired up
+   under the Sept 22 patch toggle — see SEPT22_MOUNTED_CROSSBOWMAN_CIVS.
+   Real combat stats, confirmed directly by the site owner (2026-09-15):
+   base — 7 attack, 2 melee/0 pierce armor, 4 range, 2.5s attack speed
+   (reload), 1.25 movement speed. Heavy — 8 attack, same 2/0 armor, same
+   range/speeds. Cranequins (Imperial upgrade tech, confirmed earlier):
+   cost 300F/200G, effect "+1 range, +2 attack vs. Infantry". HP, cost,
+   trainTime, and age are still unconfirmed — needed before this can be
+   added as a real build-order.html uniqueUnit (that schema requires
+   cost+trainTime+age+building; building=Archery Range is known). */
 const MOUNTED_CROSSBOWMAN_SENTINEL_ID = 900002;
 const MOUNTED_CROSSBOWMAN_EXTRA_CIVS = []; // TODO: fill in once known
 
