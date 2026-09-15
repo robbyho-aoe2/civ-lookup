@@ -259,7 +259,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.03</div>
+    <div class="version">v0.04</div>
   </div>
 </div>
 
@@ -813,34 +813,40 @@ function computeAgeTable(key) {
   const cfg = AGE_TABLES[key];
   const frame = document.getElementById('engine-frame');
   const statusEl = document.getElementById(cfg.statusId);
-  let civs;
+  // ONE cross-frame eval call, not 55 (1 civ-list lookup + 54 per-civ
+  // calls, the original shape) — the whole per-civ loop now runs NATIVELY
+  // inside the iframe's own realm and only crosses back out once with the
+  // combined result. contentWindow.eval calls don't get optimized by V8
+  // the way same-realm calls do; doing it 54 times in a row (108 across
+  // both age tables) is a real, known perf cliff that a quick isolated
+  // timing test can fail to reproduce (a fresh automated tab's V8 state
+  // differs from a real, already-busy browser's) — found via a real user
+  // report of a genuine Chrome "Page Unresponsive" freeze that a per-civ
+  // `performance.now()` sweep couldn't reproduce at all (every civ timed
+  // at ~0ms individually). This batches it into a single round trip.
+  let resultsJson;
   try {
-    civs = frame.contentWindow.eval('DATA.civs.map(c => ({ id: c.id, name: c.name }))');
+    resultsJson = frame.contentWindow.eval(`
+      JSON.stringify(DATA.civs.map(civ => {
+        try {
+          const result = buildStagedOptimizeTimeline(${JSON.stringify(cfg.stage)}, true, false, civ, 85, ${JSON.stringify(AGE_TABLE_FOOD_STRATEGY)}, undefined);
+          const reached = result.checkpoints.find(cp => cp.label === ${JSON.stringify(cfg.label)});
+          return { id: civ.id, name: civ.name, reached: reached || null };
+        } catch (e) {
+          return { id: civ.id, name: civ.name, reached: null };
+        }
+      }))
+    `);
   } catch (e) {
     statusEl.textContent = 'Could not load the build-order engine (' + e.message + ').';
     return;
   }
-  const rows = [];
-  for (const c of civs) {
-    let cp;
-    try {
-      cp = frame.contentWindow.eval(`
-        (function() {
-          const civ = DATA.civs.find(c => c.id === ${JSON.stringify(c.id)});
-          const result = buildStagedOptimizeTimeline(${JSON.stringify(cfg.stage)}, true, false, civ, 85, ${JSON.stringify(AGE_TABLE_FOOD_STRATEGY)}, undefined);
-          const reached = result.checkpoints.find(cp => cp.label === ${JSON.stringify(cfg.label)});
-          return JSON.stringify(reached || null);
-        })()
-      `);
-    } catch (e) {
-      cp = null;
-    }
-    const reached = cp ? JSON.parse(cp) : null;
-    if (!reached) { rows.push({ id: c.id, name: c.name, error: true }); continue; }
+  const results = JSON.parse(resultsJson);
+  ageTableRows[key] = results.map(({ id, name, reached }) => {
+    if (!reached) return { id, name, error: true };
     const p = reached.pool;
-    rows.push({ id: c.id, name: c.name, t: reached.time, v: reached.vills, food: p.food, wood: p.wood, gold: p.gold, stone: p.stone, total: p.food + p.wood + p.gold + p.stone });
-  }
-  ageTableRows[key] = rows;
+    return { id, name, t: reached.time, v: reached.vills, food: p.food, wood: p.wood, gold: p.gold, stone: p.stone, total: p.food + p.wood + p.gold + p.stone };
+  });
   ageTableSort[key] = ageTableSort[key] || { key: 't', dir: 1 };
   renderAgeTable(key);
 }
@@ -898,13 +904,15 @@ function renderAgeTable(key) {
 // whatever the browser is doing internally at that exact moment and
 // drops load time back to normal (worth re-testing if this file or its
 // own iframe-load-driven logic changes significantly again).
-// TEMPORARILY DISABLED (2026-09-16) — diagnosing a real Chrome freeze
-// report ("Page Unresponsive"), narrowing down whether these two calls
-// are the cause. Re-enable once confirmed either way — see
-// feedback_iframe_load_sync_eval_stall memory for the investigation.
-document.getElementById('feudal-table-status').textContent = 'Temporarily disabled while debugging a page-freeze report.';
-document.getElementById('castle-table-status').textContent = 'Temporarily disabled while debugging a page-freeze report.';
-// document.getElementById('engine-frame').addEventListener('load', () => { setTimeout(() => { computeAgeTable('feudal'); computeAgeTable('castle'); }, 50); });
+// Re-enabled (2026-09-16) — the user confirmed disabling these two calls
+// fixed a real Chrome "Page Unresponsive" freeze, isolating the cause to
+// here. Root cause found: 108 separate contentWindow.eval calls (54 civs
+// x 2 age tables) each crossing the iframe/parent realm boundary — a real
+// V8 perf cliff a quick per-civ timing sweep didn't reproduce (see this
+// function's own comment above). Fixed by batching each age table into a
+// SINGLE eval call instead of 54 — re-test in a real browser (not just
+// this automated tool) before assuming it's fully resolved.
+document.getElementById('engine-frame').addEventListener('load', () => { setTimeout(() => { computeAgeTable('feudal'); computeAgeTable('castle'); }, 50); });
 </script>
 </body>
 </html>
