@@ -265,7 +265,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.10</div>
+    <div class="version">v1.11</div>
   </div>
 </div>
 
@@ -3126,6 +3126,12 @@ const UNIT_STATS = {
     { hp:50, attack:6, meleeArmor:0, pierceArmor:0, range:4, speed:1.4, los:5 },
     { hp:60, attack:7, meleeArmor:1, pierceArmor:0, range:4, speed:1.4, los:6 },
   ],
+  // Sept22 regional unit — see MOUNTED_CROSSBOWMAN_LINE_TEMPLATE for the
+  // full sourcing notes. No `los` confirmed yet (tooltip skips that row).
+  'mounted-crossbowman-line': [
+    { hp:45, attack:7, meleeArmor:2, pierceArmor:0, range:4, speed:1.25 },
+    { hp:45, attack:8, meleeArmor:2, pierceArmor:0, range:4, speed:1.25 },
+  ],
   'scout-cavalry-line': [
     { hp:45, attack:3, meleeArmor:0, pierceArmor:2, range:0, speed:1.2, los:4 },
     { hp:60, attack:7, meleeArmor:0, pierceArmor:2, range:0, speed:1.5, los:4 },
@@ -3260,6 +3266,45 @@ const SEPT22_UNIQUE_UNIT_OVERRIDES = {
 const SEPT22_UNIQUE_UNIT_STATS = {
   'byzantines-unique-1': [{ hp: 70, attack: 13, meleeArmor: 2, pierceArmor: 1, range: 0, speed: 1.05 }],
   'vikings-unique-2': [{ hp: 70, attack: 13, meleeArmor: 2, pierceArmor: 1, range: 0, speed: 1.05 }],
+};
+// Mounted Crossbowman — a brand-new Sept 22 regional unit (Archery Range),
+// shared across 11 existing civs (replacing Cavalry Archer for them), NOT
+// a per-civ unique unit — so unlike Varangian Guard above, this needs a
+// real DATA.unitLines-shaped entry injected into the roster, not just an
+// addition to one civ's uniqueUnits array. All fields confirmed directly
+// by the site owner: cost/HP back-derived from two independent early-
+// access video claims cross-checked against each other (see
+// project_sept22_patch_toggle memory); trainTime, age, and the Heavy
+// upgrade's own cost (1000 Food/650 Gold) given directly. Heavy tier's
+// own trainTime/HP aren't separately confirmed — assumed same as base
+// (37s / 45 HP) since nothing suggests otherwise; upgradeResearchTime is
+// a placeholder (50s, borrowed from Cavalry Archer's own Heavy upgrade)
+// pending a real number.
+const MOUNTED_CROSSBOWMAN_LINE_TEMPLATE = {
+  id: 'mounted-crossbowman-line', name: 'Mounted Crossbowman', building: 'Archery Range',
+  cost: { food: 0, wood: 40, gold: 65, stone: 0 }, pop: 1,
+  tiers: [
+    { name: 'Mounted Crossbowman', age: 'Castle', trainTime: 37 },
+    { name: 'Heavy Mounted Crossbowman', age: 'Imperial', trainTime: 37, upgradeCost: { food: 1000, wood: 0, gold: 650, stone: 0 }, upgradeResearchTime: 50 },
+  ],
+};
+// Which civs get it, and whether they also get the Heavy tier — same
+// confirmed list as index.html's SEPT22_MOUNTED_CROSSBOWMAN_CIVS (civ ids
+// lowercased to match this file's own DATA.civs[].id convention; kept as
+// a separate duplicate since these two pages don't share JS).
+const SEPT22_MOUNTED_CROSSBOWMAN_LINE_CIVS = {
+  bohemians: { heavy: false },
+  britons: { heavy: true },
+  burgundians: { heavy: false },
+  celts: { heavy: true },
+  franks: { heavy: true },
+  italians: { heavy: false },
+  poles: { heavy: true },
+  portuguese: { heavy: false },
+  sicilians: { heavy: true },
+  spanish: { heavy: true },
+  teutons: { heavy: true },
+  vikings: { heavy: false },
 };
 let PATCH_VERSION = localStorage.getItem('aoe2-patch') === 'sept22' ? 'sept22' : 'current';
 
@@ -3629,8 +3674,17 @@ function allLinesForCiv(civ) {
   // build (e.g. Eagle Warriors are Meso-only) instead of showing the full
   // generic roster regardless of civ.
   const unavailable = new Set(civ?.unavailableUnitLines || []);
+  // Sept22: Mounted Crossbowman REPLACES Cavalry Archer for these 11 civs
+  // (see SEPT22_MOUNTED_CROSSBOWMAN_LINE_CIVS) — both the addition and the
+  // Cavalry Archer removal are gated on the same lookup so they can never
+  // disagree with each other.
+  const mcbCfg = PATCH_VERSION === 'sept22' ? SEPT22_MOUNTED_CROSSBOWMAN_LINE_CIVS[civ?.id] : null;
+  if (mcbCfg) unavailable.add('cavalry-archer-line');
   const standardLines = DATA.unitLines.filter(l => !unavailable.has(l.id));
-  return [villagerLine, ...unique, ...standardLines];
+  const extraStandard = mcbCfg
+    ? [{ ...MOUNTED_CROSSBOWMAN_LINE_TEMPLATE, tiers: MOUNTED_CROSSBOWMAN_LINE_TEMPLATE.tiers.slice(0, mcbCfg.heavy ? 2 : 1) }]
+    : [];
+  return [villagerLine, ...unique, ...standardLines, ...extraStandard];
 }
 
 let lineState = {}; // id -> { tierIdx, buildings }
@@ -7869,6 +7923,9 @@ function applicableCombatTechIdsRaw(line) {
   // (Parthian Tactics, not Barding Armor) — site owner's correction, was
   // previously wrongly modeled on Battle Elephant's own Barding Armor line.
   if (line.id === 'elephant-archer-line') return CAV_ARCHER_TECHS;
+  // Mounted Crossbowman (Sept22 patch, replaces Cavalry Archer for 11 civs)
+  // shares the same archer-armor/Parthian/Bloodlines/Husbandry tech set.
+  if (line.id === 'mounted-crossbowman-line') return CAV_ARCHER_TECHS;
   if (meleeCavalry.includes(line.id)) return MELEE_CAV_TECHS;
   if (line.id === 'scorpion-line') return ['ballistics', 'siege-engineers'];
   if (['mangonel-line', 'ram-line', 'trebuchet', 'petard'].includes(line.id)) return ['siege-engineers'];
