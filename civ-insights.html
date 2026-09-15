@@ -259,7 +259,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.02</div>
+    <div class="version">v0.03</div>
   </div>
 </div>
 
@@ -898,7 +898,13 @@ function renderAgeTable(key) {
 // whatever the browser is doing internally at that exact moment and
 // drops load time back to normal (worth re-testing if this file or its
 // own iframe-load-driven logic changes significantly again).
-document.getElementById('engine-frame').addEventListener('load', () => { setTimeout(() => { computeAgeTable('feudal'); computeAgeTable('castle'); }, 50); });
+// TEMPORARILY DISABLED (2026-09-16) — diagnosing a real Chrome freeze
+// report ("Page Unresponsive"), narrowing down whether these two calls
+// are the cause. Re-enable once confirmed either way — see
+// feedback_iframe_load_sync_eval_stall memory for the investigation.
+document.getElementById('feudal-table-status').textContent = 'Temporarily disabled while debugging a page-freeze report.';
+document.getElementById('castle-table-status').textContent = 'Temporarily disabled while debugging a page-freeze report.';
+// document.getElementById('engine-frame').addEventListener('load', () => { setTimeout(() => { computeAgeTable('feudal'); computeAgeTable('castle'); }, 50); });
 </script>
 </body>
 </html>
