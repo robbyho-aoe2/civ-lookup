@@ -259,7 +259,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.04</div>
+    <div class="version">v0.05</div>
   </div>
 </div>
 
@@ -912,7 +912,14 @@ function renderAgeTable(key) {
 // function's own comment above). Fixed by batching each age table into a
 // SINGLE eval call instead of 54 — re-test in a real browser (not just
 // this automated tool) before assuming it's fully resolved.
-document.getElementById('engine-frame').addEventListener('load', () => { setTimeout(() => { computeAgeTable('feudal'); computeAgeTable('castle'); }, 50); });
+// TEMPORARILY DISABLED AGAIN (2026-09-16) — batching the cross-frame
+// calls (see this function's own comment above) did NOT fix the real
+// freeze the user is seeing; confirmed still happening. Back to a known-
+// good state while narrowing down further — see
+// feedback_iframe_load_sync_eval_stall memory.
+document.getElementById('feudal-table-status').textContent = 'Temporarily disabled while debugging a page-freeze report.';
+document.getElementById('castle-table-status').textContent = 'Temporarily disabled while debugging a page-freeze report.';
+// document.getElementById('engine-frame').addEventListener('load', () => { setTimeout(() => { computeAgeTable('feudal'); computeAgeTable('castle'); }, 50); });
 </script>
 </body>
 </html>
