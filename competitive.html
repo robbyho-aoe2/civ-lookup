@@ -35,7 +35,6 @@ header .subtitle{font-size:12px;color:var(--text3);margin-top:2px;}
 .teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
 .team-card{background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px 16px;border-left:3px solid var(--accent,var(--border2));}
 .team-card .team-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
-.team-card .flag{font-size:22px;line-height:1;}
 .team-card .team-name{font-size:14px;font-weight:700;color:var(--text);}
 .team-card .roster-count{font-size:10px;color:var(--text3);margin-left:auto;white-space:nowrap;}
 .team-card .roster{list-style:none;margin:0;padding:0;font-size:12px;}
@@ -47,7 +46,6 @@ header .subtitle{font-size:12px;color:var(--text3);margin-top:2px;}
 .fixture-card{background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 14px;}
 .fixture-vs{display:flex;align-items:center;justify-content:center;gap:10px;font-size:13px;font-weight:700;margin-bottom:10px;}
 .fixture-vs .fv-team{display:flex;align-items:center;gap:6px;}
-.fixture-vs .fv-flag{font-size:18px;}
 .fixture-vs .fv-sep{color:var(--text3);font-weight:400;font-size:11px;}
 .set-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;padding:4px 0;border-top:1px solid var(--border);}
 .set-row:first-of-type{border-top:none;}
@@ -69,14 +67,14 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 <div class="wrap">
   <header>
     <div>
-      <h1>⚔️ Console Competitive</h1>
+      <h1>Console Competitive</h1>
       <div class="subtitle">Community tournaments &amp; events</div>
     </div>
   </header>
 
   <nav class="page-tabs">
     <a href="index.html">🏠 Auto Scout</a>
-    <a href="competitive.html" class="on">⚔️ Console Competitive</a>
+    <a href="competitive.html" class="on">Console Competitive</a>
     <a href="insights.html">📊 Console Insights</a>
     <a href="civ-insights.html">🧮 Civ Insights</a>
     <a href="build-order.html">🛠️ Build Order</a>
@@ -84,7 +82,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 
   <div class="card">
     <div class="tourney-head">
-      <h2>🏆 Nations Cup</h2>
+      <h2>Nations Cup</h2>
     </div>
     <p class="desc">
       A round-robin tournament of teams formed from national regions of 4-6 players.
@@ -92,10 +90,10 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
       3v3, and 4v4.
     </p>
     <div class="pill-row">
-      <span class="pill prize">💰 Prize Pool: $200</span>
-      <span class="pill format">🔁 Round Robin · 1v1 / 2v2 / 3v3 / 4v4</span>
-      <span class="pill">🌍 9 Regions</span>
-      <span class="pill org">🎙️ Organized by Worst Underwear (aka Beef Clamps, aka Old Peenuts)</span>
+      <span class="pill prize">Prize Pool: $200</span>
+      <span class="pill format">Round Robin · 1v1 / 2v2 / 3v3 / 4v4</span>
+      <span class="pill">9 Regions</span>
+      <span class="pill org">Organized by <a href="player.html?id=12637242" style="color:inherit;">Worst Underwear</a> (aka Beef Clamps, aka Old Peenuts)</span>
     </div>
   </div>
 
@@ -123,7 +121,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.03</div>
+    <div class="version">v0.04</div>
   </div>
 </div>
 
@@ -138,20 +136,20 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 // links use) -- add it once a player's profile is known; until then just
 // the name.
 const TEAMS = [
-  { id: 'usa',       flag: '🇺🇸', name: 'USA',        accent: 'var(--blue)',   players: [
+  { id: 'usa',       name: 'USA',        accent: 'var(--blue)',   players: [
     { name: 'big Conigz', profileId: 10785893 },
     { name: 'Faith2Adventure', profileId: 12527010 },
   ] },
-  { id: 'mexico',    flag: '🇲🇽', name: 'Mexico',     accent: 'var(--teal)',   players: [
+  { id: 'mexico',    name: 'Mexico',     accent: 'var(--teal)',   players: [
     { name: 'MORIS0202', profileId: 12868111 },
     { name: 'kobyrobys', profileId: 13106080 },
   ] },
-  { id: 'uk',        flag: '🇬🇧', name: 'UK',         accent: 'var(--purple)', players: [] },
-  { id: 'australia', flag: '🇦🇺', name: 'Australia',  accent: 'var(--orange)', players: [] },
-  { id: 'latam',     flag: '🌎', name: 'LATAM',       accent: 'var(--pink)',   players: [] },
-  { id: 'arabia',    flag: '🌙', name: 'Arabia',      accent: 'var(--yellow)', players: [] },
-  { id: 'france',    flag: '🇫🇷', name: 'France',     accent: 'var(--cyan)',   players: [] },
-  { id: 'europe',    flag: '🇪🇺', name: 'Europe',     accent: 'var(--amberL)', players: [
+  { id: 'uk',        name: 'UK',         accent: 'var(--purple)', players: [] },
+  { id: 'australia', name: 'Australia',  accent: 'var(--orange)', players: [] },
+  { id: 'latam',     name: 'LATAM',      accent: 'var(--pink)',   players: [] },
+  { id: 'arabia',    name: 'Arabia',     accent: 'var(--yellow)', players: [] },
+  { id: 'france',    name: 'France',     accent: 'var(--cyan)',   players: [] },
+  { id: 'europe',    name: 'Europe',     accent: 'var(--amberL)', players: [
     { name: 'esgedda', profileId: 22831188 },
   ] },
   // Added along with the USA/Mexico/Europe drop above -- not one of the
@@ -159,7 +157,7 @@ const TEAMS = [
   // it's exactly 6 players (this format's own team-size cap), so treating
   // it as its own region rather than folding into USA. Flag to the user if
   // that reading is wrong.
-  { id: 'canada',    flag: '🇨🇦', name: 'Canada',     accent: 'var(--red)',    players: [
+  { id: 'canada',    name: 'Canada',     accent: 'var(--red)',    players: [
     { name: 'volcanloup', profileId: 12893749 },
     { name: 'GOAT Gobz', profileId: 8154765 },
     { name: 'Im2Good4YoMoma', profileId: 12591985 },
@@ -180,7 +178,6 @@ function teamCardHtml(team) {
   return `
     <div class="team-card" style="--accent:${team.accent}">
       <div class="team-head">
-        <span class="flag">${team.flag}</span>
         <span class="team-name">${team.name}</span>
         <span class="roster-count">${team.players.length ? team.players.length + ' players' : '4-6 TBD'}</span>
       </div>
@@ -207,9 +204,9 @@ function fixtureCardHtml([a, b]) {
   return `
     <div class="fixture-card">
       <div class="fixture-vs">
-        <span class="fv-team"><span class="fv-flag">${a.flag}</span>${a.name}</span>
+        <span class="fv-team">${a.name}</span>
         <span class="fv-sep">vs</span>
-        <span class="fv-team">${b.name}<span class="fv-flag">${b.flag}</span></span>
+        <span class="fv-team">${b.name}</span>
       </div>
       ${SET_FORMATS.map(fmt => `
         <div class="set-row">
@@ -242,7 +239,7 @@ document.getElementById('standings-table').innerHTML = `
   <tbody>
     ${standingsRows().map(r => `
       <tr>
-        <td>${r.team.flag} ${r.team.name}</td>
+        <td>${r.team.name}</td>
         <td class="num">${r.played}</td>
         <td class="num">${r.won}</td>
         <td class="num">${r.lost}</td>
