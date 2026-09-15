@@ -123,7 +123,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.06</div>
+    <div class="version">v0.07</div>
   </div>
 </div>
 
@@ -191,8 +191,10 @@ function teamTopFourAvgElo(team) {
 }
 
 function teamCardHtml(team) {
+  // Highest ELO first within each team; unknown-ELO players sink to the bottom.
+  const sortedPlayers = [...team.players].sort((a, b) => (typeof b.elo === 'number' ? b.elo : -1) - (typeof a.elo === 'number' ? a.elo : -1));
   const rosterHtml = team.players.length
-    ? `<ul class="roster">${team.players.map(p => `<li>${p.profileId ? `<a href="player.html?id=${p.profileId}">${p.name}</a>` : p.name}<span class="p-elo">${typeof p.elo === 'number' ? p.elo : 'ELO N/A'}</span></li>`).join('')}</ul>`
+    ? `<ul class="roster">${sortedPlayers.map(p => `<li>${p.profileId ? `<a href="player.html?id=${p.profileId}">${p.name}</a>` : p.name}<span class="p-elo">${typeof p.elo === 'number' ? p.elo : 'ELO N/A'}</span></li>`).join('')}</ul>`
     : `<p class="roster"><span class="tbd">Roster to be announced</span></p>`;
   const avgElo = teamTopFourAvgElo(team);
   return `
