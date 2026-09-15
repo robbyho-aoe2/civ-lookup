@@ -39,6 +39,13 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .res-pill.food{color:var(--food);}
 .res-pill.wood{color:var(--wood);}
 .res-pill.stone{color:var(--stone);}
+.res-pill.gold{color:var(--gold);}
+.card .sub-heading{font-size:13px;font-weight:700;margin:20px 0 4px;padding-top:16px;border-top:1px solid var(--border);color:var(--text);}
+.card .sub-heading:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.changelog-list{margin:0 0 4px;padding-left:20px;font-size:12.5px;line-height:1.8;color:var(--text2);}
+.changelog-list li{margin-bottom:4px;}
+.changelog-list b{color:var(--text);}
+.changelog-list .civ-changes{margin:2px 0 8px 20px;padding-left:16px;font-size:12px;line-height:1.7;}
 table{width:100%;border-collapse:collapse;margin-top:6px;font-size:11px;}
 th,td{text-align:left;padding:4px 5px;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;vertical-align:middle;}
 th{color:var(--text3);font-weight:600;text-transform:uppercase;font-size:9px;letter-spacing:.03em;white-space:nowrap;}
@@ -86,6 +93,148 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="civ-insights.html" class="on">🧮 Civ Insights</a>
     <a href="build-order.html">🛠️ Build Order</a>
   </nav>
+
+  <details class="section">
+    <summary>Sept 22 Patch — Full Changelog <span class="summary-hint">every change currently modeled by the site's Current/Sept 22 toggle</span></summary>
+    <div class="card">
+      <h2>Sept 22 Patch — Full Changelog</h2>
+      <p class="desc">
+        Everything this site's Current/Sept 22 toggle (on index.html and build-order.html) currently
+        models for The Viking Sagas DLC's balance patch, organized general changes first, then by
+        civ.
+      </p>
+
+      <h3 class="sub-heading">General</h3>
+      <ul class="changelog-list">
+        <li><b>Eagle Scout</b> train time: 50s → 46s (Eagle Warrior/Elite unchanged).</li>
+        <li><b>Battering Ram</b> line (all tiers): Line of Sight → 5.</li>
+        <li><b>Siege Tower</b>: Line of Sight → 6.</li>
+        <li><b>Onager</b> (the Imperial-age Mangonel-line tier): attack → 55, pierce armor → 8.</li>
+        <li><b>Mounted Crossbowman</b> — new Archery Range unit (Castle Age): <span class="res-pill wood">40w</span> <span class="res-pill gold">65g</span> cost, 45 HP, 7 attack, 2 melee/0 pierce armor, 4 range, 1.25 speed, 37s train time. Heavy Mounted Crossbowman (Imperial): 8 attack, upgrade cost <span class="res-pill food">1000f</span> <span class="res-pill gold">650g</span>. See "By Civ" below for who gets it (it replaces Cavalry Archer for those civs).</li>
+        <li><b>Varangian Guard</b> — new Barracks unique unit (Castle Age), shared by Byzantines and Vikings (Danes/Saxons/Varangians already have it as a core civ unit): <span class="res-pill food">65f</span> <span class="res-pill gold">45g</span> cost, 30s train time, 70 HP, 13 attack, 2 melee/1 pierce armor, 1.05 speed.</li>
+        <li><b>Cranequins</b> — new Imperial-age upgrade tech for Mounted Crossbowman: <span class="res-pill food">300f</span> <span class="res-pill gold">200g</span>, +1 range, +2 attack vs. Infantry. Only some Mounted-Crossbowman civs get it (see below).</li>
+        <li><b>Ordonnance Companies</b> — new Castle-age tech, Franks-exclusive: Mounted Crossbowmen cost -40% gold.</li>
+      </ul>
+
+      <h3 class="sub-heading">By Civ</h3>
+      <ul class="changelog-list">
+        <li><b>Bohemians</b>
+          <ul class="civ-changes">
+            <li>Gains Mounted Crossbowman (base tier only); loses Cavalry Archer.</li>
+            <li>Loses Treadmill Crane.</li>
+            <li>Hussite Wagon cost: gold → <span class="res-pill gold">80g</span>.</li>
+          </ul>
+        </li>
+        <li><b>Britons</b>
+          <ul class="civ-changes"><li>Gains Mounted Crossbowman + Heavy tier + Cranequins; loses Cavalry Archer (both tiers).</li></ul>
+        </li>
+        <li><b>Burgundians</b>
+          <ul class="civ-changes"><li>Gains Mounted Crossbowman (base tier only); loses Cavalry Archer.</li></ul>
+        </li>
+        <li><b>Celts</b>
+          <ul class="civ-changes">
+            <li>Gains Mounted Crossbowman + Heavy tier (no Cranequins); loses Cavalry Archer (both tiers).</li>
+            <li>Loses Treadmill Crane.</li>
+          </ul>
+        </li>
+        <li><b>Franks</b>
+          <ul class="civ-changes">
+            <li>Gains Mounted Crossbowman + Heavy tier + Cranequins; loses Cavalry Archer (both tiers).</li>
+            <li>Gains Ordonnance Companies (new Franks-exclusive tech, see above).</li>
+            <li>Gains Treadmill Crane.</li>
+          </ul>
+        </li>
+        <li><b>Italians</b>
+          <ul class="civ-changes"><li>Gains Mounted Crossbowman (base tier only); loses Cavalry Archer.</li></ul>
+        </li>
+        <li><b>Poles</b>
+          <ul class="civ-changes"><li>Gains Mounted Crossbowman + Heavy tier (no Cranequins); loses Cavalry Archer (both tiers).</li></ul>
+        </li>
+        <li><b>Portuguese</b>
+          <ul class="civ-changes">
+            <li>Gains Mounted Crossbowman (base tier only); loses Cavalry Archer.</li>
+            <li>Loses Redemption.</li>
+            <li>Organ Gun train time → 28s.</li>
+          </ul>
+        </li>
+        <li><b>Sicilians</b>
+          <ul class="civ-changes"><li>Gains Mounted Crossbowman + Heavy tier + Cranequins; loses Cavalry Archer (both tiers).</li></ul>
+        </li>
+        <li><b>Spanish</b>
+          <ul class="civ-changes">
+            <li>Gains Mounted Crossbowman + Heavy tier (no Cranequins); loses Cavalry Archer (both tiers).</li>
+            <li>Conquistador cost: food → <span class="res-pill food">75f</span>, train time → 26s.</li>
+            <li>Missionary cost: food → <span class="res-pill food">30f</span>.</li>
+          </ul>
+        </li>
+        <li><b>Teutons</b>
+          <ul class="civ-changes"><li>Gains Mounted Crossbowman + Heavy tier (no Cranequins); loses Cavalry Archer (both tiers).</li></ul>
+        </li>
+        <li><b>Vikings</b>
+          <ul class="civ-changes">
+            <li>Gains Mounted Crossbowman (base tier only); loses Cavalry Archer.</li>
+            <li>Gains Varangian Guard (see above).</li>
+            <li>Loses Gambesons.</li>
+          </ul>
+        </li>
+        <li><b>Byzantines</b>
+          <ul class="civ-changes"><li>Gains Varangian Guard (see above).</li></ul>
+        </li>
+        <li><b>Armenians</b>
+          <ul class="civ-changes"><li>Gains Treadmill Crane.</li></ul>
+        </li>
+        <li><b>Goths</b>
+          <ul class="civ-changes"><li>Gains Treadmill Crane.</li></ul>
+        </li>
+        <li><b>Shu</b>
+          <ul class="civ-changes">
+            <li>Gains Treadmill Crane.</li>
+            <li>War Chariot cost: food → <span class="res-pill food">75f</span>, train time → 32s.</li>
+          </ul>
+        </li>
+        <li><b>Bengalis</b>
+          <ul class="civ-changes">
+            <li>Loses Treadmill Crane.</li>
+            <li>Ratha train time → 24s.</li>
+          </ul>
+        </li>
+        <li><b>Saracens</b>
+          <ul class="civ-changes"><li>Loses Treadmill Crane.</li></ul>
+        </li>
+        <li><b>Koreans</b>
+          <ul class="civ-changes"><li>Loses Gambesons.</li></ul>
+        </li>
+        <li><b>Vietnamese</b>
+          <ul class="civ-changes"><li>Gains Masonry.</li></ul>
+        </li>
+        <li><b>Chinese</b>
+          <ul class="civ-changes"><li>Loses the Heavy Cavalry Archer upgrade only — keeps base Cavalry Archer (unlike the 11 civs above who lose the whole line).</li></ul>
+        </li>
+        <li><b>Jurchens</b>
+          <ul class="civ-changes"><li>Grenadier cost: food → <span class="res-pill food">55f</span>, gold → <span class="res-pill gold">50g</span>.</li></ul>
+        </li>
+        <li><b>Magyars</b>
+          <ul class="civ-changes"><li>Magyar Huszar train time → 18s.</li></ul>
+        </li>
+        <li><b>Mapuche</b>
+          <ul class="civ-changes"><li>Bolas Rider cost: wood → <span class="res-pill wood">50w</span>, gold → <span class="res-pill gold">55g</span>.</li></ul>
+        </li>
+        <li><b>Tupi</b>
+          <ul class="civ-changes"><li>Blackwood Archer cost: wood → <span class="res-pill wood">40w</span>.</li></ul>
+        </li>
+        <li><b>Wei</b>
+          <ul class="civ-changes"><li>Xianbei Raider cost: gold → <span class="res-pill gold">35g</span>.</li></ul>
+        </li>
+      </ul>
+
+      <p class="desc" style="margin-top:10px;">
+        Not covered yet: naval changes, Fortified Church, bonus-vs-unit-class changes (Cataphract vs.
+        Infantry, Man-at-Arms/Long Swordsman/Two-Handed Swordsman/Champion vs. Shock Infantry), and
+        reworded civ-bonus description text (Teutons, Vietnamese, Gurjaras, Byzantines, Huns, Vikings,
+        Bohemians) — these are in the original patch notes but not modeled by the toggle yet.
+      </p>
+    </div>
+  </details>
 
   <details class="section">
     <summary>Reached Feudal Age — All Civs <span class="summary-hint">every civ, one standardized opening</span></summary>
@@ -268,7 +417,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.08</div>
+    <div class="version">v0.09</div>
   </div>
 </div>
 
