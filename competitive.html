@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Console Competitive — AoE Auto Scout</title>
+<style>
+:root{
+  --bg:#100E0C;--surf:#17130F;--surf2:#1F1A15;--border:#241F1A;--border2:#362E24;
+  --amber:#3F9B72;--amberL:#5FB88C;--amberBg:rgba(63,155,114,.12);
+  --text:#EDE8DD;--text2:#8F8578;--text3:#5C544A;
+  --blue:#60a5fa;--purple:#a78bfa;--cyan:#22d3ee;--orange:#fb923c;--teal:#34d399;--pink:#f472b6;--yellow:#fbbf24;
+  --radius:9px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px;}
+header{display:flex;align-items:center;gap:14px;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+header h1{font-size:20px;margin:0;}
+header .subtitle{font-size:12px;color:var(--text3);margin-top:2px;}
+.page-tabs{display:flex;gap:6px;margin:0 0 22px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.page-tabs a{padding:10px 16px;font-size:13px;font-weight:600;color:var(--text2);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.page-tabs a:hover{color:var(--text);}
+.page-tabs a.on{color:var(--amberL);border-bottom-color:var(--amber);}
+.card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
+.card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
+.card .desc{font-size:12px;color:var(--text2);margin:0 0 16px;line-height:1.6;}
+.tourney-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-bottom:10px;}
+.tourney-head h2{font-size:19px;margin:0;color:var(--text);}
+.pill-row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px;}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 10px;border-radius:20px;background:var(--surf2);border:1px solid var(--border2);color:var(--text2);white-space:nowrap;}
+.pill.prize{color:var(--yellow);border-color:rgba(251,191,36,.3);}
+.pill.format{color:var(--amberL);border-color:rgba(95,184,140,.3);}
+.pill.org{color:var(--pink);border-color:rgba(244,114,182,.3);}
+.teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
+.team-card{background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px 16px;border-left:3px solid var(--accent,var(--border2));}
+.team-card .team-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.team-card .flag{font-size:22px;line-height:1;}
+.team-card .team-name{font-size:14px;font-weight:700;color:var(--text);}
+.team-card .roster-count{font-size:10px;color:var(--text3);margin-left:auto;white-space:nowrap;}
+.team-card .roster{list-style:none;margin:0;padding:0;font-size:12px;}
+.team-card .roster li{padding:3px 0;color:var(--text2);}
+.team-card .roster a{color:var(--text2);text-decoration:none;border-bottom:1px solid var(--border2);}
+.team-card .roster a:hover{color:var(--amberL);border-color:var(--amberL);}
+.team-card .roster .tbd{color:var(--text3);font-style:italic;}
+.fixtures-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
+.fixture-card{background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 14px;}
+.fixture-vs{display:flex;align-items:center;justify-content:center;gap:10px;font-size:13px;font-weight:700;margin-bottom:10px;}
+.fixture-vs .fv-team{display:flex;align-items:center;gap:6px;}
+.fixture-vs .fv-flag{font-size:18px;}
+.fixture-vs .fv-sep{color:var(--text3);font-weight:400;font-size:11px;}
+.set-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;padding:4px 0;border-top:1px solid var(--border);}
+.set-row:first-of-type{border-top:none;}
+.set-row .set-label{color:var(--text2);font-weight:600;}
+.set-status{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--surf);border:1px solid var(--border2);color:var(--text3);text-transform:uppercase;letter-spacing:.03em;}
+.standings-note{font-size:12px;color:var(--text2);margin:0 0 14px;line-height:1.6;}
+table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
+th{color:var(--text3);font-weight:600;text-transform:uppercase;font-size:9px;letter-spacing:.03em;white-space:nowrap;}
+th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
+.overflow-x{overflow-x:auto;}
+.footer{font-size:11px;color:var(--text3);text-align:center;margin-top:30px;padding-top:16px;border-top:1px solid var(--border);}
+.footer a{color:var(--text2);text-decoration:none;}
+.footer a:hover{color:var(--amberL);}
+.version{font-size:10px;color:var(--text3);margin-top:6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>⚔️ Console Competitive</h1>
+      <div class="subtitle">Community tournaments &amp; events</div>
+    </div>
+  </header>
+
+  <nav class="page-tabs">
+    <a href="index.html">🏠 Auto Scout</a>
+    <a href="competitive.html" class="on">⚔️ Console Competitive</a>
+    <a href="insights.html">📊 Console Insights</a>
+    <a href="civ-insights.html">🧮 Civ Insights</a>
+    <a href="build-order.html">🛠️ Build Order</a>
+  </nav>
+
+  <div class="card">
+    <div class="tourney-head">
+      <h2>🏆 Nations Cup</h2>
+    </div>
+    <p class="desc">
+      A round-robin tournament of teams formed from national regions of 4-6 players.
+      Each team plays a series against every other nation — one set each of 1v1, 2v2,
+      3v3, and 4v4.
+    </p>
+    <div class="pill-row">
+      <span class="pill prize">💰 Prize Pool: $200</span>
+      <span class="pill format">🔁 Round Robin · 1v1 / 2v2 / 3v3 / 4v4</span>
+      <span class="pill">🌍 6 Regions</span>
+      <span class="pill org">🎙️ Organized by Worst Underwear (aka Beef Clamps, aka Old Peenuts)</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Teams</h2>
+    <p class="desc">Rosters go up here as players are confirmed for each region.</p>
+    <div class="teams-grid" id="teams-grid"></div>
+  </div>
+
+  <div class="card">
+    <h2>Round Robin Fixtures</h2>
+    <p class="desc">Every nation plays every other nation once — <span id="fixture-count"></span> series total, each made up of the 4 set formats below. Results get filled in here as matches are played.</p>
+    <div class="fixtures-grid" id="fixtures-grid"></div>
+  </div>
+
+  <div class="card">
+    <h2>Standings</h2>
+    <p class="standings-note">Series record by nation, updated as results come in.</p>
+    <div class="overflow-x">
+      <table id="standings-table"></table>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
+    <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
+    <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
+    <div class="version">v0.01</div>
+  </div>
+</div>
+
+<script>
+// Self-contained per this site's convention (no shared JS across pages) --
+// keep this in sync manually if a future page ever needs the same team/
+// fixture data.
+
+// Each team's roster is filled in as the organizer (Worst Underwear / Beef
+// Clamps / Old Peenuts) confirms players. `profileId` links to this site's
+// own player.html spotlight (same `?id=` convention index.html's player
+// links use) -- add it once a player's profile is known; until then just
+// the name.
+const TEAMS = [
+  { id: 'usa',       flag: '🇺🇸', name: 'USA',        accent: 'var(--blue)',   players: [] },
+  { id: 'mexico',    flag: '🇲🇽', name: 'Mexico',     accent: 'var(--teal)',   players: [] },
+  { id: 'uk',        flag: '🇬🇧', name: 'UK',         accent: 'var(--purple)', players: [] },
+  { id: 'australia', flag: '🇦🇺', name: 'Australia',  accent: 'var(--orange)', players: [] },
+  { id: 'latam',     flag: '🌎', name: 'LATAM',       accent: 'var(--pink)',   players: [] },
+  { id: 'arabia',    flag: '🌙', name: 'Arabia',      accent: 'var(--yellow)', players: [] },
+];
+const SET_FORMATS = ['1v1', '2v2', '3v3', '4v4'];
+
+function teamCardHtml(team) {
+  const rosterHtml = team.players.length
+    ? `<ul class="roster">${team.players.map(p => `<li>${p.profileId ? `<a href="player.html?id=${p.profileId}">${p.name}</a>` : p.name}</li>`).join('')}</ul>`
+    : `<p class="roster"><span class="tbd">Roster to be announced</span></p>`;
+  return `
+    <div class="team-card" style="--accent:${team.accent}">
+      <div class="team-head">
+        <span class="flag">${team.flag}</span>
+        <span class="team-name">${team.name}</span>
+        <span class="roster-count">${team.players.length ? team.players.length + ' players' : '4-6 TBD'}</span>
+      </div>
+      ${rosterHtml}
+    </div>
+  `;
+}
+document.getElementById('teams-grid').innerHTML = TEAMS.map(teamCardHtml).join('');
+
+// Round-robin pairing -- every unordered pair of teams plays exactly once,
+// generated from TEAMS itself so the fixture list always matches whichever
+// regions are actually in the tournament.
+function roundRobinPairs(teams) {
+  const pairs = [];
+  for (let i = 0; i < teams.length; i++) {
+    for (let j = i + 1; j < teams.length; j++) pairs.push([teams[i], teams[j]]);
+  }
+  return pairs;
+}
+const FIXTURES = roundRobinPairs(TEAMS);
+document.getElementById('fixture-count').textContent = FIXTURES.length;
+
+function fixtureCardHtml([a, b]) {
+  return `
+    <div class="fixture-card">
+      <div class="fixture-vs">
+        <span class="fv-team"><span class="fv-flag">${a.flag}</span>${a.name}</span>
+        <span class="fv-sep">vs</span>
+        <span class="fv-team">${b.name}<span class="fv-flag">${b.flag}</span></span>
+      </div>
+      ${SET_FORMATS.map(fmt => `
+        <div class="set-row">
+          <span class="set-label">${fmt}</span>
+          <span class="set-status">Not Played</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+document.getElementById('fixtures-grid').innerHTML = FIXTURES.map(fixtureCardHtml).join('');
+
+// Standings -- pure series win/loss record (a "series" is the full
+// 1v1/2v2/3v3/4v4 block against one opponent, not an individual set).
+// Everyone starts at 0-0 until results are entered below; SERIES_RESULTS
+// stays empty until matches are actually played.
+const SERIES_RESULTS = []; // { teamA: 'usa', teamB: 'mexico', winner: 'usa' }
+function standingsRows() {
+  const rec = {};
+  TEAMS.forEach(t => rec[t.id] = { played: 0, won: 0, lost: 0 });
+  SERIES_RESULTS.forEach(r => {
+    rec[r.teamA].played++; rec[r.teamB].played++;
+    if (r.winner) { rec[r.winner].won++; rec[r.winner === r.teamA ? r.teamB : r.teamA].lost++; }
+  });
+  return TEAMS.map(t => ({ team: t, ...rec[t.id] }))
+    .sort((x, y) => y.won - x.won || x.lost - y.lost);
+}
+document.getElementById('standings-table').innerHTML = `
+  <thead><tr><th>Nation</th><th class="num">Played</th><th class="num">Won</th><th class="num">Lost</th></tr></thead>
+  <tbody>
+    ${standingsRows().map(r => `
+      <tr>
+        <td>${r.team.flag} ${r.team.name}</td>
+        <td class="num">${r.played}</td>
+        <td class="num">${r.won}</td>
+        <td class="num">${r.lost}</td>
+      </tr>
+    `).join('')}
+  </tbody>
+`;
+</script>
+</body>
+</html>
