@@ -36,12 +36,14 @@ header .subtitle{font-size:12px;color:var(--text3);margin-top:2px;}
 .team-card{background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px 16px;border-left:3px solid var(--accent,var(--border2));}
 .team-card .team-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
 .team-card .team-name{font-size:14px;font-weight:700;color:var(--text);}
+.team-card .team-elo{font-size:10px;font-weight:700;color:var(--amberL);background:var(--amberBg);padding:2px 7px;border-radius:20px;white-space:nowrap;}
 .team-card .roster-count{font-size:10px;color:var(--text3);margin-left:auto;white-space:nowrap;}
 .team-card .roster{list-style:none;margin:0;padding:0;font-size:12px;}
-.team-card .roster li{padding:3px 0;color:var(--text2);}
+.team-card .roster li{padding:3px 0;color:var(--text2);display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .team-card .roster a{color:var(--text2);text-decoration:none;border-bottom:1px solid var(--border2);}
 .team-card .roster a:hover{color:var(--amberL);border-color:var(--amberL);}
 .team-card .roster .tbd{color:var(--text3);font-style:italic;}
+.team-card .roster .p-elo{font-size:10px;color:var(--text3);white-space:nowrap;}
 .fixtures-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
 .fixture-card{background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 14px;}
 .fixture-vs{display:flex;align-items:center;justify-content:center;gap:10px;font-size:13px;font-weight:700;margin-bottom:10px;}
@@ -121,7 +123,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.05</div>
+    <div class="version">v0.06</div>
   </div>
 </div>
 
@@ -135,14 +137,20 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 // own player.html spotlight (same `?id=` convention index.html's player
 // links use) -- add it once a player's profile is known; until then just
 // the name.
+// `elo` is each player's own max/peak rating across every ladder they play
+// (1v1 Console, Team Console, 1v1 PC, Team PC) -- pulled from
+// player-data/data/{console,pc}/<profileId>.json's `ladders[*].meta.peakRating`,
+// taking the highest across all ladder types, not just one. `null` where no
+// data file exists for that profileId at all (e.g. a very low-volume/new
+// profile) -- shown as "ELO N/A" rather than guessed.
 const TEAMS = [
   { id: 'usa',       name: 'USA',        accent: 'var(--blue)',   players: [
-    { name: 'big Conigz', profileId: 10785893 },
-    { name: 'Faith2Adventure', profileId: 12527010 },
+    { name: 'big Conigz', profileId: 10785893, elo: 1930 },
+    { name: 'Faith2Adventure', profileId: 12527010, elo: 2291 },
   ] },
   { id: 'mexico',    name: 'Mexico',     accent: 'var(--teal)',   players: [
-    { name: 'MORIS0202', profileId: 12868111 },
-    { name: 'kobyrobys', profileId: 13106080 },
+    { name: 'MORIS0202', profileId: 12868111, elo: 2138 },
+    { name: 'kobyrobys', profileId: 13106080, elo: 1816 },
   ] },
   { id: 'uk',        name: 'UK',         accent: 'var(--purple)', players: [] },
   { id: 'australia', name: 'Australia',  accent: 'var(--orange)', players: [] },
@@ -150,7 +158,7 @@ const TEAMS = [
   { id: 'arabia',    name: 'Arabia',     accent: 'var(--yellow)', players: [] },
   { id: 'france',    name: 'France',     accent: 'var(--cyan)',   players: [] },
   { id: 'europe',    name: 'Europe',     accent: 'var(--amberL)', players: [
-    { name: 'esgedda', profileId: 22831188 },
+    { name: 'esgedda', profileId: 22831188, elo: 1706 },
   ] },
   // Added along with the USA/Mexico/Europe drop above -- not one of the
   // original 6 regions, but the user labeled this whole block "canada" and
@@ -158,27 +166,40 @@ const TEAMS = [
   // it as its own region rather than folding into USA. Flag to the user if
   // that reading is wrong.
   { id: 'canada',    name: 'Canada',     accent: 'var(--red)',    players: [
-    { name: 'volcanloup', profileId: 12893749 },
-    { name: 'GOAT Gobz', profileId: 8154765 },
-    { name: 'Im2Good4YoMoma', profileId: 12591985 },
-    { name: 'Arbiters Son', profileId: 7096003 },
+    { name: 'volcanloup', profileId: 12893749, elo: 2306 },
+    { name: 'GOAT Gobz', profileId: 8154765, elo: 1843 },
+    { name: 'Im2Good4YoMoma', profileId: 12591985, elo: 1991 },
+    { name: 'Arbiters Son', profileId: 7096003, elo: 1827 },
     // players.json has no real name on file for this profileId yet (only a
     // generic "player_14276793" placeholder) -- shows as the raw ID until a
-    // real name is known.
-    { name: 'Player 14276793', profileId: 14276793 },
-    { name: 'aka Frost1e', profileId: 12516504 },
+    // real name is known. No player-data file at all for this profileId
+    // either, hence elo: null.
+    { name: 'Player 14276793', profileId: 14276793, elo: null },
+    { name: 'aka Frost1e', profileId: 12516504, elo: null },
   ] },
 ];
 const SET_FORMATS = ['1v1', '2v2', '3v3', '4v4'];
 
+// Team's displayed strength: average max-ELO of its top 4 rated players
+// (not the whole roster, so a 6-player team isn't penalized for its 5th/6th
+// players -- matches this format's own team-size cap). Players with no
+// known ELO are excluded rather than treated as 0.
+function teamTopFourAvgElo(team) {
+  const elos = team.players.map(p => p.elo).filter(e => typeof e === 'number').sort((a, b) => b - a).slice(0, 4);
+  if (!elos.length) return null;
+  return Math.round(elos.reduce((a, b) => a + b, 0) / elos.length);
+}
+
 function teamCardHtml(team) {
   const rosterHtml = team.players.length
-    ? `<ul class="roster">${team.players.map(p => `<li>${p.profileId ? `<a href="player.html?id=${p.profileId}">${p.name}</a>` : p.name}</li>`).join('')}</ul>`
+    ? `<ul class="roster">${team.players.map(p => `<li>${p.profileId ? `<a href="player.html?id=${p.profileId}">${p.name}</a>` : p.name}<span class="p-elo">${typeof p.elo === 'number' ? p.elo : 'ELO N/A'}</span></li>`).join('')}</ul>`
     : `<p class="roster"><span class="tbd">Roster to be announced</span></p>`;
+  const avgElo = teamTopFourAvgElo(team);
   return `
     <div class="team-card" style="--accent:${team.accent}">
       <div class="team-head">
         <span class="team-name">${team.name}</span>
+        ${avgElo !== null ? `<span class="team-elo">Avg ${avgElo}</span>` : ''}
         <span class="roster-count">${team.players.length ? team.players.length + ' players' : '4-6 TBD'}</span>
       </div>
       ${rosterHtml}
