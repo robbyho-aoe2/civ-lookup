@@ -673,8 +673,8 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     </section>
 
     <section id="console-vs-pc" class="card">
-      <h2>Console Arabia vs. PC Overall — Biggest Discrepancies</h2>
-      <p class="desc">Recency-weighted (90-day half-life, same as Form mode elsewhere) win rate for 1v1 Console on Arabia specifically vs. 1v1 PC overall across all maps — civs that swing hardest between the two, sorted by |difference|. A large negative gap usually means a civ that rewards precise micro/APM; positive means a simpler, bonus-driven civ that holds up better without it.${updatedLabel(civsData.lastUpdated)}</p>
+      <h2>Console Arabia vs. PC Arabia — Biggest Discrepancies</h2>
+      <p class="desc">Recency-weighted (90-day half-life, same as Form mode elsewhere) win rate for 1v1 Console on Arabia vs. 1v1 PC on Arabia — same map both sides, so the comparison isolates the platform instead of mixing in PC's different map pool — civs that swing hardest between the two, sorted by |difference|. A large negative gap usually means a civ that rewards precise micro/APM; positive means a simpler, bonus-driven civ that holds up better without it.${updatedLabel(civsData.lastUpdated)}</p>
       <div class="card-peek" id="console-vs-pc-peek">
       <div class="civ-table-wrap"><table class="civ-table" id="cvp-table"></table></div>
       </div>
@@ -1266,9 +1266,9 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     renderSquadTable();
   });
 
-  // ---- console arabia vs pc overall ----
+  // ---- console arabia vs pc arabia ----
   const cvpConsole = weightedStatsFromByWeek(civsData.consoleArabia1v1ByWeek, 20);
-  const cvpPc = weightedStatsFromByWeek(civsData.pcOverall1v1ByWeek, 20);
+  const cvpPc = weightedStatsFromByWeek(civsData.pcArabia1v1ByWeek, 20);
   const cvpRows = Object.keys(cvpConsole)
     .filter(civ => cvpPc[civ])
     .map(civ => {
