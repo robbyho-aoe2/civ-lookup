@@ -95,7 +95,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <div class="pill-row">
       <span class="pill prize">Prize Pool: $200</span>
       <span class="pill format">Round Robin · 1v1 / 2v2 / 3v3 / 4v4</span>
-      <span class="pill">8 Teams</span>
+      <span class="pill">9 Teams</span>
       <span class="pill date">Tentative Start: Monday, Sept 28</span>
       <span class="pill org">Organized by <a href="player.html?id=12637242" style="color:inherit;">Worst Underwear</a></span>
     </div>
@@ -125,7 +125,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.14</div>
+    <div class="version">v0.15</div>
   </div>
 </div>
 
@@ -172,6 +172,9 @@ const TEAMS = [
     { name: 'BillieDown', profileId: 22759370, elo: 2001 },
     { name: 'ItsGutsAoE', profileId: 23477132, elo: 2068 },
     { name: 'CrustyPotato313', profileId: 23147426, elo: 2034 },
+  ] },
+  { id: 'europe',    name: 'Europe',     accent: 'var(--yellow)', players: [
+    { name: 'KFC DIRECTOR', profileId: 15717181, elo: 1744 },
   ] },
   // Added along with the USA/Mexico/Europe drop above -- not one of the
   // original 6 regions, but the user labeled this whole block "canada" and
@@ -221,7 +224,16 @@ function teamCardHtml(team) {
     </div>
   `;
 }
-document.getElementById('teams-grid').innerHTML = TEAMS.map(teamCardHtml).join('');
+// Display order only (fixtures/standings still use TEAMS' own order) --
+// teams with no roster yet sink to the end, the rest sorted strongest-
+// average-first so the grid reads like a rough power ranking.
+const teamsForDisplay = [...TEAMS].sort((a, b) => {
+  if (!a.players.length && !b.players.length) return 0;
+  if (!a.players.length) return 1;
+  if (!b.players.length) return -1;
+  return teamTopFourAvgElo(b) - teamTopFourAvgElo(a);
+});
+document.getElementById('teams-grid').innerHTML = teamsForDisplay.map(teamCardHtml).join('');
 
 // Round-robin pairing -- every unordered pair of teams plays exactly once,
 // generated from TEAMS itself so the fixture list always matches whichever
