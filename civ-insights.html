@@ -145,8 +145,10 @@ select:focus{outline:none;border-color:var(--amber);}
     <div class="card">
       <h2>Saxons: Lumber Camps vs. Farms</h2>
       <p class="desc">
-        Saxons' Mills, Lumber Camps, and Mining Camps grant +35 food and +10 stone
-        the instant they're built. Starting from Reached Feudal Age, this compares
+        Saxons' Mills, Lumber Camps, and Mining Camps grant bonus food and +10 stone
+        the instant they're built — +35 confirmed for the Sept 22 patch, though the
+        original DLC preview announced +50 (toggle below to compare either).
+        Starting from Reached Feudal Age, this compares
         two full-commitment strategies from that point on: keep building fresh
         Lumber Camps purely for the bonus (nobody ever farms), vs. abandon that and
         build real farms instead (60 wood, 175 food capacity each, real depletion
@@ -186,6 +188,12 @@ select:focus{outline:none;border-color:var(--amber);}
             <option value="0">None</option>
             <option value="1">Wheelbarrow (+12% food, +3% wood)</option>
             <option value="2">+ Hand Cart (+20% food, +6% wood)</option>
+          </select>
+        </label>
+        <label for="camp-food-bonus">Lumber Camp Food Bonus:
+          <select id="camp-food-bonus">
+            <option value="35" selected>+35 food (confirmed, Sept 22 patch)</option>
+            <option value="50">+50 food (original DLC preview)</option>
           </select>
         </label>
       </div>
@@ -259,7 +267,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.05</div>
+    <div class="version">v0.06</div>
   </div>
 </div>
 
@@ -426,6 +434,7 @@ function findCrossover(seriesA, seriesB, valueFn, ceilIdx) {
 
 let A, B, C, D, E, tieIdx, cutoffIdx, foodTieIdx, switchCutoffIdx, xoverIdx2, foodXoverIdx2;
 function recompute() {
+  CAMP_BONUS.food = Number(document.getElementById('camp-food-bonus').value);
   const woodTier = Number(document.getElementById('wood-tech').value);
   const farmTier = Number(document.getElementById('farm-tech').value);
   const carryTier = Number(document.getElementById('carry-tech').value);
@@ -773,6 +782,7 @@ recompute();
 document.getElementById('wood-tech').addEventListener('change', recompute);
 document.getElementById('farm-tech').addEventListener('change', recompute);
 document.getElementById('carry-tech').addEventListener('change', recompute);
+document.getElementById('camp-food-bonus').addEventListener('change', recompute);
 
 // "Reached Feudal Age — All Civs" table: runs build-order.html's OWN real
 // Fast Feudal engine (buildStagedOptimizeTimeline) for every civ, inside a
