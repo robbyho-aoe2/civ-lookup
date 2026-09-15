@@ -9,7 +9,7 @@
   --bg:#100E0C;--surf:#17130F;--surf2:#1F1A15;--border:#241F1A;--border2:#362E24;
   --amber:#3F9B72;--amberL:#5FB88C;--amberBg:rgba(63,155,114,.12);
   --text:#EDE8DD;--text2:#8F8578;--text3:#5C544A;
-  --blue:#60a5fa;--purple:#a78bfa;--cyan:#22d3ee;--orange:#fb923c;--teal:#34d399;--pink:#f472b6;--yellow:#fbbf24;
+  --blue:#60a5fa;--purple:#a78bfa;--cyan:#22d3ee;--orange:#fb923c;--teal:#34d399;--pink:#f472b6;--yellow:#fbbf24;--red:#f87171;
   --radius:9px;
 }
 *{box-sizing:border-box;}
@@ -94,7 +94,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <div class="pill-row">
       <span class="pill prize">💰 Prize Pool: $200</span>
       <span class="pill format">🔁 Round Robin · 1v1 / 2v2 / 3v3 / 4v4</span>
-      <span class="pill">🌍 8 Regions</span>
+      <span class="pill">🌍 9 Regions</span>
       <span class="pill org">🎙️ Organized by Worst Underwear (aka Beef Clamps, aka Old Peenuts)</span>
     </div>
   </div>
@@ -123,7 +123,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.02</div>
+    <div class="version">v0.03</div>
   </div>
 </div>
 
@@ -138,14 +138,38 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 // links use) -- add it once a player's profile is known; until then just
 // the name.
 const TEAMS = [
-  { id: 'usa',       flag: '🇺🇸', name: 'USA',        accent: 'var(--blue)',   players: [] },
-  { id: 'mexico',    flag: '🇲🇽', name: 'Mexico',     accent: 'var(--teal)',   players: [] },
+  { id: 'usa',       flag: '🇺🇸', name: 'USA',        accent: 'var(--blue)',   players: [
+    { name: 'big Conigz', profileId: 10785893 },
+    { name: 'Faith2Adventure', profileId: 12527010 },
+  ] },
+  { id: 'mexico',    flag: '🇲🇽', name: 'Mexico',     accent: 'var(--teal)',   players: [
+    { name: 'MORIS0202', profileId: 12868111 },
+    { name: 'kobyrobys', profileId: 13106080 },
+  ] },
   { id: 'uk',        flag: '🇬🇧', name: 'UK',         accent: 'var(--purple)', players: [] },
   { id: 'australia', flag: '🇦🇺', name: 'Australia',  accent: 'var(--orange)', players: [] },
   { id: 'latam',     flag: '🌎', name: 'LATAM',       accent: 'var(--pink)',   players: [] },
   { id: 'arabia',    flag: '🌙', name: 'Arabia',      accent: 'var(--yellow)', players: [] },
   { id: 'france',    flag: '🇫🇷', name: 'France',     accent: 'var(--cyan)',   players: [] },
-  { id: 'europe',    flag: '🇪🇺', name: 'Europe',     accent: 'var(--amberL)', players: [] },
+  { id: 'europe',    flag: '🇪🇺', name: 'Europe',     accent: 'var(--amberL)', players: [
+    { name: 'esgedda', profileId: 22831188 },
+  ] },
+  // Added along with the USA/Mexico/Europe drop above -- not one of the
+  // original 6 regions, but the user labeled this whole block "canada" and
+  // it's exactly 6 players (this format's own team-size cap), so treating
+  // it as its own region rather than folding into USA. Flag to the user if
+  // that reading is wrong.
+  { id: 'canada',    flag: '🇨🇦', name: 'Canada',     accent: 'var(--red)',    players: [
+    { name: 'volcanloup', profileId: 12893749 },
+    { name: 'GOAT Gobz', profileId: 8154765 },
+    { name: 'Im2Good4YoMoma', profileId: 12591985 },
+    { name: 'Arbiters Son', profileId: 7096003 },
+    // players.json has no real name on file for this profileId yet (only a
+    // generic "player_14276793" placeholder) -- shows as the raw ID until a
+    // real name is known.
+    { name: 'Player 14276793', profileId: 14276793 },
+    { name: 'aka Frost1e', profileId: 12516504 },
+  ] },
 ];
 const SET_FORMATS = ['1v1', '2v2', '3v3', '4v4'];
 
