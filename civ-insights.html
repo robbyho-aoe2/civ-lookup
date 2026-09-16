@@ -261,6 +261,77 @@ select:focus{outline:none;border-color:var(--amber);}
   </details>
 
   <details class="section">
+    <summary>Cavalry Archer vs. Mounted Crossbowman <span class="summary-hint">unit stats, and which techs each of the 11 swapping civs keeps</span></summary>
+    <div class="card">
+      <h2>Unit Stats</h2>
+      <p class="desc">
+        Real stats for both lines, straight from build-order.html's own data. Mounted Crossbowman is
+        the Sept 22 patch's regional Archery Range unit — it fully REPLACES Cavalry Archer for the 11
+        civs listed below, not an additional option alongside it.
+      </p>
+      <div class="overflow-x">
+        <table>
+          <thead><tr>
+            <th>Unit</th><th class="num">Cost</th><th class="num">Train</th>
+            <th class="num">HP</th><th class="num">Attack</th><th class="num">Melee Arm.</th><th class="num">Pierce Arm.</th>
+            <th class="num">Range</th><th class="num">Speed</th><th class="num">LOS</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td>Cavalry Archer</td>
+              <td class="num"><span class="res-pill wood">40w</span> <span class="res-pill gold">60g</span></td>
+              <td class="num">37s</td>
+              <td class="num">50</td><td class="num">6</td><td class="num">0</td><td class="num">0</td>
+              <td class="num">4</td><td class="num">1.4</td><td class="num">5</td>
+            </tr>
+            <tr>
+              <td>Heavy Cavalry Archer <span style="color:var(--text3)">(upgrade: <span class="res-pill food">900f</span> <span class="res-pill gold">500g</span>, 50s research)</span></td>
+              <td class="num">—</td>
+              <td class="num">27s</td>
+              <td class="num">60</td><td class="num">7</td><td class="num">1</td><td class="num">0</td>
+              <td class="num">4</td><td class="num">1.4</td><td class="num">6</td>
+            </tr>
+            <tr style="border-top:1px solid var(--border2)">
+              <td>Mounted Crossbowman</td>
+              <td class="num"><span class="res-pill wood">40w</span> <span class="res-pill gold">65g</span></td>
+              <td class="num">37s</td>
+              <td class="num">45</td><td class="num">7</td><td class="num">2</td><td class="num">0</td>
+              <td class="num">4</td><td class="num">1.25</td><td class="num">—</td>
+            </tr>
+            <tr>
+              <td>Heavy Mounted Crossbowman <span style="color:var(--text3)">(upgrade: <span class="res-pill food">1000f</span> <span class="res-pill gold">650g</span>, 50s research)</span></td>
+              <td class="num">—</td>
+              <td class="num">37s</td>
+              <td class="num">45</td><td class="num">8</td><td class="num">2</td><td class="num">0</td>
+              <td class="num">4</td><td class="num">1.25</td><td class="num">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="desc" style="margin-top:10px;">
+        Net trade-off: Mounted Crossbowman gives up 5 HP and 1 melee armor point less swing than Heavy
+        Cavalry Archer's own totals suggest at a glance, but starts with +1 attack and +2 melee armor
+        over BASE Cavalry Archer immediately in Castle Age, and costs 5 more gold for it. It's also
+        slower (1.25 vs 1.4) and has no LOS advantage confirmed yet. Same range and pierce armor both
+        ways.
+      </p>
+    </div>
+    <div class="card">
+      <h2>Techs by Civ</h2>
+      <p class="desc">
+        The 11 civs trading Cavalry Archer for Mounted Crossbowman under the Sept 22 patch, and which
+        of the shared upgrade techs each one actually keeps — pulled directly from build-order.html's
+        own per-civ <code>unavailableTechs</code> data, not assumed uniform. Parthian Tactics and
+        Cranequins fill the same real slot for a civ (see the Full Changelog section above) — civs with
+        Cranequins show that instead of a crossed-out Parthian Tactics.
+      </p>
+      <div class="overflow-x">
+        <table id="ca-mcb-tech-table"></table>
+      </div>
+    </div>
+  </details>
+
+  <details class="section">
     <summary>Reached Feudal Age — All Civs <span class="summary-hint">every civ, one standardized opening</span></summary>
     <div class="card">
       <h2>Reached Feudal Age — All Civs</h2>
@@ -441,7 +512,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.17</div>
+    <div class="version">v0.18</div>
   </div>
 </div>
 
@@ -957,6 +1028,44 @@ document.getElementById('wood-tech').addEventListener('change', recompute);
 document.getElementById('farm-tech').addEventListener('change', recompute);
 document.getElementById('carry-tech').addEventListener('change', recompute);
 document.getElementById('camp-food-bonus').addEventListener('change', recompute);
+
+// "Techs by Civ" (Cavalry Archer vs Mounted Crossbowman) — real per-civ
+// `unavailableTechs` pulled directly from build-order.html's own DATA.civs
+// (grep'd out by hand, not guessed) for the 11 Sept22 civs that trade
+// Cavalry Archer for Mounted Crossbowman. Every civ NOT listed here for a
+// given tech has real access to it — build-order.html's CAV_ARCHER_TECHS
+// list (the shared tech set both units draw from) is the column set below,
+// minus Thumb Ring (real for Cavalry Archer in index.html's broader model,
+// but not actually part of build-order.html's own CAV_ARCHER_TECHS, so
+// left out here to stay consistent with the source this table draws from).
+const CA_MCB_TECH_COLS = ['Fletching', 'Bodkin Arrow', 'Bracer', 'Padded Archer Armor', 'Leather Archer Armor', 'Ring Archer Armor', 'Bloodlines', 'Husbandry', 'Parthian Tactics', 'Ballistics', 'Chemistry'];
+const CA_MCB_CIVS = {
+  Bohemians:  { heavy: false, cranequins: false, missing: ['Bloodlines'] },
+  Britons:    { heavy: true,  cranequins: true,  missing: ['Bloodlines'] },
+  Burgundians:{ heavy: false, cranequins: false, missing: ['Bloodlines', 'Parthian Tactics', 'Ring Archer Armor'] },
+  Celts:      { heavy: true,  cranequins: false, missing: ['Bloodlines', 'Bracer', 'Parthian Tactics'] },
+  Franks:     { heavy: true,  cranequins: true,  missing: ['Bloodlines', 'Bracer', 'Ring Archer Armor'] },
+  Italians:   { heavy: false, cranequins: false, missing: ['Parthian Tactics'] },
+  Poles:      { heavy: true,  cranequins: false, missing: ['Parthian Tactics', 'Ring Archer Armor'] },
+  Portuguese: { heavy: false, cranequins: false, missing: ['Parthian Tactics'] },
+  Sicilians:  { heavy: true,  cranequins: true,  missing: ['Ring Archer Armor'] },
+  Spanish:    { heavy: true,  cranequins: false, missing: ['Parthian Tactics'] },
+  Teutons:    { heavy: true,  cranequins: false, missing: ['Bracer', 'Husbandry', 'Parthian Tactics'] },
+  Vikings:    { heavy: false, cranequins: false, missing: ['Bloodlines', 'Husbandry', 'Parthian Tactics'] },
+};
+(function renderCaMcbTechTable() {
+  const tableEl = document.getElementById('ca-mcb-tech-table');
+  const thead = `<thead><tr><th>Civ</th><th class="num">Heavy</th>${CA_MCB_TECH_COLS.map(t => `<th class="num">${t === 'Parthian Tactics' ? 'Parthian Tactics<br>/ Cranequins' : t}</th>`).join('')}</tr></thead>`;
+  const tbody = Object.entries(CA_MCB_CIVS).map(([civ, cfg]) => {
+    const cells = CA_MCB_TECH_COLS.map(tech => {
+      if (tech === 'Parthian Tactics' && cfg.cranequins) return `<td class="num" style="color:var(--farm)">Cranequins</td>`;
+      const missing = cfg.missing.includes(tech);
+      return `<td class="num" style="color:${missing ? 'var(--text3)' : 'var(--farm)'}">${missing ? '✕' : '✓'}</td>`;
+    }).join('');
+    return `<tr><td>${civ}</td><td class="num">${cfg.heavy ? '✓' : '—'}</td>${cells}</tr>`;
+  }).join('');
+  tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
+})();
 
 // "Reached Feudal Age — All Civs" table: runs build-order.html's OWN real
 // Fast Feudal engine (buildStagedOptimizeTimeline) for every civ, inside a
