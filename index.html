@@ -182,8 +182,8 @@ header{
 /* Tech Tree flowchart (civ info panel) */
 .ttree-cat{margin-bottom:14px;}
 .ttree-cat-head{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--amberL);margin-bottom:8px;}
-.ttree-lines{display:flex;flex-wrap:wrap;gap:16px;}
-.ttree-line{display:flex;flex-direction:column;align-items:center;min-width:130px;max-width:160px;}
+.ttree-grid{display:grid;gap:10px;align-items:start;}
+.ttree-cell{display:flex;flex-direction:column;align-items:center;min-width:0;}
 .ttree-node{width:100%;text-align:center;border-radius:7px;padding:5px 8px 6px;font-size:11px;line-height:1.3;border:1px solid var(--border2);background:var(--surf);}
 .ttree-node.avail{border-color:var(--greenBd);background:var(--greenBg);}
 .ttree-node.avail .ttree-node-name{color:var(--green);font-weight:700;}
@@ -275,7 +275,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.27</div>
+    <div class="version">v2.28</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1957,6 +1957,27 @@ function syncCavalryArcherArchetypeForPatch() {
 // tech genuinely shows on the Castle-age box per the site owner's own
 // framing ("castle techs show next to or inside of castle units").
 const T = TECH_IDS; // local alias, this block references it very heavily
+// Display suffix for the well-known flat-attack and melee/pierce-armor
+// techs, per the site owner's own format ("(+1) for attacks... +1/1 or
+// +1/2 for armor"). Real AoE2 values: the Blacksmith melee-attack line
+// (Forging/Iron Casting/Blast Furnace) and archer-attack line (Fletching/
+// Bodkin Arrow/Bracer) are each a flat +1 attack per tier. Mail Armor
+// (infantry) and Barding Armor (cavalry) are MELEE-armor-only, +1 per
+// tier — a single number, not a pair. The Archer Pierce Armor line
+// (Padded/Leather/Ring) is the one line that genuinely grants BOTH melee
+// and pierce per tier (+1/+1, +1/+1, +1/+2) — Parthian Tactics similarly
+// grants +2 pierce armor on top of its own vs-Infantry attack bonus.
+// Deliberately no label for techs whose real effect isn't a flat attack/
+// armor number (Squires/Arson/Gambesons/Husbandry/Bloodlines/Thumb Ring/
+// Ballistics/Chemistry/Siege Engineers) — those stay unlabeled pills.
+const TECH_BONUS_LABEL = {
+  Forging: '+1', 'Iron Casting': '+1', 'Blast Furnace': '+1',
+  Fletching: '+1', 'Bodkin Arrow': '+1', Bracer: '+1',
+  'Scale Mail Armor': '+1', 'Chain Mail Armor': '+1', 'Plate Mail Armor': '+1',
+  'Scale Barding Armor': '+1', 'Chain Barding Armor': '+1', 'Plate Barding Armor': '+1',
+  'Padded Archer Armor': '+1/+1', 'Leather Archer Armor': '+1/+1', 'Ring Archer Armor': '+1/+2',
+  'Parthian Tactics': '+2 armor',
+};
 const TECH_TREE_CATEGORIES = [
   { label: 'Infantry', emoji: '🛡', lines: [
     { name: 'Militia', chain: [
@@ -1966,15 +1987,21 @@ const TECH_TREE_CATEGORIES = [
       { name: 'Two-Handed Swordsman', age: 'Imperial', id: 77, techs: [{name:'Blast Furnace',id:T['Blast Furnace']},{name:'Plate Mail Armor',id:T['Plate Mail Armor']}] },
       { name: 'Champion', age: 'Imperial', id: 473, extra: [2554, 1792] },
     ]},
+    // Spearman/Eagle lines get the SAME Blacksmith techs as Militia at the
+    // same ages (Forging/Iron Casting/Blast Furnace boost ALL melee units,
+    // Mail Armor/Squires/Gambesons/Arson are infantry-class-wide, not
+    // Militia-line-exclusive) — shown redundantly per the site owner
+    // ("spearmen can get the armor upgrades same as man-at-arms, etc.,
+    // show all techs that apply even if it's redundant").
     { name: 'Spearman', chain: [
-      { name: 'Spearman', age: 'Feudal', always: true, techs: [{name:'Forging',id:T.Forging}] },
-      { name: 'Pikeman', age: 'Castle', id: 93, techs: [{name:'Iron Casting',id:T['Iron Casting']},{name:'Squires',id:T.Squires}] },
-      { name: 'Halberdier', age: 'Imperial', id: 359, techs: [{name:'Blast Furnace',id:T['Blast Furnace']}] },
+      { name: 'Spearman', age: 'Feudal', always: true, techs: [{name:'Forging',id:T.Forging},{name:'Scale Mail Armor',id:T['Scale Mail Armor']},{name:'Arson',id:T.Arson}] },
+      { name: 'Pikeman', age: 'Castle', id: 93, techs: [{name:'Iron Casting',id:T['Iron Casting']},{name:'Chain Mail Armor',id:T['Chain Mail Armor']},{name:'Squires',id:T.Squires},{name:'Gambesons',id:T.Gambesons}] },
+      { name: 'Halberdier', age: 'Imperial', id: 359, techs: [{name:'Blast Furnace',id:T['Blast Furnace']},{name:'Plate Mail Armor',id:T['Plate Mail Armor']}] },
     ]},
     { name: 'Eagle Scout', chain: [
-      { name: 'Eagle Scout', age: 'Feudal', id: 751 },
-      { name: 'Eagle Warrior', age: 'Castle', id: 752, techs: [{name:'Squires',id:T.Squires}] },
-      { name: 'Elite Eagle Warrior', age: 'Imperial', id: 753 },
+      { name: 'Eagle Scout', age: 'Feudal', id: 751, techs: [{name:'Forging',id:T.Forging},{name:'Scale Mail Armor',id:T['Scale Mail Armor']},{name:'Arson',id:T.Arson}] },
+      { name: 'Eagle Warrior', age: 'Castle', id: 752, techs: [{name:'Iron Casting',id:T['Iron Casting']},{name:'Chain Mail Armor',id:T['Chain Mail Armor']},{name:'Squires',id:T.Squires},{name:'Gambesons',id:T.Gambesons}] },
+      { name: 'Elite Eagle Warrior', age: 'Imperial', id: 753, techs: [{name:'Blast Furnace',id:T['Blast Furnace']},{name:'Plate Mail Armor',id:T['Plate Mail Armor']}] },
     ]},
   ]},
   { label: 'Archer', emoji: '🏹', lines: [
@@ -1996,35 +2023,45 @@ const TECH_TREE_CATEGORIES = [
     ]},
   ]},
   { label: 'Cavalry', emoji: '⚔️', lines: [
+    // Barding Armor's own real ages: Scale=Feudal, Chain=Castle, Plate=
+    // Imperial — Forging/Iron Casting/Blast Furnace (melee attack) apply
+    // to cavalry too, same as infantry. Shown on all 3 lines at matching
+    // ages, same "redundant is fine" instruction as Infantry above.
     { name: 'Scout Cavalry', chain: [
-      { name: 'Scout Cavalry', age: 'Feudal', id: 448, techs: [{name:'Bloodlines',id:T.Bloodlines}] },
-      { name: 'Light Cavalry', age: 'Castle', id: 546, techs: [{name:'Husbandry',id:T.Husbandry}] },
-      { name: 'Hussar', age: 'Imperial', id: [441, 1707] },
+      { name: 'Scout Cavalry', age: 'Feudal', id: 448, techs: [{name:'Bloodlines',id:T.Bloodlines},{name:'Scale Barding Armor',id:T['Scale Barding Armor']},{name:'Forging',id:T.Forging}] },
+      { name: 'Light Cavalry', age: 'Castle', id: 546, techs: [{name:'Husbandry',id:T.Husbandry},{name:'Chain Barding Armor',id:T['Chain Barding Armor']},{name:'Iron Casting',id:T['Iron Casting']}] },
+      { name: 'Hussar', age: 'Imperial', id: [441, 1707], techs: [{name:'Plate Barding Armor',id:T['Plate Barding Armor']},{name:'Blast Furnace',id:T['Blast Furnace']}] },
     ]},
     { name: 'Knight', chain: [
       { name: 'Knight', age: 'Castle', id: 38, extra: [1944, 2566, 1751], techs: [{name:'Bloodlines',id:T.Bloodlines},{name:'Scale Barding Armor',id:T['Scale Barding Armor']},{name:'Forging',id:T.Forging}] },
       { name: 'Cavalier', age: 'Castle', id: 283, extra: [1946, 2568, 1753], techs: [{name:'Chain Barding Armor',id:T['Chain Barding Armor']},{name:'Husbandry',id:T.Husbandry},{name:'Iron Casting',id:T['Iron Casting']}] },
       { name: 'Paladin', age: 'Imperial', id: [569, 1813], extra: [1946, 2568, 1753, 558, 1372], techs: [{name:'Plate Barding Armor',id:T['Plate Barding Armor']},{name:'Blast Furnace',id:T['Blast Furnace']}] },
     ]},
+    // No Feudal tier to house Scale Barding/Bloodlines separately, so its
+    // one pre-Imperial tier absorbs the full Feudal+Castle bucket.
     { name: 'Steppe Lancer', chain: [
       { name: 'Steppe Lancer', age: 'Castle', id: 1370, techs: [{name:'Bloodlines',id:T.Bloodlines},{name:'Husbandry',id:T.Husbandry}] },
       { name: 'Elite Steppe Lancer', age: 'Imperial', id: 1372 },
     ]},
   ]},
   { label: 'Camel', emoji: '🐪', lines: [
+    // Same "no Feudal tier" reasoning as Steppe Lancer — Camel Rider (its
+    // own first tier, Castle) absorbs Bloodlines/Scale Barding Armor
+    // (Feudal-age techs) AND Husbandry/Chain Barding Armor (Castle-age),
+    // since there's no earlier tier to place the Feudal-age ones on.
     { name: 'Camel Rider', chain: [
-      { name: 'Camel Rider', age: 'Castle', id: 329, techs: [{name:'Bloodlines',id:T.Bloodlines},{name:'Scale Barding Armor',id:T['Scale Barding Armor']}] },
-      { name: 'Heavy Camel Rider', age: 'Imperial', id: 330, extra: [207], techs: [{name:'Husbandry',id:T.Husbandry},{name:'Chain Barding Armor',id:T['Chain Barding Armor']}] },
+      { name: 'Camel Rider', age: 'Castle', id: 329, techs: [{name:'Bloodlines',id:T.Bloodlines},{name:'Scale Barding Armor',id:T['Scale Barding Armor']},{name:'Husbandry',id:T.Husbandry},{name:'Chain Barding Armor',id:T['Chain Barding Armor']}] },
+      { name: 'Heavy Camel Rider', age: 'Imperial', id: 330, extra: [207], techs: [{name:'Plate Barding Armor',id:T['Plate Barding Armor']}] },
     ]},
   ]},
   { label: 'Elephant', emoji: '🐘', lines: [
     { name: 'Battle Elephant', chain: [
-      { name: 'Battle Elephant', age: 'Castle', id: 1132, techs: [{name:'Bloodlines',id:T.Bloodlines},{name:'Scale Barding Armor',id:T['Scale Barding Armor']}] },
-      { name: 'Elite Battle Elephant', age: 'Imperial', id: 1134, techs: [{name:'Chain Barding Armor',id:T['Chain Barding Armor']},{name:'Plate Barding Armor',id:T['Plate Barding Armor']}] },
+      { name: 'Battle Elephant', age: 'Castle', id: 1132, techs: [{name:'Bloodlines',id:T.Bloodlines},{name:'Scale Barding Armor',id:T['Scale Barding Armor']},{name:'Chain Barding Armor',id:T['Chain Barding Armor']}] },
+      { name: 'Elite Battle Elephant', age: 'Imperial', id: 1134, techs: [{name:'Plate Barding Armor',id:T['Plate Barding Armor']}] },
     ]},
     { name: 'Armored Elephant', chain: [
-      { name: 'Armored Elephant', age: 'Castle', id: 1744, techs: [{name:'Bloodlines',id:T.Bloodlines},{name:'Scale Barding Armor',id:T['Scale Barding Armor']}] },
-      { name: 'Elite Armored Elephant', age: 'Imperial', id: 1746, techs: [{name:'Chain Barding Armor',id:T['Chain Barding Armor']},{name:'Plate Barding Armor',id:T['Plate Barding Armor']}] },
+      { name: 'Armored Elephant', age: 'Castle', id: 1744, techs: [{name:'Bloodlines',id:T.Bloodlines},{name:'Scale Barding Armor',id:T['Scale Barding Armor']},{name:'Chain Barding Armor',id:T['Chain Barding Armor']}] },
+      { name: 'Elite Armored Elephant', age: 'Imperial', id: 1746, techs: [{name:'Plate Barding Armor',id:T['Plate Barding Armor']}] },
     ]},
   ]},
   { label: 'Siege', emoji: '💣', lines: [
@@ -2087,6 +2124,23 @@ function techTreeTechAvailable(cd, tech) {
   const ids = [].concat(tech.id, tech.extra || []);
   return ids.some(id => cd.techs.has(id));
 }
+// Real age order for grid rows — categories only render the rows any of
+// their (visible) lines actually use, so e.g. Cavalry never shows a blank
+// Dark row.
+const TTREE_AGE_ORDER = ['Dark', 'Feudal', 'Castle', 'Imperial'];
+function techTreeNodeHtml(cd, node) {
+  const avail = techTreeNodeAvailable(cd, node);
+  const techPills = (node.techs || []).filter(t => t.id != null).map(t => {
+    const has = techTreeTechAvailable(cd, t);
+    const label = TECH_BONUS_LABEL[t.name];
+    return `<span class="ttree-tech ${has ? 'avail' : 'locked'}" data-item-name="${t.name}" data-item-type="tech" title="${t.name}${has ? '' : ' (not researchable)'}">${t.name}${label ? ` <b>${label}</b>` : ''}</span>`;
+  }).join('');
+  return `<div class="ttree-node ${avail ? 'avail' : 'locked'}">
+    <div class="ttree-node-name">${node.name}</div>
+    <div class="ttree-node-age">${node.age}</div>
+    ${techPills ? `<div class="ttree-techs">${techPills}</div>` : ''}
+  </div>`;
+}
 function techTreeFlowchartHtml(civName) {
   const cd = civData[civName];
   const cats = TECH_TREE_CATEGORIES
@@ -2095,25 +2149,29 @@ function techTreeFlowchartHtml(civName) {
   if (!cats.length) return '';
   let h = `<div class="info-sl" style="margin-top:10px">Tech tree</div>`;
   cats.forEach(cat => {
+    // Age-row grid: every line becomes a column, every age actually used
+    // anywhere in this category becomes a row, so tiers at the same real
+    // age line up horizontally across lines regardless of how many tiers
+    // came before them in each line (e.g. Spearman's Feudal box sits next
+    // to Militia's Feudal box, even though Militia has an extra Dark tier
+    // above it) — site owner: "spearmen should be next to man at arms in
+    // feudal." A line with no tier at a given age leaves that cell blank;
+    // a line with TWO tiers at the same age (e.g. Knight+Cavalier, both
+    // Castle) stacks them in one cell with a small arrow between.
+    const agesUsed = TTREE_AGE_ORDER.filter(age => cat.lines.some(line => line.chain.some(n => n.age === age)));
     h += `<div class="ttree-cat">
       <div class="ttree-cat-head">${archIconHtml(CIV_ARCHETYPES.find(a => a.label === cat.label) || { icon: 'eco', label: cat.label }, 16)}${cat.label}</div>
-      <div class="ttree-lines">`;
-    cat.lines.forEach(line => {
-      h += `<div class="ttree-line">`;
-      line.chain.forEach((node, i) => {
-        const avail = techTreeNodeAvailable(cd, node);
-        if (i > 0) h += `<div class="ttree-arrow">↓</div>`;
-        const techPills = (node.techs || []).filter(t => t.id != null).map(t => {
-          const has = techTreeTechAvailable(cd, t);
-          return `<span class="ttree-tech ${has ? 'avail' : 'locked'}" data-item-name="${t.name}" data-item-type="tech" title="${t.name}${has ? '' : ' (not researchable)'}">${t.name}</span>`;
-        }).join('');
-        h += `<div class="ttree-node ${avail ? 'avail' : 'locked'}">
-          <div class="ttree-node-name">${node.name}</div>
-          <div class="ttree-node-age">${node.age}</div>
-          ${techPills ? `<div class="ttree-techs">${techPills}</div>` : ''}
-        </div>`;
+      <div class="ttree-grid" style="grid-template-columns:repeat(${cat.lines.length},1fr)">`;
+    cat.lines.forEach((line, colIdx) => {
+      agesUsed.forEach((age, rowIdx) => {
+        const nodesAtAge = line.chain.filter(n => n.age === age);
+        h += `<div class="ttree-cell" style="grid-column:${colIdx + 1};grid-row:${rowIdx + 1}">`;
+        nodesAtAge.forEach((node, i) => {
+          if (i > 0) h += `<div class="ttree-arrow">↓</div>`;
+          h += techTreeNodeHtml(cd, node);
+        });
+        h += `</div>`;
       });
-      h += `</div>`;
     });
     h += `</div></div>`;
   });
