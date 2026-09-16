@@ -355,6 +355,14 @@ select:focus{outline:none;border-color:var(--amber);}
         nothing missing. None of the 11 civs trading in Cavalry Archer get this far (Britons comes
         closest, missing only Bloodlines).
       </p>
+      <p class="desc" style="color:var(--text3)">
+        Corrected 2026-09-16 (site owner) — two real gaps in the numbers below: Chemistry (+1 attack for
+        Archers, universally available, previously not counted at all) and Parthian Tactics' own melee
+        armor component (+1 melee/+2 pierce, previously modeled as pierce-only; its situational attack
+        bonus is +2 vs. the Spearman-line specifically, not general Infantry — Cranequins' own separate
+        +2 vs. Infantry bonus is unaffected). Speed now includes Husbandry's real +15% cavalry speed
+        bonus for civs that have it, instead of showing the untouched base number.
+      </p>
       <div class="overflow-x">
         <table>
           <thead><tr>
@@ -365,30 +373,31 @@ select:focus{outline:none;border-color:var(--amber);}
             <tr>
               <td>Japanese Heavy Cavalry Archer</td>
               <td class="num">80</td>
-              <td class="num">10 <span style="color:var(--text3)">(12 vs. Ranged Soldiers)</span></td>
-              <td class="num">4</td><td class="num">6</td><td class="num">7</td><td class="num">1.4</td>
+              <td class="num">11 <span style="color:var(--text3)">(13 vs. Ranged Soldiers, 13 vs. Spearman-line)</span></td>
+              <td class="num">5</td><td class="num">6</td><td class="num">7</td><td class="num">1.61</td>
             </tr>
             <tr>
               <td>Danes/Saxons/Varangians Heavy Mounted Crossbowman</td>
               <td class="num">65</td>
-              <td class="num">11 <span style="color:var(--text3)">(13 vs. Infantry)</span></td>
-              <td class="num">5</td><td class="num">4</td><td class="num">8</td><td class="num">1.25</td>
+              <td class="num">12 <span style="color:var(--text3)">(14 vs. Infantry)</span></td>
+              <td class="num">5</td><td class="num">4</td><td class="num">8</td><td class="num">1.44</td>
             </tr>
           </tbody>
         </table>
       </div>
       <p class="desc" style="margin-top:10px;">
-        Real finding, with both sides at full tech completion: Mounted Crossbowman comes out AHEAD on
-        melee armor (5 vs. 4 — the unit's own higher base melee armor, 2 vs. 1, carried straight through
-        since neither side's tech list touches melee armor beyond the shared archer-armor line) and range
-        (8 vs. 7 — Cranequins' own +1 range stacks on the shared Fletching/Bodkin Arrow/Bracer line the
-        same way Parthian Tactics would, but ALSO adds range on top where Parthian Tactics' bonus is pure
-        pierce armor instead). Cavalry Archer wins on HP (+15 — Bloodlines is the same flat +20 for both
-        lines now, so this gap is entirely the base units' own 60-vs-45 HP difference) and pierce armor
-        (+2 — Parthian Tactics' own bonus is pierce armor specifically, while Cranequins spends its
-        equivalent "extra" on range instead) and speed (1.4 vs. 1.25, a base unit-stat difference, not
-        tech-driven). Attack is close either way once each side's own situational vs.-class bonus is
-        counted.
+        Real finding, with both sides at full tech completion: melee armor now TIES at 5 (Parthian
+        Tactics' own melee-armor point exactly closes the gap Mounted Crossbowman's higher base melee
+        armor used to hold alone). Mounted Crossbowman still wins range (8 vs. 7 — Cranequins' own +1
+        range stacks on the shared Fletching/Bodkin Arrow/Bracer line, where Parthian Tactics spends its
+        equivalent "extra" on pierce armor instead) and flat attack (12 vs. 11 — entirely the base units'
+        own 8-vs-7 attack difference, since every tech bonus applied is identical between them).
+        Cavalry Archer wins on HP (+15 — Bloodlines is the same flat +20 for both lines now, so this gap
+        is entirely the base units' own 60-vs-45 HP difference), pierce armor (+2 — Parthian Tactics'
+        own pierce bonus is 1 point ahead of Cranequins' equivalent), and speed (1.61 vs. 1.44 — same
+        +15% Husbandry bonus on both sides, so the gap is just the base 1.4-vs-1.25 speed carried
+        through). Each side's own situational vs.-class bonus (+2, applying to a different target class
+        each) keeps their real combat attack close either way.
       </p>
     </div>
   </details>
@@ -578,7 +587,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.24</div>
+    <div class="version">v0.25</div>
   </div>
 </div>
 
@@ -1150,29 +1159,36 @@ const CA_MCB_CIVS = {
 function caMcbHas(cfg, tech) {
   return !cfg.missing.includes(tech);
 }
-// Compact maxed-stat columns (Range/Attack/Armor) — same formula validated
-// against the "Best Heavy CA vs Best Heavy MCB" card's own hand-computed
-// numbers above (Danes/Saxons/Varangians: range8/atk11/melee5/pierce4;
-// Sicilians: range8/atk11/melee4/pierce2 — both match exactly). Bloodlines
-// (HP only) and Husbandry (speed only, not a flat combat number — see the
-// TECH_BONUS_LABEL comment in index.html) don't touch any of these three,
-// so they're deliberately left out of the formula. Parthian Tactics' own
-// "+1 attack vs Infantry" is situational, not a flat baseline bump, so
-// Attack here is the non-situational floor only (matches how the "Best
-// Heavy CA vs Best Heavy MCB" card itself reports the flat number).
+// Compact maxed-stat columns (Range/Attack/Armor/Speed). Formula corrected
+// 2026-09-16 (site owner, cross-checked against index.html's own
+// TECH_DESCRIPTIONS): two real gaps found in the original version —
+// (1) Chemistry (id 47) is a flat +1 attack for Archers/Ranged Siege/
+// Ships/defensive structures, universally available like Fletching/
+// Bodkin Arrow, but was never added to the formula at all; (2) Parthian
+// Tactics grants +1 MELEE armor too, not just +2 pierce — it was modeled
+// as pierce-only. Its own situational bonus is also "+2 attack vs.
+// Spearman-line" specifically, not general Infantry (Cranequins' own
+// separate "+2 attack vs. Infantry" bonus is unaffected by this — the two
+// techs are NOT identical in effect, only in which civs get one or the
+// other). Husbandry (+15% cavalry speed, per index.html's own
+// TECH_DESCRIPTIONS[39]) now feeds a real Speed column instead of being a
+// tracked-but-inert checkbox. Formula re-validated against the corrected
+// "Best Heavy CA vs Best Heavy MCB" card numbers below (exact match).
 function caMcbMaxStats(cfg) {
   const hasBracer = caMcbHas(cfg, 'Bracer');
   const hasRing = caMcbHas(cfg, 'Ring Archer Armor');
   const hasParthian = caMcbHas(cfg, 'Parthian Tactics');
-  const attack = (cfg.heavy ? 8 : 7) + 2 + (hasBracer ? 1 : 0);
+  const hasHusbandry = caMcbHas(cfg, 'Husbandry');
+  const attack = (cfg.heavy ? 8 : 7) + 2 + 1 /* Chemistry, universal */ + (hasBracer ? 1 : 0);
   const range = 4 + 2 + (hasBracer ? 1 : 0) + (cfg.cranequins ? 1 : 0);
-  const meleeArmor = 2 + 2 + (hasRing ? 1 : 0);
+  const meleeArmor = 2 + 2 + (hasRing ? 1 : 0) + (!cfg.cranequins && hasParthian ? 1 : 0);
   const pierceArmor = 2 + (hasRing ? 2 : 0) + (!cfg.cranequins && hasParthian ? 2 : 0);
-  return { attack, range, meleeArmor, pierceArmor };
+  const speed = +(1.25 * (hasHusbandry ? 1.15 : 1)).toFixed(2);
+  return { attack, range, meleeArmor, pierceArmor, speed };
 }
 (function renderCaMcbTechTable() {
   const tableEl = document.getElementById('ca-mcb-tech-table');
-  const thead = `<thead><tr><th>Civ</th><th class="num">Heavy</th>${CA_MCB_TECH_COLS.map(t => `<th class="num">${t === 'Parthian Tactics' ? 'Parthian Tactics<br>/ Cranequins' : t}</th>`).join('')}<th class="num">Range</th><th class="num">Attack</th><th class="num">Armor</th></tr></thead>`;
+  const thead = `<thead><tr><th>Civ</th><th class="num">Heavy</th>${CA_MCB_TECH_COLS.map(t => `<th class="num">${t === 'Parthian Tactics' ? 'Parthian Tactics<br>/ Cranequins' : t}</th>`).join('')}<th class="num">Range</th><th class="num">Attack</th><th class="num">Armor</th><th class="num">Speed</th></tr></thead>`;
   const sorted = Object.entries(CA_MCB_CIVS).sort(([civA, a], [civB, b]) => {
     if (a.heavy !== b.heavy) return a.heavy ? -1 : 1;
     const aBracer = caMcbHas(a, 'Bracer'), bBracer = caMcbHas(b, 'Bracer');
@@ -1194,7 +1210,7 @@ function caMcbMaxStats(cfg) {
       return `<td class="num" style="color:${missing ? 'var(--text3)' : 'var(--farm)'}" title="${starred ? 'Lacks the real tech, but Franks\' own civ bonus (Mounted Units +20% HP, Feudal Age) already covers it' : ''}">${missing ? '✕' : starred ? '✓*' : '✓'}</td>`;
     }).join('');
     const stats = caMcbMaxStats(cfg);
-    return `<tr><td>${civ}</td><td class="num">${cfg.heavy ? '✓' : '—'}</td>${cells}<td class="num">${stats.range}</td><td class="num">${stats.attack}</td><td class="num">${stats.meleeArmor}/${stats.pierceArmor}</td></tr>`;
+    return `<tr><td>${civ}</td><td class="num">${cfg.heavy ? '✓' : '—'}</td>${cells}<td class="num">${stats.range}</td><td class="num">${stats.attack}</td><td class="num">${stats.meleeArmor}/${stats.pierceArmor}</td><td class="num">${stats.speed}</td></tr>`;
   }).join('');
   tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
 })();

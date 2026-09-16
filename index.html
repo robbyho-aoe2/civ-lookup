@@ -275,7 +275,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.30</div>
+    <div class="version">v2.31</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1427,8 +1427,17 @@ const TECH_DESCRIPTIONS = {
   212:'Blacksmith tech: Archers and Cavalry Archers +1 melee/+1 pierce armor (cumulative)',
   219:'Blacksmith tech: Archers and Cavalry Archers +1 melee/+2 pierce armor (cumulative — total +3/+4 with all three)',
   437:'Archers fire 100% accurately and reload faster',
-  436:'Cavalry Archers +2 pierce armor, +1 attack vs Infantry',
+  // Corrected 2026-09-16 (site owner) — was '+2 pierce armor, +1 attack vs
+  // Infantry', missing the melee-armor component and naming the wrong
+  // target class. Real effect: Mounted Archer-line AND Arambai (aoe2DE
+  // "Arambai" unique unit) get +1 melee/+2 pierce armor, +2 attack vs. the
+  // Spearman-line specifically (not general Infantry).
+  436:'Mounted Archer-line and Arambai +1 melee/+2 pierce armor, +2 attack vs. Spearman-line',
   93: 'Projectile units aim at predicted position — greatly reduces misses vs moving targets. Also required for gunpowder accuracy',
+  // Chemistry (2026-09-16, site owner): +1 attack for Ranged Siege units,
+  // Archers, Ships, and defensive structures — previously undocumented
+  // here and left out of every maxed-stat computation on the site.
+  47: 'Ranged Siege units, Archers, Ships, and defensive structures +1 attack',
   435:'All cavalry units +20 HP',
   39: 'Cavalry units +15% movement speed',
   81: 'Mounted units +1 melee armor, +1 pierce armor',
@@ -1965,18 +1974,23 @@ const T = TECH_IDS; // local alias, this block references it very heavily
 // (infantry) and Barding Armor (cavalry) are MELEE-armor-only, +1 per
 // tier — a single number, not a pair. The Archer Pierce Armor line
 // (Padded/Leather/Ring) is the one line that genuinely grants BOTH melee
-// and pierce per tier (+1/+1, +1/+1, +1/+2) — Parthian Tactics similarly
-// grants +2 pierce armor on top of its own vs-Infantry attack bonus.
+// and pierce per tier (+1/+1, +1/+1, +1/+2). Parthian Tactics (2026-09-16
+// correction, site owner) ALSO grants both melee and pierce (+1/+2, same
+// shape as Ring Archer Armor) on top of its own vs-Spearman-line attack
+// bonus — was previously modeled as pierce-only. Chemistry (2026-09-16,
+// site owner) is a flat +1 attack for Archers/Ranged Siege/Ships/
+// defensive structures — previously left unlabeled on the (wrong)
+// assumption its real effect wasn't a flat number.
 // Deliberately no label for techs whose real effect isn't a flat attack/
 // armor number (Squires/Arson/Gambesons/Husbandry/Bloodlines/Thumb Ring/
-// Ballistics/Chemistry/Siege Engineers) — those stay unlabeled pills.
+// Ballistics/Siege Engineers) — those stay unlabeled pills.
 const TECH_BONUS_LABEL = {
   Forging: '+1', 'Iron Casting': '+1', 'Blast Furnace': '+1',
-  Fletching: '+1', 'Bodkin Arrow': '+1', Bracer: '+1',
+  Fletching: '+1', 'Bodkin Arrow': '+1', Bracer: '+1', Chemistry: '+1',
   'Scale Mail Armor': '+1', 'Chain Mail Armor': '+1', 'Plate Mail Armor': '+1',
   'Scale Barding Armor': '+1', 'Chain Barding Armor': '+1', 'Plate Barding Armor': '+1',
   'Padded Archer Armor': '+1/+1', 'Leather Archer Armor': '+1/+1', 'Ring Archer Armor': '+1/+2',
-  'Parthian Tactics': '+2 armor',
+  'Parthian Tactics': '+1/+2',
 };
 const TECH_TREE_CATEGORIES = [
   { label: 'Infantry', emoji: '🛡', lines: [
