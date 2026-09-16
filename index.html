@@ -259,7 +259,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.23</div>
+    <div class="version">v2.24</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1303,7 +1303,7 @@ function applySept22PatchDeltas() {
 // small override map + a lookup wrapper, called wherever UNIQUE_TECHS[civ]
 // used to be read directly.
 const SEPT22_UNIQUE_TECH_OVERRIDES = {
-  Franks: ['Chivalry', 'Ordonnance Companies'],
+  Franks: ['Ordonnance Companies', 'Chivalry'],
 };
 function getUniqueTechs(civName) {
   if (PATCH_VERSION === 'sept22' && SEPT22_UNIQUE_TECH_OVERRIDES[civName]) return SEPT22_UNIQUE_TECH_OVERRIDES[civName];
