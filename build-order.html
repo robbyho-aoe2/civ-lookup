@@ -266,7 +266,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.13</div>
+    <div class="version">v1.14</div>
   </div>
 </div>
 
@@ -503,6 +503,16 @@ const DATA = {
     // archer Pierce Armor line above, which doesn't apply to mounted
     // archers (Archery Range).
     { id:'parthian-tactics', name:'Parthian Tactics', age:'Imperial', resource:null, bonusPct:0, cost:{food:200,wood:0,gold:250,stone:0}, queueSeconds:65, group:'blacksmith', saveOnly:true },
+    // Cranequins (Sept22 patch, Archery Range) — Mounted Crossbowman's own
+    // Imperial upgrade: +1 range, +2 attack vs. Infantry. Only Britons/
+    // Franks/Sicilians get it (see SEPT22_MOUNTED_CROSSBOWMAN_LINE_CIVS,
+    // gated in applicableCombatTechIds below). Cost confirmed by the site
+    // owner (300F/200G); no real research time confirmed yet -- queueSeconds
+    // borrowed from Parthian Tactics (same age, same building, same "capstone
+    // upgrade for a mounted archer" role) as a placeholder pending a real
+    // number, same pattern already used for Heavy Mounted Crossbowman's own
+    // upgradeResearchTime placeholder.
+    { id:'cranequins', name:'Cranequins', age:'Imperial', resource:null, bonusPct:0, cost:{food:300,wood:0,gold:200,stone:0}, queueSeconds:65, group:'blacksmith', saveOnly:true },
     // Researched at the University in-game, but grouped here under Siege
     // Workshop since that's the production building they buff and this
     // tool organizes by building, not literal research location.
@@ -3293,19 +3303,22 @@ const MOUNTED_CROSSBOWMAN_LINE_TEMPLATE = {
 // confirmed list as index.html's SEPT22_MOUNTED_CROSSBOWMAN_CIVS (civ ids
 // lowercased to match this file's own DATA.civs[].id convention; kept as
 // a separate duplicate since these two pages don't share JS).
+// `cranequins` added alongside `heavy` -- matches index.html's own
+// SEPT22_MOUNTED_CROSSBOWMAN_CIVS list (Britons/Franks/Sicilians only),
+// consumed by applicableCombatTechIds to gate the Cranequins checkbox.
 const SEPT22_MOUNTED_CROSSBOWMAN_LINE_CIVS = {
-  bohemians: { heavy: false },
-  britons: { heavy: true },
-  burgundians: { heavy: false },
-  celts: { heavy: true },
-  franks: { heavy: true },
-  italians: { heavy: false },
-  poles: { heavy: true },
-  portuguese: { heavy: false },
-  sicilians: { heavy: true },
-  spanish: { heavy: true },
-  teutons: { heavy: true },
-  vikings: { heavy: false },
+  bohemians: { heavy: false, cranequins: false },
+  britons: { heavy: true, cranequins: true },
+  burgundians: { heavy: false, cranequins: false },
+  celts: { heavy: true, cranequins: false },
+  franks: { heavy: true, cranequins: true },
+  italians: { heavy: false, cranequins: false },
+  poles: { heavy: true, cranequins: false },
+  portuguese: { heavy: false, cranequins: false },
+  sicilians: { heavy: true, cranequins: true },
+  spanish: { heavy: true, cranequins: false },
+  teutons: { heavy: true, cranequins: false },
+  vikings: { heavy: false, cranequins: false },
 };
 let PATCH_VERSION = localStorage.getItem('aoe2-patch') === 'sept22' ? 'sept22' : 'current';
 
@@ -7828,7 +7841,15 @@ function bestEarlyEcoTechAlt(stages, result, sr, civ, loomOn, allIn, efficiency,
 // tool offered the identical checkbox list to every civ regardless of real
 // tech-tree gaps (site owner: "khitans dont get bloodlines" surfaced this).
 function applicableCombatTechIds(line, civ) {
-  const ids = applicableCombatTechIdsRaw(line);
+  let ids = applicableCombatTechIdsRaw(line);
+  // Cranequins isn't a generic Mounted Crossbowman tech -- only Britons/
+  // Franks/Sicilians get it (SEPT22_MOUNTED_CROSSBOWMAN_LINE_CIVS's own
+  // cranequins flag), so it's added here per-civ rather than living in
+  // CAV_ARCHER_TECHS itself (which mounted-crossbowman-line shares with
+  // Cavalry Archer/Elephant Archer, neither of which should ever offer it).
+  if (line?.id === 'mounted-crossbowman-line' && SEPT22_MOUNTED_CROSSBOWMAN_LINE_CIVS[civ?.id]?.cranequins) {
+    ids = [...ids, 'cranequins'];
+  }
   const unavailable = civ?.unavailableTechs;
   return unavailable ? ids.filter(id => !unavailable.includes(id)) : ids;
 }
@@ -7965,7 +7986,7 @@ const COMBAT_TECH_BUILDING = {
   bloodlines: 'Stable', husbandry: 'Stable',
   arson: 'Barracks', squires: 'Barracks',
   gambesons: 'Blacksmith',
-  'thumb-ring': 'Archery Range', 'parthian-tactics': 'Archery Range',
+  'thumb-ring': 'Archery Range', 'parthian-tactics': 'Archery Range', cranequins: 'Archery Range',
   redemption: 'Monastery', atonement: 'Monastery', 'herbal-medicine': 'Monastery',
   heresy: 'Monastery', sanctity: 'Monastery', fervor: 'Monastery',
   illumination: 'Monastery', 'block-printing': 'Monastery', theocracy: 'Monastery',
