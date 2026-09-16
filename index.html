@@ -179,6 +179,19 @@ header{
 .ibadge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;}
 .ibadge.unit{background:var(--blueBg);color:var(--blue);}
 .ibadge.tech{background:var(--purpleBg);color:var(--purple);}
+/* Tech Tree flowchart (civ info panel) */
+.ttree-cat{margin-bottom:14px;}
+.ttree-cat-head{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--amberL);margin-bottom:8px;}
+.ttree-lines{display:flex;flex-wrap:wrap;gap:16px;}
+.ttree-line{display:flex;flex-direction:column;align-items:center;min-width:108px;}
+.ttree-node{width:100%;text-align:center;border-radius:7px;padding:5px 8px;font-size:11px;line-height:1.3;border:1px solid var(--border2);background:var(--surf);}
+.ttree-node.avail{border-color:var(--greenBd);background:var(--greenBg);}
+.ttree-node.avail .ttree-node-name{color:var(--green);font-weight:700;}
+.ttree-node.locked{opacity:.45;}
+.ttree-node.locked .ttree-node-name{color:var(--text3);}
+.ttree-node-name{font-weight:600;color:var(--text);}
+.ttree-node-age{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-top:1px;}
+.ttree-arrow{font-size:11px;color:var(--text3);line-height:1;margin:2px 0;}
 /* Archetype checklist */
 .arch-items{display:flex;flex-direction:column;gap:2px;margin-top:5px;}
 .arch-age-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0 6px;margin-top:5px;}
@@ -259,7 +272,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.24</div>
+    <div class="version">v2.25</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1911,6 +1924,175 @@ function syncCavalryArcherArchetypeForPatch() {
     if (PATCH_VERSION === 'sept22') { if (idx === -1) restrictTo.push(civ); }
     else if (idx !== -1) { restrictTo.splice(idx, 1); }
   });
+}
+
+/* ================================================================
+   TECH TREE FLOWCHART (civ info panel) — real AoE2 unit-tier chains,
+   grouped by category, each rendered as a vertical age-ordered flow
+   (Militia -> Man-at-Arms -> Long Swordsman -> ...). Deliberately v1
+   scope: categories with a clean single-line (or a few parallel lines)
+   age progression only — Monastery/Naval/Eco/Defensive/Gunpowder don't
+   have that shape (independent techs or single-tier units) and are left
+   for a later pass.
+
+   Reuses the SAME real, already-verified UNIT_IDS numbers and
+   equivalence `extra` lists CIV_ARCHETYPES' own items[] already uses
+   (Mounted Crossbowman standing in for Cavalry Archer, Xianbei Raider/
+   Elephant Archer/Bolas Rider as other regional CA replacements, Champi
+   Warrior/Legionary for Champion, etc.) rather than inventing new ids —
+   this is a different SHAPE of the same underlying access data
+   (ordered chain vs flat scoring list), not a new source of truth.
+   `always:true` tiers (Militia, Man-at-Arms, base Archer/Skirmisher/
+   Spearman/Mangonel/Ram/Scorpion/Trebuchet) have no real per-civ
+   restriction in the current game, so there's nothing to check. */
+const TECH_TREE_CATEGORIES = [
+  { label: 'Infantry', emoji: '🛡', lines: [
+    { name: 'Militia', chain: [
+      { name: 'Militia', age: 'Dark', always: true },
+      { name: 'Man-at-Arms', age: 'Feudal', always: true },
+      { name: 'Long Swordsman', age: 'Castle', id: 75 },
+      { name: 'Two-Handed Swordsman', age: 'Imperial', id: 77 },
+      { name: 'Champion', age: 'Imperial', id: 473, extra: [2554, 1792] },
+    ]},
+    { name: 'Spearman', chain: [
+      { name: 'Spearman', age: 'Feudal', always: true },
+      { name: 'Pikeman', age: 'Castle', id: 93 },
+      { name: 'Halberdier', age: 'Imperial', id: 359 },
+    ]},
+    { name: 'Eagle Scout', chain: [
+      { name: 'Eagle Scout', age: 'Feudal', id: 751 },
+      { name: 'Eagle Warrior', age: 'Castle', id: 752 },
+      { name: 'Elite Eagle Warrior', age: 'Imperial', id: 753 },
+    ]},
+  ]},
+  { label: 'Archer', emoji: '🏹', lines: [
+    { name: 'Archer', chain: [
+      { name: 'Archer', age: 'Feudal', always: true },
+      { name: 'Crossbowman', age: 'Castle', id: 24 },
+      { name: 'Arbalester', age: 'Imperial', id: 492 },
+    ]},
+    { name: 'Skirmisher', chain: [
+      { name: 'Skirmisher', age: 'Feudal', always: true },
+      { name: 'Imperial Skirmisher', age: 'Castle', id: 1155 },
+      { name: 'Elite Skirmisher', age: 'Imperial', id: 6 },
+    ]},
+  ]},
+  { label: 'Cavalry Archer', emoji: '🎯', lines: [
+    { name: 'Cavalry Archer', chain: [
+      { name: 'Cavalry Archer', age: 'Castle', id: 39, extra: [MOUNTED_CROSSBOWMAN_SENTINEL_ID] },
+      { name: 'Heavy Cavalry Archer', age: 'Imperial', id: 474, extra: [...XIANBEI_IDS, ...ELE_ARCHER_IDS, 2569, 2571, HEAVY_MOUNTED_CROSSBOWMAN_SENTINEL_ID] },
+    ]},
+  ]},
+  { label: 'Cavalry', emoji: '⚔️', lines: [
+    { name: 'Scout Cavalry', chain: [
+      { name: 'Scout Cavalry', age: 'Feudal', id: 448 },
+      { name: 'Light Cavalry', age: 'Castle', id: 546 },
+      { name: 'Hussar', age: 'Imperial', id: [441, 1707] },
+    ]},
+    { name: 'Knight', chain: [
+      { name: 'Knight', age: 'Castle', id: 38, extra: [1944, 2566, 1751] },
+      { name: 'Cavalier', age: 'Castle', id: 283, extra: [1946, 2568, 1753] },
+      { name: 'Paladin', age: 'Imperial', id: [569, 1813], extra: [1946, 2568, 1753, 558, 1372] },
+    ]},
+    { name: 'Steppe Lancer', chain: [
+      { name: 'Steppe Lancer', age: 'Castle', id: 1370 },
+      { name: 'Elite Steppe Lancer', age: 'Imperial', id: 1372 },
+    ]},
+  ]},
+  { label: 'Camel', emoji: '🐪', lines: [
+    { name: 'Camel Rider', chain: [
+      { name: 'Camel Rider', age: 'Castle', id: 329 },
+      { name: 'Heavy Camel Rider', age: 'Imperial', id: 330, extra: [207] },
+    ]},
+  ]},
+  { label: 'Elephant', emoji: '🐘', lines: [
+    { name: 'Battle Elephant', chain: [
+      { name: 'Battle Elephant', age: 'Castle', id: 1132 },
+      { name: 'Elite Battle Elephant', age: 'Imperial', id: 1134 },
+    ]},
+    { name: 'Armored Elephant', chain: [
+      { name: 'Armored Elephant', age: 'Castle', id: 1744 },
+      { name: 'Elite Armored Elephant', age: 'Imperial', id: 1746 },
+    ]},
+  ]},
+  { label: 'Siege', emoji: '💣', lines: [
+    { name: 'Mangonel', chain: [
+      { name: 'Mangonel', age: 'Castle', always: true },
+      { name: 'Onager', age: 'Imperial', id: 550, extra: [1904, 1907] },
+      { name: 'Siege Onager', age: 'Imperial', id: 588, extra: [1907] },
+    ]},
+    { name: 'Battering Ram', chain: [
+      { name: 'Battering Ram', age: 'Castle', always: true },
+      { name: 'Capped Ram', age: 'Castle', id: 1258, extra: [1744, 1746] },
+      { name: 'Siege Ram', age: 'Imperial', id: 548, extra: [1744, 1746] },
+    ]},
+    { name: 'Scorpion', chain: [
+      { name: 'Scorpion', age: 'Castle', always: true },
+      { name: 'Heavy Scorpion', age: 'Imperial', id: 542 },
+    ]},
+    { name: 'Trebuchet', chain: [
+      { name: 'Trebuchet', age: 'Castle', always: true },
+    ]},
+    { name: 'Bombard Cannon', chain: [
+      { name: 'Bombard Cannon', age: 'Imperial', id: 36 },
+    ]},
+  ]},
+];
+
+// A chain node is "available" for a civ if it's marked always:true, or the
+// civ's real access set (civData[civ].units — every id here is a unit id,
+// this v1 scope is unit-lines only) has the node's own id or any of its
+// registered equivalents. Reuses hasIdsEquiv (the same equivalence-aware
+// check CIV_ARCHETYPES' own scoring already uses) rather than a separate
+// mechanism.
+function techTreeNodeAvailable(cd, node) {
+  if (node.always) return true;
+  if (!cd) return false;
+  // Deliberately NOT hasIdsEquiv/equivalenceGroups() here — that mechanism
+  // unions equivalence groups GLOBALLY across every CIV_ARCHETYPES item, so
+  // two unrelated items that happen to share a tail id (e.g. Siege's own
+  // Capped Ram/Siege Ram items both list Armored Elephant in their own
+  // `extra`, for scoring-bucket reasons unrelated to this chain) get
+  // merged into one group — a civ with real Capped Ram access then
+  // incorrectly tests as having Armored Elephant too. This chain only
+  // cares about ITS OWN node's id + extra, not the global equivalence
+  // graph, so check civData directly instead.
+  const ids = [].concat(node.id, node.extra || []);
+  return ids.some(id => cd.units.has(id));
+}
+// A line is worth showing for a civ only if it has real access to AT LEAST
+// ONE tier — otherwise every civ would render a fully-greyed-out Camel/
+// Elephant/Steppe Lancer/Eagle Scout chain most of the time, which is
+// noise, not signal.
+function techTreeLineVisible(cd, line) {
+  return line.chain.some(node => techTreeNodeAvailable(cd, node));
+}
+function techTreeFlowchartHtml(civName) {
+  const cd = civData[civName];
+  const cats = TECH_TREE_CATEGORIES
+    .map(cat => ({ ...cat, lines: cat.lines.filter(line => techTreeLineVisible(cd, line)) }))
+    .filter(cat => cat.lines.length);
+  if (!cats.length) return '';
+  let h = `<div class="info-sl" style="margin-top:10px">Tech tree</div>`;
+  cats.forEach(cat => {
+    h += `<div class="ttree-cat">
+      <div class="ttree-cat-head">${archIconHtml(CIV_ARCHETYPES.find(a => a.label === cat.label) || { icon: 'eco', label: cat.label }, 16)}${cat.label}</div>
+      <div class="ttree-lines">`;
+    cat.lines.forEach(line => {
+      h += `<div class="ttree-line">`;
+      line.chain.forEach((node, i) => {
+        const avail = techTreeNodeAvailable(cd, node);
+        if (i > 0) h += `<div class="ttree-arrow">↓</div>`;
+        h += `<div class="ttree-node ${avail ? 'avail' : 'locked'}">
+          <div class="ttree-node-name">${node.name}</div>
+          <div class="ttree-node-age">${node.age}</div>
+        </div>`;
+      });
+      h += `</div>`;
+    });
+    h += `</div></div>`;
+  });
+  return h;
 }
 // Custom-icon <img> for a CIV_ARCHETYPES entry, for every plain-HTML render
 // site (filter buttons, tier-list headers, info panels) — see CIV_ARCHETYPES'
@@ -5557,6 +5739,8 @@ function civInfoHtml(civName, compact) {
     });
     h += `</ul>`;
   }
+
+  if (!compact) h += techTreeFlowchartHtml(civName);
 
   if (ecoBuilding) {
     h += `<div class="info-sl">Economy note</div>`;
