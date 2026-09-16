@@ -578,7 +578,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.21</div>
+    <div class="version">v0.22</div>
   </div>
 </div>
 
@@ -1132,27 +1132,30 @@ const CA_MCB_CIVS = {
 };
 // A tech counts as "had" for sorting purposes if it's not in `missing`
 // (this already folds in `starred` — Franks' Bloodlines isn't in their
-// `missing` list at all) OR the civ has Cranequins covering the Parthian
-// Tactics slot. All 14 civs sorted together (site owner: "just include
-// them with the other civs" — no separate group header for Danes/Saxons/
-// Varangians anymore) — ranked Heavy access FIRST, then Bloodlines, THEN
-// total tech count as the tiebreak (site owner: "value heavy mcb and
-// bloodlines more/1st" — these two matter more for a civ's real ceiling
-// than the smaller techs, so they outrank a merely-higher raw count).
-function caMcbTechCount(cfg) {
-  return CA_MCB_TECH_COLS.filter(t => !cfg.missing.includes(t) || (t === 'Parthian Tactics' && cfg.cranequins)).length;
-}
-function caMcbHasBloodlines(cfg) {
-  return !cfg.missing.includes('Bloodlines');
+// `missing` list at all). All 14 civs sorted together (site owner: "just
+// include them with the other civs" — no separate group header for
+// Danes/Saxons/Varangians anymore) — ranked by this exact priority order
+// (site owner, 2026-09-16): 1st Heavy, 2nd Bracer, 3rd Bloodlines, 4th
+// Cranequins, 5th Ring Archer Armor, 6th Husbandry, civ name alphabetical
+// as the final tiebreak once all 6 match.
+function caMcbHas(cfg, tech) {
+  return !cfg.missing.includes(tech);
 }
 (function renderCaMcbTechTable() {
   const tableEl = document.getElementById('ca-mcb-tech-table');
   const thead = `<thead><tr><th>Civ</th><th class="num">Heavy</th>${CA_MCB_TECH_COLS.map(t => `<th class="num">${t === 'Parthian Tactics' ? 'Parthian Tactics<br>/ Cranequins' : t}</th>`).join('')}</tr></thead>`;
   const sorted = Object.entries(CA_MCB_CIVS).sort(([civA, a], [civB, b]) => {
     if (a.heavy !== b.heavy) return a.heavy ? -1 : 1;
-    const aBlood = caMcbHasBloodlines(a), bBlood = caMcbHasBloodlines(b);
+    const aBracer = caMcbHas(a, 'Bracer'), bBracer = caMcbHas(b, 'Bracer');
+    if (aBracer !== bBracer) return aBracer ? -1 : 1;
+    const aBlood = caMcbHas(a, 'Bloodlines'), bBlood = caMcbHas(b, 'Bloodlines');
     if (aBlood !== bBlood) return aBlood ? -1 : 1;
-    return caMcbTechCount(b) - caMcbTechCount(a) || civA.localeCompare(civB);
+    if (a.cranequins !== b.cranequins) return a.cranequins ? -1 : 1;
+    const aRing = caMcbHas(a, 'Ring Archer Armor'), bRing = caMcbHas(b, 'Ring Archer Armor');
+    if (aRing !== bRing) return aRing ? -1 : 1;
+    const aHus = caMcbHas(a, 'Husbandry'), bHus = caMcbHas(b, 'Husbandry');
+    if (aHus !== bHus) return aHus ? -1 : 1;
+    return civA.localeCompare(civB);
   });
   const tbody = sorted.map(([civ, cfg]) => {
     const cells = CA_MCB_TECH_COLS.map(tech => {
