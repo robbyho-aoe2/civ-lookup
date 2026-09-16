@@ -393,7 +393,11 @@ select:focus{outline:none;border-color:var(--amber);}
     </div>
   </details>
 
-  <details class="section">
+  <!-- Hidden for now (2026-09-16) — the underlying table computation is still
+       disabled pending the iframe-eval freeze fix (see feedback_iframe_load_sync_eval_stall
+       memory), so there's nothing useful to show here yet. Remove style="display:none"
+       once computeAgeTable('feudal'/'castle') is re-enabled below. -->
+  <details class="section" style="display:none">
     <summary>Reached Feudal Age — All Civs <span class="summary-hint">every civ, one standardized opening</span></summary>
     <div class="card">
       <h2>Reached Feudal Age — All Civs</h2>
@@ -420,7 +424,7 @@ select:focus{outline:none;border-color:var(--amber);}
     </div>
   </details>
 
-  <details class="section">
+  <details class="section" style="display:none">
     <summary>Reached Castle Age — All Civs <span class="summary-hint">same idea, one age further</span></summary>
     <div class="card">
       <h2>Reached Castle Age — All Civs</h2>
@@ -574,7 +578,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.20</div>
+    <div class="version">v0.21</div>
   </div>
 </div>
 
