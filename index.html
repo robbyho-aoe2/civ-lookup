@@ -275,7 +275,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.29</div>
+    <div class="version">v2.30</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2922,6 +2922,11 @@ function applyManualNewCivData() {
     // Real units/techs, no real IDs yet — see each sentinel's own comment above.
     civData[civ].units.add(LONGSHIP_SENTINEL_ID);
     civData[civ].units.add(MOUNTED_CROSSBOWMAN_SENTINEL_ID);
+    // Danes/Saxons/Varangians all get the Heavy tier too (site owner,
+    // 2026-09-16) — previously only Cranequins (the Heavy tier's own
+    // Imperial upgrade tech) was granted, leaving these 3 with the tech but
+    // no real unit to apply it to. Real gap, not intentional.
+    civData[civ].units.add(HEAVY_MOUNTED_CROSSBOWMAN_SENTINEL_ID);
     civData[civ].techs.add(CRANEQUINS_SENTINEL_ID);
     civData[civ].units.add(VARANGIAN_GUARD_SENTINEL_ID);
     civData[civ].units.add(HEAVY_VARANGIAN_GUARD_SENTINEL_ID);
