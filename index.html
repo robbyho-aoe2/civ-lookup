@@ -275,7 +275,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.28</div>
+    <div class="version">v2.29</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2016,10 +2016,22 @@ const TECH_TREE_CATEGORIES = [
       { name: 'Imperial Skirmisher', age: 'Imperial', id: 1155, techs: [{name:'Bracer',id:T.Bracer},{name:'Ring Archer Armor',id:T['Ring Archer Armor']}] },
     ]},
   ]},
-  { label: 'Cavalry Archer', emoji: '🎯', lines: [
-    { name: 'Cavalry Archer', chain: [
-      { name: 'Cavalry Archer', age: 'Castle', id: 39, extra: [MOUNTED_CROSSBOWMAN_SENTINEL_ID], techs: [{name:'Fletching',id:T.Fletching},{name:'Bodkin Arrow',id:T['Bodkin Arrow']},{name:'Padded Archer Armor',id:T['Padded Archer Armor']},{name:'Leather Archer Armor',id:T['Leather Archer Armor']},{name:'Bloodlines',id:T.Bloodlines},{name:'Husbandry',id:T.Husbandry}] },
-      { name: 'Heavy Cavalry Archer', age: 'Imperial', id: 474, extra: [...XIANBEI_IDS, ...ELE_ARCHER_IDS, 2569, 2571, HEAVY_MOUNTED_CROSSBOWMAN_SENTINEL_ID], techs: [{name:'Bracer',id:T.Bracer},{name:'Ring Archer Armor',id:T['Ring Archer Armor']},{name:'Parthian Tactics',id:T['Parthian Tactics'],extra:[CRANEQUINS_SENTINEL_ID]},{name:'Chemistry',id:T.Chemistry}] },
+  // Renamed from "Cavalry Archer" per the site owner -- this category
+  // covers BOTH the real Cavalry Archer line and its Sept22 Mounted
+  // Crossbowman replacement as one unified concept, so the display name
+  // shouldn't favor one over the other. `archetypeLabel` keeps the
+  // original CIV_ARCHETYPES key for icon lookup (that site-wide archetype
+  // itself is unchanged, only this flowchart's own label/node text).
+  { label: 'Mounted Archer', archetypeLabel: 'Cavalry Archer', emoji: '🎯', lines: [
+    { name: 'Mounted Archer', chain: [
+      { name: 'Mounted Archer', age: 'Castle', id: 39, extra: [MOUNTED_CROSSBOWMAN_SENTINEL_ID], techs: [{name:'Fletching',id:T.Fletching},{name:'Bodkin Arrow',id:T['Bodkin Arrow']},{name:'Padded Archer Armor',id:T['Padded Archer Armor']},{name:'Leather Archer Armor',id:T['Leather Archer Armor']},{name:'Bloodlines',id:T.Bloodlines},{name:'Husbandry',id:T.Husbandry}] },
+      // Parthian Tactics/Cranequins are the same real slot for a civ (see
+      // the equivalence note elsewhere) -- but unlike a plain equivalence
+      // check, the DISPLAYED name should reflect whichever one the civ
+      // actually has (Cranequins for the 3 Sept22 civs that get it, not
+      // the generic "Parthian Tactics" label they don't have access to).
+      // altName/altId is resolved per-civ in techTreeNodeHtml.
+      { name: 'Heavy Mounted Archer', age: 'Imperial', id: 474, extra: [...XIANBEI_IDS, ...ELE_ARCHER_IDS, 2569, 2571, HEAVY_MOUNTED_CROSSBOWMAN_SENTINEL_ID], techs: [{name:'Bracer',id:T.Bracer},{name:'Ring Archer Armor',id:T['Ring Archer Armor']},{name:'Parthian Tactics',id:T['Parthian Tactics'],altName:'Cranequins',altId:CRANEQUINS_SENTINEL_ID},{name:'Chemistry',id:T.Chemistry}] },
     ]},
   ]},
   { label: 'Cavalry', emoji: '⚔️', lines: [
@@ -2131,9 +2143,15 @@ const TTREE_AGE_ORDER = ['Dark', 'Feudal', 'Castle', 'Imperial'];
 function techTreeNodeHtml(cd, node) {
   const avail = techTreeNodeAvailable(cd, node);
   const techPills = (node.techs || []).filter(t => t.id != null).map(t => {
-    const has = techTreeTechAvailable(cd, t);
-    const label = TECH_BONUS_LABEL[t.name];
-    return `<span class="ttree-tech ${has ? 'avail' : 'locked'}" data-item-name="${t.name}" data-item-type="tech" title="${t.name}${has ? '' : ' (not researchable)'}">${t.name}${label ? ` <b>${label}</b>` : ''}</span>`;
+    const hasMain = techTreeTechAvailable(cd, t);
+    // altId/altName: same real "slot" for a civ, but a different tech for
+    // some civs (Parthian Tactics vs. Cranequins) -- show whichever name
+    // the civ actually has, not always the primary one.
+    const hasAlt = t.altId != null && cd && cd.techs.has(t.altId);
+    const has = hasMain || hasAlt;
+    const displayName = (!hasMain && hasAlt) ? t.altName : t.name;
+    const label = TECH_BONUS_LABEL[displayName];
+    return `<span class="ttree-tech ${has ? 'avail' : 'locked'}" data-item-name="${displayName}" data-item-type="tech" title="${displayName}${has ? '' : ' (not researchable)'}">${displayName}${label ? ` <b>${label}</b>` : ''}</span>`;
   }).join('');
   return `<div class="ttree-node ${avail ? 'avail' : 'locked'}">
     <div class="ttree-node-name">${node.name}</div>
@@ -2160,7 +2178,7 @@ function techTreeFlowchartHtml(civName) {
     // Castle) stacks them in one cell with a small arrow between.
     const agesUsed = TTREE_AGE_ORDER.filter(age => cat.lines.some(line => line.chain.some(n => n.age === age)));
     h += `<div class="ttree-cat">
-      <div class="ttree-cat-head">${archIconHtml(CIV_ARCHETYPES.find(a => a.label === cat.label) || { icon: 'eco', label: cat.label }, 16)}${cat.label}</div>
+      <div class="ttree-cat-head">${archIconHtml(CIV_ARCHETYPES.find(a => a.label === (cat.archetypeLabel || cat.label)) || { icon: 'eco', label: cat.label }, 16)}${cat.label}</div>
       <div class="ttree-grid" style="grid-template-columns:repeat(${cat.lines.length},1fr)">`;
     cat.lines.forEach((line, colIdx) => {
       agesUsed.forEach((age, rowIdx) => {
