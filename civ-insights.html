@@ -285,18 +285,18 @@ select:focus{outline:none;border-color:var(--amber);}
               <td class="num">4</td><td class="num">1.4</td><td class="num">5</td>
             </tr>
             <tr>
-              <td>Heavy Cavalry Archer <span style="color:var(--text3)">(upgrade: <span class="res-pill food">900f</span> <span class="res-pill gold">500g</span>, 50s research)</span></td>
-              <td class="num">—</td>
-              <td class="num">27s</td>
-              <td class="num">60</td><td class="num">7</td><td class="num">1</td><td class="num">0</td>
-              <td class="num">4</td><td class="num">1.4</td><td class="num">6</td>
-            </tr>
-            <tr style="border-top:1px solid var(--border2)">
               <td>Mounted Crossbowman</td>
               <td class="num"><span class="res-pill wood">40w</span> <span class="res-pill gold">65g</span></td>
               <td class="num">37s</td>
               <td class="num">45</td><td class="num">7</td><td class="num">2</td><td class="num">0</td>
               <td class="num">4</td><td class="num">1.25</td><td class="num">—</td>
+            </tr>
+            <tr style="border-top:1px solid var(--border2)">
+              <td>Heavy Cavalry Archer <span style="color:var(--text3)">(upgrade: <span class="res-pill food">900f</span> <span class="res-pill gold">500g</span>, 50s research)</span></td>
+              <td class="num">—</td>
+              <td class="num">27s</td>
+              <td class="num">60</td><td class="num">7</td><td class="num">1</td><td class="num">0</td>
+              <td class="num">4</td><td class="num">1.4</td><td class="num">6</td>
             </tr>
             <tr>
               <td>Heavy Mounted Crossbowman <span style="color:var(--text3)">(upgrade: <span class="res-pill food">1000f</span> <span class="res-pill gold">650g</span>, 50s research)</span></td>
@@ -319,15 +319,76 @@ select:focus{outline:none;border-color:var(--amber);}
     <div class="card">
       <h2>Techs by Civ</h2>
       <p class="desc">
-        The 11 civs trading Cavalry Archer for Mounted Crossbowman under the Sept 22 patch, and which
-        of the shared upgrade techs each one actually keeps — pulled directly from build-order.html's
-        own per-civ <code>unavailableTechs</code> data, not assumed uniform. Parthian Tactics and
-        Cranequins fill the same real slot for a civ (see the Full Changelog section above) — civs with
-        Cranequins show that instead of a crossed-out Parthian Tactics.
+        The 11 civs trading Cavalry Archer for Mounted Crossbowman under the Sept 22 patch, plus Danes/
+        Saxons/Varangians (who have Mounted Crossbowman unconditionally as part of their own kit, not a
+        Sept22 swap — a genuinely different category, separated below). Fletching, Bodkin Arrow, Padded
+        Archer Armor, Leather Archer Armor, Ballistics, and Chemistry are confirmed available to all 14
+        and omitted here to keep this readable — only the techs that actually vary are shown. Parthian
+        Tactics and Cranequins fill the same real slot for a civ (see the Full Changelog section above)
+        — civs with Cranequins show that instead of a crossed-out Parthian Tactics. Note: Danes/Saxons/
+        Varangians have Cranequins too, but — per the real site data — none of them have Heavy Mounted
+        Crossbowman access, so Cranequins' own Imperial-age bonus currently has no Heavy unit to apply
+        the stat directly to. <b>*</b> Franks lack the real Bloodlines tech but are shown ✓ for it
+        anyway — their own civ bonus (Mounted Units +20% HP, Feudal Age) already covers the same
+        effect.
       </p>
       <div class="overflow-x">
         <table id="ca-mcb-tech-table"></table>
       </div>
+    </div>
+    <div class="card">
+      <h2>Best Heavy CA vs. Best Heavy MCB</h2>
+      <p class="desc">
+        Picking the single best real civ for each line and stacking every applicable tech on top of its
+        base stats — not the generic unit numbers above, but what each line ACTUALLY looks like at its
+        ceiling. "Best" means full tech completion first, a genuine combat bonus (not just a cost
+        discount) as tiebreaker.
+      </p>
+      <p class="desc">
+        <b>Japanese</b> — Heavy Cavalry Archer: one of 5 civs with full 12/12 tech completion for this
+        line (Japanese/Magyars/Saracens/Tatars/Turks all tied), and the only one of those 5 with a
+        direct combat bonus to the unit itself: <i>Cavalry Archers +2 attack vs. Ranged Soldiers</i>.
+      </p>
+      <p class="desc">
+        <b>Sicilians</b> — Heavy Mounted Crossbowman: tied with Britons for best tech coverage among the
+        Sept22 civs (both missing only Ring Archer Armor, both have Cranequins) — Sicilians edges it for
+        a real, if situational, reason: <i>Soldiers receive -40% bonus damage</i> is a genuine combat
+        edge Britons' own bonus (Foot Archers +range) doesn't give Mounted Crossbowman at all, since MCB
+        isn't a foot archer.
+      </p>
+      <div class="overflow-x">
+        <table>
+          <thead><tr>
+            <th>Maxed unit</th><th class="num">HP</th><th class="num">Attack</th>
+            <th class="num">Melee Arm.</th><th class="num">Pierce Arm.</th><th class="num">Range</th><th class="num">Speed</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td>Japanese Heavy Cavalry Archer</td>
+              <td class="num">80</td>
+              <td class="num">10 <span style="color:var(--text3)">(12 vs. Ranged Soldiers)</span></td>
+              <td class="num">4</td><td class="num">6</td><td class="num">7</td><td class="num">1.4</td>
+            </tr>
+            <tr>
+              <td>Sicilians Heavy Mounted Crossbowman</td>
+              <td class="num">65</td>
+              <td class="num">11</td>
+              <td class="num">4</td><td class="num">2</td><td class="num">8</td><td class="num">1.25</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="desc" style="margin-top:10px;">
+        Real finding: Japanese's maxed Cavalry Archer wins on HP (+15), pierce armor (+4 — they get the
+        full Ring Archer Armor tier plus Parthian Tactics' own pierce bonus, both of which Sicilians'
+        Cranequins path can't match) and speed. Sicilians' maxed Mounted Crossbowman wins on range (8 vs
+        7) — Cranequins' own +1 range stacks directly on top of the shared Fletching/Bodkin Arrow/Bracer
+        line, something Parthian Tactics doesn't grant at all (its bonus is pierce armor and attack vs.
+        Infantry instead). Melee armor ties at 4 either way. Bloodlines (Japanese) contributes flat +20
+        HP; nothing in the Mounted Crossbowman civs' kit replaces that value 1:1 — Franks' own "+20%
+        Mounted Units HP" bonus (see the * note above) works out to roughly half of Bloodlines' flat
+        bonus on a 45 HP base, which is part of why Franks isn't the pick here despite the thematic fit.
+      </p>
     </div>
   </details>
 
@@ -512,7 +573,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.18</div>
+    <div class="version">v0.19</div>
   </div>
 </div>
 
@@ -1032,37 +1093,68 @@ document.getElementById('camp-food-bonus').addEventListener('change', recompute)
 // "Techs by Civ" (Cavalry Archer vs Mounted Crossbowman) — real per-civ
 // `unavailableTechs` pulled directly from build-order.html's own DATA.civs
 // (grep'd out by hand, not guessed) for the 11 Sept22 civs that trade
-// Cavalry Archer for Mounted Crossbowman. Every civ NOT listed here for a
-// given tech has real access to it — build-order.html's CAV_ARCHER_TECHS
-// list (the shared tech set both units draw from) is the column set below,
-// minus Thumb Ring (real for Cavalry Archer in index.html's broader model,
-// but not actually part of build-order.html's own CAV_ARCHER_TECHS, so
-// left out here to stay consistent with the source this table draws from).
-const CA_MCB_TECH_COLS = ['Fletching', 'Bodkin Arrow', 'Bracer', 'Padded Archer Armor', 'Leather Archer Armor', 'Ring Archer Armor', 'Bloodlines', 'Husbandry', 'Parthian Tactics', 'Ballistics', 'Chemistry'];
+// Cavalry Archer for Mounted Crossbowman, plus Danes/Saxons/Varangians'
+// real civData (checked live in-browser, not guessed either) for the 3
+// civs that have Mounted Crossbowman unconditionally as part of their own
+// kit. Only the techs that actually VARY across these 14 civs are shown as
+// columns — Fletching/Bodkin Arrow/Padded+Leather Archer Armor/Ballistics/
+// Chemistry are confirmed available to all 14 and would just be a wall of
+// checkmarks, so they're called out in the prose above instead of taking
+// up column width (keeps this narrow enough to not need horizontal
+// scrolling). `group` separates the two genuinely different categories —
+// civs SWAPPING Cavalry Archer for Mounted Crossbowman under the patch vs.
+// the 3 DLC civs that always had it.
+const CA_MCB_TECH_COLS = ['Bracer', 'Ring Archer Armor', 'Bloodlines', 'Husbandry', 'Parthian Tactics'];
 const CA_MCB_CIVS = {
-  Bohemians:  { heavy: false, cranequins: false, missing: ['Bloodlines'] },
-  Britons:    { heavy: true,  cranequins: true,  missing: ['Bloodlines'] },
-  Burgundians:{ heavy: false, cranequins: false, missing: ['Bloodlines', 'Parthian Tactics', 'Ring Archer Armor'] },
-  Celts:      { heavy: true,  cranequins: false, missing: ['Bloodlines', 'Bracer', 'Parthian Tactics'] },
-  Franks:     { heavy: true,  cranequins: true,  missing: ['Bloodlines', 'Bracer', 'Ring Archer Armor'] },
-  Italians:   { heavy: false, cranequins: false, missing: ['Parthian Tactics'] },
-  Poles:      { heavy: true,  cranequins: false, missing: ['Parthian Tactics', 'Ring Archer Armor'] },
-  Portuguese: { heavy: false, cranequins: false, missing: ['Parthian Tactics'] },
-  Sicilians:  { heavy: true,  cranequins: true,  missing: ['Ring Archer Armor'] },
-  Spanish:    { heavy: true,  cranequins: false, missing: ['Parthian Tactics'] },
-  Teutons:    { heavy: true,  cranequins: false, missing: ['Bracer', 'Husbandry', 'Parthian Tactics'] },
-  Vikings:    { heavy: false, cranequins: false, missing: ['Bloodlines', 'Husbandry', 'Parthian Tactics'] },
+  Bohemians:  { group: 'swap', heavy: false, cranequins: false, missing: ['Bloodlines'] },
+  Britons:    { group: 'swap', heavy: true,  cranequins: true,  missing: ['Bloodlines'] },
+  Burgundians:{ group: 'swap', heavy: false, cranequins: false, missing: ['Bloodlines', 'Parthian Tactics', 'Ring Archer Armor'] },
+  Celts:      { group: 'swap', heavy: true,  cranequins: false, missing: ['Bloodlines', 'Bracer', 'Parthian Tactics'] },
+  Franks:     { group: 'swap', heavy: true,  cranequins: true,  missing: ['Bracer', 'Ring Archer Armor'], starred: ['Bloodlines'] },
+  Italians:   { group: 'swap', heavy: false, cranequins: false, missing: ['Parthian Tactics'] },
+  Poles:      { group: 'swap', heavy: true,  cranequins: false, missing: ['Parthian Tactics', 'Ring Archer Armor'] },
+  Portuguese: { group: 'swap', heavy: false, cranequins: false, missing: ['Parthian Tactics'] },
+  Sicilians:  { group: 'swap', heavy: true,  cranequins: true,  missing: ['Ring Archer Armor'] },
+  Spanish:    { group: 'swap', heavy: true,  cranequins: false, missing: ['Parthian Tactics'] },
+  Teutons:    { group: 'swap', heavy: true,  cranequins: false, missing: ['Bracer', 'Husbandry', 'Parthian Tactics'] },
+  Vikings:    { group: 'swap', heavy: false, cranequins: false, missing: ['Bloodlines', 'Husbandry', 'Parthian Tactics'] },
+  // Verified directly against civData in-browser (2026-09-16): all three
+  // have Bracer/Ring Archer Armor/Bloodlines/Husbandry/Cranequins, none
+  // have Heavy Mounted Crossbowman access.
+  Danes:      { group: 'core', heavy: false, cranequins: true, missing: [] },
+  Saxons:     { group: 'core', heavy: false, cranequins: true, missing: [] },
+  Varangians: { group: 'core', heavy: false, cranequins: true, missing: [] },
 };
+// A tech counts as "had" for sorting purposes if it's not in `missing`
+// (this already folds in `starred` — Franks' Bloodlines isn't in their
+// `missing` list at all) OR the civ has Cranequins covering the Parthian
+// Tactics slot. Sorted most-to-least WITHIN each group (site owner: "order
+// the civs from most techs to least") — the group split itself stays,
+// since "trading CA for MCB" vs. "always had MCB" is a real, different
+// category, not just a display convenience.
+function caMcbTechCount(cfg) {
+  return CA_MCB_TECH_COLS.filter(t => !cfg.missing.includes(t) || (t === 'Parthian Tactics' && cfg.cranequins)).length;
+}
 (function renderCaMcbTechTable() {
   const tableEl = document.getElementById('ca-mcb-tech-table');
   const thead = `<thead><tr><th>Civ</th><th class="num">Heavy</th>${CA_MCB_TECH_COLS.map(t => `<th class="num">${t === 'Parthian Tactics' ? 'Parthian Tactics<br>/ Cranequins' : t}</th>`).join('')}</tr></thead>`;
-  const tbody = Object.entries(CA_MCB_CIVS).map(([civ, cfg]) => {
+  let lastGroup = null;
+  const sorted = Object.entries(CA_MCB_CIVS).sort(([civA, a], [civB, b]) => {
+    if (a.group !== b.group) return a.group === 'swap' ? -1 : 1;
+    return caMcbTechCount(b) - caMcbTechCount(a) || civA.localeCompare(civB);
+  });
+  const tbody = sorted.map(([civ, cfg]) => {
+    const groupRow = cfg.group !== lastGroup
+      ? `<tr><td colspan="${CA_MCB_TECH_COLS.length + 2}" style="background:var(--surf2);color:var(--text3);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding-top:8px;">${cfg.group === 'swap' ? 'Trading Cavalry Archer for Mounted Crossbowman (Sept 22)' : 'Always have Mounted Crossbowman (core kit)'}</td></tr>`
+      : '';
+    lastGroup = cfg.group;
     const cells = CA_MCB_TECH_COLS.map(tech => {
       if (tech === 'Parthian Tactics' && cfg.cranequins) return `<td class="num" style="color:var(--farm)">Cranequins</td>`;
       const missing = cfg.missing.includes(tech);
-      return `<td class="num" style="color:${missing ? 'var(--text3)' : 'var(--farm)'}">${missing ? '✕' : '✓'}</td>`;
+      const starred = (cfg.starred || []).includes(tech);
+      return `<td class="num" style="color:${missing ? 'var(--text3)' : 'var(--farm)'}" title="${starred ? 'Lacks the real tech, but Franks\' own civ bonus (Mounted Units +20% HP, Feudal Age) already covers it' : ''}">${missing ? '✕' : starred ? '✓*' : '✓'}</td>`;
     }).join('');
-    return `<tr><td>${civ}</td><td class="num">${cfg.heavy ? '✓' : '—'}</td>${cells}</tr>`;
+    return groupRow + `<tr><td>${civ}</td><td class="num">${cfg.heavy ? '✓' : '—'}</td>${cells}</tr>`;
   }).join('');
   tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
 })();
