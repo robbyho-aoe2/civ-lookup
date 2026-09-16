@@ -368,6 +368,7 @@ select:focus{outline:none;border-color:var(--amber);}
           <thead><tr>
             <th>Maxed unit</th><th class="num">HP</th><th class="num">Attack</th>
             <th class="num">Melee Arm.</th><th class="num">Pierce Arm.</th><th class="num">Range</th><th class="num">Speed</th>
+            <th class="num">Atk/s</th><th class="num">DPS</th>
           </tr></thead>
           <tbody>
             <tr>
@@ -375,16 +376,24 @@ select:focus{outline:none;border-color:var(--amber);}
               <td class="num">80</td>
               <td class="num">11 <span style="color:var(--text3)">(13 vs. Ranged Soldiers, 13 vs. Spearman-line)</span></td>
               <td class="num">5</td><td class="num">6</td><td class="num">7</td><td class="num">1.61</td>
+              <td class="num">2s</td><td class="num">5.5</td>
             </tr>
             <tr>
               <td>Danes/Saxons/Varangians Heavy Mounted Crossbowman</td>
               <td class="num">65</td>
               <td class="num">12 <span style="color:var(--text3)">(14 vs. Infantry)</span></td>
               <td class="num">5</td><td class="num">4</td><td class="num">8</td><td class="num">1.44</td>
+              <td class="num">2.5s</td><td class="num">4.8</td>
             </tr>
           </tbody>
         </table>
       </div>
+      <p class="desc" style="color:var(--text3)">
+        Atk/s uses each unit's confirmed reload time (Cavalry Archer 2s, ground-truth data; Mounted
+        Crossbowman 2.5s, site owner-confirmed). No tech tracked for either line is documented as
+        changing reload speed — the site owner says one exists for Mounted Crossbowman specifically, not
+        yet identified, so its DPS here is a floor, not necessarily the real ceiling.
+      </p>
       <p class="desc" style="margin-top:10px;">
         Real finding, with both sides at full tech completion: melee armor now TIES at 5 (Parthian
         Tactics' own melee-armor point exactly closes the gap Mounted Crossbowman's higher base melee
@@ -394,10 +403,13 @@ select:focus{outline:none;border-color:var(--amber);}
         own 8-vs-7 attack difference, since every tech bonus applied is identical between them).
         Cavalry Archer wins on HP (+15 — Bloodlines is the same flat +20 for both lines now, so this gap
         is entirely the base units' own 60-vs-45 HP difference), pierce armor (+2 — Parthian Tactics'
-        own pierce bonus is 1 point ahead of Cranequins' equivalent), and speed (1.61 vs. 1.44 — same
+        own pierce bonus is 1 point ahead of Cranequins' equivalent), speed (1.61 vs. 1.44 — same
         +15% Husbandry bonus on both sides, so the gap is just the base 1.4-vs-1.25 speed carried
-        through). Each side's own situational vs.-class bonus (+2, applying to a different target class
-        each) keeps their real combat attack close either way.
+        through), AND despite the lower flat attack, DPS too (5.5 vs. 4.8) — its faster 2s reload beats
+        Mounted Crossbowman's 2.5s by enough to outweigh the 1-point attack gap, at least until MCB's own
+        unidentified reload-speed tech is confirmed and added. Each side's own situational vs.-class
+        bonus (+2, applying to a different target class each) keeps their real combat attack close
+        either way.
       </p>
     </div>
   </details>
@@ -587,7 +599,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.25</div>
+    <div class="version">v0.26</div>
   </div>
 </div>
 
@@ -1174,6 +1186,15 @@ function caMcbHas(cfg, tech) {
 // TECH_DESCRIPTIONS[39]) now feeds a real Speed column instead of being a
 // tracked-but-inert checkbox. Formula re-validated against the corrected
 // "Best Heavy CA vs Best Heavy MCB" card numbers below (exact match).
+// Reload time (2.5s, site owner-confirmed) is held FLAT here — no tech
+// tracked for these civs (the full CAV_ARCHER_TECHS set, cross-checked
+// against every TECH_DESCRIPTIONS entry) documents a reload-speed effect,
+// and Thumb Ring (the one real "reload faster" tech in the site's data)
+// is foot-archer-only and unavailable to every civ in this table. Site
+// owner says a tech does speed it up — not yet identified, so DPS below
+// is a floor, not necessarily each civ's real ceiling. Flag and fix once
+// the specific tech is confirmed.
+const MCB_RELOAD_SECONDS = 2.5;
 function caMcbMaxStats(cfg) {
   const hasBracer = caMcbHas(cfg, 'Bracer');
   const hasRing = caMcbHas(cfg, 'Ring Archer Armor');
@@ -1184,11 +1205,12 @@ function caMcbMaxStats(cfg) {
   const meleeArmor = 2 + 2 + (hasRing ? 1 : 0) + (!cfg.cranequins && hasParthian ? 1 : 0);
   const pierceArmor = 2 + (hasRing ? 2 : 0) + (!cfg.cranequins && hasParthian ? 2 : 0);
   const speed = +(1.25 * (hasHusbandry ? 1.15 : 1)).toFixed(2);
-  return { attack, range, meleeArmor, pierceArmor, speed };
+  const dps = +(attack / MCB_RELOAD_SECONDS).toFixed(2);
+  return { attack, range, meleeArmor, pierceArmor, speed, dps };
 }
 (function renderCaMcbTechTable() {
   const tableEl = document.getElementById('ca-mcb-tech-table');
-  const thead = `<thead><tr><th>Civ</th><th class="num">Heavy</th>${CA_MCB_TECH_COLS.map(t => `<th class="num">${t === 'Parthian Tactics' ? 'Parthian Tactics<br>/ Cranequins' : t}</th>`).join('')}<th class="num">Range</th><th class="num">Attack</th><th class="num">Armor</th><th class="num">Speed</th></tr></thead>`;
+  const thead = `<thead><tr><th>Civ</th><th class="num">Heavy</th>${CA_MCB_TECH_COLS.map(t => `<th class="num">${t === 'Parthian Tactics' ? 'Parthian Tactics<br>/ Cranequins' : t}</th>`).join('')}<th class="num">Range</th><th class="num">Attack</th><th class="num">Armor</th><th class="num">Speed</th><th class="num">Atk/s</th><th class="num">DPS</th></tr></thead>`;
   const sorted = Object.entries(CA_MCB_CIVS).sort(([civA, a], [civB, b]) => {
     if (a.heavy !== b.heavy) return a.heavy ? -1 : 1;
     const aBracer = caMcbHas(a, 'Bracer'), bBracer = caMcbHas(b, 'Bracer');
@@ -1210,7 +1232,7 @@ function caMcbMaxStats(cfg) {
       return `<td class="num" style="color:${missing ? 'var(--text3)' : 'var(--farm)'}" title="${starred ? 'Lacks the real tech, but Franks\' own civ bonus (Mounted Units +20% HP, Feudal Age) already covers it' : ''}">${missing ? '✕' : starred ? '✓*' : '✓'}</td>`;
     }).join('');
     const stats = caMcbMaxStats(cfg);
-    return `<tr><td>${civ}</td><td class="num">${cfg.heavy ? '✓' : '—'}</td>${cells}<td class="num">${stats.range}</td><td class="num">${stats.attack}</td><td class="num">${stats.meleeArmor}/${stats.pierceArmor}</td><td class="num">${stats.speed}</td></tr>`;
+    return `<tr><td>${civ}</td><td class="num">${cfg.heavy ? '✓' : '—'}</td>${cells}<td class="num">${stats.range}</td><td class="num">${stats.attack}</td><td class="num">${stats.meleeArmor}/${stats.pierceArmor}</td><td class="num">${stats.speed}</td><td class="num">${MCB_RELOAD_SECONDS}s</td><td class="num">${stats.dps}</td></tr>`;
   }).join('');
   tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
 })();
