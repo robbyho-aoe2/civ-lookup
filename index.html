@@ -259,7 +259,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.20</div>
+    <div class="version">v2.21</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -705,6 +705,7 @@ const UNIQUE_TECH_DESCRIPTIONS = {
   "Nomads":"Lost Houses do not decrease population space",
   "Northmen's Fury":"Siege Weapons and Siege Warships +40% attack vs. buildings; Mangonel-line and Catapult Galleons +1 range",
   "Ordo Cavalry":"Cavalry regenerates HP in combat",
+  "Ordonnance Companies":"Mounted Crossbowmen cost -40% gold",
   "Paiks":"Rathas and Elephant Units attack +20% faster",
   "Paper Money":"Lumberjacks slowly generate gold in addition to wood",
   "Perfusion":"Barracks work +100% faster",
@@ -1289,6 +1290,22 @@ function applySept22PatchDeltas() {
     if (id == null) return;
     civData[civ][type === 'unit' ? 'units' : 'techs'][op === 'gain' ? 'add' : 'delete'](id);
   });
+}
+
+// Franks' real "unique techs" pair changes under Sept22 — lose Bearded Axe,
+// gain Ordonnance Companies (their new Castle-age tech, see
+// ORDONNANCE_COMPANIES_SENTINEL_ID above) alongside keeping Chivalry.
+// UNIQUE_TECHS itself feeds both the civ info card AND the bonus-archetype
+// grading (classifyBonusCategories), neither of which goes through the
+// civData access-set model SEPT22_SINGLE_DELTAS uses — so this is its own
+// small override map + a lookup wrapper, called wherever UNIQUE_TECHS[civ]
+// used to be read directly.
+const SEPT22_UNIQUE_TECH_OVERRIDES = {
+  Franks: ['Chivalry', 'Ordonnance Companies'],
+};
+function getUniqueTechs(civName) {
+  if (PATCH_VERSION === 'sept22' && SEPT22_UNIQUE_TECH_OVERRIDES[civName]) return SEPT22_UNIQUE_TECH_OVERRIDES[civName];
+  return UNIQUE_TECHS[civName] || [];
 }
 
 // Re-runs the full civData build pipeline from the cached raw fetch —
@@ -3147,7 +3164,7 @@ function bonusScoreCiv(civName, arch) {
     if (cats.includes(label)) { pts += 2; notes.push(`Team bonus: ${team}`); }
   }
 
-  const uts = UNIQUE_TECHS[civName] || [];
+  const uts = getUniqueTechs(civName);
   uts.forEach((techName) => {
     const desc = UNIQUE_TECH_DESCRIPTIONS[techName] || '';
     let cats = classifyBonusCategories(techName + ' ' + desc);
@@ -5444,7 +5461,7 @@ function civInfoHtml(civName, compact) {
   const bonuses = CB[civName] || [];
   const focus = CIV_FOCUS[civName] || '';
   const uu = UNIQUE_UNITS[civName] || '';
-  const ut = UNIQUE_TECHS[civName] || [];
+  const ut = getUniqueTechs(civName);
   const ecoBuilding = ECO_BUILDING_NAME[civName];
 
   const oEntry = compact ? null : civCardOverallGrade(civName, activeCivCardLadder);
