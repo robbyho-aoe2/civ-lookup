@@ -578,7 +578,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.23</div>
+    <div class="version">v0.24</div>
   </div>
 </div>
 
@@ -1113,7 +1113,13 @@ document.getElementById('camp-food-bonus').addEventListener('change', recompute)
 // 6th) so the table reads left-to-right in the same order it's sorted by.
 const CA_MCB_TECH_COLS = ['Bracer', 'Bloodlines', 'Parthian Tactics', 'Ring Archer Armor', 'Husbandry'];
 const CA_MCB_CIVS = {
-  Bohemians:  { heavy: false, cranequins: false, missing: ['Bloodlines'] },
+  // Parthian Tactics is Cavalry-Archer-exclusive — no Mounted Crossbowman
+  // civ gets it, Bohemians included (site owner correction, 2026-09-16:
+  // "none of the mcb civs get parthian tactics, it is only for ca"). Was
+  // wrongly left off Bohemians' own missing list (every other cranequins:
+  // false civ here already had it), which incorrectly credited them with
+  // Parthian Tactics' own +2 pierce armor in the maxed-stat columns.
+  Bohemians:  { heavy: false, cranequins: false, missing: ['Bloodlines', 'Parthian Tactics'] },
   Britons:    { heavy: true,  cranequins: true,  missing: ['Bloodlines'] },
   Burgundians:{ heavy: false, cranequins: false, missing: ['Bloodlines', 'Parthian Tactics', 'Ring Archer Armor'] },
   Celts:      { heavy: true,  cranequins: false, missing: ['Bloodlines', 'Bracer', 'Parthian Tactics'] },
