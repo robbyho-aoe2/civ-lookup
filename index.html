@@ -259,7 +259,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.21</div>
+    <div class="version">v2.22</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -3049,6 +3049,16 @@ const UNIQUE_TECH_CATEGORY_OVERRIDE = {
   'Supremacy': { exclude:['Eco'], include:['Defensive','Siege'] },
   // Trample damage vs Infantry is a cavalry-strength tech, not Infantry.
   'Logistica': { exclude:['Infantry'] },
+  // "Mounted Crossbowmen" matches both the Cavalry ("mounted") and Archer
+  // ("crossbow") keywords, which the classifier's own isCavArcher check
+  // doesn't catch (only "cavalry archer"/"mounted archer"/"horse archer"
+  // phrasing does) — falls through to plain Archer instead of Cavalry
+  // Archer, same bucket this site already scores Mounted Crossbowman's own
+  // unit stats/access under (see MOUNTED_CROSSBOWMAN_SENTINEL_ID's Cavalry
+  // Archer archetype membership above). Also a unit-specific cost cut, not
+  // a broad economy tech — same Eco-exclusion convention as every other
+  // "X cost -Y%" bonus override in this map.
+  'Ordonnance Companies': { exclude:['Archer','Eco'], include:['Cavalry Archer'] },
   // Bombard Towers keyword falsely reads as Gunpowder; this is really a
   // naval-defense tech (Fire Ships + Bombard Towers vs ships).
   'Greek Fire': { exclude:['Gunpowder'], include:['Naval'] },
