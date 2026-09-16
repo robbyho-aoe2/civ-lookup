@@ -259,7 +259,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.22</div>
+    <div class="version">v2.23</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1098,7 +1098,9 @@ const LONGSHIP_SENTINEL_ID = 900001;
    uniqueUnit entry (which needs cost+trainTime+age+building at minimum,
    plus upgradeCost/upgradeResearchTime for the Heavy tier) is complete. */
 const MOUNTED_CROSSBOWMAN_SENTINEL_ID = 900002;
-const MOUNTED_CROSSBOWMAN_EXTRA_CIVS = []; // TODO: fill in once known
+// MOUNTED_CROSSBOWMAN_EXTRA_CIVS itself is now derived from real data once
+// CIV_ARCHETYPES exists (see syncCavalryArcherArchetypeForPatch below) —
+// this used to be a hand-maintained placeholder that was never filled in.
 
 /* Cranequins — Mounted Crossbowman's own Imperial-age upgrade tech (per the
    site owner, 2026-09-08), same "real ID not published yet" situation as
@@ -1319,6 +1321,7 @@ function rebuildCivData() {
   applyManualNewCivData();
   applyBroadTechGaps();
   if (PATCH_VERSION === 'sept22') applySept22PatchDeltas();
+  syncCavalryArcherArchetypeForPatch();
   invalidateGradeCaches();
 }
 function applyBroadTechGaps() {
@@ -1771,7 +1774,7 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:437},{t:'tech',id:201},{t:'tech',id:200},{t:'tech',id:199},{t:'tech',id:47},
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
-  {emoji:'🎯',icon:'cavalry_archer',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras',...MOUNTED_CROSSBOWMAN_EXTRA_CIVS],items:[
+  {emoji:'🎯',icon:'cavalry_archer',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras'],items:[
     // Mounted Crossbowman folded in here (not EXTRA_UU_BONUS) because it's a
     // genuine tier-REPLACEMENT for Danes/Saxons/Varangians, who have no real
     // Cavalry Archer at all — same treatment as Xianbei Raider/Elephant
@@ -1780,13 +1783,21 @@ const CIV_ARCHETYPES = [
     // shown as +1 bonus... we need to clarify and get consistency
     // throughout." EXTRA_UU_BONUS is for units that are ADDITIVE (the civ
     // keeps its normal unit too, e.g. Mongols' Mangudai) — Mounted
-    // Crossbowman isn't that, so it doesn't belong there. Its own Imperial
-    // upgrade, Cranequins, is a separate standalone tech item below.
+    // Crossbowman isn't that, so it doesn't belong there.
     {t:'unit',id:474,extra:[...XIANBEI_IDS,...ELE_ARCHER_IDS,2569,2571,MOUNTED_CROSSBOWMAN_SENTINEL_ID]},
-    {t:'tech',id:435},{t:'tech',id:39},{t:'tech',id:437},{t:'tech',id:436},{t:'tech',id:47},
+    {t:'tech',id:435},{t:'tech',id:39},{t:'tech',id:437},{t:'tech',id:47},
     {t:'tech',id:199},{t:'tech',id:200},{t:'tech',id:201},
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
-    {t:'tech',id:CRANEQUINS_SENTINEL_ID},
+    // Parthian Tactics and Cranequins are treated as the SAME scoring slot
+    // (site owner: "the only exceptions being cranequins and parthian
+    // tactics, which are equivalents") — a Mounted-Crossbowman-only civ
+    // with Cranequins but no real Parthian Tactics access shouldn't score
+    // lower than a real Cavalry Archer civ just because it's a different
+    // tech ID. `extra` is this file's own established equivalence
+    // mechanism (see equivalenceGroups/hasIdsEquiv above), so this also
+    // makes "does this civ have Parthian Tactics" checks elsewhere in the
+    // app correctly recognize Cranequins as the real substitute.
+    {t:'tech',id:436,extra:[CRANEQUINS_SENTINEL_ID]},
   ]},
   {emoji:'⚔️',icon:'cavalry',label:'Cavalry',bonusKey:'Cavalry',restrictTo:['Armenians','Bengalis','Berbers','Bohemians','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Dravidians','Ethiopians','Franks','Georgians','Goths','Gurjaras','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Malay','Malians','Magyars','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu'],items:[
     // Steppe Lancer: mixed case, verified directly against real civData
@@ -1869,6 +1880,38 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:47},{t:'tech',id:219},
   ]},
 ];
+
+// Sept22: every civ that gains Mounted Crossbowman access should be
+// Cavalry-Archer-archetype eligible too — it's a full replacement/
+// equivalent of Cavalry Archer for that civ, not an additive side-grade
+// (site owner: "civs with mounted crossbowmen should be treated in the
+// same category as CA ... they're not regional units entirely, rather
+// replacements as equivalents to CA"). Most of the 11 Sept22 Mounted-
+// Crossbowman civs already have real Cavalry Archer access today (already
+// in the archetype's own restrictTo list above) — Bohemians is the one
+// exception, gaining a real cavalry-archer-type unit for the first time
+// only via this patch. Computed here (whichever of the 11 ISN'T already in
+// the archetype's base restrictTo) rather than hardcoding "Bohemians"
+// directly, so this stays correct automatically if the confirmed civ list
+// ever changes; Danes/Saxons/Varangians need no entry here since they
+// already have Mounted Crossbowman unconditionally and are already in the
+// base list from earlier Viking Sagas DLC work.
+const CAVALRY_ARCHER_ARCHETYPE = CIV_ARCHETYPES.find(a => a.label === 'Cavalry Archer');
+const MOUNTED_CROSSBOWMAN_EXTRA_CIVS = Object.keys(SEPT22_MOUNTED_CROSSBOWMAN_CIVS)
+  .filter(civ => !CAVALRY_ARCHER_ARCHETYPE.restrictTo.includes(civ));
+// Mutates CAVALRY_ARCHER_ARCHETYPE.restrictTo IN PLACE (not a new array) so
+// every existing read of it (grade computation, civ-picker filtering, the
+// archetype's own subheader count) stays in sync without needing its own
+// patch-toggle awareness. Called from rebuildCivData() alongside
+// applySept22PatchDeltas() below.
+function syncCavalryArcherArchetypeForPatch() {
+  const restrictTo = CAVALRY_ARCHER_ARCHETYPE.restrictTo;
+  MOUNTED_CROSSBOWMAN_EXTRA_CIVS.forEach(civ => {
+    const idx = restrictTo.indexOf(civ);
+    if (PATCH_VERSION === 'sept22') { if (idx === -1) restrictTo.push(civ); }
+    else if (idx !== -1) { restrictTo.splice(idx, 1); }
+  });
+}
 // Custom-icon <img> for a CIV_ARCHETYPES entry, for every plain-HTML render
 // site (filter buttons, tier-list headers, info panels) — see CIV_ARCHETYPES'
 // own header comment for why the SVG radar-chart axis labels keep using
