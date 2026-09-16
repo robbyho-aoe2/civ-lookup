@@ -578,7 +578,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.22</div>
+    <div class="version">v0.23</div>
   </div>
 </div>
 
@@ -1108,7 +1108,10 @@ document.getElementById('camp-food-bonus').addEventListener('change', recompute)
 // checkmarks, so they're called out in the prose above instead of taking
 // up column width (keeps this narrow enough to not need horizontal
 // scrolling).
-const CA_MCB_TECH_COLS = ['Bracer', 'Ring Archer Armor', 'Bloodlines', 'Husbandry', 'Parthian Tactics'];
+// Column order matches the sort priority below (Bracer 2nd, Bloodlines
+// 3rd, Parthian Tactics/Cranequins 4th, Ring Archer Armor 5th, Husbandry
+// 6th) so the table reads left-to-right in the same order it's sorted by.
+const CA_MCB_TECH_COLS = ['Bracer', 'Bloodlines', 'Parthian Tactics', 'Ring Archer Armor', 'Husbandry'];
 const CA_MCB_CIVS = {
   Bohemians:  { heavy: false, cranequins: false, missing: ['Bloodlines'] },
   Britons:    { heavy: true,  cranequins: true,  missing: ['Bloodlines'] },
@@ -1141,9 +1144,29 @@ const CA_MCB_CIVS = {
 function caMcbHas(cfg, tech) {
   return !cfg.missing.includes(tech);
 }
+// Compact maxed-stat columns (Range/Attack/Armor) — same formula validated
+// against the "Best Heavy CA vs Best Heavy MCB" card's own hand-computed
+// numbers above (Danes/Saxons/Varangians: range8/atk11/melee5/pierce4;
+// Sicilians: range8/atk11/melee4/pierce2 — both match exactly). Bloodlines
+// (HP only) and Husbandry (speed only, not a flat combat number — see the
+// TECH_BONUS_LABEL comment in index.html) don't touch any of these three,
+// so they're deliberately left out of the formula. Parthian Tactics' own
+// "+1 attack vs Infantry" is situational, not a flat baseline bump, so
+// Attack here is the non-situational floor only (matches how the "Best
+// Heavy CA vs Best Heavy MCB" card itself reports the flat number).
+function caMcbMaxStats(cfg) {
+  const hasBracer = caMcbHas(cfg, 'Bracer');
+  const hasRing = caMcbHas(cfg, 'Ring Archer Armor');
+  const hasParthian = caMcbHas(cfg, 'Parthian Tactics');
+  const attack = (cfg.heavy ? 8 : 7) + 2 + (hasBracer ? 1 : 0);
+  const range = 4 + 2 + (hasBracer ? 1 : 0) + (cfg.cranequins ? 1 : 0);
+  const meleeArmor = 2 + 2 + (hasRing ? 1 : 0);
+  const pierceArmor = 2 + (hasRing ? 2 : 0) + (!cfg.cranequins && hasParthian ? 2 : 0);
+  return { attack, range, meleeArmor, pierceArmor };
+}
 (function renderCaMcbTechTable() {
   const tableEl = document.getElementById('ca-mcb-tech-table');
-  const thead = `<thead><tr><th>Civ</th><th class="num">Heavy</th>${CA_MCB_TECH_COLS.map(t => `<th class="num">${t === 'Parthian Tactics' ? 'Parthian Tactics<br>/ Cranequins' : t}</th>`).join('')}</tr></thead>`;
+  const thead = `<thead><tr><th>Civ</th><th class="num">Heavy</th>${CA_MCB_TECH_COLS.map(t => `<th class="num">${t === 'Parthian Tactics' ? 'Parthian Tactics<br>/ Cranequins' : t}</th>`).join('')}<th class="num">Range</th><th class="num">Attack</th><th class="num">Armor</th></tr></thead>`;
   const sorted = Object.entries(CA_MCB_CIVS).sort(([civA, a], [civB, b]) => {
     if (a.heavy !== b.heavy) return a.heavy ? -1 : 1;
     const aBracer = caMcbHas(a, 'Bracer'), bBracer = caMcbHas(b, 'Bracer');
@@ -1164,7 +1187,8 @@ function caMcbHas(cfg, tech) {
       const starred = (cfg.starred || []).includes(tech);
       return `<td class="num" style="color:${missing ? 'var(--text3)' : 'var(--farm)'}" title="${starred ? 'Lacks the real tech, but Franks\' own civ bonus (Mounted Units +20% HP, Feudal Age) already covers it' : ''}">${missing ? '✕' : starred ? '✓*' : '✓'}</td>`;
     }).join('');
-    return `<tr><td>${civ}</td><td class="num">${cfg.heavy ? '✓' : '—'}</td>${cells}</tr>`;
+    const stats = caMcbMaxStats(cfg);
+    return `<tr><td>${civ}</td><td class="num">${cfg.heavy ? '✓' : '—'}</td>${cells}<td class="num">${stats.range}</td><td class="num">${stats.attack}</td><td class="num">${stats.meleeArmor}/${stats.pierceArmor}</td></tr>`;
   }).join('');
   tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
 })();
