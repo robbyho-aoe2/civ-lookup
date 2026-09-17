@@ -429,36 +429,44 @@ select:focus{outline:none;border-color:var(--amber);}
     <div class="card">
       <h2>All Maxed Cavalry Archer / Mounted Crossbowman Civs, by DPS</h2>
       <p class="desc">
-        Every civ that has real Cavalry Archer access under the Sept 22 patch (31 civs — excludes the
-        11 that trade it for Mounted Crossbowman, Danes/Saxons/Varangians who never had it, and the
-        Meso civs with no Cavalry Archer at all) alongside all 15 Mounted Crossbowman civs, plus 4 more
-        real "archer-cavalry" unique units (<b>XR</b> = Xianbei Raider/Wei, <b>BOL</b> = Bolas Rider/
-        Mapuche, <b>MAN</b> = Mangudai/Mongols, <b>MAM</b> = Mameluke/Saracens), each maxed out on its
-        own real tech access. Same formula as the card above — Chemistry/Fletching/Bodkin Arrow/
-        Padded+Leather Archer Armor universal, Bracer/Ring Archer Armor/Bloodlines/Husbandry/Parthian
-        Tactics/Thumb Ring per-civ, Cranequins as Parthian Tactics' MCB-only substitute. Pulled live from
-        index.html's own civData under the Sept 22 toggle, not guessed. Click any column header to sort.
+        Every civ that has real Cavalry Archer or Mounted Crossbowman access under the Sept 22 patch
+        (31 CA civs + 15 MCB civs), the 3 Elephant Archer civs, and 6 more real archer-cavalry unique
+        units — <b>XR</b> Xianbei Raider (Wei), <b>BOL</b> Bolas Rider (Mapuche), <b>MAN</b> Mangudai
+        (Mongols), <b>CAM</b> Camel Archer (Berbers), <b>GEN</b> Genitour (Berbers), <b>KIP</b> Kipchak
+        (Cumans), <b>RAT</b> Ratha, Ranged (Bengalis), and <b>WW</b> War Wagon (Koreans) — each maxed
+        out on its own real tech access. Same formula as the card above — Chemistry/Fletching/Bodkin
+        Arrow/Padded+Leather Archer Armor universal, Bracer/Ring Archer Armor/Bloodlines/Husbandry/
+        Parthian Tactics/Thumb Ring per-civ, Cranequins as Parthian Tactics' MCB-only substitute.
+        Pulled live from index.html's own civData under the Sept 22 toggle plus the cached aoe2techtree
+        data.json for base stats, not guessed. Click any column header to sort.
       </p>
       <p class="desc" style="color:var(--text3)">
-        Two real exceptions among the 4 unique units: <b>Xianbei Raider</b> has a periodic ~30s "charge"
-        volley (5 main + 5x1 secondary arrows, secondaries scaling to 5 each at full upgrades — 34 total
-        maxed) blended into its DPS as an approximation, not an exact model. <b>Bolas Rider</b> has the
-        same kind of charge mechanic but no numbers were available, so its DPS is sustained-attack-only
-        and understates its real ceiling. <b>Mameluke</b> doesn't scale with Fletching/Bodkin/Bracer/
-        Chemistry/Parthian Tactics at all — a well-known real AoE2 quirk (immune to Blacksmith attack
-        upgrades) — so its Attack is the flat base value; its armor comes from Barding Armor instead of
-        Archer Armor.
+        Real exceptions worth knowing: <b>Xianbei Raider</b> has a periodic ~30s "charge" volley (5 main
+        + 5x1 secondary arrows, secondaries scaling to 5 each at full upgrades — 34 total maxed) blended
+        into its DPS as an approximation, not an exact model. <b>Bolas Rider</b> has the same kind of
+        charge mechanic but no numbers were available, so its DPS is sustained-attack-only and
+        understates its real ceiling. <b>War Wagon</b> is classified under Siege Engineers only, not the
+        archer-attack tech set at all — no Fletching/Bodkin/Bracer/Chemistry/armor-line/Husbandry/Thumb
+        Ring bonus applies, so its stats below are flat base numbers. Every unique unit here (XR/BOL/
+        MAN/CAM/GEN/KIP/RAT/WW) is modeled at its BASE tier only, matching this site's own established
+        convention of never tracking a unique unit's Elite upgrade — Elephant Archer is the one
+        exception, since it's a real generic/regional line with a genuine Elite tier already modeled the
+        same way Heavy CA/MCB are.
       </p>
-      <label style="display:flex;align-items:center;gap:6px;margin:10px 0;font-size:0.9em;cursor:pointer;">
-        <input type="checkbox" id="equal-resources-toggle" style="cursor:pointer;">
-        Compare at equal resources (rank by DPS per 100 resources spent, not raw DPS)
-      </label>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 0;font-size:0.9em;">
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="unit-type-toggle" data-type="ca" checked>Cavalry Archer (CA/HCA)</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="unit-type-toggle" data-type="mcb" checked>Mounted Crossbowman (MCB/HMCB)</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="unit-type-toggle" data-type="ea" checked>Elephant Archer (EA)</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="unit-type-toggle" data-type="unique" checked>Unique Units (XR/BOL/MAN/CAM/GEN/KIP/RAT/WW)</label>
+      </div>
       <p class="desc" style="color:var(--text3)">
         Cost is flat per unit TYPE, not per civ — every civ pays the same 40w/60g (Cavalry Archer) or
-        40w/65g (Mounted Crossbowman) here. Real per-civ gold discounts (Portuguese/Spanish, Franks'
-        Ordonnance Companies -40% gold on Mounted Crossbowman, etc.) aren't factored in — this is a
-        simplified resource-efficiency proxy, not a precise per-civ cost model. Doesn't account for
-        population cap or training time either, just raw cost-to-damage ratio.
+        40w/65g (Mounted Crossbowman) here, and each unique/regional unit uses its own single real cost.
+        Real per-civ gold discounts (Portuguese/Spanish, Franks' Ordonnance Companies -40% gold on
+        Mounted Crossbowman, etc.) aren't factored in — this is a simplified resource-efficiency proxy,
+        not a precise per-civ cost model. Sort by the DPS/100 res column for an equal-resources
+        comparison. Doesn't account for population cap or training time either, just raw
+        cost-to-damage ratio.
       </p>
       <div class="overflow-x">
         <table id="all-maxed-table"></table>
@@ -651,7 +659,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.31</div>
+    <div class="version">v0.32</div>
   </div>
 </div>
 
@@ -1378,47 +1386,72 @@ function maxedStatsFor(cfg, isMcb) {
 // Cavalry Archer or 40w/65g for Mounted Crossbowman on this site; per-civ
 // gold discounts (Portuguese/Spanish -20%/no-gold-Blacksmith, Franks'
 // Ordonnance Companies -40% gold on MCB, etc.) are real but NOT modeled
-// here — the "equal resources" comparison below is a simplification, not
-// a per-civ-accurate cost model. Flagged in the section's own prose too.
+// here. Flagged in the section's own prose too.
 const CA_COST = 100, MCB_COST = 105;
-
-// Four more unique units added 2026-09-16 (site owner request) — real base
-// stats from the cached aoe2techtree data.json (see
-// reference_aoe2techtree_data memory), NOT guessed: Xianbei Raider id 1952
-// (Wei), Bolas Rider id 2569 base tier (Mapuche — matches this file's own
-// established convention of only modeling unique units' BASE tier, same
-// as every other unique unit on this site), Mangudai id 561 (Mongols),
-// Mameluke id 556 (Saracens). Tech access pulled live from index.html's
-// civData under PATCH_VERSION='sept22' (Mongols/Saracens already known
-// from CA_CIVS above; Mapuche/Wei checked fresh — Mapuche has ONLY Ring
-// Archer Armor of the 6 tracked techs, Wei has all 6).
-//
-// Xianbei Raider and Mameluke are each a genuine special case, not just
-// the shared archer formula with different base numbers:
-// - Xianbei Raider has a real periodic "charge" attack (confirmed via
-//   data.json's ChargeType/RechargeDuration~30s fields, and the site
-//   owner's own sourced numbers): a bonus volley every ~30s dealing a
-//   5-damage main hit + 5 secondary arrows at 1 damage each (10 total
-//   base), each fully scaling with the same Fletching/Bodkin/Bracer/
-//   Chemistry bonuses as a normal attack (secondaries scale 1->5 each at
-//   full upgrades) — maxed charge damage = 9 (main) + 5x5 (secondaries) =
-//   34, replacing one normal attack in its 30s cycle (the standard AoE2
-//   "charge" mechanic, same shape as Leitis' trample charge). Blended DPS
-//   = ((attacksPer30s - 1) x normalAttack + chargeDamage) / 30 — this is
-//   an approximation (the real replace-vs-add timing isn't independently
-//   verified), flagged as such in the section's own prose.
-// - Bolas Rider ALSO has a real charge mechanic (ChargeType 6 in the same
-//   data) but no numbers were given for it — its DPS below is sustained-
-//   attack-only, understating its real ceiling. Flagged, not modeled.
-// - Mameluke is classified under MELEE_CAV_TECHS by this site (matches
-//   real AoE2: Mamelukes are famously immune to Blacksmith attack
-//   upgrades — Forging/Iron Casting/Blast Furnace do NOT affect it despite
-//   being nominally in that tech group for checkbox purposes elsewhere on
-//   the site) — so its Attack here is the flat base value, no Fletching/
-//   Bodkin/Bracer/Chemistry/Parthian Tactics bonus at all. Its armor comes
-//   from Barding Armor (melee-only, no pierce component), not Archer
-//   Armor. It also doesn't get Thumb Ring (not an Archer-class unit).
 function d2(n) { return +n.toFixed(2); }
+
+// Elephant Archer (2026-09-16) — a real generic/regional line (Bengalis/
+// Dravidians/Gurjaras only, per build-order.html's own civRestriction —
+// NOT Hindustanis, who lost it), so it gets the SAME base/Elite treatment
+// as Heavy CA/MCB rather than the unique-units' base-tier-only shortcut.
+// Base/Elite stats from the site owner's own sourced table (250hp/6atk/
+// 0/2/4range/0.9spd/2s reload base -> 280hp/7atk Elite, rest unchanged) —
+// all 3 civs confirmed live to have both tiers (`civData[civ].units.has
+// (873/875)`). Uses the shared archer formula (CAV_ARCHER_TECHS covers
+// elephant-archer-line too, per build-order.html's own classification).
+const EA_CIVS = {
+  Bengalis:   { heavy: true, missing: ['Parthian Tactics'] },
+  Dravidians: { heavy: true, missing: ['Bloodlines', 'Parthian Tactics'] },
+  Gurjaras:   { heavy: true, missing: ['Ring Archer Armor', 'Parthian Tactics'] },
+};
+const EA_THUMB_RING = { Bengalis: false, Dravidians: true, Gurjaras: true };
+const EA_COST = 140; // 60f/80g
+function maxedStatsForEA(civ, cfg) {
+  const bracer = caMcbHas(cfg, 'Bracer'), ring = caMcbHas(cfg, 'Ring Archer Armor');
+  const parthian = caMcbHas(cfg, 'Parthian Tactics'), bloodlines = caMcbHas(cfg, 'Bloodlines');
+  const husbandry = caMcbHas(cfg, 'Husbandry'), thumbRing = EA_THUMB_RING[civ];
+  const attack = 7 + 2 + 1 + (bracer ? 1 : 0);
+  const range = 4 + 2 + (bracer ? 1 : 0);
+  const meleeArmor = 0 + 2 + (ring ? 1 : 0) + (parthian ? 1 : 0);
+  const pierceArmor = 2 + 2 + (ring ? 2 : 0) + (parthian ? 2 : 0);
+  const speed = d2(0.9 * (husbandry ? 1.15 : 1));
+  const reload = d2(2 * (thumbRing ? THUMB_RING_RELOAD_MULT : 1));
+  const dps = d2(attack / reload);
+  const hp = 280 + (bloodlines ? 20 : 0);
+  return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost: EA_COST, dpsPer100: d2(dps / EA_COST * 100) };
+}
+
+// 7 more real archer-cavalry unique/regional units added 2026-09-16 (site
+// owner request, real base stats sourced directly by the site owner from
+// the AoE2 wiki, cross-checked against build-order.html's own already-
+// vetted cost/trainTime for each — all matched exactly). Every one of
+// these is modeled at its BASE tier only, matching this file's own
+// established convention of never tracking a unique unit's Elite upgrade
+// (Elite Mangudai's own stat entry isn't even findable in the cached
+// data.json, reinforcing that choice). Tech access pulled live from
+// index.html's civData under PATCH_VERSION='sept22' (Mongols already
+// known from CA_CIVS; Mapuche/Cumans/Koreans/Bengalis checked fresh).
+// Mameluke (Saracens) was added then REMOVED per the site owner's own
+// follow-up ("these can be removed/not included") along with Arambai/
+// Ballista Elephant/Conquistador/Mounted Trebuchet/War Chariot — those
+// were never added in the first place, only Mameluke needed undoing.
+//
+// Two more genuine special cases here, same pattern as Xianbei Raider's
+// charge mechanic below:
+// - Xianbei Raider's periodic ~30s charge volley (5 main + 5x1 secondary
+//   arrows, secondaries scaling to 5 each at full upgrades — 34 total
+//   maxed) is blended into its DPS as an approximation — replacing one
+//   normal attack in its cycle, the standard AoE2 charge-mechanic shape.
+// - Bolas Rider has the SAME kind of charge mechanic (confirmed via
+//   data.json's own ChargeType field) but no numbers were given for it —
+//   its DPS is sustained-attack-only and understates its real ceiling.
+// - War Wagon (Koreans) is classified under Siege Engineers ONLY (build-
+//   order.html's own `UNIQUE_UNIT_TECH_GROUP`, confirmed via grep before
+//   assuming) — NOT the archer-attack tech set at all, so none of
+//   Fletching/Bodkin/Bracer/Chemistry/Padded+Leather+Ring Archer Armor/
+//   Parthian Tactics/Husbandry/Thumb Ring apply. Its numbers below are
+//   flat base stats, not a maxed ceiling — this tool doesn't track Siege
+//   Engineers' own numeric effect anywhere, so it can't be applied either.
 const EXTRA_UNIQUE_UNITS = [
   (() => {
     const attack = 5 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 1, pierceArmor = 0 + 2 + 2 + 2;
@@ -1440,9 +1473,38 @@ const EXTRA_UNIQUE_UNITS = [
     return { line: 'MAN', civ: 'Mongols', hp: 60 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
-    const attack = 10, range = 3, meleeArmor = 1 + 3, pierceArmor = 0;
-    const speed = d2(1.4 * 1.15), reload = 2, dps = d2(attack / reload), cost = 140; // 55f/85g
-    return { line: 'MAM', civ: 'Saracens', hp: 80 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+    // Berbers: bracer/ring/bloodlines/husbandry/thumbRing all true, parthian false.
+    const attack = 7 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 0, pierceArmor = 1 + 2 + 2 + 0;
+    const speed = d2(1.4 * 1.15), reload = d2(2 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 110; // 50w/60g
+    return { line: 'CAM', civ: 'Berbers', hp: 55 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+  })(),
+  (() => {
+    // Berbers, same tech access as Camel Archer above. Scoped to Berbers
+    // only — the real "and allies" sharing mechanic isn't modeled here,
+    // same as every other ally-shared bonus on this site.
+    const attack = 3 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 0, pierceArmor = 3 + 2 + 2 + 0;
+    const speed = d2(1.35 * 1.15), reload = d2(3 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 75; // 40f/35w
+    return { line: 'GEN', civ: 'Berbers', hp: 50 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+  })(),
+  (() => {
+    // Cumans: bracer/husbandry false, ring/bloodlines/parthian/thumbRing true.
+    // Real +3 attack vs. Camels situational bonus NOT included (a different
+    // target class than the DPS v. Infantry column tracks).
+    const attack = 4 + 2 + 1 + 0, range = 4 + 2 + 0, meleeArmor = 0 + 2 + 1 + 1, pierceArmor = 0 + 2 + 2 + 2;
+    const speed = 1.4, reload = d2(2.2 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 95; // 60w/35g
+    return { line: 'KIP', civ: 'Cumans', hp: 40 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+  })(),
+  (() => {
+    // Bengalis: bracer/ring/bloodlines/husbandry true, parthian/thumbRing false.
+    const attack = 5 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 3 + 2 + 1 + 0, pierceArmor = 1 + 2 + 2 + 0;
+    const speed = d2(1.3 * 1.15), reload = 2, dps = d2(attack / reload), cost = 120; // 60w/60g
+    return { line: 'RAT', civ: 'Bengalis', hp: 105 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+  })(),
+  (() => {
+    // Koreans, Siege Engineers only — flat base, no tech bonus applies.
+    const attack = 9, range = 4, meleeArmor = 0, pierceArmor = 2, speed = 1.2, reload = 2.5;
+    const dps = d2(attack / reload), cost = 260; // 200w/60g
+    return { line: 'WW', civ: 'Koreans', hp: 150, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
 ];
 
@@ -1454,14 +1516,21 @@ const ALL_MAXED_COLS = [
   ['cost', 'Cost', true], ['dpsPer100', 'DPS / 100 res', true],
 ];
 let allMaxedSort = { key: 'dps', dir: -1 };
-let allMaxedEqualRes = false;
+const UNIQUE_LINES = ['XR', 'BOL', 'MAN', 'CAM', 'GEN', 'KIP', 'RAT', 'WW'];
 function renderAllMaxedTable() {
   const tableEl = document.getElementById('all-maxed-table');
+  const enabledTypes = new Set([...document.querySelectorAll('.unit-type-toggle:checked')].map(cb => cb.dataset.type));
   const rows = [
     ...Object.entries(CA_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, false); return { line: cfg.heavy ? 'HCA' : 'CA', civ, ...s, cost: CA_COST, dpsPer100: d2(s.dps / CA_COST * 100) }; }),
     ...Object.entries(CA_MCB_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, true); return { line: cfg.heavy ? 'HMCB' : 'MCB', civ, ...s, cost: MCB_COST, dpsPer100: d2(s.dps / MCB_COST * 100) }; }),
+    ...Object.entries(EA_CIVS).map(([civ, cfg]) => ({ line: 'EA', civ, ...maxedStatsForEA(civ, cfg) })),
     ...EXTRA_UNIQUE_UNITS,
-  ];
+  ].filter(r => {
+    if (r.line === 'CA' || r.line === 'HCA') return enabledTypes.has('ca');
+    if (r.line === 'MCB' || r.line === 'HMCB') return enabledTypes.has('mcb');
+    if (r.line === 'EA') return enabledTypes.has('ea');
+    return enabledTypes.has('unique');
+  });
   const { key, dir } = allMaxedSort;
   rows.sort((a, b) => {
     if (key === 'civ' || key === 'line') return a[key].localeCompare(b[key]) * dir || a.civ.localeCompare(b.civ);
@@ -1470,7 +1539,7 @@ function renderAllMaxedTable() {
   const thead = `<thead><tr>${ALL_MAXED_COLS.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
   const tbody = rows.map((r, i) => `<tr>
     <td class="num">${i + 1}</td>
-    <td><span class="res-pill ${['CA', 'HCA', 'XR', 'MAN'].includes(r.line) ? 'gold' : 'wood'}">${r.line}</span></td>
+    <td><span class="res-pill ${['CA', 'HCA', 'EA', 'XR', 'MAN', 'CAM', 'RAT'].includes(r.line) ? 'gold' : 'wood'}">${r.line}</span></td>
     <td>${r.civ}</td>
     <td class="num">${r.hp}</td><td class="num">${r.attack}</td>
     <td class="num">${r.meleeArmor}/${r.pierceArmor}</td>
@@ -1490,11 +1559,7 @@ function renderAllMaxedTable() {
     });
   });
 }
-document.getElementById('equal-resources-toggle').addEventListener('change', (e) => {
-  allMaxedEqualRes = e.target.checked;
-  allMaxedSort = { key: allMaxedEqualRes ? 'dpsPer100' : 'dps', dir: -1 };
-  renderAllMaxedTable();
-});
+document.querySelectorAll('.unit-type-toggle').forEach(cb => cb.addEventListener('change', renderAllMaxedTable));
 renderAllMaxedTable();
 
 // "Reached Feudal Age — All Civs" table: runs build-order.html's OWN real
