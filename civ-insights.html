@@ -662,7 +662,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.37</div>
+    <div class="version">v0.38</div>
   </div>
 </div>
 
@@ -1342,7 +1342,9 @@ const CA_CIVS = {
   Malay:      { heavy: false, missing: ['Bloodlines', 'Parthian Tactics'], thumbRing: true },
   Malians:    { heavy: true,  missing: ['Bracer', 'Parthian Tactics'], thumbRing: true },
   Magyars:    { heavy: true,  missing: [], thumbRing: true },
-  Mongols:    { heavy: true,  missing: ['Ring Archer Armor'], thumbRing: true },
+  // civAtkSpeedMult 0.8 = real civ bonus "Cavalry Archers attack +25%
+  // faster" (not a tech — separate from Thumb Ring, stacks with it).
+  Mongols:    { heavy: true,  missing: ['Ring Archer Armor'], thumbRing: true, civAtkSpeedMult: 0.8 },
   Persians:   { heavy: true,  missing: ['Bracer'], thumbRing: true },
   Romans:     { heavy: true,  missing: ['Bracer', 'Parthian Tactics'], thumbRing: false },
   Saracens:   { heavy: true,  missing: [], thumbRing: true },
@@ -1375,7 +1377,13 @@ function maxedStatsFor(cfg, isMcb) {
   const meleeArmor = baseMelee + 2 + (ring ? 1 : 0) + (!cranequins && parthian ? 1 : 0);
   const pierceArmor = 2 + (ring ? 2 : 0) + (!cranequins && parthian ? 2 : 0);
   const speed = +(baseSpeed * (husbandry ? 1.15 : 1)).toFixed(2);
-  const reload = +(baseReload * (cfg.thumbRing ? THUMB_RING_RELOAD_MULT : 1)).toFixed(2);
+  // cfg.civAtkSpeedMult: a real CIV BONUS (not a tech) that directly boosts
+  // attack speed — e.g. Mongols' "Cavalry Archers attack +25% faster"
+  // (2026-09-16, site owner: "did you factor in the mongol cav archer civ
+  // bonus?" — a real gap, this formula only tracked TECHS before). Uses the
+  // same convention as Thumb Ring's own reload-multiplier math: a stated
+  // "+25% attack faster" solves to a 0.8 reload multiplier (1/0.8 = 1.25).
+  const reload = +(baseReload * (cfg.thumbRing ? THUMB_RING_RELOAD_MULT : 1) * (cfg.civAtkSpeedMult || 1)).toFixed(2);
   const dps = +(attack / reload).toFixed(2);
   // vs. Infantry: ONLY Cranequins' own "+2 attack vs. Infantry" applies here
   // — Parthian Tactics' situational bonus is vs. the Spearman-line
@@ -1416,7 +1424,11 @@ function d2(n) { return +n.toFixed(2); }
 // elephant-archer-line too, per build-order.html's own classification).
 const EA_CIVS = {
   Bengalis:   { heavy: true, missing: ['Parthian Tactics'] },
-  Dravidians: { heavy: true, missing: ['Bloodlines', 'Parthian Tactics'] },
+  // civAtkSpeedMult 0.8 = real civ bonus "Skirmishers and Elephant Archers
+  // attack +25% faster" (2026-09-16 correction, same gap class as Mongols'
+  // Cavalry Archer bonus above — a civ bonus, not a tech, previously
+  // untracked entirely).
+  Dravidians: { heavy: true, missing: ['Bloodlines', 'Parthian Tactics'], civAtkSpeedMult: 0.8 },
   Gurjaras:   { heavy: true, missing: ['Ring Archer Armor', 'Parthian Tactics'] },
 };
 const EA_THUMB_RING = { Bengalis: false, Dravidians: true, Gurjaras: true };
@@ -1430,7 +1442,7 @@ function maxedStatsForEA(civ, cfg) {
   const meleeArmor = 0 + 2 + (ring ? 1 : 0) + (parthian ? 1 : 0);
   const pierceArmor = 2 + 2 + (ring ? 2 : 0) + (parthian ? 2 : 0);
   const speed = d2(0.9 * (husbandry ? 1.15 : 1));
-  const reload = d2(2 * (thumbRing ? THUMB_RING_RELOAD_MULT : 1));
+  const reload = d2(2 * (thumbRing ? THUMB_RING_RELOAD_MULT : 1) * (cfg.civAtkSpeedMult || 1));
   const dps = d2(attack / reload);
   const hp = 280 + (bloodlines ? 20 : 0);
   return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost: EA_COST, dpsPer100: d2(dps / EA_COST * 100) };
