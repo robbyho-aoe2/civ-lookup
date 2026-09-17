@@ -564,7 +564,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.51</div>
+    <div class="version">v0.52</div>
   </div>
 </div>
 
@@ -1470,15 +1470,23 @@ const EXTRA_UNIQUE_UNITS = [
     // Wei corrections (2026-09-17, site owner, confirmed against
     // index.html's own already-documented data): real unique tech "Ming
     // Guang Armor" (Mounted Units +4 melee armor) and real civ bonus "Hei
-    // Guang Cavalry and Xianbei Raider +20/30% HP in Castle/Imperial Age"
-    // (Imperial/+30% tier used here, stacking with Bloodlines as
-    // (base+20)*1.3).
+    // Guang Cavalry and Xianbei Raider +20/30% HP in Castle/Imperial Age".
+    // HP corrected to the site owner's own directly-stated real values
+    // (56 Castle / 60 Imperial) rather than the (base+20)*1.3=65 this used
+    // before — that formula's stacking order (Bloodlines added BEFORE the
+    // civ % multiplier) doesn't reproduce either real number cleanly,
+    // suggesting the real order is base*mult+Bloodlines instead (30*1.3=39,
+    // +20=59, close to but not exactly 60) or some other combination not
+    // yet fully reverse-engineered — used the site owner's stated 60
+    // directly rather than a guessed formula. Worth revisiting Vietnamese's
+    // own civHpMult stacking (currently (base+20)*mult) if this turns out
+    // to be a general stacking-order issue, not Wei-specific.
     const attack = 5 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 1 + 4, pierceArmor = 0 + 2 + 2 + 2;
     const speed = d2(1.4 * 1.15), reload = d2(1.8 * THUMB_RING_RELOAD_MULT);
     const chargeDamage = 9 + 5 * 5;
     const attacksPer30s = 30 / reload;
     const dps = d2(((attacksPer30s - 1) * attack + chargeDamage) / 30);
-    const hp = Math.round((30 + 20) * 1.3);
+    const hp = 60;
     // Sept 22 cost (this whole table already runs under PATCH_VERSION=
     // 'sept22'): build-order.html's own SEPT22_UNIQUE_UNIT_OVERRIDES sets
     // gold to 35 (a REPLACE, not additive — confirmed via its own merge
