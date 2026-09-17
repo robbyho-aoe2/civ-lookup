@@ -564,7 +564,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.52</div>
+    <div class="version">v0.53</div>
   </div>
 </div>
 
@@ -1342,13 +1342,19 @@ function maxedStatsFor(cfg, isMcb) {
   // cfg.civHpMult: a real civ bonus percentage HP multiplier (e.g.
   // Vietnamese's "Archery Range units +20% HP" — Cavalry Archer trains
   // there, so it applies). Stacks with real Bloodlines as (base+20)*mult,
-  // the standard AoE2 convention of scaling the current tech-inclusive HP.
+  // Corrected 2026-09-17 (site owner: "vietnamese should have 92 hp for
+  // hca", confirmed exactly by base*mult+Bloodlines = 60*1.2+20 = 92) —
+  // the stacking order was backwards. civHpMult scales ONLY the tier's own
+  // baseHP; Bloodlines and any uniqueTechHp are flat additions layered on
+  // AFTER the multiplier, not before it. (Caught via the same fix on
+  // Xianbei Raider's HP, which didn't cleanly reproduce its real numbers
+  // under the old (base+flat)*mult order either.)
   // cfg.uniqueTechHp: a real civ-exclusive unique tech flat HP bonus (e.g.
-  // Turks' "Sipahi" — Mounted Archers +20 HP). Added alongside Bloodlines,
-  // before any civHpMult multiplier, same convention as flat tech bonuses
-  // generally (part of the "base" that a % modifier would then scale).
-  const hpBeforeCivMult = (isStarredBloodlines ? Math.round(baseHP * 1.2) : baseHP + (bloodlines ? 20 : 0)) + (cfg.uniqueTechHp || 0);
-  const hp = cfg.civHpMult ? Math.round(hpBeforeCivMult * cfg.civHpMult) : hpBeforeCivMult;
+  // Turks' "Sipahi" — Mounted Archers +20 HP).
+  const hpAfterCivMult = cfg.civHpMult ? Math.round(baseHP * cfg.civHpMult) : baseHP;
+  const hp = isStarredBloodlines
+    ? Math.round(baseHP * 1.2) // Franks — no real Bloodlines to layer on, unaffected by this fix
+    : hpAfterCivMult + (bloodlines ? 20 : 0) + (cfg.uniqueTechHp || 0);
   // Accuracy (2026-09-17, site owner): base 50% for Cavalry Archer, 80%
   // for Mounted Crossbowman (both tiers — Heavy CA is 80% too, a real
   // per-tier jump unlike MCB); Thumb Ring sets it to a flat 100% (also
