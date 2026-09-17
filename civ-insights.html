@@ -665,7 +665,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.39</div>
+    <div class="version">v0.40</div>
   </div>
 </div>
 
@@ -1531,17 +1531,30 @@ const EXTRA_UNIQUE_UNITS = [
   })(),
   (() => {
     // Berbers: bracer/ring/bloodlines/husbandry/thumbRing all true, parthian false.
+    // Base stats confirmed exactly right against the site owner's own AoE2
+    // wiki page (2026-09-17) — only real addition is the intrinsic "+4 vs.
+    // Cavalry Archers" attack bonus (base tier; Elite is +6), applied to
+    // DPS v. Ranged.
     const attack = 7 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 0, pierceArmor = 1 + 2 + 2 + 0;
     const speed = d2(1.4 * 1.15), reload = d2(2 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 110; // 50w/60g
-    return { line: 'CAM', civ: 'Berbers', hp: 55 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
+    const dpsVsRanged = d2((attack + 4) / reload);
+    return { line: 'CAM', civ: 'Berbers', hp: 55 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
     // Berbers, same tech access as Camel Archer above. Scoped to Berbers
     // only — the real "and allies" sharing mechanic isn't modeled here,
-    // same as every other ally-shared bonus on this site.
-    const attack = 3 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 0, pierceArmor = 3 + 2 + 2 + 0;
+    // same as every other ally-shared bonus on this site. Base pierce armor
+    // corrected to 4 (2026-09-17, site owner's own AoE2 wiki page for
+    // Genitour) — the earlier compact multi-unit table gave 3, the same
+    // kind of column-misalignment error caught on Mangudai. Real intrinsic
+    // attack bonus "+4 vs. Archers" applied to DPS v. Ranged (base tier;
+    // Elite adds a further +2 specifically vs. Cavalry Archers, not
+    // modeled since this row is base-tier-only). "+3 vs. Spearmen" not
+    // modeled (no vs.-Spearman-line column exists for unique units).
+    const attack = 3 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 0, pierceArmor = 4 + 2 + 2 + 0;
     const speed = d2(1.35 * 1.15), reload = d2(3 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 75; // 40f/35w
-    return { line: 'GEN', civ: 'Berbers', hp: 50 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
+    const dpsVsRanged = d2((attack + 4) / reload);
+    return { line: 'GEN', civ: 'Berbers', hp: 50 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
     // Cumans: bracer/husbandry false, ring/bloodlines/parthian/thumbRing true.
