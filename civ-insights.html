@@ -629,7 +629,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.28</div>
+    <div class="version">v0.29</div>
   </div>
 </div>
 
@@ -1344,16 +1344,33 @@ function maxedStatsFor(cfg, isMcb) {
   const speed = +(baseSpeed * (husbandry ? 1.15 : 1)).toFixed(2);
   const reload = +(baseReload * (cfg.thumbRing ? THUMB_RING_RELOAD_MULT : 1)).toFixed(2);
   const dps = +(attack / reload).toFixed(2);
+  // vs. Infantry: ONLY Cranequins' own "+2 attack vs. Infantry" applies here
+  // — Parthian Tactics' situational bonus is vs. the Spearman-line
+  // specifically (a different class), so it does NOT count toward this
+  // column even though both techs occupy the same per-civ slot.
+  const dpsVsInfantry = +((attack + (cranequins ? 2 : 0)) / reload).toFixed(2);
   const hp = baseHP + (bloodlines ? 20 : 0);
-  return { hp, attack, range, meleeArmor, pierceArmor, speed, reload, dps };
+  return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry };
 }
-(function renderAllMaxedTable() {
+const ALL_MAXED_COLS = [
+  ['rank', '#', false], ['line', 'Line', false], ['civ', 'Civ', false],
+  ['hp', 'HP', true], ['attack', 'Attack', true], ['armorTotal', 'Armor', true],
+  ['range', 'Range', true], ['speed', 'Speed', true], ['reload', 'Reload', true],
+  ['dps', 'DPS', true], ['dpsVsInfantry', 'DPS v. Infantry', true],
+];
+let allMaxedSort = { key: 'dps', dir: -1 };
+function renderAllMaxedTable() {
   const tableEl = document.getElementById('all-maxed-table');
   const rows = [
     ...Object.entries(CA_CIVS).map(([civ, cfg]) => ({ line: 'CA', civ, ...maxedStatsFor(cfg, false) })),
     ...Object.entries(CA_MCB_CIVS).map(([civ, cfg]) => ({ line: 'MCB', civ, ...maxedStatsFor(cfg, true) })),
-  ].sort((a, b) => b.dps - a.dps || a.civ.localeCompare(b.civ));
-  const thead = `<thead><tr><th class="num">#</th><th>Line</th><th>Civ</th><th class="num">HP</th><th class="num">Attack</th><th class="num">Armor</th><th class="num">Range</th><th class="num">Speed</th><th class="num">Reload</th><th class="num">DPS</th></tr></thead>`;
+  ];
+  const { key, dir } = allMaxedSort;
+  rows.sort((a, b) => {
+    if (key === 'civ' || key === 'line') return a[key].localeCompare(b[key]) * dir || a.civ.localeCompare(b.civ);
+    return (a[key] - b[key]) * dir || a.civ.localeCompare(b.civ);
+  });
+  const thead = `<thead><tr>${ALL_MAXED_COLS.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
   const tbody = rows.map((r, i) => `<tr>
     <td class="num">${i + 1}</td>
     <td><span class="res-pill ${r.line === 'CA' ? 'gold' : 'wood'}">${r.line}</span></td>
@@ -1362,9 +1379,18 @@ function maxedStatsFor(cfg, isMcb) {
     <td class="num">${r.meleeArmor}/${r.pierceArmor}</td>
     <td class="num">${r.range}</td><td class="num">${r.speed}</td>
     <td class="num">${r.reload}s</td><td class="num" style="font-weight:700;">${r.dps}</td>
+    <td class="num">${r.dpsVsInfantry}</td>
   </tr>`).join('');
   tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
-})();
+  tableEl.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const k = th.dataset.sortKey;
+      allMaxedSort = { key: k, dir: allMaxedSort.key === k ? -allMaxedSort.dir : (k === 'civ' || k === 'line' ? 1 : -1) };
+      renderAllMaxedTable();
+    });
+  });
+}
+renderAllMaxedTable();
 
 // "Reached Feudal Age — All Civs" table: runs build-order.html's OWN real
 // Fast Feudal engine (buildStagedOptimizeTimeline) for every civ, inside a
