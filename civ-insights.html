@@ -564,7 +564,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.46</div>
+    <div class="version">v0.47</div>
   </div>
 </div>
 
@@ -1172,6 +1172,10 @@ function caMcbHas(cfg, tech) {
 // to this line at all.
 const MCB_RELOAD_SECONDS = 2.5;
 const THUMB_RING_RELOAD_MULT = 0.9;
+// Bengalis' real unique tech "Paiks" (Rathas and Elephant Units attack
+// +20% faster) — same conversion convention as Thumb Ring: a stated
+// "+20% attack faster" solves to a reload multiplier of 1/1.2 = 0.8333.
+const PAIKS_RELOAD_MULT = 1 / 1.2;
 function caMcbMaxStats(cfg) {
   const hasBracer = caMcbHas(cfg, 'Bracer');
   const hasRing = caMcbHas(cfg, 'Ring Archer Armor');
@@ -1364,7 +1368,11 @@ function d2(n) { return +n.toFixed(2); }
 // (873/875)`). Uses the shared archer formula (CAV_ARCHER_TECHS covers
 // elephant-archer-line too, per build-order.html's own classification).
 const EA_CIVS = {
-  Bengalis:   { heavy: true, missing: ['Parthian Tactics'] },
+  // civAtkSpeedMult PAIKS_RELOAD_MULT = real unique tech "Paiks" (Rathas
+  // and Elephant Units attack +20% faster — 2026-09-17 site owner,
+  // confirmed against index.html's own UNIQUE_TECH_DESCRIPTIONS). Same
+  // tech also applied to Bengalis' own Ratha rows above.
+  Bengalis:   { heavy: true, missing: ['Parthian Tactics'], civAtkSpeedMult: PAIKS_RELOAD_MULT },
   // civAtkSpeedMult 0.8 = real civ bonus "Skirmishers and Elephant Archers
   // attack +25% faster" (2026-09-16 correction, same gap class as Mongols'
   // Cavalry Archer bonus above — a civ bonus, not a tech, previously
@@ -1574,16 +1582,20 @@ const EXTRA_UNIQUE_UNITS = [
     // error already caught on Mangudai/Genitour from that source. Ranged
     // mode only (this table doesn't model its melee-mode switch). "+1 vs.
     // Spearman" not modeled (no vs.-Spearman-line column for unique units).
+    // Real unique tech "Paiks" (Rathas and Elephant Units attack +20%
+    // faster — 2026-09-17 site owner, confirmed against index.html's own
+    // UNIQUE_TECH_DESCRIPTIONS) applied to reload via PAIKS_RELOAD_MULT
+    // (also applies to Bengalis' own Elephant Archer row below).
     const attack = 5 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 3 + 2 + 1 + 0, pierceArmor = 1 + 2 + 2 + 0;
-    const speed = d2(1.3 * 1.15), reload = 2, dps = d2(attack / reload), cost = 120; // 60w/60g
+    const speed = d2(1.3 * 1.15), reload = d2(2 * PAIKS_RELOAD_MULT), dps = d2(attack / reload), cost = 120; // 60w/60g
     return { line: 'RAT', civ: 'Bengalis', hp: 100 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
     // Elite Ratha, Ranged mode (2026-09-17, same wiki page): hp115/atk6/
     // melee3(unchanged)/pierce3(up from 1, a real +2 jump not the usual +1)/
-    // range4/speed1.3/reload2 (unchanged).
+    // range4/speed1.3/reload2 base (Paiks applied same as base tier).
     const attack = 6 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 3 + 2 + 1 + 0, pierceArmor = 3 + 2 + 2 + 0;
-    const speed = d2(1.3 * 1.15), reload = 2, dps = d2(attack / reload), cost = 120; // 60w/60g
+    const speed = d2(1.3 * 1.15), reload = d2(2 * PAIKS_RELOAD_MULT), dps = d2(attack / reload), cost = 120; // 60w/60g
     return { line: 'ERAT', civ: 'Bengalis', hp: 115 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
