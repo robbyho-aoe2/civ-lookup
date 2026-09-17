@@ -266,7 +266,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.14</div>
+    <div class="version">v1.15</div>
   </div>
 </div>
 
@@ -497,7 +497,12 @@ const DATA = {
     // [[reference_aoe2techtree_data]]), not guessed.
     { id:'squires', name:'Squires', age:'Feudal', resource:null, bonusPct:0, cost:{food:100,wood:0,gold:0,stone:0}, queueSeconds:40, group:'blacksmith', saveOnly:true },
     { id:'gambesons', name:'Gambesons', age:'Castle', resource:null, bonusPct:0, cost:{food:50,wood:0,gold:100,stone:0}, queueSeconds:25, group:'blacksmith', saveOnly:true },
-    // Foot-archer-only accuracy/anti-Standing-Ground tech (Archery Range).
+    // Real for Archer/Skirmisher AND Cavalry Archer/Mounted Crossbowman
+    // (Archery Range) — was wrongly modeled as foot-archer-only until
+    // 2026-09-16 (site owner correction). +100% accuracy is universal;
+    // its reload-speed component varies by unit class (see CAV_ARCHER_TECHS'
+    // own comment) — not modeled here since this tool has no reload-time
+    // engine at all.
     { id:'thumb-ring', name:'Thumb Ring', age:'Castle', resource:null, bonusPct:0, cost:{food:300,wood:250,gold:0,stone:0}, queueSeconds:45, group:'blacksmith', saveOnly:true },
     // Cavalry Archer's OWN armor tech — real replacement for the foot-
     // archer Pierce Armor line above, which doesn't apply to mounted
@@ -7854,7 +7859,15 @@ function applicableCombatTechIds(line, civ) {
   return unavailable ? ids.filter(id => !unavailable.includes(id)) : ids;
 }
 const FOOT_ARCHER_TECHS = ['fletching', 'bodkin-arrow', 'bracer', 'padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor', 'thumb-ring', 'ballistics', 'chemistry'];
-const CAV_ARCHER_TECHS = ['fletching', 'bodkin-arrow', 'bracer', 'padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor', 'parthian-tactics', 'bloodlines', 'ballistics', 'husbandry', 'chemistry'];
+// Thumb Ring added 2026-09-16 (site owner correction, sourced from the AoE2
+// wiki's Rate of Fire page) — it's real for Cavalry Archer/Mounted
+// Crossbowman, not foot-archer-only as previously assumed (see this file's
+// old 'thumb-ring' definition comment, also corrected). Its reload-speed
+// effect is REDUCED for this class specifically: -10% reload (not the base
+// -15% Skirmisher/foot-Archer gets) — this tool doesn't model reload time
+// anywhere, so that distinction has nowhere to apply yet; the checkbox is
+// tracked for tech-cost/eligibility purposes only, same as Husbandry.
+const CAV_ARCHER_TECHS = ['fletching', 'bodkin-arrow', 'bracer', 'padded-archer-armor', 'leather-archer-armor', 'ring-archer-armor', 'parthian-tactics', 'bloodlines', 'ballistics', 'husbandry', 'chemistry', 'thumb-ring'];
 const MELEE_CAV_TECHS = ['forging', 'iron-casting', 'blast-furnace', 'scale-barding-armor', 'chain-barding-armor', 'plate-barding-armor', 'bloodlines', 'husbandry'];
 const INFANTRY_TECHS = ['forging', 'iron-casting', 'blast-furnace', 'scale-mail-armor', 'chain-mail-armor', 'plate-mail-armor', 'arson', 'squires', 'gambesons'];
 const MONASTERY_TECHS = ['redemption', 'atonement', 'herbal-medicine', 'heresy', 'sanctity', 'fervor', 'illumination', 'block-printing', 'theocracy', 'faith'];

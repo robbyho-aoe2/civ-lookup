@@ -350,18 +350,22 @@ select:focus{outline:none;border-color:var(--amber);}
         direct combat bonus to the unit itself: <i>Cavalry Archers +2 attack vs. Ranged Soldiers</i>.
       </p>
       <p class="desc">
-        <b>Danes / Saxons / Varangians</b> — Heavy Mounted Crossbowman: identical kit, full completion
-        across the board — Bracer, Ring Archer Armor, Bloodlines, Husbandry, and Cranequins all present,
+        <b>Danes / Saxons</b> — Heavy Mounted Crossbowman: identical kit, full completion across the
+        board — Bracer, Ring Archer Armor, Bloodlines, Husbandry, Cranequins, AND Thumb Ring all present,
         nothing missing. None of the 11 civs trading in Cavalry Archer get this far (Britons comes
-        closest, missing only Bloodlines).
+        closest, missing only Bloodlines). <b>Varangians</b> ties them on everything except Thumb Ring
+        (see below) — otherwise identical, so dropped from the headline pick but still the same kit
+        everywhere else.
       </p>
       <p class="desc" style="color:var(--text3)">
-        Corrected 2026-09-16 (site owner) — two real gaps in the numbers below: Chemistry (+1 attack for
-        Archers, universally available, previously not counted at all) and Parthian Tactics' own melee
+        Corrected 2026-09-16 (site owner) — three real gaps in the numbers below: Chemistry (+1 attack
+        for Archers, universally available, previously not counted at all), Parthian Tactics' own melee
         armor component (+1 melee/+2 pierce, previously modeled as pierce-only; its situational attack
         bonus is +2 vs. the Spearman-line specifically, not general Infantry — Cranequins' own separate
-        +2 vs. Infantry bonus is unaffected). Speed now includes Husbandry's real +15% cavalry speed
-        bonus for civs that have it, instead of showing the untouched base number.
+        +2 vs. Infantry bonus is unaffected), and Thumb Ring (real for this line, was wrongly assumed
+        foot-archer-only — grants a REDUCED -10% reload for Cavalry Archer/Mounted Crossbowman
+        specifically, not the base -15%, per the AoE2 wiki's own per-unit-class breakdown). Speed
+        includes Husbandry's real +15% cavalry speed bonus for civs that have it.
       </p>
       <div class="overflow-x">
         <table>
@@ -376,10 +380,17 @@ select:focus{outline:none;border-color:var(--amber);}
               <td class="num">80</td>
               <td class="num">11 <span style="color:var(--text3)">(13 vs. Ranged Soldiers, 13 vs. Spearman-line)</span></td>
               <td class="num">5</td><td class="num">6</td><td class="num">7</td><td class="num">1.61</td>
-              <td class="num">2s</td><td class="num">5.5</td>
+              <td class="num">1.8s</td><td class="num">6.11</td>
             </tr>
             <tr>
-              <td>Danes/Saxons/Varangians Heavy Mounted Crossbowman</td>
+              <td>Danes/Saxons Heavy Mounted Crossbowman</td>
+              <td class="num">65</td>
+              <td class="num">12 <span style="color:var(--text3)">(14 vs. Infantry)</span></td>
+              <td class="num">5</td><td class="num">4</td><td class="num">8</td><td class="num">1.44</td>
+              <td class="num">2.25s</td><td class="num">5.33</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text3)">Varangians Heavy Mounted Crossbowman <span style="font-size:0.85em">(no Thumb Ring)</span></td>
               <td class="num">65</td>
               <td class="num">12 <span style="color:var(--text3)">(14 vs. Infantry)</span></td>
               <td class="num">5</td><td class="num">4</td><td class="num">8</td><td class="num">1.44</td>
@@ -389,10 +400,9 @@ select:focus{outline:none;border-color:var(--amber);}
         </table>
       </div>
       <p class="desc" style="color:var(--text3)">
-        Atk/s uses each unit's confirmed reload time (Cavalry Archer 2s, ground-truth data; Mounted
-        Crossbowman 2.5s, site owner-confirmed). No tech tracked for either line is documented as
-        changing reload speed — the site owner says one exists for Mounted Crossbowman specifically, not
-        yet identified, so its DPS here is a floor, not necessarily the real ceiling.
+        Atk/s uses each unit's confirmed reload time (Cavalry Archer 2s, Mounted Crossbowman 2.5s — both
+        ground-truth/site owner-confirmed) reduced -10% for civs with Thumb Ring, applied to both lines
+        equally since Japanese/Danes/Saxons all have it (Varangians is the one exception here).
       </p>
       <p class="desc" style="margin-top:10px;">
         Real finding, with both sides at full tech completion: melee armor now TIES at 5 (Parthian
@@ -405,9 +415,9 @@ select:focus{outline:none;border-color:var(--amber);}
         is entirely the base units' own 60-vs-45 HP difference), pierce armor (+2 — Parthian Tactics'
         own pierce bonus is 1 point ahead of Cranequins' equivalent), speed (1.61 vs. 1.44 — same
         +15% Husbandry bonus on both sides, so the gap is just the base 1.4-vs-1.25 speed carried
-        through), AND despite the lower flat attack, DPS too (5.5 vs. 4.8) — its faster 2s reload beats
-        Mounted Crossbowman's 2.5s by enough to outweigh the 1-point attack gap, at least until MCB's own
-        unidentified reload-speed tech is confirmed and added. Each side's own situational vs.-class
+        through), AND despite the lower flat attack, DPS too (6.11 vs. 5.33 for Danes/Saxons, 6.11 vs.
+        4.8 for Varangians) — its faster base 2s reload (vs. 2.5s) carries through proportionally even
+        after both sides get the same -10% Thumb Ring reduction. Each side's own situational vs.-class
         bonus (+2, applying to a different target class each) keeps their real combat attack close
         either way.
       </p>
@@ -599,7 +609,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.26</div>
+    <div class="version">v0.27</div>
   </div>
 </div>
 
@@ -1140,25 +1150,37 @@ const CA_MCB_CIVS = {
   // wrongly left off Bohemians' own missing list (every other cranequins:
   // false civ here already had it), which incorrectly credited them with
   // Parthian Tactics' own +2 pierce armor in the maxed-stat columns.
-  Bohemians:  { heavy: false, cranequins: false, missing: ['Bloodlines', 'Parthian Tactics'] },
-  Britons:    { heavy: true,  cranequins: true,  missing: ['Bloodlines'] },
-  Burgundians:{ heavy: false, cranequins: false, missing: ['Bloodlines', 'Parthian Tactics', 'Ring Archer Armor'] },
-  Celts:      { heavy: true,  cranequins: false, missing: ['Bloodlines', 'Bracer', 'Parthian Tactics'] },
-  Franks:     { heavy: true,  cranequins: true,  missing: ['Bracer', 'Ring Archer Armor'], starred: ['Bloodlines'] },
-  Italians:   { heavy: false, cranequins: false, missing: ['Parthian Tactics'] },
-  Poles:      { heavy: true,  cranequins: false, missing: ['Parthian Tactics', 'Ring Archer Armor'] },
-  Portuguese: { heavy: false, cranequins: false, missing: ['Parthian Tactics'] },
-  Sicilians:  { heavy: true,  cranequins: true,  missing: ['Ring Archer Armor'] },
-  Spanish:    { heavy: true,  cranequins: false, missing: ['Parthian Tactics'] },
-  Teutons:    { heavy: true,  cranequins: false, missing: ['Bracer', 'Husbandry', 'Parthian Tactics'] },
-  Vikings:    { heavy: false, cranequins: false, missing: ['Bloodlines', 'Husbandry', 'Parthian Tactics'] },
+  // thumbRing added 2026-09-16 (site owner correction, sourced from the
+  // AoE2 wiki's Rate of Fire page) — Thumb Ring is real for Cavalry
+  // Archer/Mounted Crossbowman (net -10% reload for this class, not the
+  // base -15%), was wrongly assumed foot-archer-only and dropped from
+  // CA_MCB_TECH_COLS entirely. Per-civ availability grep'd directly out
+  // of build-order.html's DATA.civs (11 Sept22 civs + Saxons) and
+  // index.html's live civData (Danes/Varangians, which don't exist as
+  // full civs in build-order.html) — NOT assumed uniform. Real surprise:
+  // Italians/Poles/Portuguese/Spanish/Danes/Saxons all keep it; the other
+  // 9 (including all 3 Cranequins civs) don't.
+  Bohemians:  { heavy: false, cranequins: false, missing: ['Bloodlines', 'Parthian Tactics'], thumbRing: false },
+  Britons:    { heavy: true,  cranequins: true,  missing: ['Bloodlines'], thumbRing: false },
+  Burgundians:{ heavy: false, cranequins: false, missing: ['Bloodlines', 'Parthian Tactics', 'Ring Archer Armor'], thumbRing: false },
+  Celts:      { heavy: true,  cranequins: false, missing: ['Bloodlines', 'Bracer', 'Parthian Tactics'], thumbRing: false },
+  Franks:     { heavy: true,  cranequins: true,  missing: ['Bracer', 'Ring Archer Armor'], starred: ['Bloodlines'], thumbRing: false },
+  Italians:   { heavy: false, cranequins: false, missing: ['Parthian Tactics'], thumbRing: true },
+  Poles:      { heavy: true,  cranequins: false, missing: ['Parthian Tactics', 'Ring Archer Armor'], thumbRing: true },
+  Portuguese: { heavy: false, cranequins: false, missing: ['Parthian Tactics'], thumbRing: true },
+  Sicilians:  { heavy: true,  cranequins: true,  missing: ['Ring Archer Armor'], thumbRing: false },
+  Spanish:    { heavy: true,  cranequins: false, missing: ['Parthian Tactics'], thumbRing: true },
+  Teutons:    { heavy: true,  cranequins: false, missing: ['Bracer', 'Husbandry', 'Parthian Tactics'], thumbRing: false },
+  Vikings:    { heavy: false, cranequins: false, missing: ['Bloodlines', 'Husbandry', 'Parthian Tactics'], thumbRing: false },
   // All three get Heavy Mounted Crossbowman too (site owner, 2026-09-16 —
   // index.html was actually missing this and has been fixed) plus the full
   // Bracer/Ring Archer Armor/Bloodlines/Husbandry/Cranequins set: full
-  // completion, nothing missing.
-  Danes:      { heavy: true, cranequins: true, missing: [] },
-  Saxons:     { heavy: true, cranequins: true, missing: [] },
-  Varangians: { heavy: true, cranequins: true, missing: [] },
+  // completion, nothing missing. NOT identical on Thumb Ring though —
+  // Danes/Saxons have it, Varangians doesn't (index.html civData, live-
+  // checked), so Varangians is now the one real outlier on reload/DPS.
+  Danes:      { heavy: true, cranequins: true, missing: [], thumbRing: true },
+  Saxons:     { heavy: true, cranequins: true, missing: [], thumbRing: true },
+  Varangians: { heavy: true, cranequins: true, missing: [], thumbRing: false },
 };
 // A tech counts as "had" for sorting purposes if it's not in `missing`
 // (this already folds in `starred` — Franks' Bloodlines isn't in their
@@ -1186,15 +1208,15 @@ function caMcbHas(cfg, tech) {
 // TECH_DESCRIPTIONS[39]) now feeds a real Speed column instead of being a
 // tracked-but-inert checkbox. Formula re-validated against the corrected
 // "Best Heavy CA vs Best Heavy MCB" card numbers below (exact match).
-// Reload time (2.5s, site owner-confirmed) is held FLAT here — no tech
-// tracked for these civs (the full CAV_ARCHER_TECHS set, cross-checked
-// against every TECH_DESCRIPTIONS entry) documents a reload-speed effect,
-// and Thumb Ring (the one real "reload faster" tech in the site's data)
-// is foot-archer-only and unavailable to every civ in this table. Site
-// owner says a tech does speed it up — not yet identified, so DPS below
-// is a floor, not necessarily each civ's real ceiling. Flag and fix once
-// the specific tech is confirmed.
+// Reload time: base 2.5s (site owner-confirmed), reduced -10% for civs
+// with Thumb Ring (2026-09-16 correction, sourced from the AoE2 wiki's
+// Rate of Fire page — Cavalry Archer/Mounted Crossbowman get a REDUCED
+// -10% reload from Thumb Ring, not the base -15% foot Archers/Skirmishers
+// get, per a per-unit-class exception table on that page). Was flat
+// before this correction on the wrong assumption Thumb Ring didn't apply
+// to this line at all.
 const MCB_RELOAD_SECONDS = 2.5;
+const THUMB_RING_RELOAD_MULT = 0.9;
 function caMcbMaxStats(cfg) {
   const hasBracer = caMcbHas(cfg, 'Bracer');
   const hasRing = caMcbHas(cfg, 'Ring Archer Armor');
@@ -1205,8 +1227,9 @@ function caMcbMaxStats(cfg) {
   const meleeArmor = 2 + 2 + (hasRing ? 1 : 0) + (!cfg.cranequins && hasParthian ? 1 : 0);
   const pierceArmor = 2 + (hasRing ? 2 : 0) + (!cfg.cranequins && hasParthian ? 2 : 0);
   const speed = +(1.25 * (hasHusbandry ? 1.15 : 1)).toFixed(2);
-  const dps = +(attack / MCB_RELOAD_SECONDS).toFixed(2);
-  return { attack, range, meleeArmor, pierceArmor, speed, dps };
+  const reload = +(MCB_RELOAD_SECONDS * (cfg.thumbRing ? THUMB_RING_RELOAD_MULT : 1)).toFixed(2);
+  const dps = +(attack / reload).toFixed(2);
+  return { attack, range, meleeArmor, pierceArmor, speed, reload, dps };
 }
 (function renderCaMcbTechTable() {
   const tableEl = document.getElementById('ca-mcb-tech-table');
@@ -1232,7 +1255,7 @@ function caMcbMaxStats(cfg) {
       return `<td class="num" style="color:${missing ? 'var(--text3)' : 'var(--farm)'}" title="${starred ? 'Lacks the real tech, but Franks\' own civ bonus (Mounted Units +20% HP, Feudal Age) already covers it' : ''}">${missing ? '✕' : starred ? '✓*' : '✓'}</td>`;
     }).join('');
     const stats = caMcbMaxStats(cfg);
-    return `<tr><td>${civ}</td><td class="num">${cfg.heavy ? '✓' : '—'}</td>${cells}<td class="num">${stats.range}</td><td class="num">${stats.attack}</td><td class="num">${stats.meleeArmor}/${stats.pierceArmor}</td><td class="num">${stats.speed}</td><td class="num">${MCB_RELOAD_SECONDS}s</td><td class="num">${stats.dps}</td></tr>`;
+    return `<tr><td>${civ}</td><td class="num">${cfg.heavy ? '✓' : '—'}</td>${cells}<td class="num">${stats.range}</td><td class="num">${stats.attack}</td><td class="num">${stats.meleeArmor}/${stats.pierceArmor}</td><td class="num">${stats.speed}</td><td class="num">${stats.reload}s</td><td class="num">${stats.dps}</td></tr>`;
   }).join('');
   tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
 })();

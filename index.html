@@ -275,7 +275,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.31</div>
+    <div class="version">v2.32</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1426,7 +1426,18 @@ const TECH_DESCRIPTIONS = {
   211:'Blacksmith tech: Archers and Cavalry Archers +1 melee/+1 pierce armor',
   212:'Blacksmith tech: Archers and Cavalry Archers +1 melee/+1 pierce armor (cumulative)',
   219:'Blacksmith tech: Archers and Cavalry Archers +1 melee/+2 pierce armor (cumulative — total +3/+4 with all three)',
-  437:'Archers fire 100% accurately and reload faster',
+  // Corrected 2026-09-16 (site owner, sourced from the AoE2 wiki's Rate of
+  // Fire page) — base effect is +17.65% attack speed (-15% reload), applies
+  // to every Archer/Cavalry Archer-class unit (NOT Hand Cannoneer,
+  // Janissary, Conquistador, or Arambai), but per-unit exceptions modify
+  // it: Skirmisher-line/Genitour-line/Slingers get +17.6% reload on TOP of
+  // the boost, netting to ZERO real speedup; Cavalry Archer-line and War
+  // Wagon get +5.9% reload on top, netting to +11.1% attack speed (-10%
+  // reload) instead of the full amount; Chu Ko Nu gets -5.9% MORE on top,
+  // netting +25% (-20% reload). Was previously "100% accurately and reload
+  // faster" with no unit-specific breakdown — mildly misleading for
+  // Skirmishers (implies a speed boost that's actually fully offset).
+  437:'Archers fire 100% accurately; reload speed effect varies by unit — Cavalry Archer-line/War Wagon net -10% reload, Skirmisher-line/Genitour/Slingers net 0%, Chu Ko Nu nets -20%',
   // Corrected 2026-09-16 (site owner) — was '+2 pierce armor, +1 attack vs
   // Infantry', missing the melee-armor component and naming the wrong
   // target class. Real effect: Mounted Archer-line AND Arambai (aoe2DE
@@ -2038,7 +2049,12 @@ const TECH_TREE_CATEGORIES = [
   // itself is unchanged, only this flowchart's own label/node text).
   { label: 'Mounted Archer', archetypeLabel: 'Cavalry Archer', emoji: '🎯', lines: [
     { name: 'Mounted Archer', chain: [
-      { name: 'Mounted Archer', age: 'Castle', id: 39, extra: [MOUNTED_CROSSBOWMAN_SENTINEL_ID], techs: [{name:'Fletching',id:T.Fletching},{name:'Bodkin Arrow',id:T['Bodkin Arrow']},{name:'Padded Archer Armor',id:T['Padded Archer Armor']},{name:'Leather Archer Armor',id:T['Leather Archer Armor']},{name:'Bloodlines',id:T.Bloodlines},{name:'Husbandry',id:T.Husbandry}] },
+      // Thumb Ring (2026-09-16, site owner correction) — real Cavalry
+      // Archer/Mounted Crossbowman tech, was wrongly assumed foot-archer-
+      // only and left off this chain entirely. Its accuracy component is
+      // universal; its reload-speed component is a REDUCED -10% for this
+      // line specifically (not the base -15%) — see TECH_DESCRIPTIONS[437].
+      { name: 'Mounted Archer', age: 'Castle', id: 39, extra: [MOUNTED_CROSSBOWMAN_SENTINEL_ID], techs: [{name:'Fletching',id:T.Fletching},{name:'Bodkin Arrow',id:T['Bodkin Arrow']},{name:'Padded Archer Armor',id:T['Padded Archer Armor']},{name:'Leather Archer Armor',id:T['Leather Archer Armor']},{name:'Bloodlines',id:T.Bloodlines},{name:'Husbandry',id:T.Husbandry},{name:'Thumb Ring',id:T['Thumb Ring']}] },
       // Parthian Tactics/Cranequins are the same real slot for a civ (see
       // the equivalence note elsewhere) -- but unlike a plain equivalence
       // check, the DISPLAYED name should reflect whichever one the civ
