@@ -327,13 +327,13 @@ select:focus{outline:none;border-color:var(--amber);}
         units — <b>XR</b> Xianbei Raider (Wei), <b>BOL</b> Bolas Rider (Mapuche), <b>MAN</b> Mangudai
         (Mongols), <b>CAM</b> Camel Archer (Berbers), <b>GEN</b> Genitour (Berbers), <b>KIP</b> Kipchak
         (Cumans), <b>RAT</b> Ratha, Ranged (Bengalis), and <b>WW</b> War Wagon (Koreans) — each maxed
-        out on its own real tech access. Bolas Rider/Camel Archer/Genitour/Ratha/War Wagon also each
-        have a matching <b>E-prefixed row</b> (EBOL/ECAM/EGEN/ERAT/EWW) for their real Elite tier —
-        Xianbei Raider has no Elite upgrade in the real game, and Mangudai's own row already represents
-        Elite (its base tier isn't shown separately). Kipchak doesn't have an Elite row yet, and its
-        base-tier DPS is a floor, not a ceiling — it fires multiple arrows per shot with a real
-        situational bonus, exact mechanic still unconfirmed (sources disagree on arrow count). Same
-        formula as the card above — Chemistry/Fletching/Bodkin
+        out on its own real tech access. Bolas Rider/Camel Archer/Genitour/Ratha/War Wagon/Kipchak also
+        each have a matching <b>E-prefixed row</b> (EBOL/ECAM/EGEN/ERAT/EWW/EKIP) for their real Elite
+        tier — Xianbei Raider has no Elite upgrade in the real game, and Mangudai's own row already
+        represents Elite (its base tier isn't shown separately). Kipchak fires 1 main arrow (scales with
+        the normal archer-attack techs) plus 2 extra arrows at base/3 at Elite, each a flat +1 unaffected
+        by any tech — its Attack column is the main arrow's maxed value plus that flat extra-arrow total.
+        Same formula as the card above — Chemistry/Fletching/Bodkin
         Arrow/Padded+Leather Archer Armor universal, Bracer/Ring Archer Armor/Bloodlines/Husbandry/
         Parthian Tactics/Thumb Ring per-civ, Cranequins as Parthian Tactics' MCB-only substitute.
         DPS v. Infantry/v. Ranged also fold in real CIV bonuses, not just techs — checked every civ's
@@ -564,7 +564,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.43</div>
+    <div class="version">v0.44</div>
   </div>
 </div>
 
@@ -1487,11 +1487,29 @@ const EXTRA_UNIQUE_UNITS = [
   })(),
   (() => {
     // Cumans: bracer/husbandry false, ring/bloodlines/parthian/thumbRing true.
-    // Real +3 attack vs. Camels situational bonus NOT included (a different
-    // target class than the DPS v. Infantry column tracks).
-    const attack = 4 + 2 + 1 + 0, range = 4 + 2 + 0, meleeArmor = 0 + 2 + 1 + 1, pierceArmor = 0 + 2 + 2 + 2;
+    // Corrected 2026-09-17 (site owner) — Kipchak fires 1 main arrow (real
+    // pierce damage, receives Fletching/Bodkin/Bracer/Chemistry same as any
+    // other archer) PLUS 2 extra arrows (3 at Elite) that ALWAYS deal flat
+    // +1 damage each, unaffected by any attack tech ("the attack upgrade
+    // goes to the base only"). Base main arrow is 4 (confirmed: 4 + 2x1
+    // extras = 6 total at zero upgrades, matches the site owner's own
+    // "a base kipchak does 6 pierce damage"). Total attack here = maxed
+    // main arrow + flat extras. Real "+1 vs. Spearmen" bonus not included
+    // (no vs.-Spearman-line column exists for unique units).
+    const mainArrow = 4 + 2 + 1 + 0, range = 4 + 2 + 0, meleeArmor = 0 + 2 + 1 + 1, pierceArmor = 0 + 2 + 2 + 2;
+    const attack = mainArrow + 2; // 2 flat +1 extra arrows
     const speed = 1.4, reload = d2(2.2 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 95; // 60w/35g
     return { line: 'KIP', civ: 'Cumans', hp: 40 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
+  })(),
+  (() => {
+    // Elite Kipchak (2026-09-17, site owner): main arrow 5 (up from 4),
+    // gains a 3rd extra arrow (3 total extras, each still flat +1) — real
+    // total maxed attack = maxed main arrow + 3. HP45 (up from 40); other
+    // stats (armor/range/speed/reload) unchanged by Elite per the info given.
+    const mainArrow = 5 + 2 + 1 + 0, range = 4 + 2 + 0, meleeArmor = 0 + 2 + 1 + 1, pierceArmor = 0 + 2 + 2 + 2;
+    const attack = mainArrow + 3; // 3 flat +1 extra arrows at Elite
+    const speed = 1.4, reload = d2(2.2 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 95; // 60w/35g
+    return { line: 'EKIP', civ: 'Cumans', hp: 45 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
     // Bengalis: bracer/ring/bloodlines/husbandry true, parthian/thumbRing false.
