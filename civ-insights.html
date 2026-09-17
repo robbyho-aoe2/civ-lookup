@@ -40,6 +40,9 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .res-pill.wood{color:var(--wood);}
 .res-pill.stone{color:var(--stone);}
 .res-pill.gold{color:var(--gold);}
+.unit-stats-toggle-btn{font:inherit;font-size:12px;font-weight:600;padding:6px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surf2);color:var(--text2);cursor:pointer;}
+.unit-stats-toggle-btn:hover{color:var(--text);}
+.unit-stats-toggle-btn.on{color:var(--amberL);border-color:var(--amber);background:var(--amberBg);}
 .card .sub-heading{font-size:13px;font-weight:700;margin:20px 0 4px;padding-top:16px;border-top:1px solid var(--border);color:var(--text);}
 .card .sub-heading:first-of-type{margin-top:0;padding-top:0;border-top:none;}
 .changelog-list{margin:0 0 4px;padding-left:20px;font-size:12.5px;line-height:1.8;color:var(--text2);}
@@ -267,54 +270,19 @@ select:focus{outline:none;border-color:var(--amber);}
       <p class="desc">
         Real stats for both lines, straight from build-order.html's own data. Mounted Crossbowman is
         the Sept 22 patch's regional Archery Range unit — it fully REPLACES Cavalry Archer for the 11
-        civs listed below, not an additional option alongside it.
+        civs listed below, not an additional option alongside it. Toggle shows the unit with every tech
+        available by that age applied (a generic/hypothetical civ with full access — MCB uses Cranequins
+        as its own Parthian Tactics-equivalent). "Imperial techs" matches a generic (no special civ
+        bonus) Heavy CA/HMCB exactly, same numbers as the table below.
       </p>
-      <div class="overflow-x">
-        <table>
-          <thead><tr>
-            <th>Unit</th><th class="num">Cost</th><th class="num">Train</th>
-            <th class="num">HP</th><th class="num">Attack</th><th class="num">Melee Arm.</th><th class="num">Pierce Arm.</th>
-            <th class="num">Range</th><th class="num">Speed</th><th class="num">LOS</th>
-          </tr></thead>
-          <tbody>
-            <tr>
-              <td>Cavalry Archer</td>
-              <td class="num"><span class="res-pill wood">40w</span> <span class="res-pill gold">60g</span></td>
-              <td class="num">37s</td>
-              <td class="num">50</td><td class="num">6</td><td class="num">0</td><td class="num">0</td>
-              <td class="num">4</td><td class="num">1.4</td><td class="num">5</td>
-            </tr>
-            <tr>
-              <td>Mounted Crossbowman</td>
-              <td class="num"><span class="res-pill wood">40w</span> <span class="res-pill gold">65g</span></td>
-              <td class="num">37s</td>
-              <td class="num">45</td><td class="num">7</td><td class="num">2</td><td class="num">0</td>
-              <td class="num">4</td><td class="num">1.25</td><td class="num">—</td>
-            </tr>
-            <tr style="border-top:1px solid var(--border2)">
-              <td>Heavy Cavalry Archer <span style="color:var(--text3)">(upgrade: <span class="res-pill food">900f</span> <span class="res-pill gold">500g</span>, 50s research)</span></td>
-              <td class="num">—</td>
-              <td class="num">27s</td>
-              <td class="num">60</td><td class="num">7</td><td class="num">1</td><td class="num">0</td>
-              <td class="num">4</td><td class="num">1.4</td><td class="num">6</td>
-            </tr>
-            <tr>
-              <td>Heavy Mounted Crossbowman <span style="color:var(--text3)">(upgrade: <span class="res-pill food">1000f</span> <span class="res-pill gold">650g</span>, 50s research)</span></td>
-              <td class="num">—</td>
-              <td class="num">37s</td>
-              <td class="num">45</td><td class="num">8</td><td class="num">2</td><td class="num">0</td>
-              <td class="num">4</td><td class="num">1.25</td><td class="num">—</td>
-            </tr>
-          </tbody>
-        </table>
+      <div style="display:flex;gap:6px;margin:10px 0;">
+        <button class="unit-stats-toggle-btn" data-state="base">Base</button>
+        <button class="unit-stats-toggle-btn" data-state="castle">Castle techs</button>
+        <button class="unit-stats-toggle-btn" data-state="imperial">Imperial techs</button>
       </div>
-      <p class="desc" style="margin-top:10px;">
-        Net trade-off: Mounted Crossbowman gives up 5 HP and 1 melee armor point less swing than Heavy
-        Cavalry Archer's own totals suggest at a glance, but starts with +1 attack and +2 melee armor
-        over BASE Cavalry Archer immediately in Castle Age, and costs 5 more gold for it. It's also
-        slower (1.25 vs 1.4) and has no LOS advantage confirmed yet. Same range and pierce armor both
-        ways.
-      </p>
+      <div class="overflow-x">
+        <table id="unit-stats-table"></table>
+      </div>
     </div>
     <div class="card">
       <h2>Techs by Civ</h2>
@@ -338,89 +306,14 @@ select:focus{outline:none;border-color:var(--amber);}
     </div>
     <div class="card">
       <h2>Best Heavy CA vs. Best Heavy MCB</h2>
-      <p class="desc">
-        Picking the single best real civ for each line and stacking every applicable tech on top of its
-        base stats — not the generic unit numbers above, but what each line ACTUALLY looks like at its
-        ceiling. "Best" means full tech completion first, a genuine combat bonus (not just a cost
-        discount) as tiebreaker.
-      </p>
-      <p class="desc">
-        <b>Japanese</b> — Heavy Cavalry Archer: one of 5 civs with full 12/12 tech completion for this
-        line (Japanese/Magyars/Saracens/Tatars/Turks all tied), and the only one of those 5 with a
-        direct combat bonus to the unit itself: <i>Cavalry Archers +2 attack vs. Ranged Soldiers</i>.
-      </p>
-      <p class="desc">
-        <b>Danes / Saxons</b> — Heavy Mounted Crossbowman: identical kit, full completion across the
-        board — Bracer, Ring Archer Armor, Bloodlines, Husbandry, Cranequins, AND Thumb Ring all present,
-        nothing missing. None of the 11 civs trading in Cavalry Archer get this far (Britons comes
-        closest, missing only Bloodlines). <b>Varangians</b> ties them on everything except Thumb Ring
-        (see below) — otherwise identical, so dropped from the headline pick but still the same kit
-        everywhere else.
-      </p>
-      <p class="desc" style="color:var(--text3)">
-        Corrected 2026-09-16 (site owner) — three real gaps in the numbers below: Chemistry (+1 attack
-        for Archers, universally available, previously not counted at all), Parthian Tactics' own melee
-        armor component (+1 melee/+2 pierce, previously modeled as pierce-only; its situational attack
-        bonus is +2 vs. the Spearman-line specifically, not general Infantry — Cranequins' own separate
-        +2 vs. Infantry bonus is unaffected), and Thumb Ring (real for this line, was wrongly assumed
-        foot-archer-only — grants a REDUCED -10% reload for Cavalry Archer/Mounted Crossbowman
-        specifically, not the base -15%, per the AoE2 wiki's own per-unit-class breakdown). Speed
-        includes Husbandry's real +15% cavalry speed bonus for civs that have it.
-      </p>
-      <div class="overflow-x">
-        <table>
-          <thead><tr>
-            <th>Maxed unit</th><th class="num">HP</th><th class="num">Attack</th>
-            <th class="num">Melee Arm.</th><th class="num">Pierce Arm.</th><th class="num">Range</th><th class="num">Speed</th>
-            <th class="num">Atk/s</th><th class="num">DPS</th>
-          </tr></thead>
-          <tbody>
-            <tr>
-              <td>Japanese Heavy Cavalry Archer</td>
-              <td class="num">80</td>
-              <td class="num">11 <span style="color:var(--text3)">(13 vs. Ranged Soldiers, 13 vs. Spearman-line)</span></td>
-              <td class="num">5</td><td class="num">6</td><td class="num">7</td><td class="num">1.61</td>
-              <td class="num">1.8s</td><td class="num">6.11</td>
-            </tr>
-            <tr>
-              <td>Danes/Saxons Heavy Mounted Crossbowman</td>
-              <td class="num">65</td>
-              <td class="num">12 <span style="color:var(--text3)">(14 vs. Infantry)</span></td>
-              <td class="num">5</td><td class="num">4</td><td class="num">8</td><td class="num">1.44</td>
-              <td class="num">2.25s</td><td class="num">5.33</td>
-            </tr>
-            <tr>
-              <td style="color:var(--text3)">Varangians Heavy Mounted Crossbowman <span style="font-size:0.85em">(no Thumb Ring)</span></td>
-              <td class="num">65</td>
-              <td class="num">12 <span style="color:var(--text3)">(14 vs. Infantry)</span></td>
-              <td class="num">5</td><td class="num">4</td><td class="num">8</td><td class="num">1.44</td>
-              <td class="num">2.5s</td><td class="num">4.8</td>
-            </tr>
-          </tbody>
-        </table>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        <div class="overflow-x" style="flex:1;min-width:280px;">
+          <table id="top5-hca-table"></table>
+        </div>
+        <div class="overflow-x" style="flex:1;min-width:280px;">
+          <table id="top5-hmcb-table"></table>
+        </div>
       </div>
-      <p class="desc" style="color:var(--text3)">
-        Atk/s uses each unit's confirmed reload time (Cavalry Archer 2s, Mounted Crossbowman 2.5s — both
-        ground-truth/site owner-confirmed) reduced -10% for civs with Thumb Ring, applied to both lines
-        equally since Japanese/Danes/Saxons all have it (Varangians is the one exception here).
-      </p>
-      <p class="desc" style="margin-top:10px;">
-        Real finding, with both sides at full tech completion: melee armor now TIES at 5 (Parthian
-        Tactics' own melee-armor point exactly closes the gap Mounted Crossbowman's higher base melee
-        armor used to hold alone). Mounted Crossbowman still wins range (8 vs. 7 — Cranequins' own +1
-        range stacks on the shared Fletching/Bodkin Arrow/Bracer line, where Parthian Tactics spends its
-        equivalent "extra" on pierce armor instead) and flat attack (12 vs. 11 — entirely the base units'
-        own 8-vs-7 attack difference, since every tech bonus applied is identical between them).
-        Cavalry Archer wins on HP (+15 — Bloodlines is the same flat +20 for both lines now, so this gap
-        is entirely the base units' own 60-vs-45 HP difference), pierce armor (+2 — Parthian Tactics'
-        own pierce bonus is 1 point ahead of Cranequins' equivalent), speed (1.61 vs. 1.44 — same
-        +15% Husbandry bonus on both sides, so the gap is just the base 1.4-vs-1.25 speed carried
-        through), AND despite the lower flat attack, DPS too (6.11 vs. 5.33 for Danes/Saxons, 6.11 vs.
-        4.8 for Varangians) — its faster base 2s reload (vs. 2.5s) carries through proportionally even
-        after both sides get the same -10% Thumb Ring reduction. Each side's own situational vs.-class
-        bonus (+2, applying to a different target class each) keeps their real combat attack close
-        either way.
-      </p>
     </div>
   </details>
 
@@ -669,7 +562,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.41</div>
+    <div class="version">v0.42</div>
   </div>
 </div>
 
@@ -1600,9 +1493,22 @@ const EXTRA_UNIQUE_UNITS = [
   })(),
   (() => {
     // Bengalis: bracer/ring/bloodlines/husbandry true, parthian/thumbRing false.
+    // Base HP corrected to 100 (2026-09-17, site owner's own AoE2 wiki page
+    // for Ratha) — the earlier compact table gave 105, the same class of
+    // error already caught on Mangudai/Genitour from that source. Ranged
+    // mode only (this table doesn't model its melee-mode switch). "+1 vs.
+    // Spearman" not modeled (no vs.-Spearman-line column for unique units).
     const attack = 5 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 3 + 2 + 1 + 0, pierceArmor = 1 + 2 + 2 + 0;
     const speed = d2(1.3 * 1.15), reload = 2, dps = d2(attack / reload), cost = 120; // 60w/60g
-    return { line: 'RAT', civ: 'Bengalis', hp: 105 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
+    return { line: 'RAT', civ: 'Bengalis', hp: 100 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
+  })(),
+  (() => {
+    // Elite Ratha, Ranged mode (2026-09-17, same wiki page): hp115/atk6/
+    // melee3(unchanged)/pierce3(up from 1, a real +2 jump not the usual +1)/
+    // range4/speed1.3/reload2 (unchanged).
+    const attack = 6 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 3 + 2 + 1 + 0, pierceArmor = 3 + 2 + 2 + 0;
+    const speed = d2(1.3 * 1.15), reload = 2, dps = d2(attack / reload), cost = 120; // 60w/60g
+    return { line: 'ERAT', civ: 'Bengalis', hp: 115 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
     // Corrected 2026-09-16 (site owner: "war wagons get archer armor and
@@ -1648,7 +1554,7 @@ function renderAllMaxedTable() {
   const thead = `<thead><tr>${ALL_MAXED_COLS.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
   const tbody = rows.map((r, i) => `<tr>
     <td class="num">${i + 1}</td>
-    <td><span class="res-pill ${['CA', 'HCA', 'EA', 'XR', 'MAN', 'CAM', 'ECAM', 'RAT'].includes(r.line) ? 'gold' : 'wood'}">${r.line}</span></td>
+    <td><span class="res-pill ${['CA', 'HCA', 'EA', 'XR', 'MAN', 'CAM', 'ECAM', 'RAT', 'ERAT'].includes(r.line) ? 'gold' : 'wood'}">${r.line}</span></td>
     <td>${r.civ}</td>
     <td class="num">${r.hp}</td><td class="num">${r.attack}</td>
     <td class="num">${r.meleeArmor}/${r.pierceArmor}</td>
@@ -1671,6 +1577,69 @@ function renderAllMaxedTable() {
 }
 document.querySelectorAll('.unit-type-toggle').forEach(cb => cb.addEventListener('change', renderAllMaxedTable));
 renderAllMaxedTable();
+
+// Unit Stats toggle (2026-09-17, site owner request) — Base/Castle techs/
+// Imperial techs, applying every tech available by that age to a generic
+// (hypothetical, no special civ bonus) civ with full access. Numbers
+// hand-verified against the same formula used everywhere else on this
+// page: Castle techs = Fletching/Bodkin Arrow/Padded+Leather Archer Armor/
+// Bloodlines/Husbandry/Thumb Ring (all Feudal/Castle-age), unit stays base
+// tier (Heavy requires Imperial). Imperial techs = adds Bracer/Ring Archer
+// Armor/Parthian Tactics(or Cranequins for MCB)/Chemistry on top, unit
+// upgrades to Heavy — these numbers are IDENTICAL to a generic (no civ
+// bonus) Heavy CA/HMCB row in the tables above (6.11/5.33 DPS), confirming
+// consistency. Training cost/time are the unit's own real values, NOT the
+// one-time upgrade cost — those don't change with the techs toggle, only
+// with tier (Heavy CA trains faster, 27s vs 37s; Heavy MCB doesn't).
+const UNIT_STATS_TOGGLE = {
+  base: {
+    ca: { label: 'Cavalry Archer', cost: '40w/60g', train: '37s', hp: 50, attack: 6, melee: 0, pierce: 0, range: 4, speed: 1.4, reload: 2, los: 5 },
+    mcb: { label: 'Mounted Crossbowman', cost: '40w/65g', train: '37s', hp: 45, attack: 7, melee: 2, pierce: 0, range: 4, speed: 1.25, reload: 2.5, los: null },
+  },
+  castle: {
+    ca: { label: 'Cavalry Archer (Castle techs)', cost: '40w/60g', train: '37s', hp: 70, attack: 8, melee: 2, pierce: 2, range: 6, speed: 1.61, reload: 1.8, los: 5 },
+    mcb: { label: 'Mounted Crossbowman (Castle techs)', cost: '40w/65g', train: '37s', hp: 65, attack: 9, melee: 4, pierce: 2, range: 6, speed: 1.44, reload: 2.25, los: null },
+  },
+  imperial: {
+    ca: { label: 'Heavy Cavalry Archer (Imperial techs)', cost: '40w/60g', train: '27s', hp: 80, attack: 11, melee: 5, pierce: 6, range: 7, speed: 1.61, reload: 1.8, los: 6 },
+    mcb: { label: 'Heavy Mounted Crossbowman (Imperial techs)', cost: '40w/65g', train: '37s', hp: 65, attack: 12, melee: 5, pierce: 4, range: 8, speed: 1.44, reload: 2.25, los: null },
+  },
+};
+let unitStatsState = 'base';
+function renderUnitStatsTable() {
+  const tableEl = document.getElementById('unit-stats-table');
+  const { ca, mcb } = UNIT_STATS_TOGGLE[unitStatsState];
+  const thead = `<thead><tr><th>Unit</th><th class="num">Cost</th><th class="num">Train</th><th class="num">HP</th><th class="num">Attack</th><th class="num">Melee Arm.</th><th class="num">Pierce Arm.</th><th class="num">Range</th><th class="num">Speed</th><th class="num">Reload</th><th class="num">DPS</th><th class="num">LOS</th></tr></thead>`;
+  const row = u => `<tr><td>${u.label}</td><td class="num">${u.cost}</td><td class="num">${u.train}</td><td class="num">${u.hp}</td><td class="num">${u.attack}</td><td class="num">${u.melee}</td><td class="num">${u.pierce}</td><td class="num">${u.range}</td><td class="num">${u.speed}</td><td class="num">${u.reload}s</td><td class="num" style="font-weight:700;">${(u.attack / u.reload).toFixed(2)}</td><td class="num">${u.los ?? '—'}</td></tr>`;
+  tableEl.innerHTML = thead + `<tbody>${row(ca)}${row(mcb)}</tbody>`;
+}
+document.querySelectorAll('.unit-stats-toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    unitStatsState = btn.dataset.state;
+    document.querySelectorAll('.unit-stats-toggle-btn').forEach(b => b.classList.toggle('on', b === btn));
+    renderUnitStatsTable();
+  });
+});
+document.querySelector('.unit-stats-toggle-btn[data-state="base"]').classList.add('on');
+renderUnitStatsTable();
+
+// Best Heavy CA vs. Best Heavy MCB (2026-09-17, site owner request: "just
+// list the final stats of the top 5 hca and the top 5 hmcb ... compact as
+// possible, get rid of all the explanatory writing") — two compact tables,
+// live-computed top 5 by DPS from the SAME CA_CIVS/CA_MCB_CIVS data and
+// maxedStatsFor formula as the all-maxed table below, not hand-picked, so
+// it can never drift out of sync with that table's own numbers.
+function renderTop5Table(elId, civsObj, isMcb) {
+  const rows = Object.entries(civsObj)
+    .map(([civ, cfg]) => ({ civ, ...maxedStatsFor(cfg, isMcb) }))
+    .sort((a, b) => b.dps - a.dps || a.civ.localeCompare(b.civ))
+    .slice(0, 5);
+  const thead = `<thead><tr><th>${isMcb ? 'Top 5 HMCB' : 'Top 5 HCA'}</th><th class="num">HP</th><th class="num">Atk</th><th class="num">Arm</th><th class="num">Rng</th><th class="num">Spd</th><th class="num">RoF</th><th class="num">DPS</th></tr></thead>`;
+  const tbody = rows.map(r => `<tr><td>${r.civ}</td><td class="num">${r.hp}</td><td class="num">${r.attack}</td><td class="num">${r.meleeArmor}/${r.pierceArmor}</td><td class="num">${r.range}</td><td class="num">${r.speed}</td><td class="num">${r.reload}s</td><td class="num" style="font-weight:700;">${r.dps}</td></tr>`).join('');
+  document.getElementById(elId).innerHTML = thead + `<tbody>${tbody}</tbody>`;
+}
+renderTop5Table('top5-hca-table', CA_CIVS, false);
+renderTop5Table('top5-hmcb-table', CA_MCB_CIVS, true);
 
 // "Reached Feudal Age — All Civs" table: runs build-order.html's OWN real
 // Fast Feudal engine (buildStagedOptimizeTimeline) for every civ, inside a
