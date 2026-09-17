@@ -431,12 +431,34 @@ select:focus{outline:none;border-color:var(--amber);}
       <p class="desc">
         Every civ that has real Cavalry Archer access under the Sept 22 patch (31 civs — excludes the
         11 that trade it for Mounted Crossbowman, Danes/Saxons/Varangians who never had it, and the
-        Meso civs with no Cavalry Archer at all) alongside all 15 Mounted Crossbowman civs, each maxed
-        out on its own real tech access and sorted purely by DPS. Same formula as the card above —
-        Chemistry/Fletching/Bodkin Arrow/Padded+Leather Archer Armor universal, Bracer/Ring Archer
-        Armor/Bloodlines/Husbandry/Parthian Tactics/Thumb Ring per-civ, Cranequins as Parthian Tactics'
-        MCB-only substitute. Pulled live from index.html's own civData under the Sept 22 toggle, not
-        guessed.
+        Meso civs with no Cavalry Archer at all) alongside all 15 Mounted Crossbowman civs, plus 4 more
+        real "archer-cavalry" unique units (<b>XR</b> = Xianbei Raider/Wei, <b>BOL</b> = Bolas Rider/
+        Mapuche, <b>MAN</b> = Mangudai/Mongols, <b>MAM</b> = Mameluke/Saracens), each maxed out on its
+        own real tech access. Same formula as the card above — Chemistry/Fletching/Bodkin Arrow/
+        Padded+Leather Archer Armor universal, Bracer/Ring Archer Armor/Bloodlines/Husbandry/Parthian
+        Tactics/Thumb Ring per-civ, Cranequins as Parthian Tactics' MCB-only substitute. Pulled live from
+        index.html's own civData under the Sept 22 toggle, not guessed. Click any column header to sort.
+      </p>
+      <p class="desc" style="color:var(--text3)">
+        Two real exceptions among the 4 unique units: <b>Xianbei Raider</b> has a periodic ~30s "charge"
+        volley (5 main + 5x1 secondary arrows, secondaries scaling to 5 each at full upgrades — 34 total
+        maxed) blended into its DPS as an approximation, not an exact model. <b>Bolas Rider</b> has the
+        same kind of charge mechanic but no numbers were available, so its DPS is sustained-attack-only
+        and understates its real ceiling. <b>Mameluke</b> doesn't scale with Fletching/Bodkin/Bracer/
+        Chemistry/Parthian Tactics at all — a well-known real AoE2 quirk (immune to Blacksmith attack
+        upgrades) — so its Attack is the flat base value; its armor comes from Barding Armor instead of
+        Archer Armor.
+      </p>
+      <label style="display:flex;align-items:center;gap:6px;margin:10px 0;font-size:0.9em;cursor:pointer;">
+        <input type="checkbox" id="equal-resources-toggle" style="cursor:pointer;">
+        Compare at equal resources (rank by DPS per 100 resources spent, not raw DPS)
+      </label>
+      <p class="desc" style="color:var(--text3)">
+        Cost is flat per unit TYPE, not per civ — every civ pays the same 40w/60g (Cavalry Archer) or
+        40w/65g (Mounted Crossbowman) here. Real per-civ gold discounts (Portuguese/Spanish, Franks'
+        Ordonnance Companies -40% gold on Mounted Crossbowman, etc.) aren't factored in — this is a
+        simplified resource-efficiency proxy, not a precise per-civ cost model. Doesn't account for
+        population cap or training time either, just raw cost-to-damage ratio.
       </p>
       <div class="overflow-x">
         <table id="all-maxed-table"></table>
@@ -629,7 +651,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.29</div>
+    <div class="version">v0.30</div>
   </div>
 </div>
 
@@ -1352,18 +1374,93 @@ function maxedStatsFor(cfg, isMcb) {
   const hp = baseHP + (bloodlines ? 20 : 0);
   return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry };
 }
+// Flat, line-wide cost (NOT per-civ) — every civ pays the same 40w/60g for
+// Cavalry Archer or 40w/65g for Mounted Crossbowman on this site; per-civ
+// gold discounts (Portuguese/Spanish -20%/no-gold-Blacksmith, Franks'
+// Ordonnance Companies -40% gold on MCB, etc.) are real but NOT modeled
+// here — the "equal resources" comparison below is a simplification, not
+// a per-civ-accurate cost model. Flagged in the section's own prose too.
+const CA_COST = 100, MCB_COST = 105;
+
+// Four more unique units added 2026-09-16 (site owner request) — real base
+// stats from the cached aoe2techtree data.json (see
+// reference_aoe2techtree_data memory), NOT guessed: Xianbei Raider id 1952
+// (Wei), Bolas Rider id 2569 base tier (Mapuche — matches this file's own
+// established convention of only modeling unique units' BASE tier, same
+// as every other unique unit on this site), Mangudai id 561 (Mongols),
+// Mameluke id 556 (Saracens). Tech access pulled live from index.html's
+// civData under PATCH_VERSION='sept22' (Mongols/Saracens already known
+// from CA_CIVS above; Mapuche/Wei checked fresh — Mapuche has ONLY Ring
+// Archer Armor of the 6 tracked techs, Wei has all 6).
+//
+// Xianbei Raider and Mameluke are each a genuine special case, not just
+// the shared archer formula with different base numbers:
+// - Xianbei Raider has a real periodic "charge" attack (confirmed via
+//   data.json's ChargeType/RechargeDuration~30s fields, and the site
+//   owner's own sourced numbers): a bonus volley every ~30s dealing a
+//   5-damage main hit + 5 secondary arrows at 1 damage each (10 total
+//   base), each fully scaling with the same Fletching/Bodkin/Bracer/
+//   Chemistry bonuses as a normal attack (secondaries scale 1->5 each at
+//   full upgrades) — maxed charge damage = 9 (main) + 5x5 (secondaries) =
+//   34, replacing one normal attack in its 30s cycle (the standard AoE2
+//   "charge" mechanic, same shape as Leitis' trample charge). Blended DPS
+//   = ((attacksPer30s - 1) x normalAttack + chargeDamage) / 30 — this is
+//   an approximation (the real replace-vs-add timing isn't independently
+//   verified), flagged as such in the section's own prose.
+// - Bolas Rider ALSO has a real charge mechanic (ChargeType 6 in the same
+//   data) but no numbers were given for it — its DPS below is sustained-
+//   attack-only, understating its real ceiling. Flagged, not modeled.
+// - Mameluke is classified under MELEE_CAV_TECHS by this site (matches
+//   real AoE2: Mamelukes are famously immune to Blacksmith attack
+//   upgrades — Forging/Iron Casting/Blast Furnace do NOT affect it despite
+//   being nominally in that tech group for checkbox purposes elsewhere on
+//   the site) — so its Attack here is the flat base value, no Fletching/
+//   Bodkin/Bracer/Chemistry/Parthian Tactics bonus at all. Its armor comes
+//   from Barding Armor (melee-only, no pierce component), not Archer
+//   Armor. It also doesn't get Thumb Ring (not an Archer-class unit).
+function d2(n) { return +n.toFixed(2); }
+const EXTRA_UNIQUE_UNITS = [
+  (() => {
+    const attack = 5 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 1, pierceArmor = 0 + 2 + 2 + 2;
+    const speed = d2(1.4 * 1.15), reload = d2(1.8 * THUMB_RING_RELOAD_MULT);
+    const chargeDamage = 9 + 5 * 5;
+    const attacksPer30s = 30 / reload;
+    const dps = d2(((attacksPer30s - 1) * attack + chargeDamage) / 30);
+    const cost = 90; // 65w/25g, current (non-Sept22) cost
+    return { line: 'XR', civ: 'Wei', hp: 30 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+  })(),
+  (() => {
+    const attack = 5 + 2 + 1 + 0, range = 4 + 2 + 0, meleeArmor = 0 + 2 + 1 + 0, pierceArmor = 1 + 2 + 2 + 0;
+    const speed = 1.5, reload = 2, dps = d2(attack / reload), cost = 95; // 45w/50g
+    return { line: 'BOL', civ: 'Mapuche', hp: 55, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+  })(),
+  (() => {
+    const attack = 8 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 0 + 1, pierceArmor = 0 + 2 + 0 + 2;
+    const speed = d2(1.4 * 1.15), reload = d2(2.1 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 120; // 55w/65g
+    return { line: 'MAN', civ: 'Mongols', hp: 60 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+  })(),
+  (() => {
+    const attack = 10, range = 3, meleeArmor = 1 + 3, pierceArmor = 0;
+    const speed = d2(1.4 * 1.15), reload = 2, dps = d2(attack / reload), cost = 140; // 55f/85g
+    return { line: 'MAM', civ: 'Saracens', hp: 80 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+  })(),
+];
+
 const ALL_MAXED_COLS = [
   ['rank', '#', false], ['line', 'Line', false], ['civ', 'Civ', false],
   ['hp', 'HP', true], ['attack', 'Attack', true], ['armorTotal', 'Armor', true],
   ['range', 'Range', true], ['speed', 'Speed', true], ['reload', 'Reload', true],
   ['dps', 'DPS', true], ['dpsVsInfantry', 'DPS v. Infantry', true],
+  ['cost', 'Cost', true], ['dpsPer100', 'DPS / 100 res', true],
 ];
 let allMaxedSort = { key: 'dps', dir: -1 };
+let allMaxedEqualRes = false;
 function renderAllMaxedTable() {
   const tableEl = document.getElementById('all-maxed-table');
   const rows = [
-    ...Object.entries(CA_CIVS).map(([civ, cfg]) => ({ line: 'CA', civ, ...maxedStatsFor(cfg, false) })),
-    ...Object.entries(CA_MCB_CIVS).map(([civ, cfg]) => ({ line: 'MCB', civ, ...maxedStatsFor(cfg, true) })),
+    ...Object.entries(CA_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, false); return { line: 'CA', civ, ...s, cost: CA_COST, dpsPer100: d2(s.dps / CA_COST * 100) }; }),
+    ...Object.entries(CA_MCB_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, true); return { line: 'MCB', civ, ...s, cost: MCB_COST, dpsPer100: d2(s.dps / MCB_COST * 100) }; }),
+    ...EXTRA_UNIQUE_UNITS,
   ];
   const { key, dir } = allMaxedSort;
   rows.sort((a, b) => {
@@ -1373,13 +1470,16 @@ function renderAllMaxedTable() {
   const thead = `<thead><tr>${ALL_MAXED_COLS.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
   const tbody = rows.map((r, i) => `<tr>
     <td class="num">${i + 1}</td>
-    <td><span class="res-pill ${r.line === 'CA' ? 'gold' : 'wood'}">${r.line}</span></td>
+    <td><span class="res-pill ${r.line === 'CA' || r.line === 'XR' || r.line === 'MAN' ? 'gold' : 'wood'}">${r.line}</span></td>
     <td>${r.civ}</td>
     <td class="num">${r.hp}</td><td class="num">${r.attack}</td>
     <td class="num">${r.meleeArmor}/${r.pierceArmor}</td>
     <td class="num">${r.range}</td><td class="num">${r.speed}</td>
-    <td class="num">${r.reload}s</td><td class="num" style="font-weight:700;">${r.dps}</td>
+    <td class="num">${r.reload}s</td>
+    <td class="num" style="font-weight:${key === 'dps' ? 700 : 400};">${r.dps}</td>
     <td class="num">${r.dpsVsInfantry}</td>
+    <td class="num">${r.cost}</td>
+    <td class="num" style="font-weight:${key === 'dpsPer100' ? 700 : 400};">${r.dpsPer100}</td>
   </tr>`).join('');
   tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
   tableEl.querySelectorAll('th.sortable').forEach(th => {
@@ -1390,6 +1490,11 @@ function renderAllMaxedTable() {
     });
   });
 }
+document.getElementById('equal-resources-toggle').addEventListener('change', (e) => {
+  allMaxedEqualRes = e.target.checked;
+  allMaxedSort = { key: allMaxedEqualRes ? 'dpsPer100' : 'dps', dir: -1 };
+  renderAllMaxedTable();
+});
 renderAllMaxedTable();
 
 // "Reached Feudal Age — All Civs" table: runs build-order.html's OWN real
