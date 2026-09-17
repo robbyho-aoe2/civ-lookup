@@ -461,12 +461,13 @@ select:focus{outline:none;border-color:var(--amber);}
       </div>
       <p class="desc" style="color:var(--text3)">
         Cost is flat per unit TYPE, not per civ — every civ pays the same 40w/60g (Cavalry Archer) or
-        40w/65g (Mounted Crossbowman) here, and each unique/regional unit uses its own single real cost.
-        Real per-civ gold discounts (Portuguese/Spanish, Franks' Ordonnance Companies -40% gold on
-        Mounted Crossbowman, etc.) aren't factored in — this is a simplified resource-efficiency proxy,
-        not a precise per-civ cost model. Sort by the DPS/100 res column for an equal-resources
-        comparison. Doesn't account for population cap or training time either, just raw
-        cost-to-damage ratio.
+        40w/65g (Mounted Crossbowman) here, and each unique/regional unit uses its own single real cost —
+        with one real exception: <b>Franks</b> pay 40w/39g for Mounted Crossbowman (Ordonnance
+        Companies' real -40% gold discount, applied here). Other real per-civ gold discounts
+        (Portuguese/Spanish economy bonuses, etc.) still aren't factored in — this is a simplified
+        resource-efficiency proxy, not a precise per-civ cost model. Sort by the DPS/100 res column for
+        an equal-resources comparison. Doesn't account for population cap or training time either, just
+        raw cost-to-damage ratio.
       </p>
       <div class="overflow-x">
         <table id="all-maxed-table"></table>
@@ -659,7 +660,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.33</div>
+    <div class="version">v0.34</div>
   </div>
 </div>
 
@@ -1388,6 +1389,13 @@ function maxedStatsFor(cfg, isMcb) {
 // Ordonnance Companies -40% gold on MCB, etc.) are real but NOT modeled
 // here. Flagged in the section's own prose too.
 const CA_COST = 100, MCB_COST = 105;
+// Franks' Ordonnance Companies (Castle-age, Franks-exclusive) is a real
+// -40% gold discount specifically on Mounted Crossbowman — the one per-civ
+// cost discount actually applied here (2026-09-16, site owner request),
+// unlike the other real discounts (Portuguese/Spanish gold economy, etc.)
+// which stay unmodeled per the section's own caveat text. 40w + 65g*0.6 =
+// 40w/39g = 79 total, down from the flat 105 every other MCB civ pays.
+const MCB_COST_OVERRIDES = { Franks: 40 + 65 * 0.6 };
 function d2(n) { return +n.toFixed(2); }
 
 // Elephant Archer (2026-09-16) — a real generic/regional line (Bengalis/
@@ -1532,7 +1540,7 @@ function renderAllMaxedTable() {
   const enabledTypes = new Set([...document.querySelectorAll('.unit-type-toggle:checked')].map(cb => cb.dataset.type));
   const rows = [
     ...Object.entries(CA_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, false); return { line: cfg.heavy ? 'HCA' : 'CA', civ, ...s, cost: CA_COST, dpsPer100: d2(s.dps / CA_COST * 100) }; }),
-    ...Object.entries(CA_MCB_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, true); return { line: cfg.heavy ? 'HMCB' : 'MCB', civ, ...s, cost: MCB_COST, dpsPer100: d2(s.dps / MCB_COST * 100) }; }),
+    ...Object.entries(CA_MCB_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, true); const cost = MCB_COST_OVERRIDES[civ] || MCB_COST; return { line: cfg.heavy ? 'HMCB' : 'MCB', civ, ...s, cost, dpsPer100: d2(s.dps / cost * 100) }; }),
     ...Object.entries(EA_CIVS).map(([civ, cfg]) => ({ line: 'EA', civ, ...maxedStatsForEA(civ, cfg) })),
     ...EXTRA_UNIQUE_UNITS,
   ].filter(r => {
