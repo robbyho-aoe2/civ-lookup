@@ -659,7 +659,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.32</div>
+    <div class="version">v0.33</div>
   </div>
 </div>
 
@@ -1468,8 +1468,18 @@ const EXTRA_UNIQUE_UNITS = [
     return { line: 'BOL', civ: 'Mapuche', hp: 55, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
-    const attack = 8 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 0 + 1, pierceArmor = 0 + 2 + 0 + 2;
-    const speed = d2(1.4 * 1.15), reload = d2(2.1 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 120; // 55w/65g
+    // Corrected 2026-09-16 (site owner, sourced directly from the AoE2 wiki's
+    // own Mangudai page) — the earlier data.json-derived base attack (8) and
+    // reload (2.1s) were both WRONG. Real: base attack 6 (Elite 8), melee
+    // armor 0 (Elite 1), pierce armor 0, reload 1.68s (not 2.1s), range 4,
+    // speed 1.4, HP 60 (unchanged by Elite), cost 55w/65g (matches what was
+    // already here). Using ELITE Mangudai as the base here (not base tier,
+    // unlike this file's other unique units) since real Elite stats are now
+    // known — matches how Heavy CA/MCB and Elephant Archer already represent
+    // their own "maxed" tier. Real situational bonuses NOT included in flat
+    // DPS: +3/+5(Elite) vs. Siege Weapons, +1 vs. Spearmen.
+    const attack = 8 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 1 + 2 + 0 + 1, pierceArmor = 0 + 2 + 0 + 2;
+    const speed = d2(1.4 * 1.15), reload = d2(1.68 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 120; // 55w/65g
     return { line: 'MAN', civ: 'Mongols', hp: 60 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
