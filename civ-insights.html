@@ -660,7 +660,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.35</div>
+    <div class="version">v0.36</div>
   </div>
 </div>
 
@@ -1380,7 +1380,12 @@ function maxedStatsFor(cfg, isMcb) {
   // specifically (a different class), so it does NOT count toward this
   // column even though both techs occupy the same per-civ slot.
   const dpsVsInfantry = +((attack + (cranequins ? 2 : 0)) / reload).toFixed(2);
-  const hp = baseHP + (bloodlines ? 20 : 0);
+  // Franks' Bloodlines is starred (real civ bonus, not the literal tech) —
+  // "Mounted Units +20% HP", a MULTIPLIER, not the flat +20 real Bloodlines
+  // gives (site owner correction, 2026-09-16 — was wrongly treated as the
+  // same flat +20 as everyone else).
+  const isStarredBloodlines = (cfg.starred || []).includes('Bloodlines');
+  const hp = isStarredBloodlines ? Math.round(baseHP * 1.2) : baseHP + (bloodlines ? 20 : 0);
   return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry };
 }
 // Flat, line-wide cost (NOT per-civ) — every civ pays the same 40w/60g for
