@@ -434,7 +434,11 @@ select:focus{outline:none;border-color:var(--amber);}
         units — <b>XR</b> Xianbei Raider (Wei), <b>BOL</b> Bolas Rider (Mapuche), <b>MAN</b> Mangudai
         (Mongols), <b>CAM</b> Camel Archer (Berbers), <b>GEN</b> Genitour (Berbers), <b>KIP</b> Kipchak
         (Cumans), <b>RAT</b> Ratha, Ranged (Bengalis), and <b>WW</b> War Wagon (Koreans) — each maxed
-        out on its own real tech access. Same formula as the card above — Chemistry/Fletching/Bodkin
+        out on its own real tech access. Bolas Rider/Camel Archer/Genitour also each have a matching
+        <b>E-prefixed row</b> (EBOL/ECAM/EGEN) for their real Elite tier — Xianbei Raider has no Elite
+        upgrade in the real game, and Mangudai's own row already represents Elite (its base tier isn't
+        shown separately). Kipchak/Ratha/War Wagon don't have Elite rows yet — pending real sourced
+        numbers, same as everything else on this page. Same formula as the card above — Chemistry/Fletching/Bodkin
         Arrow/Padded+Leather Archer Armor universal, Bracer/Ring Archer Armor/Bloodlines/Husbandry/
         Parthian Tactics/Thumb Ring per-civ, Cranequins as Parthian Tactics' MCB-only substitute.
         DPS v. Infantry/v. Ranged also fold in real CIV bonuses, not just techs — checked every civ's
@@ -665,7 +669,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.40</div>
+    <div class="version">v0.41</div>
   </div>
 </div>
 
@@ -1515,6 +1519,18 @@ const EXTRA_UNIQUE_UNITS = [
     return { line: 'BOL', civ: 'Mapuche', hp: 55, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
+    // Elite Bolas Rider (2026-09-17, site owner: "add elite versions of
+    // UU's") — real Elite stats from the cached aoe2techtree data.json
+    // (id 2571, same source/confidence as base Bolas Rider): hp65/atk6/
+    // melee0/pierce2/range5(+1 over base)/speed1.5/reload2 (unchanged).
+    // Same Mapuche tech access as base (only Ring Archer Armor of the 6
+    // tracked techs). Training cost unchanged (Elite is an upgrade, not a
+    // separate unit cost).
+    const attack = 6 + 2 + 1 + 0, range = 5 + 2 + 0, meleeArmor = 0 + 2 + 1 + 0, pierceArmor = 2 + 2 + 2 + 0;
+    const speed = 1.5, reload = 2, dps = d2(attack / reload), cost = 95; // 45w/50g
+    return { line: 'EBOL', civ: 'Mapuche', hp: 65, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
+  })(),
+  (() => {
     // Corrected 2026-09-16 (site owner, sourced directly from the AoE2 wiki's
     // own Mangudai page) — the earlier data.json-derived base attack (8) and
     // reload (2.1s) were both WRONG. Real: base attack 6 (Elite 8), melee
@@ -1541,6 +1557,15 @@ const EXTRA_UNIQUE_UNITS = [
     return { line: 'CAM', civ: 'Berbers', hp: 55 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
+    // Elite Camel Archer (2026-09-17, site owner's own AoE2 wiki page):
+    // hp60/atk8/melee1/pierce1(unchanged)/range4/speed1.4/reload2
+    // (unchanged), intrinsic bonus vs. Cavalry Archers +6 (up from +4).
+    const attack = 8 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 1 + 2 + 1 + 0, pierceArmor = 1 + 2 + 2 + 0;
+    const speed = d2(1.4 * 1.15), reload = d2(2 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 110; // 50w/60g
+    const dpsVsRanged = d2((attack + 6) / reload);
+    return { line: 'ECAM', civ: 'Berbers', hp: 60 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged, cost, dpsPer100: d2(dps / cost * 100) };
+  })(),
+  (() => {
     // Berbers, same tech access as Camel Archer above. Scoped to Berbers
     // only — the real "and allies" sharing mechanic isn't modeled here,
     // same as every other ally-shared bonus on this site. Base pierce armor
@@ -1555,6 +1580,15 @@ const EXTRA_UNIQUE_UNITS = [
     const speed = d2(1.35 * 1.15), reload = d2(3 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 75; // 40f/35w
     const dpsVsRanged = d2((attack + 4) / reload);
     return { line: 'GEN', civ: 'Berbers', hp: 50 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged, cost, dpsPer100: d2(dps / cost * 100) };
+  })(),
+  (() => {
+    // Elite Genitour (2026-09-17, site owner's own AoE2 wiki page): hp55/
+    // atk4/melee0(unchanged)/pierce4(unchanged)/range4/speed1.35/reload3
+    // (unchanged), intrinsic bonus vs. Archers +5 (up from +4).
+    const attack = 4 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 0, pierceArmor = 4 + 2 + 2 + 0;
+    const speed = d2(1.35 * 1.15), reload = d2(3 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 75; // 40f/35w
+    const dpsVsRanged = d2((attack + 5) / reload);
+    return { line: 'EGEN', civ: 'Berbers', hp: 55 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
     // Cumans: bracer/husbandry false, ring/bloodlines/parthian/thumbRing true.
@@ -1591,7 +1625,7 @@ const ALL_MAXED_COLS = [
   ['cost', 'Cost', true], ['dpsPer100', 'DPS / 100 res', true],
 ];
 let allMaxedSort = { key: 'dps', dir: -1 };
-const UNIQUE_LINES = ['XR', 'BOL', 'MAN', 'CAM', 'GEN', 'KIP', 'RAT', 'WW'];
+const UNIQUE_LINES = ['XR', 'BOL', 'EBOL', 'MAN', 'CAM', 'ECAM', 'GEN', 'EGEN', 'KIP', 'RAT', 'WW'];
 function renderAllMaxedTable() {
   const tableEl = document.getElementById('all-maxed-table');
   const enabledTypes = new Set([...document.querySelectorAll('.unit-type-toggle:checked')].map(cb => cb.dataset.type));
@@ -1614,7 +1648,7 @@ function renderAllMaxedTable() {
   const thead = `<thead><tr>${ALL_MAXED_COLS.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
   const tbody = rows.map((r, i) => `<tr>
     <td class="num">${i + 1}</td>
-    <td><span class="res-pill ${['CA', 'HCA', 'EA', 'XR', 'MAN', 'CAM', 'RAT'].includes(r.line) ? 'gold' : 'wood'}">${r.line}</span></td>
+    <td><span class="res-pill ${['CA', 'HCA', 'EA', 'XR', 'MAN', 'CAM', 'ECAM', 'RAT'].includes(r.line) ? 'gold' : 'wood'}">${r.line}</span></td>
     <td>${r.civ}</td>
     <td class="num">${r.hp}</td><td class="num">${r.attack}</td>
     <td class="num">${r.meleeArmor}/${r.pierceArmor}</td>
