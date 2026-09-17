@@ -437,8 +437,11 @@ select:focus{outline:none;border-color:var(--amber);}
         out on its own real tech access. Same formula as the card above — Chemistry/Fletching/Bodkin
         Arrow/Padded+Leather Archer Armor universal, Bracer/Ring Archer Armor/Bloodlines/Husbandry/
         Parthian Tactics/Thumb Ring per-civ, Cranequins as Parthian Tactics' MCB-only substitute.
-        Pulled live from index.html's own civData under the Sept 22 toggle plus the cached aoe2techtree
-        data.json for base stats, not guessed. Click any column header to sort.
+        DPS v. Infantry/v. Ranged also fold in real CIV bonuses, not just techs — checked every civ's
+        own bonus text directly rather than assuming: Japanese (+2 vs. Ranged Soldiers, except
+        Skirmishers) is the only match for v. Ranged; Cranequins' own +2 vs. Infantry is the only match
+        for v. Infantry. Pulled live from index.html's own civData under the Sept 22 toggle plus the
+        cached aoe2techtree data.json for base stats, not guessed. Click any column header to sort.
       </p>
       <p class="desc" style="color:var(--text3)">
         Real exceptions worth knowing: <b>Xianbei Raider</b> has a periodic ~30s "charge" volley (5 main
@@ -662,7 +665,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.38</div>
+    <div class="version">v0.39</div>
   </div>
 </div>
 
@@ -1333,7 +1336,13 @@ const CA_CIVS = {
   Goths:      { heavy: true,  missing: ['Parthian Tactics'], thumbRing: false },
   Hindustanis:{ heavy: true,  missing: ['Parthian Tactics'], thumbRing: true },
   Huns:       { heavy: true,  missing: ['Ring Archer Armor'], thumbRing: true },
-  Japanese:   { heavy: true,  missing: [], thumbRing: true },
+  // vsRangedBonus 2 = real civ bonus "Cavalry Archers +2 attack vs. Ranged
+  // Soldiers (except Skirmishers)" — only civ in this whole table with a
+  // real vs.-Ranged-Soldiers bonus (checked every civ's CB entry directly,
+  // 2026-09-17). Bengalis' "Cavalry +2 attack vs. Skirmishers" does NOT
+  // count here — Japanese's own wording explicitly excludes Skirmishers
+  // from "Ranged Soldiers," so they're different target classes.
+  Japanese:   { heavy: true,  missing: [], thumbRing: true, vsRangedBonus: 2 },
   Jurchens:   { heavy: true,  missing: ['Parthian Tactics'], thumbRing: false },
   Khitans:    { heavy: true,  missing: ['Bloodlines'], thumbRing: true },
   Khmer:      { heavy: true,  missing: [], thumbRing: false },
@@ -1390,13 +1399,17 @@ function maxedStatsFor(cfg, isMcb) {
   // specifically (a different class), so it does NOT count toward this
   // column even though both techs occupy the same per-civ slot.
   const dpsVsInfantry = +((attack + (cranequins ? 2 : 0)) / reload).toFixed(2);
+  // vs. Ranged Soldiers: cfg.vsRangedBonus (a real CIV bonus, e.g.
+  // Japanese's own "+2 attack vs. Ranged Soldiers except Skirmishers") —
+  // checked every civ in this table for one, only Japanese has it.
+  const dpsVsRanged = +((attack + (cfg.vsRangedBonus || 0)) / reload).toFixed(2);
   // Franks' Bloodlines is starred (real civ bonus, not the literal tech) —
   // "Mounted Units +20% HP", a MULTIPLIER, not the flat +20 real Bloodlines
   // gives (site owner correction, 2026-09-16 — was wrongly treated as the
   // same flat +20 as everyone else).
   const isStarredBloodlines = (cfg.starred || []).includes('Bloodlines');
   const hp = isStarredBloodlines ? Math.round(baseHP * 1.2) : baseHP + (bloodlines ? 20 : 0);
-  return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry };
+  return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry, dpsVsRanged };
 }
 // Flat, line-wide cost (NOT per-civ) — every civ pays the same 40w/60g for
 // Cavalry Archer or 40w/65g for Mounted Crossbowman on this site; per-civ
@@ -1445,7 +1458,7 @@ function maxedStatsForEA(civ, cfg) {
   const reload = d2(2 * (thumbRing ? THUMB_RING_RELOAD_MULT : 1) * (cfg.civAtkSpeedMult || 1));
   const dps = d2(attack / reload);
   const hp = 280 + (bloodlines ? 20 : 0);
-  return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost: EA_COST, dpsPer100: d2(dps / EA_COST * 100) };
+  return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost: EA_COST, dpsPer100: d2(dps / EA_COST * 100) };
 }
 
 // 7 more real archer-cavalry unique/regional units added 2026-09-16 (site
@@ -1494,12 +1507,12 @@ const EXTRA_UNIQUE_UNITS = [
     // logic, `{...u.cost, ...ov.cost}`), so 65w/25g -> 65w/35g = 100, not
     // the 90 this used before.
     const cost = 100; // 65w/35g, Sept 22 patch
-    return { line: 'XR', civ: 'Wei', hp: 30 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+    return { line: 'XR', civ: 'Wei', hp: 30 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
     const attack = 5 + 2 + 1 + 0, range = 4 + 2 + 0, meleeArmor = 0 + 2 + 1 + 0, pierceArmor = 1 + 2 + 2 + 0;
     const speed = 1.5, reload = 2, dps = d2(attack / reload), cost = 95; // 45w/50g
-    return { line: 'BOL', civ: 'Mapuche', hp: 55, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+    return { line: 'BOL', civ: 'Mapuche', hp: 55, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
     // Corrected 2026-09-16 (site owner, sourced directly from the AoE2 wiki's
@@ -1514,13 +1527,13 @@ const EXTRA_UNIQUE_UNITS = [
     // DPS: +3/+5(Elite) vs. Siege Weapons, +1 vs. Spearmen.
     const attack = 8 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 1 + 2 + 0 + 1, pierceArmor = 0 + 2 + 0 + 2;
     const speed = d2(1.4 * 1.15), reload = d2(1.68 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 120; // 55w/65g
-    return { line: 'MAN', civ: 'Mongols', hp: 60 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+    return { line: 'MAN', civ: 'Mongols', hp: 60 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
     // Berbers: bracer/ring/bloodlines/husbandry/thumbRing all true, parthian false.
     const attack = 7 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 0, pierceArmor = 1 + 2 + 2 + 0;
     const speed = d2(1.4 * 1.15), reload = d2(2 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 110; // 50w/60g
-    return { line: 'CAM', civ: 'Berbers', hp: 55 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+    return { line: 'CAM', civ: 'Berbers', hp: 55 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
     // Berbers, same tech access as Camel Archer above. Scoped to Berbers
@@ -1528,7 +1541,7 @@ const EXTRA_UNIQUE_UNITS = [
     // same as every other ally-shared bonus on this site.
     const attack = 3 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 0, pierceArmor = 3 + 2 + 2 + 0;
     const speed = d2(1.35 * 1.15), reload = d2(3 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 75; // 40f/35w
-    return { line: 'GEN', civ: 'Berbers', hp: 50 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+    return { line: 'GEN', civ: 'Berbers', hp: 50 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
     // Cumans: bracer/husbandry false, ring/bloodlines/parthian/thumbRing true.
@@ -1536,13 +1549,13 @@ const EXTRA_UNIQUE_UNITS = [
     // target class than the DPS v. Infantry column tracks).
     const attack = 4 + 2 + 1 + 0, range = 4 + 2 + 0, meleeArmor = 0 + 2 + 1 + 1, pierceArmor = 0 + 2 + 2 + 2;
     const speed = 1.4, reload = d2(2.2 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 95; // 60w/35g
-    return { line: 'KIP', civ: 'Cumans', hp: 40 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+    return { line: 'KIP', civ: 'Cumans', hp: 40 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
     // Bengalis: bracer/ring/bloodlines/husbandry true, parthian/thumbRing false.
     const attack = 5 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 3 + 2 + 1 + 0, pierceArmor = 1 + 2 + 2 + 0;
     const speed = d2(1.3 * 1.15), reload = 2, dps = d2(attack / reload), cost = 120; // 60w/60g
-    return { line: 'RAT', civ: 'Bengalis', hp: 105 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+    return { line: 'RAT', civ: 'Bengalis', hp: 105 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
     // Corrected 2026-09-16 (site owner: "war wagons get archer armor and
@@ -1552,7 +1565,7 @@ const EXTRA_UNIQUE_UNITS = [
     // Koreans: bracer/ring/husbandry/thumbRing true, bloodlines/parthian false.
     const attack = 9 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 0, pierceArmor = 2 + 2 + 2 + 0;
     const speed = d2(1.2 * 1.15), reload = d2(2.5 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 260; // 200w/60g
-    return { line: 'WW', civ: 'Koreans', hp: 150, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
+    return { line: 'WW', civ: 'Koreans', hp: 150, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
 ];
 
@@ -1561,6 +1574,7 @@ const ALL_MAXED_COLS = [
   ['hp', 'HP', true], ['attack', 'Attack', true], ['armorTotal', 'Armor', true],
   ['range', 'Range', true], ['speed', 'Speed', true], ['reload', 'Reload', true],
   ['dps', 'DPS', true], ['dpsVsInfantry', 'DPS v. Infantry', true],
+  ['dpsVsRanged', 'DPS v. Ranged', true],
   ['cost', 'Cost', true], ['dpsPer100', 'DPS / 100 res', true],
 ];
 let allMaxedSort = { key: 'dps', dir: -1 };
@@ -1595,6 +1609,7 @@ function renderAllMaxedTable() {
     <td class="num">${r.reload}s</td>
     <td class="num" style="font-weight:${key === 'dps' ? 700 : 400};">${r.dps}</td>
     <td class="num">${r.dpsVsInfantry}</td>
+    <td class="num">${r.dpsVsRanged}</td>
     <td class="num">${r.cost}</td>
     <td class="num" style="font-weight:${key === 'dpsPer100' ? 700 : 400};">${r.dpsPer100}</td>
   </tr>`).join('');
