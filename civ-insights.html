@@ -564,7 +564,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.44</div>
+    <div class="version">v0.45</div>
   </div>
 </div>
 
@@ -1249,7 +1249,11 @@ const CA_CIVS = {
   Lithuanians:{ heavy: true,  missing: ['Parthian Tactics'], thumbRing: true },
   Malay:      { heavy: false, missing: ['Bloodlines', 'Parthian Tactics'], thumbRing: true },
   Malians:    { heavy: true,  missing: ['Bracer', 'Parthian Tactics'], thumbRing: true },
-  Magyars:    { heavy: true,  missing: [], thumbRing: true },
+  // uniqueTechAtk/uniqueTechRange 1/1 = real Magyars-exclusive unique tech
+  // "Recurve Bow" ("Mounted Archers +1 attack, +1 range" — confirmed via
+  // index.html's own UNIQUE_TECH_DESCRIPTIONS, already documented there but
+  // never applied to this formula before, 2026-09-17 site owner correction).
+  Magyars:    { heavy: true,  missing: [], thumbRing: true, uniqueTechAtk: 1, uniqueTechRange: 1 },
   // civAtkSpeedMult 0.8 = real civ bonus "Cavalry Archers attack +25%
   // faster" (not a tech — separate from Thumb Ring, stacks with it).
   Mongols:    { heavy: true,  missing: ['Ring Archer Armor'], thumbRing: true, civAtkSpeedMult: 0.8 },
@@ -1260,7 +1264,14 @@ const CA_CIVS = {
   Slavs:      { heavy: true,  missing: ['Bracer', 'Parthian Tactics'], thumbRing: false },
   Tatars:     { heavy: true,  missing: [], thumbRing: true },
   Turks:      { heavy: true,  missing: [], thumbRing: true },
-  Vietnamese: { heavy: true,  missing: ['Parthian Tactics'], thumbRing: true },
+  // civHpMult 1.2 = real civ bonus "Archery Range units and Fire Lancers
+  // +20% HP" (2026-09-17 site owner correction — a genuine miss, since my
+  // earlier civ-bonus sweeps only checked for attack-speed/vs-class
+  // patterns, never HP). Cavalry Archer trains at the Archery Range, so
+  // this applies. Stacks with real Bloodlines as (base+20)*1.2, not a
+  // separate flat addition — the standard AoE2 convention of applying %
+  // modifiers to the current (tech-inclusive) HP total.
+  Vietnamese: { heavy: true,  missing: ['Parthian Tactics'], thumbRing: true, civHpMult: 1.2 },
   Wu:         { heavy: false, missing: ['Ring Archer Armor', 'Parthian Tactics'], thumbRing: false },
 };
 // Shared maxed-stat formula for BOTH lines — same math as caMcbMaxStats
@@ -1280,8 +1291,13 @@ function maxedStatsFor(cfg, isMcb) {
   const baseHP = isMcb ? 45 : (cfg.heavy ? 60 : 50);
   const baseSpeed = isMcb ? 1.25 : 1.4;
   const baseReload = isMcb ? 2.5 : 2;
-  const attack = baseAttack + 2 + 1 /* Chemistry */ + (bracer ? 1 : 0);
-  const range = 4 + 2 + (bracer ? 1 : 0) + (cranequins ? 1 : 0);
+  // cfg.uniqueTechAtk/uniqueTechRange: a real civ-EXCLUSIVE unique tech
+  // (not one of the 6 generic tracked techs) — e.g. Magyars' "Recurve Bow"
+  // (Mounted Archers +1 attack, +1 range; already documented in
+  // index.html's own UNIQUE_TECH_DESCRIPTIONS but never applied here until
+  // the 2026-09-17 site owner correction).
+  const attack = baseAttack + 2 + 1 /* Chemistry */ + (bracer ? 1 : 0) + (cfg.uniqueTechAtk || 0);
+  const range = 4 + 2 + (bracer ? 1 : 0) + (cranequins ? 1 : 0) + (cfg.uniqueTechRange || 0);
   const meleeArmor = baseMelee + 2 + (ring ? 1 : 0) + (!cranequins && parthian ? 1 : 0);
   const pierceArmor = 2 + (ring ? 2 : 0) + (!cranequins && parthian ? 2 : 0);
   const speed = +(baseSpeed * (husbandry ? 1.15 : 1)).toFixed(2);
@@ -1307,7 +1323,12 @@ function maxedStatsFor(cfg, isMcb) {
   // gives (site owner correction, 2026-09-16 — was wrongly treated as the
   // same flat +20 as everyone else).
   const isStarredBloodlines = (cfg.starred || []).includes('Bloodlines');
-  const hp = isStarredBloodlines ? Math.round(baseHP * 1.2) : baseHP + (bloodlines ? 20 : 0);
+  // cfg.civHpMult: a real civ bonus percentage HP multiplier (e.g.
+  // Vietnamese's "Archery Range units +20% HP" — Cavalry Archer trains
+  // there, so it applies). Stacks with real Bloodlines as (base+20)*mult,
+  // the standard AoE2 convention of scaling the current tech-inclusive HP.
+  const hpBeforeCivMult = isStarredBloodlines ? Math.round(baseHP * 1.2) : baseHP + (bloodlines ? 20 : 0);
+  const hp = cfg.civHpMult ? Math.round(hpBeforeCivMult * cfg.civHpMult) : hpBeforeCivMult;
   return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry, dpsVsRanged };
 }
 // Flat, line-wide cost (NOT per-civ) — every civ pays the same 40w/60g for
