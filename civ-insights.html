@@ -424,6 +424,26 @@ select:focus{outline:none;border-color:var(--amber);}
     </div>
   </details>
 
+  <details class="section">
+    <summary>All Maxed Cavalry Archer / Mounted Crossbowman Civs, by DPS <span class="summary-hint">every real CA and MCB civ, one sorted list</span></summary>
+    <div class="card">
+      <h2>All Maxed Cavalry Archer / Mounted Crossbowman Civs, by DPS</h2>
+      <p class="desc">
+        Every civ that has real Cavalry Archer access under the Sept 22 patch (31 civs — excludes the
+        11 that trade it for Mounted Crossbowman, Danes/Saxons/Varangians who never had it, and the
+        Meso civs with no Cavalry Archer at all) alongside all 15 Mounted Crossbowman civs, each maxed
+        out on its own real tech access and sorted purely by DPS. Same formula as the card above —
+        Chemistry/Fletching/Bodkin Arrow/Padded+Leather Archer Armor universal, Bracer/Ring Archer
+        Armor/Bloodlines/Husbandry/Parthian Tactics/Thumb Ring per-civ, Cranequins as Parthian Tactics'
+        MCB-only substitute. Pulled live from index.html's own civData under the Sept 22 toggle, not
+        guessed.
+      </p>
+      <div class="overflow-x">
+        <table id="all-maxed-table"></table>
+      </div>
+    </div>
+  </details>
+
   <!-- Hidden for now (2026-09-16) — the underlying table computation is still
        disabled pending the iframe-eval freeze fix (see feedback_iframe_load_sync_eval_stall
        memory), so there's nothing useful to show here yet. Remove style="display:none"
@@ -609,7 +629,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.27</div>
+    <div class="version">v0.28</div>
   </div>
 </div>
 
@@ -1257,6 +1277,92 @@ function caMcbMaxStats(cfg) {
     const stats = caMcbMaxStats(cfg);
     return `<tr><td>${civ}</td><td class="num">${cfg.heavy ? '✓' : '—'}</td>${cells}<td class="num">${stats.range}</td><td class="num">${stats.attack}</td><td class="num">${stats.meleeArmor}/${stats.pierceArmor}</td><td class="num">${stats.speed}</td><td class="num">${stats.reload}s</td><td class="num">${stats.dps}</td></tr>`;
   }).join('');
+  tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
+})();
+
+// All 31 real Cavalry-Archer civs under the Sept 22 patch (excludes the 11
+// MCB-trading civs, Danes/Saxons/Varangians who never had Cavalry Archer,
+// and the Meso civs with none at all) — pulled live from index.html's own
+// civData (not guessed): `civData[civ].units.has(39)` for base access,
+// `.has(474)` for Heavy, `.techs.has(id)` for each tracked tech, all under
+// `PATCH_VERSION='sept22'`. Same `missing`-array shape as CA_MCB_CIVS so
+// both can share one maxed-stat formula below.
+const CA_CIVS = {
+  Armenians:  { heavy: false, missing: ['Parthian Tactics'], thumbRing: false },
+  Berbers:    { heavy: true,  missing: ['Parthian Tactics'], thumbRing: true },
+  Bulgarians: { heavy: true,  missing: ['Ring Archer Armor'], thumbRing: true },
+  Burmese:    { heavy: true,  missing: ['Ring Archer Armor'], thumbRing: false },
+  Byzantines: { heavy: true,  missing: ['Bloodlines', 'Parthian Tactics'], thumbRing: true },
+  Chinese:    { heavy: false, missing: ['Parthian Tactics'], thumbRing: true },
+  Cumans:     { heavy: true,  missing: ['Bracer', 'Husbandry'], thumbRing: true },
+  Ethiopians: { heavy: true,  missing: ['Bloodlines', 'Parthian Tactics'], thumbRing: true },
+  Georgians:  { heavy: true,  missing: ['Ring Archer Armor'], thumbRing: false },
+  Goths:      { heavy: true,  missing: ['Parthian Tactics'], thumbRing: false },
+  Hindustanis:{ heavy: true,  missing: ['Parthian Tactics'], thumbRing: true },
+  Huns:       { heavy: true,  missing: ['Ring Archer Armor'], thumbRing: true },
+  Japanese:   { heavy: true,  missing: [], thumbRing: true },
+  Jurchens:   { heavy: true,  missing: ['Parthian Tactics'], thumbRing: false },
+  Khitans:    { heavy: true,  missing: ['Bloodlines'], thumbRing: true },
+  Khmer:      { heavy: true,  missing: [], thumbRing: false },
+  Koreans:    { heavy: true,  missing: ['Bloodlines', 'Parthian Tactics'], thumbRing: true },
+  Lithuanians:{ heavy: true,  missing: ['Parthian Tactics'], thumbRing: true },
+  Malay:      { heavy: false, missing: ['Bloodlines', 'Parthian Tactics'], thumbRing: true },
+  Malians:    { heavy: true,  missing: ['Bracer', 'Parthian Tactics'], thumbRing: true },
+  Magyars:    { heavy: true,  missing: [], thumbRing: true },
+  Mongols:    { heavy: true,  missing: ['Ring Archer Armor'], thumbRing: true },
+  Persians:   { heavy: true,  missing: ['Bracer'], thumbRing: true },
+  Romans:     { heavy: true,  missing: ['Bracer', 'Parthian Tactics'], thumbRing: false },
+  Saracens:   { heavy: true,  missing: [], thumbRing: true },
+  Shu:        { heavy: true,  missing: ['Bloodlines', 'Parthian Tactics'], thumbRing: true },
+  Slavs:      { heavy: true,  missing: ['Bracer', 'Parthian Tactics'], thumbRing: false },
+  Tatars:     { heavy: true,  missing: [], thumbRing: true },
+  Turks:      { heavy: true,  missing: [], thumbRing: true },
+  Vietnamese: { heavy: true,  missing: ['Parthian Tactics'], thumbRing: true },
+  Wu:         { heavy: false, missing: ['Ring Archer Armor', 'Parthian Tactics'], thumbRing: false },
+};
+// Shared maxed-stat formula for BOTH lines — same math as caMcbMaxStats
+// above, generalized with each line's own real base stats (ground-truth
+// confirmed: CA base hp50/atk6/melee0/pierce0/range4/speed1.4/reload2s,
+// Heavy hp60/atk7/melee1; MCB base hp45/atk7-or-8/melee2/pierce0/range4/
+// speed1.25/reload2.5s — MCB pierce/range/speed are IDENTICAL across its
+// own base/Heavy tiers, only attack/HP/melee differ). `cfg.cranequins`
+// only exists on MCB entries; CA rows never have it (Parthian Tactics has
+// no MCB-style substitute for Cavalry Archer).
+function maxedStatsFor(cfg, isMcb) {
+  const bracer = caMcbHas(cfg, 'Bracer'), ring = caMcbHas(cfg, 'Ring Archer Armor');
+  const parthian = caMcbHas(cfg, 'Parthian Tactics'), bloodlines = caMcbHas(cfg, 'Bloodlines');
+  const husbandry = caMcbHas(cfg, 'Husbandry'), cranequins = !!cfg.cranequins;
+  const baseAttack = isMcb ? (cfg.heavy ? 8 : 7) : (cfg.heavy ? 7 : 6);
+  const baseMelee = isMcb ? 2 : (cfg.heavy ? 1 : 0);
+  const baseHP = isMcb ? 45 : (cfg.heavy ? 60 : 50);
+  const baseSpeed = isMcb ? 1.25 : 1.4;
+  const baseReload = isMcb ? 2.5 : 2;
+  const attack = baseAttack + 2 + 1 /* Chemistry */ + (bracer ? 1 : 0);
+  const range = 4 + 2 + (bracer ? 1 : 0) + (cranequins ? 1 : 0);
+  const meleeArmor = baseMelee + 2 + (ring ? 1 : 0) + (!cranequins && parthian ? 1 : 0);
+  const pierceArmor = 2 + (ring ? 2 : 0) + (!cranequins && parthian ? 2 : 0);
+  const speed = +(baseSpeed * (husbandry ? 1.15 : 1)).toFixed(2);
+  const reload = +(baseReload * (cfg.thumbRing ? THUMB_RING_RELOAD_MULT : 1)).toFixed(2);
+  const dps = +(attack / reload).toFixed(2);
+  const hp = baseHP + (bloodlines ? 20 : 0);
+  return { hp, attack, range, meleeArmor, pierceArmor, speed, reload, dps };
+}
+(function renderAllMaxedTable() {
+  const tableEl = document.getElementById('all-maxed-table');
+  const rows = [
+    ...Object.entries(CA_CIVS).map(([civ, cfg]) => ({ line: 'CA', civ, ...maxedStatsFor(cfg, false) })),
+    ...Object.entries(CA_MCB_CIVS).map(([civ, cfg]) => ({ line: 'MCB', civ, ...maxedStatsFor(cfg, true) })),
+  ].sort((a, b) => b.dps - a.dps || a.civ.localeCompare(b.civ));
+  const thead = `<thead><tr><th class="num">#</th><th>Line</th><th>Civ</th><th class="num">HP</th><th class="num">Attack</th><th class="num">Armor</th><th class="num">Range</th><th class="num">Speed</th><th class="num">Reload</th><th class="num">DPS</th></tr></thead>`;
+  const tbody = rows.map((r, i) => `<tr>
+    <td class="num">${i + 1}</td>
+    <td><span class="res-pill ${r.line === 'CA' ? 'gold' : 'wood'}">${r.line}</span></td>
+    <td>${r.civ}</td>
+    <td class="num">${r.hp}</td><td class="num">${r.attack}</td>
+    <td class="num">${r.meleeArmor}/${r.pierceArmor}</td>
+    <td class="num">${r.range}</td><td class="num">${r.speed}</td>
+    <td class="num">${r.reload}s</td><td class="num" style="font-weight:700;">${r.dps}</td>
+  </tr>`).join('');
   tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
 })();
 
