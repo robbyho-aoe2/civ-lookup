@@ -125,7 +125,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.19</div>
+    <div class="version">v0.20</div>
   </div>
 </div>
 
@@ -190,11 +190,11 @@ const TEAMS = [
     { name: 'GOAT Gobz', profileId: 8154765, elo: 1843 },
     { name: 'Im2Good4YoMoma', profileId: 12591985, elo: 1991 },
     { name: 'Arbiters Son', profileId: 7096003, elo: 1827 },
-    // players.json has no real name on file for this profileId yet (only a
-    // generic "player_14276793" placeholder) -- shows as the raw ID until a
-    // real name is known. No player-data file at all for this profileId
-    // either, hence elo: null.
-    { name: 'Player 14276793', profileId: 14276793, elo: null },
+    // Name resolved via live match history (no per-player data file existed
+    // yet); elo is 1v1 Random Map (Console) peak rating, matching this
+    // roster's convention for every other entry above. Queued in
+    // backfill_queue.json for the pipeline to build a proper data file.
+    { name: 'Dbs Elm', profileId: 14276793, elo: 2047 },
     { name: 'aka Frost1e', profileId: 12516504, elo: null },
   ] },
 ];
