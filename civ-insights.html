@@ -564,7 +564,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.45</div>
+    <div class="version">v0.46</div>
   </div>
 </div>
 
@@ -1262,7 +1262,11 @@ const CA_CIVS = {
   Saracens:   { heavy: true,  missing: [], thumbRing: true },
   Shu:        { heavy: true,  missing: ['Bloodlines', 'Parthian Tactics'], thumbRing: true },
   Slavs:      { heavy: true,  missing: ['Bracer', 'Parthian Tactics'], thumbRing: false },
-  Tatars:     { heavy: true,  missing: [], thumbRing: true },
+  // uniqueTechMelee/uniqueTechPierce 1/1 = real Tatars-exclusive unique
+  // tech "Silk Armor" ("Scout Cavalry-line, Steppe Lancers and Cavalry
+  // Archers +1 melee/+1 pierce armor" — confirmed via index.html's own
+  // UNIQUE_TECH_DESCRIPTIONS, 2026-09-17 site owner correction).
+  Tatars:     { heavy: true,  missing: [], thumbRing: true, uniqueTechMelee: 1, uniqueTechPierce: 1 },
   Turks:      { heavy: true,  missing: [], thumbRing: true },
   // civHpMult 1.2 = real civ bonus "Archery Range units and Fire Lancers
   // +20% HP" (2026-09-17 site owner correction — a genuine miss, since my
@@ -1298,8 +1302,12 @@ function maxedStatsFor(cfg, isMcb) {
   // the 2026-09-17 site owner correction).
   const attack = baseAttack + 2 + 1 /* Chemistry */ + (bracer ? 1 : 0) + (cfg.uniqueTechAtk || 0);
   const range = 4 + 2 + (bracer ? 1 : 0) + (cranequins ? 1 : 0) + (cfg.uniqueTechRange || 0);
-  const meleeArmor = baseMelee + 2 + (ring ? 1 : 0) + (!cranequins && parthian ? 1 : 0);
-  const pierceArmor = 2 + (ring ? 2 : 0) + (!cranequins && parthian ? 2 : 0);
+  // cfg.uniqueTechMelee/uniqueTechPierce: same pattern as uniqueTechAtk —
+  // Tatars' "Silk Armor" ("Scout Cavalry-line, Steppe Lancers and Cavalry
+  // Archers +1 melee/+1 pierce armor", already documented in index.html's
+  // UNIQUE_TECH_DESCRIPTIONS, 2026-09-17 site owner correction).
+  const meleeArmor = baseMelee + 2 + (ring ? 1 : 0) + (!cranequins && parthian ? 1 : 0) + (cfg.uniqueTechMelee || 0);
+  const pierceArmor = 2 + (ring ? 2 : 0) + (!cranequins && parthian ? 2 : 0) + (cfg.uniqueTechPierce || 0);
   const speed = +(baseSpeed * (husbandry ? 1.15 : 1)).toFixed(2);
   // cfg.civAtkSpeedMult: a real CIV BONUS (not a tech) that directly boosts
   // attack speed — e.g. Mongols' "Cavalry Archers attack +25% faster"
@@ -1362,7 +1370,15 @@ const EA_CIVS = {
   // Cavalry Archer bonus above — a civ bonus, not a tech, previously
   // untracked entirely).
   Dravidians: { heavy: true, missing: ['Bloodlines', 'Parthian Tactics'], civAtkSpeedMult: 0.8 },
-  Gurjaras:   { heavy: true, missing: ['Ring Archer Armor', 'Parthian Tactics'] },
+  // Gurjaras (2026-09-17, site owner corrections, all confirmed against
+  // index.html's own already-documented data): real unique tech "Frontier
+  // Guards" (Camel Riders and Elephant Archers +4 melee armor,
+  // uniqueTechMelee), real civ bonus "Mounted Units deal +20/30/40% bonus
+  // damage in Feudal/Castle/Imperial Age" (Elephant Archer counts as
+  // Mounted — civDamageMult, Imperial/+40% tier used here), and unique
+  // tech "Kshatriyas" (Military Units cost -25% food — costFoodMult, the
+  // one real per-civ cost discount modeled for Elephant Archer).
+  Gurjaras:   { heavy: true, missing: ['Ring Archer Armor', 'Parthian Tactics'], uniqueTechMelee: 4, civDamageMult: 1.4, costFoodMult: 0.75 },
 };
 const EA_THUMB_RING = { Bengalis: false, Dravidians: true, Gurjaras: true };
 const EA_COST = 140; // 60f/80g
@@ -1370,15 +1386,17 @@ function maxedStatsForEA(civ, cfg) {
   const bracer = caMcbHas(cfg, 'Bracer'), ring = caMcbHas(cfg, 'Ring Archer Armor');
   const parthian = caMcbHas(cfg, 'Parthian Tactics'), bloodlines = caMcbHas(cfg, 'Bloodlines');
   const husbandry = caMcbHas(cfg, 'Husbandry'), thumbRing = EA_THUMB_RING[civ];
-  const attack = 7 + 2 + 1 + (bracer ? 1 : 0);
+  const flatAttack = 7 + 2 + 1 + (bracer ? 1 : 0);
+  const attack = cfg.civDamageMult ? Math.round(flatAttack * cfg.civDamageMult) : flatAttack;
   const range = 4 + 2 + (bracer ? 1 : 0);
-  const meleeArmor = 0 + 2 + (ring ? 1 : 0) + (parthian ? 1 : 0);
+  const meleeArmor = 0 + 2 + (ring ? 1 : 0) + (parthian ? 1 : 0) + (cfg.uniqueTechMelee || 0);
   const pierceArmor = 2 + 2 + (ring ? 2 : 0) + (parthian ? 2 : 0);
   const speed = d2(0.9 * (husbandry ? 1.15 : 1));
   const reload = d2(2 * (thumbRing ? THUMB_RING_RELOAD_MULT : 1) * (cfg.civAtkSpeedMult || 1));
   const dps = d2(attack / reload);
   const hp = 280 + (bloodlines ? 20 : 0);
-  return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost: EA_COST, dpsPer100: d2(dps / EA_COST * 100) };
+  const cost = cfg.costFoodMult ? Math.round(60 * cfg.costFoodMult) + 80 : EA_COST;
+  return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
 }
 
 // 7 more real archer-cavalry unique/regional units added 2026-09-16 (site
@@ -1416,18 +1434,25 @@ function maxedStatsForEA(civ, cfg) {
 //   its DPS is sustained-attack-only and understates its real ceiling.
 const EXTRA_UNIQUE_UNITS = [
   (() => {
-    const attack = 5 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 1, pierceArmor = 0 + 2 + 2 + 2;
+    // Wei corrections (2026-09-17, site owner, confirmed against
+    // index.html's own already-documented data): real unique tech "Ming
+    // Guang Armor" (Mounted Units +4 melee armor) and real civ bonus "Hei
+    // Guang Cavalry and Xianbei Raider +20/30% HP in Castle/Imperial Age"
+    // (Imperial/+30% tier used here, stacking with Bloodlines as
+    // (base+20)*1.3).
+    const attack = 5 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 1 + 4, pierceArmor = 0 + 2 + 2 + 2;
     const speed = d2(1.4 * 1.15), reload = d2(1.8 * THUMB_RING_RELOAD_MULT);
     const chargeDamage = 9 + 5 * 5;
     const attacksPer30s = 30 / reload;
     const dps = d2(((attacksPer30s - 1) * attack + chargeDamage) / 30);
+    const hp = Math.round((30 + 20) * 1.3);
     // Sept 22 cost (this whole table already runs under PATCH_VERSION=
     // 'sept22'): build-order.html's own SEPT22_UNIQUE_UNIT_OVERRIDES sets
     // gold to 35 (a REPLACE, not additive — confirmed via its own merge
     // logic, `{...u.cost, ...ov.cost}`), so 65w/25g -> 65w/35g = 100, not
     // the 90 this used before.
     const cost = 100; // 65w/35g, Sept 22 patch
-    return { line: 'XR', civ: 'Wei', hp: 30 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
+    return { line: 'XR', civ: 'Wei', hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
     const attack = 5 + 2 + 1 + 0, range = 4 + 2 + 0, meleeArmor = 0 + 2 + 1 + 0, pierceArmor = 1 + 2 + 2 + 0;
@@ -1519,7 +1544,12 @@ const EXTRA_UNIQUE_UNITS = [
     // (no vs.-Spearman-line column exists for unique units).
     const mainArrow = 4 + 2 + 1 + 0, range = 4 + 2 + 0, meleeArmor = 0 + 2 + 1 + 1, pierceArmor = 0 + 2 + 2 + 2;
     const attack = mainArrow + 2; // 2 flat +1 extra arrows
-    const speed = 1.4, reload = d2(2.2 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 95; // 60w/35g
+    // Real Cumans civ bonus "Mounted Units move +5/10/15% faster in
+    // Feudal/Castle/Imperial Age" (2026-09-17 site owner correction) — a
+    // MOVEMENT speed bonus, correctly excluded from DPS math, but was never
+    // applied to the Speed stat itself. Imperial tier (+15%) used here to
+    // match every other "maxed" number on this page.
+    const speed = d2(1.4 * 1.15), reload = d2(2.2 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 95; // 60w/35g
     return { line: 'KIP', civ: 'Cumans', hp: 40 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
@@ -1529,7 +1559,12 @@ const EXTRA_UNIQUE_UNITS = [
     // stats (armor/range/speed/reload) unchanged by Elite per the info given.
     const mainArrow = 5 + 2 + 1 + 0, range = 4 + 2 + 0, meleeArmor = 0 + 2 + 1 + 1, pierceArmor = 0 + 2 + 2 + 2;
     const attack = mainArrow + 3; // 3 flat +1 extra arrows at Elite
-    const speed = 1.4, reload = d2(2.2 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 95; // 60w/35g
+    // Real Cumans civ bonus "Mounted Units move +5/10/15% faster in
+    // Feudal/Castle/Imperial Age" (2026-09-17 site owner correction) — a
+    // MOVEMENT speed bonus, correctly excluded from DPS math, but was never
+    // applied to the Speed stat itself. Imperial tier (+15%) used here to
+    // match every other "maxed" number on this page.
+    const speed = d2(1.4 * 1.15), reload = d2(2.2 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 95; // 60w/35g
     return { line: 'EKIP', civ: 'Cumans', hp: 45 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
