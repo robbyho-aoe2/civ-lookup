@@ -564,7 +564,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.48</div>
+    <div class="version">v0.49</div>
   </div>
 </div>
 
@@ -1271,7 +1271,11 @@ const CA_CIVS = {
   // Archers +1 melee/+1 pierce armor" — confirmed via index.html's own
   // UNIQUE_TECH_DESCRIPTIONS, 2026-09-17 site owner correction).
   Tatars:     { heavy: true,  missing: [], thumbRing: true, uniqueTechMelee: 1, uniqueTechPierce: 1 },
-  Turks:      { heavy: true,  missing: [], thumbRing: true },
+  // uniqueTechHp 20 = real Turks-exclusive unique tech "Sipahi" ("Mounted
+  // Archers +20 HP" — confirmed via index.html's own UNIQUE_TECH_DESCRIPTIONS,
+  // 2026-09-17 site owner correction: "turk ca should have 100 hp?" — a flat
+  // addition, not a multiplier: 60(heavy base)+20(Bloodlines)+20(Sipahi)=100).
+  Turks:      { heavy: true,  missing: [], thumbRing: true, uniqueTechHp: 20 },
   // civHpMult 1.2 = real civ bonus "Archery Range units and Fire Lancers
   // +20% HP" (2026-09-17 site owner correction — a genuine miss, since my
   // earlier civ-bonus sweeps only checked for attack-speed/vs-class
@@ -1339,7 +1343,11 @@ function maxedStatsFor(cfg, isMcb) {
   // Vietnamese's "Archery Range units +20% HP" — Cavalry Archer trains
   // there, so it applies). Stacks with real Bloodlines as (base+20)*mult,
   // the standard AoE2 convention of scaling the current tech-inclusive HP.
-  const hpBeforeCivMult = isStarredBloodlines ? Math.round(baseHP * 1.2) : baseHP + (bloodlines ? 20 : 0);
+  // cfg.uniqueTechHp: a real civ-exclusive unique tech flat HP bonus (e.g.
+  // Turks' "Sipahi" — Mounted Archers +20 HP). Added alongside Bloodlines,
+  // before any civHpMult multiplier, same convention as flat tech bonuses
+  // generally (part of the "base" that a % modifier would then scale).
+  const hpBeforeCivMult = (isStarredBloodlines ? Math.round(baseHP * 1.2) : baseHP + (bloodlines ? 20 : 0)) + (cfg.uniqueTechHp || 0);
   const hp = cfg.civHpMult ? Math.round(hpBeforeCivMult * cfg.civHpMult) : hpBeforeCivMult;
   return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry, dpsVsRanged };
 }
