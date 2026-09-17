@@ -445,13 +445,15 @@ select:focus{outline:none;border-color:var(--amber);}
         + 5x1 secondary arrows, secondaries scaling to 5 each at full upgrades — 34 total maxed) blended
         into its DPS as an approximation, not an exact model. <b>Bolas Rider</b> has the same kind of
         charge mechanic but no numbers were available, so its DPS is sustained-attack-only and
-        understates its real ceiling. <b>War Wagon</b> is classified under Siege Engineers only, not the
-        archer-attack tech set at all — no Fletching/Bodkin/Bracer/Chemistry/armor-line/Husbandry/Thumb
-        Ring bonus applies, so its stats below are flat base numbers. Every unique unit here (XR/BOL/
-        MAN/CAM/GEN/KIP/RAT/WW) is modeled at its BASE tier only, matching this site's own established
-        convention of never tracking a unique unit's Elite upgrade — Elephant Archer is the one
-        exception, since it's a real generic/regional line with a genuine Elite tier already modeled the
-        same way Heavy CA/MCB are.
+        understates its real ceiling. Every one of these 8 unique units gets the full normal Cavalry
+        Archer tech set (Fletching/Bodkin Arrow/Bracer, Padded/Leather/Ring Archer Armor, Parthian
+        Tactics, Bloodlines, Husbandry, Thumb Ring, Chemistry, Ballistics), each on its OWN civ's real
+        access — <b>War Wagon</b> included, corrected from an earlier version of this table that wrongly
+        modeled it as Siege-Engineers-only with no archer-tech bonus at all. Every unique unit here
+        (XR/BOL/MAN/CAM/GEN/KIP/RAT/WW) is modeled at its BASE tier only, matching this site's own
+        established convention of never tracking a unique unit's Elite upgrade — Elephant Archer is the
+        one exception, since it's a real generic/regional line with a genuine Elite tier already modeled
+        the same way Heavy CA/MCB are.
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 0;font-size:0.9em;">
         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="unit-type-toggle" data-type="ca" checked>Cavalry Archer (CA/HCA)</label>
@@ -660,7 +662,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.36</div>
+    <div class="version">v0.37</div>
   </div>
 </div>
 
@@ -1449,8 +1451,17 @@ function maxedStatsForEA(civ, cfg) {
 // Ballista Elephant/Conquistador/Mounted Trebuchet/War Chariot — those
 // were never added in the first place, only Mameluke needed undoing.
 //
-// Two more genuine special cases here, same pattern as Xianbei Raider's
-// charge mechanic below:
+// All 8 get the full normal Cavalry Archer tech set (site owner, 2026-
+// 09-16: "all the UU's i gave you get the normal ca techs") — including
+// War Wagon, corrected from an earlier version of this table that wrongly
+// modeled it as Siege-Engineers-only (matching build-order.html's own
+// pre-existing `UNIQUE_UNIT_TECH_GROUP` classification, which this table
+// no longer follows for War Wagon — that's a separate, real tool with its
+// own checkbox UI, deliberately left untouched here rather than changed
+// unprompted).
+//
+// Two genuine special cases beyond the shared formula, same pattern as
+// each other:
 // - Xianbei Raider's periodic ~30s charge volley (5 main + 5x1 secondary
 //   arrows, secondaries scaling to 5 each at full upgrades — 34 total
 //   maxed) is blended into its DPS as an approximation — replacing one
@@ -1458,13 +1469,6 @@ function maxedStatsForEA(civ, cfg) {
 // - Bolas Rider has the SAME kind of charge mechanic (confirmed via
 //   data.json's own ChargeType field) but no numbers were given for it —
 //   its DPS is sustained-attack-only and understates its real ceiling.
-// - War Wagon (Koreans) is classified under Siege Engineers ONLY (build-
-//   order.html's own `UNIQUE_UNIT_TECH_GROUP`, confirmed via grep before
-//   assuming) — NOT the archer-attack tech set at all, so none of
-//   Fletching/Bodkin/Bracer/Chemistry/Padded+Leather+Ring Archer Armor/
-//   Parthian Tactics/Husbandry/Thumb Ring apply. Its numbers below are
-//   flat base stats, not a maxed ceiling — this tool doesn't track Siege
-//   Engineers' own numeric effect anywhere, so it can't be applied either.
 const EXTRA_UNIQUE_UNITS = [
   (() => {
     const attack = 5 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 1, pierceArmor = 0 + 2 + 2 + 2;
@@ -1529,9 +1533,13 @@ const EXTRA_UNIQUE_UNITS = [
     return { line: 'RAT', civ: 'Bengalis', hp: 105 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
-    // Koreans, Siege Engineers only — flat base, no tech bonus applies.
-    const attack = 9, range = 4, meleeArmor = 0, pierceArmor = 2, speed = 1.2, reload = 2.5;
-    const dps = d2(attack / reload), cost = 260; // 200w/60g
+    // Corrected 2026-09-16 (site owner: "war wagons get archer armor and
+    // attack upgrades" / "all the UU's i gave you get the normal ca techs")
+    // — gets the SAME full archer-tech formula as every other unique unit
+    // here, not the Siege-Engineers-only treatment this used before.
+    // Koreans: bracer/ring/husbandry/thumbRing true, bloodlines/parthian false.
+    const attack = 9 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 0, pierceArmor = 2 + 2 + 2 + 0;
+    const speed = d2(1.2 * 1.15), reload = d2(2.5 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 260; // 200w/60g
     return { line: 'WW', civ: 'Koreans', hp: 150, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
 ];
