@@ -564,7 +564,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.50</div>
+    <div class="version">v0.51</div>
   </div>
 </div>
 
@@ -1721,11 +1721,10 @@ renderAllMaxedTable();
 // one-time upgrade cost — those don't change with the techs toggle, only
 // with tier. Train times corrected 2026-09-17 (site owner, superseding an
 // earlier "37s both" assumption): Mounted Crossbowman is 40s, Heavy
-// Mounted Crossbowman is 30s (a real per-tier speedup, same direction as
-// Cavalry Archer's own 37s->27s, just not verified against data.json since
-// MCB doesn't exist in that pre-DLC cache). Heavy CA's 27s (vs. data.json's
-// own 30s for id 474) is still an open, unresolved discrepancy — flagged,
-// not silently picked either way.
+// Mounted Crossbowman is 30s. Heavy Cavalry Archer is ALSO 30s (site owner
+// confirmed directly — was wrongly 27s here, now matches data.json's own
+// id 474 TrainTime exactly, resolving the earlier flagged discrepancy);
+// base Cavalry Archer stays 37s, unchanged.
 const UNIT_STATS_TOGGLE = {
   base: {
     ca: { label: 'Cavalry Archer', cost: '40w/60g', train: '37s', hp: 50, attack: 6, melee: 0, pierce: 0, range: 4, speed: 1.4, reload: 2, los: 5, accuracy: 50 },
@@ -1738,8 +1737,8 @@ const UNIT_STATS_TOGGLE = {
   imperial: {
     // Conscription (site owner: "33% faster train time", the standard
     // direct-percentage framing for training-speed techs, x0.67):
-    // 27*0.67~=18s (Heavy CA), 30*0.67~=20s (Heavy MCB).
-    ca: { label: 'Heavy Cavalry Archer (Imperial techs)', cost: '40w/60g', train: '18s', hp: 80, attack: 11, melee: 5, pierce: 6, range: 7, speed: 1.61, reload: 1.8, los: 6, accuracy: 100 },
+    // 30*0.67~=20s (both Heavy CA and Heavy MCB, since both are 30s base).
+    ca: { label: 'Heavy Cavalry Archer (Imperial techs)', cost: '40w/60g', train: '20s', hp: 80, attack: 11, melee: 5, pierce: 6, range: 7, speed: 1.61, reload: 1.8, los: 6, accuracy: 100 },
     mcb: { label: 'Heavy Mounted Crossbowman (Imperial techs)', cost: '40w/65g', train: '20s', hp: 65, attack: 12, melee: 5, pierce: 4, range: 8, speed: 1.44, reload: 2.25, los: null, accuracy: 100 },
   },
 };
