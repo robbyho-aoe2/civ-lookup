@@ -651,7 +651,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.30</div>
+    <div class="version">v0.31</div>
   </div>
 </div>
 
@@ -1458,8 +1458,8 @@ let allMaxedEqualRes = false;
 function renderAllMaxedTable() {
   const tableEl = document.getElementById('all-maxed-table');
   const rows = [
-    ...Object.entries(CA_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, false); return { line: 'CA', civ, ...s, cost: CA_COST, dpsPer100: d2(s.dps / CA_COST * 100) }; }),
-    ...Object.entries(CA_MCB_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, true); return { line: 'MCB', civ, ...s, cost: MCB_COST, dpsPer100: d2(s.dps / MCB_COST * 100) }; }),
+    ...Object.entries(CA_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, false); return { line: cfg.heavy ? 'HCA' : 'CA', civ, ...s, cost: CA_COST, dpsPer100: d2(s.dps / CA_COST * 100) }; }),
+    ...Object.entries(CA_MCB_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, true); return { line: cfg.heavy ? 'HMCB' : 'MCB', civ, ...s, cost: MCB_COST, dpsPer100: d2(s.dps / MCB_COST * 100) }; }),
     ...EXTRA_UNIQUE_UNITS,
   ];
   const { key, dir } = allMaxedSort;
@@ -1470,7 +1470,7 @@ function renderAllMaxedTable() {
   const thead = `<thead><tr>${ALL_MAXED_COLS.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
   const tbody = rows.map((r, i) => `<tr>
     <td class="num">${i + 1}</td>
-    <td><span class="res-pill ${r.line === 'CA' || r.line === 'XR' || r.line === 'MAN' ? 'gold' : 'wood'}">${r.line}</span></td>
+    <td><span class="res-pill ${['CA', 'HCA', 'XR', 'MAN'].includes(r.line) ? 'gold' : 'wood'}">${r.line}</span></td>
     <td>${r.civ}</td>
     <td class="num">${r.hp}</td><td class="num">${r.attack}</td>
     <td class="num">${r.meleeArmor}/${r.pierceArmor}</td>
