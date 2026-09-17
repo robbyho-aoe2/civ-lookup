@@ -275,7 +275,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.32</div>
+    <div class="version">v2.33</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2054,14 +2054,26 @@ const TECH_TREE_CATEGORIES = [
       // only and left off this chain entirely. Its accuracy component is
       // universal; its reload-speed component is a REDUCED -10% for this
       // line specifically (not the base -15%) — see TECH_DESCRIPTIONS[437].
-      { name: 'Mounted Archer', age: 'Castle', id: 39, extra: [MOUNTED_CROSSBOWMAN_SENTINEL_ID], techs: [{name:'Fletching',id:T.Fletching},{name:'Bodkin Arrow',id:T['Bodkin Arrow']},{name:'Padded Archer Armor',id:T['Padded Archer Armor']},{name:'Leather Archer Armor',id:T['Leather Archer Armor']},{name:'Bloodlines',id:T.Bloodlines},{name:'Husbandry',id:T.Husbandry},{name:'Thumb Ring',id:T['Thumb Ring']}] },
+      // Elephant Archer (id 873, site owner request 2026-09-17: "add
+      // elephant archers to castle age") added to this Castle-tier node's
+      // own extra list — it was previously only linked to the Heavy/
+      // Imperial node below, so Bengalis/Dravidians/Gurjaras never showed
+      // this box as available at all despite having real Castle-age access.
+      // nameById resolves the DISPLAYED unit name per civ (site owner:
+      // "name the units under the header their actual name" — the category
+      // header stays "Mounted Archer" for everyone, only the node itself
+      // changes) — see techTreeNodeDisplayName.
+      { name: 'Mounted Archer', age: 'Castle', id: 39, extra: [MOUNTED_CROSSBOWMAN_SENTINEL_ID, 873], nameById: { 39: 'Cavalry Archer', [MOUNTED_CROSSBOWMAN_SENTINEL_ID]: 'Mounted Crossbowman', 873: 'Elephant Archer' }, techs: [{name:'Fletching',id:T.Fletching},{name:'Bodkin Arrow',id:T['Bodkin Arrow']},{name:'Padded Archer Armor',id:T['Padded Archer Armor']},{name:'Leather Archer Armor',id:T['Leather Archer Armor']},{name:'Bloodlines',id:T.Bloodlines},{name:'Husbandry',id:T.Husbandry},{name:'Thumb Ring',id:T['Thumb Ring']}] },
       // Parthian Tactics/Cranequins are the same real slot for a civ (see
       // the equivalence note elsewhere) -- but unlike a plain equivalence
       // check, the DISPLAYED name should reflect whichever one the civ
       // actually has (Cranequins for the 3 Sept22 civs that get it, not
       // the generic "Parthian Tactics" label they don't have access to).
-      // altName/altId is resolved per-civ in techTreeNodeHtml.
-      { name: 'Heavy Mounted Archer', age: 'Imperial', id: 474, extra: [...XIANBEI_IDS, ...ELE_ARCHER_IDS, 2569, 2571, HEAVY_MOUNTED_CROSSBOWMAN_SENTINEL_ID], techs: [{name:'Bracer',id:T.Bracer},{name:'Ring Archer Armor',id:T['Ring Archer Armor']},{name:'Parthian Tactics',id:T['Parthian Tactics'],altName:'Cranequins',altId:CRANEQUINS_SENTINEL_ID},{name:'Chemistry',id:T.Chemistry}] },
+      // altName/altId is resolved per-civ in techTreeNodeHtml. Elite ids
+      // (875, 2571) listed BEFORE their base-tier counterparts (873, 2569)
+      // in `extra` so techTreeNodeDisplayName's first-match resolution
+      // picks the Elite name for a civ that has both, not the base one.
+      { name: 'Heavy Mounted Archer', age: 'Imperial', id: 474, extra: [875, 2571, ...XIANBEI_IDS, 873, 2569, HEAVY_MOUNTED_CROSSBOWMAN_SENTINEL_ID], nameById: { 474: 'Heavy Cavalry Archer', [HEAVY_MOUNTED_CROSSBOWMAN_SENTINEL_ID]: 'Heavy Mounted Crossbowman', 875: 'Elite Elephant Archer', 873: 'Elephant Archer', 2571: 'Elite Bolas Rider', 2569: 'Bolas Rider', 1952: 'Xianbei Raider' }, techs: [{name:'Bracer',id:T.Bracer},{name:'Ring Archer Armor',id:T['Ring Archer Armor']},{name:'Parthian Tactics',id:T['Parthian Tactics'],altName:'Cranequins',altId:CRANEQUINS_SENTINEL_ID},{name:'Chemistry',id:T.Chemistry}] },
     ]},
   ]},
   { label: 'Cavalry', emoji: '⚔️', lines: [
@@ -2170,6 +2182,20 @@ function techTreeTechAvailable(cd, tech) {
 // their (visible) lines actually use, so e.g. Cavalry never shows a blank
 // Dark row.
 const TTREE_AGE_ORDER = ['Dark', 'Feudal', 'Castle', 'Imperial'];
+// Resolves a node's DISPLAYED name per civ (site owner, 2026-09-17: "name
+// the units under the header their actual name") — checks node.id then
+// node.extra IN ORDER, returns the first id's mapped name from
+// node.nameById that the civ actually has. Falls back to node.name
+// (the generic category-level label) when the civ has none of the
+// equivalence ids yet, or the node has no nameById map at all.
+function techTreeNodeDisplayName(cd, node) {
+  if (!node.nameById || !cd) return node.name;
+  const ids = [].concat(node.id, node.extra || []);
+  for (const id of ids) {
+    if (cd.units.has(id) && node.nameById[id]) return node.nameById[id];
+  }
+  return node.name;
+}
 function techTreeNodeHtml(cd, node) {
   const avail = techTreeNodeAvailable(cd, node);
   const techPills = (node.techs || []).filter(t => t.id != null).map(t => {
@@ -2184,7 +2210,7 @@ function techTreeNodeHtml(cd, node) {
     return `<span class="ttree-tech ${has ? 'avail' : 'locked'}" data-item-name="${displayName}" data-item-type="tech" title="${displayName}${has ? '' : ' (not researchable)'}">${displayName}${label ? ` <b>${label}</b>` : ''}</span>`;
   }).join('');
   return `<div class="ttree-node ${avail ? 'avail' : 'locked'}">
-    <div class="ttree-node-name">${node.name}</div>
+    <div class="ttree-node-name">${techTreeNodeDisplayName(cd, node)}</div>
     <div class="ttree-node-age">${node.age}</div>
     ${techPills ? `<div class="ttree-techs">${techPills}</div>` : ''}
   </div>`;
@@ -5940,6 +5966,79 @@ function civInfoHtml(civName, compact) {
     h += `<div class="info-sl">Civ fingerprint</div>`;
     h += `<div style="display:flex;justify-content:center;margin-top:4px;width:100%;max-width:100%">${radarChartSVG(civName)}</div>`;
 
+    // Tech checklist (moved above the flowchart, site owner request 2026-09-17
+    // — was previously rendered after "Similar civs" below) — if a tech-tree
+    // archetype is active, show item-by-item checklist for this civ. Already
+    // inside the outer `if (!compact)` block, so that half of the original
+    // condition is redundant here.
+    if (activeArchetype !== null) {
+      const arch = CIV_ARCHETYPES[activeArchetype];
+      const pool = archetypeCivList(arch);
+      if (pool.includes(civName)) {
+        const cd = civData[civName];
+        const s = totalScoreCiv(civName, arch);
+        const grade = civGrade(civName, arch);
+        const gcolor = grade ? GRADE_COLOR[grade] : 'var(--text3)';
+
+        h += `<div class="info-sl">${archIconHtml(arch, 24)} ${arch.label} — tech checklist</div>`;
+        h += `<div style="display:flex;gap:16px;align-items:flex-start">`;
+
+        // Left: checklist + bonus notes stacked in one column
+        h += `<div style="flex:1;min-width:0">`;
+        h += `<div class="arch-age-grid">`;
+        const gunpowderLocked = arch.label === 'Gunpowder' && cd && !cd.units.has(5) && !cd.units.has(36);
+        const noHandCannoneer = arch.label === 'Gunpowder' && cd && !cd.units.has(5);
+        // Group items by age
+        const ageBuckets = [[],[],[]]; // Feudal, Castle, Imperial
+        arch.items.forEach(it => {
+          const ids = Array.isArray(it.id) ? it.id : [it.id];
+          let baseHas = cd ? ids.some(id => it.t === 'unit' ? cd.units.has(id) : cd.techs.has(id)) : false;
+          let extraMatch = (!baseHas && it.extra && cd)
+            ? it.extra.find(id => it.t === 'unit' ? cd.units.has(id) : cd.techs.has(id))
+            : null;
+          if (gunpowderLocked) { baseHas = false; extraMatch = null; }
+          else if (noHandCannoneer && it.t === 'tech' && it.id === 219) { baseHas = false; extraMatch = null; }
+          const hasIt = baseHas || !!extraMatch;
+          const mainId = ids[0];
+          const nameEntry = it.t === 'unit'
+            ? Object.entries(UNIT_IDS).find(([,v]) => (Array.isArray(v) ? v[0] : v) === mainId)
+            : Object.entries(TECH_IDS).find(([,v]) => v === mainId);
+          const itemName = nameEntry ? nameEntry[0] : `ID ${mainId}`;
+          const note = extraMatch ? EQUIVALENCE_NOTES[extraMatch] : null;
+          const missNote = (!hasIt && it.missingNote) ? ` ${it.missingNote}` : '';
+          const itemHtml = `<div class="arch-item ${hasIt ? 'ai-has' : 'ai-miss'}" data-item-name="${itemName}" data-item-type="${it.t}" style="cursor:pointer">${hasIt ? '✓' : '✗'} ${itemName}${missNote}${note ? ` <span style="color:var(--amberL);font-weight:400">(${note})</span>` : ''}</div>`;
+          const rawAge = (ITEM_AGES[it.t] || {})[mainId] ?? 3;
+          const age = Math.max(0, rawAge - 1); // shift: 1→0, 2→1, 3→2; Dark(0) merges into Feudal
+          ageBuckets[Math.min(age, 2)].push(itemHtml);
+        });
+        AGE_LABELS.forEach((lbl, i) => {
+          h += `<div class="arch-age-col">`;
+          h += `<div class="arch-age-hdr" style="color:${AGE_COLORS[i]}">${lbl}</div>`;
+          ageBuckets[i].forEach(item => h += item);
+          h += `</div>`;
+        });
+        h += `</div>`; // close arch-age-grid
+        const extraUU = extraUUBonus(civName, arch.label);
+        const allNotes = [...(bonusScoreCiv(civName, arch).notes || []), ...extraUU.notes];
+        if (s.bonusPts > 0) {
+          h += `<div style="margin-top:6px">`;
+          h += `<div class="arch-item ai-note" style="margin-bottom:2px">⚡ +${s.bonusPts} bonus points from civ traits:</div>`;
+          allNotes.forEach(n => h += `<div class="arch-note">• ${n}</div>`);
+          h += `</div>`;
+        }
+
+        // Right: big overall grade for this archetype
+        h += `</div>`; // close left wrapper
+        h += `<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 14px;background:${gcolor}15;border:1px solid ${gcolor};border-radius:12px">
+          <span style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Grade</span>
+          <span style="font-size:34px;font-weight:800;color:${gcolor};line-height:1">${grade || 'N/A'}</span>
+          <span style="font-size:10px;color:var(--text3)">${s.total} pts</span>
+        </div>`;
+
+        h += `</div>`;
+      }
+    }
+
     h += techTreeFlowchartHtml(civName);
 
   // Previously viewed
@@ -5964,75 +6063,6 @@ function civInfoHtml(civName, compact) {
       h += `</div>`;
     }
   }
-  }
-
-  // If a tech-tree archetype is active, show item-by-item checklist for this civ
-  if (!compact && activeArchetype !== null) {
-    const arch = CIV_ARCHETYPES[activeArchetype];
-    const pool = archetypeCivList(arch);
-    if (pool.includes(civName)) {
-      const cd = civData[civName];
-      const s = totalScoreCiv(civName, arch);
-      const grade = civGrade(civName, arch);
-      const gcolor = grade ? GRADE_COLOR[grade] : 'var(--text3)';
-
-      h += `<div class="info-sl">${archIconHtml(arch, 24)} ${arch.label} — tech checklist</div>`;
-      h += `<div style="display:flex;gap:16px;align-items:flex-start">`;
-
-      // Left: checklist + bonus notes stacked in one column
-      h += `<div style="flex:1;min-width:0">`;
-      h += `<div class="arch-age-grid">`;
-      const gunpowderLocked = arch.label === 'Gunpowder' && cd && !cd.units.has(5) && !cd.units.has(36);
-      const noHandCannoneer = arch.label === 'Gunpowder' && cd && !cd.units.has(5);
-      // Group items by age
-      const ageBuckets = [[],[],[]]; // Feudal, Castle, Imperial
-      arch.items.forEach(it => {
-        const ids = Array.isArray(it.id) ? it.id : [it.id];
-        let baseHas = cd ? ids.some(id => it.t === 'unit' ? cd.units.has(id) : cd.techs.has(id)) : false;
-        let extraMatch = (!baseHas && it.extra && cd)
-          ? it.extra.find(id => it.t === 'unit' ? cd.units.has(id) : cd.techs.has(id))
-          : null;
-        if (gunpowderLocked) { baseHas = false; extraMatch = null; }
-        else if (noHandCannoneer && it.t === 'tech' && it.id === 219) { baseHas = false; extraMatch = null; }
-        const hasIt = baseHas || !!extraMatch;
-        const mainId = ids[0];
-        const nameEntry = it.t === 'unit'
-          ? Object.entries(UNIT_IDS).find(([,v]) => (Array.isArray(v) ? v[0] : v) === mainId)
-          : Object.entries(TECH_IDS).find(([,v]) => v === mainId);
-        const itemName = nameEntry ? nameEntry[0] : `ID ${mainId}`;
-        const note = extraMatch ? EQUIVALENCE_NOTES[extraMatch] : null;
-        const missNote = (!hasIt && it.missingNote) ? ` ${it.missingNote}` : '';
-        const itemHtml = `<div class="arch-item ${hasIt ? 'ai-has' : 'ai-miss'}" data-item-name="${itemName}" data-item-type="${it.t}" style="cursor:pointer">${hasIt ? '✓' : '✗'} ${itemName}${missNote}${note ? ` <span style="color:var(--amberL);font-weight:400">(${note})</span>` : ''}</div>`;
-        const rawAge = (ITEM_AGES[it.t] || {})[mainId] ?? 3;
-        const age = Math.max(0, rawAge - 1); // shift: 1→0, 2→1, 3→2; Dark(0) merges into Feudal
-        ageBuckets[Math.min(age, 2)].push(itemHtml);
-      });
-      AGE_LABELS.forEach((lbl, i) => {
-        h += `<div class="arch-age-col">`;
-        h += `<div class="arch-age-hdr" style="color:${AGE_COLORS[i]}">${lbl}</div>`;
-        ageBuckets[i].forEach(item => h += item);
-        h += `</div>`;
-      });
-      h += `</div>`; // close arch-age-grid
-      const extraUU = extraUUBonus(civName, arch.label);
-      const allNotes = [...(bonusScoreCiv(civName, arch).notes || []), ...extraUU.notes];
-      if (s.bonusPts > 0) {
-        h += `<div style="margin-top:6px">`;
-        h += `<div class="arch-item ai-note" style="margin-bottom:2px">⚡ +${s.bonusPts} bonus points from civ traits:</div>`;
-        allNotes.forEach(n => h += `<div class="arch-note">• ${n}</div>`);
-        h += `</div>`;
-      }
-
-      // Right: big overall grade for this archetype
-      h += `</div>`; // close left wrapper
-      h += `<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 14px;background:${gcolor}15;border:1px solid ${gcolor};border-radius:12px">
-        <span style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Grade</span>
-        <span style="font-size:34px;font-weight:800;color:${gcolor};line-height:1">${grade || 'N/A'}</span>
-        <span style="font-size:10px;color:var(--text3)">${s.total} pts</span>
-      </div>`;
-
-      h += `</div>`;
-    }
   }
 
   // No filter + no archetype active: show FULL tech tree availability by category
