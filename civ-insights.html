@@ -327,11 +327,13 @@ select:focus{outline:none;border-color:var(--amber);}
         units — <b>XR</b> Xianbei Raider (Wei), <b>BOL</b> Bolas Rider (Mapuche), <b>MAN</b> Mangudai
         (Mongols), <b>CAM</b> Camel Archer (Berbers), <b>GEN</b> Genitour (Berbers), <b>KIP</b> Kipchak
         (Cumans), <b>RAT</b> Ratha, Ranged (Bengalis), and <b>WW</b> War Wagon (Koreans) — each maxed
-        out on its own real tech access. Bolas Rider/Camel Archer/Genitour also each have a matching
-        <b>E-prefixed row</b> (EBOL/ECAM/EGEN) for their real Elite tier — Xianbei Raider has no Elite
-        upgrade in the real game, and Mangudai's own row already represents Elite (its base tier isn't
-        shown separately). Kipchak/Ratha/War Wagon don't have Elite rows yet — pending real sourced
-        numbers, same as everything else on this page. Same formula as the card above — Chemistry/Fletching/Bodkin
+        out on its own real tech access. Bolas Rider/Camel Archer/Genitour/Ratha/War Wagon also each
+        have a matching <b>E-prefixed row</b> (EBOL/ECAM/EGEN/ERAT/EWW) for their real Elite tier —
+        Xianbei Raider has no Elite upgrade in the real game, and Mangudai's own row already represents
+        Elite (its base tier isn't shown separately). Kipchak doesn't have an Elite row yet, and its
+        base-tier DPS is a floor, not a ceiling — it fires multiple arrows per shot with a real
+        situational bonus, exact mechanic still unconfirmed (sources disagree on arrow count). Same
+        formula as the card above — Chemistry/Fletching/Bodkin
         Arrow/Padded+Leather Archer Armor universal, Bracer/Ring Archer Armor/Bloodlines/Husbandry/
         Parthian Tactics/Thumb Ring per-civ, Cranequins as Parthian Tactics' MCB-only substitute.
         DPS v. Infantry/v. Ranged also fold in real CIV bonuses, not just techs — checked every civ's
@@ -562,7 +564,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.42</div>
+    <div class="version">v0.43</div>
   </div>
 </div>
 
@@ -1514,11 +1516,26 @@ const EXTRA_UNIQUE_UNITS = [
     // Corrected 2026-09-16 (site owner: "war wagons get archer armor and
     // attack upgrades" / "all the UU's i gave you get the normal ca techs")
     // — gets the SAME full archer-tech formula as every other unique unit
-    // here, not the Siege-Engineers-only treatment this used before.
+    // here, not the Siege-Engineers-only treatment this used before. Cost
+    // corrected to 100w/60g (2026-09-17, site owner: "war wagon costs 100w
+    // for sure") — build-order.html's own data AND the earlier compact
+    // table both said 200w; site owner confirmed 100w is right, so
+    // build-order.html's own cost is a real, separate, still-open bug
+    // (out of scope here — this correction is only applied to this
+    // comparison table, not build-order.html's own data).
     // Koreans: bracer/ring/husbandry/thumbRing true, bloodlines/parthian false.
     const attack = 9 + 2 + 1 + 1, range = 4 + 2 + 1, meleeArmor = 0 + 2 + 1 + 0, pierceArmor = 2 + 2 + 2 + 0;
-    const speed = d2(1.2 * 1.15), reload = d2(2.5 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 260; // 200w/60g
+    const speed = d2(1.2 * 1.15), reload = d2(2.5 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 160; // 100w/60g
     return { line: 'WW', civ: 'Koreans', hp: 150, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
+  })(),
+  (() => {
+    // Elite War Wagon (2026-09-17, site owner's own AoE2 wiki page): hp200/
+    // atk9(unchanged — Elite doesn't add attack for this unit)/melee0
+    // (unchanged)/pierce4(up from 2)/range5(up from 4)/speed1.2(unchanged)/
+    // reload2.5(unchanged).
+    const attack = 9 + 2 + 1 + 1, range = 5 + 2 + 1, meleeArmor = 0 + 2 + 1 + 0, pierceArmor = 4 + 2 + 2 + 0;
+    const speed = d2(1.2 * 1.15), reload = d2(2.5 * THUMB_RING_RELOAD_MULT), dps = d2(attack / reload), cost = 160; // 100w/60g
+    return { line: 'EWW', civ: 'Koreans', hp: 200, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
 ];
 
