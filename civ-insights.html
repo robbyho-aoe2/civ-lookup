@@ -660,7 +660,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.34</div>
+    <div class="version">v0.35</div>
   </div>
 </div>
 
@@ -1467,7 +1467,12 @@ const EXTRA_UNIQUE_UNITS = [
     const chargeDamage = 9 + 5 * 5;
     const attacksPer30s = 30 / reload;
     const dps = d2(((attacksPer30s - 1) * attack + chargeDamage) / 30);
-    const cost = 90; // 65w/25g, current (non-Sept22) cost
+    // Sept 22 cost (this whole table already runs under PATCH_VERSION=
+    // 'sept22'): build-order.html's own SEPT22_UNIQUE_UNIT_OVERRIDES sets
+    // gold to 35 (a REPLACE, not additive — confirmed via its own merge
+    // logic, `{...u.cost, ...ov.cost}`), so 65w/25g -> 65w/35g = 100, not
+    // the 90 this used before.
+    const cost = 100; // 65w/35g, Sept 22 patch
     return { line: 'XR', civ: 'Wei', hp: 30 + 20, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, cost, dpsPer100: d2(dps / cost * 100) };
   })(),
   (() => {
