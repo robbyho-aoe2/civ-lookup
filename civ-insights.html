@@ -379,6 +379,57 @@ select:focus{outline:none;border-color:var(--amber);}
     </div>
   </details>
 
+  <details class="section">
+    <summary>All Maxed Infantry / Cavalry Civs, by DPS <span class="summary-hint">every civ's real Champion/Paladin-line, one sorted list</span></summary>
+    <div class="card">
+      <h2>All Maxed Infantry / Cavalry Civs, by DPS</h2>
+      <p class="desc">
+        Every civ's real Militia-line (Man-at-Arms/Long Swordsman/Two-Handed Swordsman/Champion) and
+        Knight-line (Knight/Cavalier/Paladin) access, each capped at its own real max tier — not every
+        civ reaches Champion or Paladin, some are capped lower (e.g. Incas/Mapuche/Muisca/Tupi never get
+        past Man-at-Arms; Persians/Romans/Varangians are capped at Two-Handed Swordsman; Jurchens at Long
+        Swordsman) — and 15 civs with zero Stable/Knight access at all (Aztecs, Bengalis, Dravidians,
+        Gurjaras, Hindustanis, Incas, Jurchens, Khitans, Mapuche, Maya, Muisca, Tupi, plus Wei/Shu/Wu who
+        train "Hei Guang Cavalry" instead of Cavalier/Paladin — not modeled here yet) are simply absent
+        from the Cavalry list. Base stats and reload times cross-checked against two independent
+        sources (this site's own build-order.html hover-stats data and the cached aoe2techtree data.json)
+        and tier availability pulled live from index.html's own civData, not typed from memory — the
+        same real-CB-bonus-sweep approach used for the CA/MCB table above, this time checked line by line
+        for every civ's actual "Infantry"/"Cavalry"/"Mounted Units"/"Barracks Units"/"Stable Units"
+        wording rather than assuming. Click any column header to sort.
+      </p>
+      <p class="desc" style="color:var(--text3)">
+        Real civ bonuses folded in — <b>Infantry:</b> Armenians (Fereters: +30 HP), Bulgarians (Bagains:
+        +5 melee armor), Burmese (+3 attack), Celts (+20% speed), Japanese (attacks +33% faster), Khitans
+        (melee-attack Blacksmith techs doubled), Malians (+3 pierce armor), Mapuche (+15 HP), Romans
+        (armor Blacksmith techs doubled), Teutons (+2 melee armor, shared with Cavalry below), Vikings
+        (+20% HP). <b>Cavalry:</b> Bulgarians (Stirrups: attacks +33% faster), Cumans (+15% speed),
+        Franks (+20% HP), Lithuanians (+1 attack per garrisoned Relic, max +4 — shown at that max, a
+        real conditional this table can't otherwise express), Malians (Farimba: +5 attack), Sicilians
+        (Hauberk: +1 melee/+2 pierce armor), Teutons (+2 melee armor). <b>Not modeled</b> (situational or
+        non-static, not a fixed stat this table's columns can represent): Bengalis'/Burmese's/Vikings'
+        vs.-specific-unit-class bonuses, Dravidians' Wootz Steel (Infantry/Cavalry ignore armor — depends
+        on the opponent, not a number of their own), Sicilians' -40% bonus damage taken, Khitans' Lamellar
+        Armor damage reflection, Romans' Comitatenses charge attack, Danes' Hamask (scales with missing
+        HP), Varangians' Vendel Legacy trample.
+      </p>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 0;font-size:0.9em;">
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="melee-type-toggle" data-type="infantry" checked>Infantry (Man-at-Arms → Champion)</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="melee-type-toggle" data-type="cavalry" checked>Cavalry (Knight → Paladin)</label>
+      </div>
+      <p class="desc" style="color:var(--text3)">
+        Cost is flat per unit TYPE, not per civ — every civ pays the same 50f/20g (Infantry) or
+        60f/75g (Cavalry) here. Real per-civ cost discounts (Goths' Infantry discount, Incas' food
+        discount, Szlachta Privileges' -60% gold Knight-line, etc.) aren't factored in — same
+        simplified resource-efficiency proxy as the table above. Sort by DPS/100 res for an
+        equal-resources comparison.
+      </p>
+      <div class="overflow-x">
+        <table id="all-maxed-melee-table"></table>
+      </div>
+    </div>
+  </details>
+
   <!-- Hidden for now (2026-09-16) — the underlying table computation is still
        disabled pending the iframe-eval freeze fix (see feedback_iframe_load_sync_eval_stall
        memory), so there's nothing useful to show here yet. Remove style="display:none"
@@ -564,7 +615,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.53</div>
+    <div class="version">v0.54</div>
   </div>
 </div>
 
@@ -1720,6 +1771,260 @@ function renderAllMaxedTable() {
 }
 document.querySelectorAll('.unit-type-toggle').forEach(cb => cb.addEventListener('change', renderAllMaxedTable));
 renderAllMaxedTable();
+
+// ── Infantry (Militia-line) / Cavalry (Knight-line) maxed table ───────────
+// Base stats pulled from build-order.html's own UNIT_STATS (its hand-written
+// hover-stats data), cross-checked against the cached aoe2techtree data.json
+// (which independently agrees on HP/Attack/Armor/Speed for these exact
+// units — Knight id38, Cavalier id283, Paladin id569 all matched exactly —
+// and additionally supplied the reload times, which UNIT_STATS doesn't
+// track: Militia-line 2.0s flat across all 5 tiers, Knight/Cavalier 1.8s,
+// Paladin 1.9s — real, not assumed uniform).
+const INFANTRY_BASE = {
+  manAtArms: { hp: 45, attack: 6, melee: 0, pierce: 1, speed: 0.96 },
+  longsword: { hp: 60, attack: 9, melee: 1, pierce: 1, speed: 0.96 },
+  thsw: { hp: 65, attack: 12, melee: 1, pierce: 1, speed: 0.96 },
+  champion: { hp: 70, attack: 14, melee: 1, pierce: 1, speed: 0.96 },
+};
+const INFANTRY_RELOAD = 2.0, INFANTRY_COST = 50 /* food */ + 20 /* gold, shown combined */, INFANTRY_TRAIN = 21;
+const CAVALRY_BASE = {
+  knight: { hp: 100, attack: 10, melee: 2, pierce: 2, speed: 1.35, reload: 1.8 },
+  cavalier: { hp: 120, attack: 12, melee: 2, pierce: 2, speed: 1.35, reload: 1.8 },
+  paladin: { hp: 160, attack: 14, melee: 2, pierce: 3, speed: 1.40, reload: 1.9 },
+};
+const CAVALRY_COST = 60 + 75, CAVALRY_TRAIN = 30;
+// Forging/Iron Casting/Blast Furnace — real per-tech deltas +1/+1/+2 (total
+// +4, NOT +3 — Blast Furnace alone is worth +2, a real detail confirmed via
+// index.html's own TECH_DESCRIPTIONS text, not assumed uniform +1 each).
+// Applies identically to Infantry AND Cavalry (one shared Blacksmith line).
+const MELEE_ATK_DELTAS = [1, 1, 2];
+// Scale/Chain/Plate Mail (Infantry) and Scale/Chain/Plate Barding (Cavalry)
+// Armor — same real per-tech deltas both lines: +1/+1, +1/+1, +1/+2 melee/
+// pierce (total +3/+4), confirmed via TECH_DESCRIPTIONS for both.
+const ARMOR_DELTAS = [[1, 1], [1, 1], [1, 2]];
+function meleeAtkTotal(meleeAtk, doubled) {
+  return meleeAtk.reduce((sum, has, i) => sum + (has ? MELEE_ATK_DELTAS[i] * (doubled ? 2 : 1) : 0), 0);
+}
+function armorTotal(armorArr, doubled) {
+  return armorArr.reduce((acc, has, i) => {
+    if (!has) return acc;
+    const mult = doubled ? 2 : 1;
+    return { melee: acc.melee + ARMOR_DELTAS[i][0] * mult, pierce: acc.pierce + ARMOR_DELTAS[i][1] * mult };
+  }, { melee: 0, pierce: 0 });
+}
+// All 53 civs' real Militia-line access, pulled live from index.html's own
+// civData (civData[civ].units.has(id)/.techs.has(id) under the Sept 22
+// toggle) — NOT hand-typed. `tier` is each civ's own real ceiling: most
+// reach 'champion', but Incas/Mapuche/Muisca/Tupi cap at 'manAtArms' (no
+// Long Swordsman at all — the real, well-known "no Barracks upgrades"
+// Meso/Andean civ design), Jurchens caps at 'longsword', and Persians/
+// Romans/Varangians cap at 'thsw' (real — Persians and Romans genuinely
+// lack Champion, checked directly, not assumed). `gambesons` (id 875,
+// "Infantry +1 pierce armor") is a REAL 4th armor tech separate from the
+// 3 Blacksmith Mail Armor techs — found via a second pass cross-checking
+// this site's own archetype-bonus-scoring categorization ("Arson, Gambesons
+// free": Infantry) against what was already modeled, which is exactly how
+// this whole table was double-checked end to end per the site owner's own
+// suggestion. Real civ-bonus overrides (small, hand-verified list, each
+// sourced directly from index.html's own CB/UNIQUE_TECH_DESCRIPTIONS text):
+// Armenians (Fereters +30 HP), Bulgarians (Bagains +5 melee armor), Burmese
+// (+3 attack), Celts (+20% speed), Japanese (attacks +33% faster), Khitans
+// (melee-attack techs doubled), Malians (+3 pierce armor), Mapuche (+15
+// HP), Romans (armor techs doubled), Teutons (+2 melee armor — shared with
+// Cavalry below), Vikings (+20% HP).
+const INFANTRY_CIVS = {
+  Armenians: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, uniqueTechHp: 30 },
+  Aztecs: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Bengalis: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: true, squires: true },
+  Berbers: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Bohemians: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Britons: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Bulgarians: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, uniqueTechMelee: 5 },
+  Burgundians: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Burmese: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, civAtk: 3 },
+  Byzantines: { tier: 'champion', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: true, squires: true },
+  Celts: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: false, speedMult: 1.20 },
+  Chinese: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Cumans: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Danes: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Dravidians: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Ethiopians: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Franks: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Georgians: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Goths: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true },
+  Gurjaras: { tier: 'champion', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: false },
+  Hindustanis: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true },
+  Huns: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true },
+  Incas: { tier: 'manAtArms', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Italians: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Japanese: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, atkSpeedMult: 0.75 },
+  Jurchens: { tier: 'longsword', meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: true, squires: true },
+  Khitans: { tier: 'champion', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: true, squires: true, meleeAtkDoubled: true },
+  Khmer: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: false },
+  Koreans: { tier: 'champion', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+  Lithuanians: { tier: 'champion', meleeAtk: [true,true,false], infArmor: [true,true,false], gambesons: false, squires: true },
+  Magyars: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: false },
+  Malay: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Malians: { tier: 'champion', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true, civPierce: 3 },
+  Mapuche: { tier: 'manAtArms', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: false, hpBonus: 15 },
+  Maya: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Mongols: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Muisca: { tier: 'manAtArms', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+  Persians: { tier: 'thsw', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Poles: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Portuguese: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: false },
+  Romans: { tier: 'thsw', meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true, armorDoubled: true },
+  Saracens: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Saxons: { tier: 'champion', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: true, squires: true },
+  Shu: { tier: 'champion', meleeAtk: [true,false,false], infArmor: [true,true,true], gambesons: true, squires: true },
+  Sicilians: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Slavs: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Spanish: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Tatars: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,false,false], gambesons: false, squires: true },
+  Teutons: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, civMelee: 2 },
+  Tupi: { tier: 'manAtArms', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+  Turks: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Varangians: { tier: 'thsw', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Vietnamese: { tier: 'champion', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+  Vikings: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true, hpMult: 1.20 },
+  Wei: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true },
+  Wu: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+};
+// All 38 civs with real Stable/Knight access (15 civs with none at all —
+// Aztecs, Bengalis, Dravidians, Gurjaras, Hindustanis, Incas, Jurchens,
+// Khitans, Mapuche, Maya, Muisca, Tupi, plus Wei/Shu/Wu who train "Hei
+// Guang Cavalry" instead of Cavalier/Paladin — are simply absent, same
+// convention as CA_CIVS excluding non-CA civs). `tier` is each civ's real
+// ceiling: most reach 'paladin', several cap at 'cavalier', Saracens caps
+// at plain 'knight' (real — checked directly, Savar is their own Paladin-
+// tier replacement per UNIT_IDS but civData shows they lack the standard
+// unlock — flagged here rather than silently assumed). Real civ-bonus
+// overrides: Bulgarians (Stirrups, attacks +33% faster), Cumans (+15%
+// speed), Franks (+20% HP), Lithuanians (+1 attack/garrisoned Relic, max
+// +4 — shown at that max), Malians (Farimba, +5 attack), Sicilians
+// (Hauberk, +1 melee/+2 pierce armor), Teutons (+2 melee armor).
+const CAVALRY_CIVS = {
+  Armenians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
+  Berbers: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Bohemians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
+  Britons: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: false, husbandry: true },
+  Bulgarians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true, atkSpeedMult: 0.75 },
+  Burgundians: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: false, husbandry: true },
+  Burmese: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Byzantines: { tier: 'paladin', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: false, husbandry: true },
+  Celts: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
+  Chinese: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Cumans: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false, speedMult: 1.15 },
+  Danes: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Ethiopians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
+  Franks: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: false, husbandry: true, hpMult: 1.20 },
+  Georgians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Goths: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
+  Huns: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Italians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Japanese: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
+  Khmer: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Koreans: { tier: 'cavalier', meleeAtk: [true,true,false], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
+  Lithuanians: { tier: 'paladin', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true, uniqueTechAtk: 4 },
+  Magyars: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Malay: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,false], bloodlines: false, husbandry: true },
+  Malians: { tier: 'cavalier', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true, uniqueTechAtk: 5 },
+  Mongols: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
+  Persians: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Poles: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
+  Portuguese: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Romans: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Saracens: { tier: 'knight', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Saxons: { tier: 'cavalier', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Sicilians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true, uniqueTechMelee: 1, uniqueTechPierce: 2 },
+  Slavs: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Spanish: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Tatars: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Teutons: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false, civMelee: 2 },
+  Turks: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Varangians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Vietnamese: { tier: 'cavalier', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Vikings: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: false },
+};
+function infantryMaxStats(cfg) {
+  const base = INFANTRY_BASE[cfg.tier];
+  const atkBonus = meleeAtkTotal(cfg.meleeAtk, cfg.meleeAtkDoubled);
+  const arm = armorTotal(cfg.infArmor, cfg.armorDoubled);
+  const attack = base.attack + atkBonus + (cfg.civAtk || 0);
+  const meleeArmor = base.melee + arm.melee + (cfg.civMelee || 0);
+  const pierceArmor = base.pierce + arm.pierce + (cfg.gambesons ? 1 : 0);
+  // HP stacking order matches the corrected CA/MCB formula above: a % civ
+  // multiplier applies to base HP only, flat bonuses (unique techs) are
+  // added AFTER — a real bug was found and fixed there (Xianbei Raider/
+  // Vietnamese), same order enforced here from the start.
+  let hp = base.hp;
+  if (cfg.hpMult) hp = Math.round(hp * cfg.hpMult);
+  hp += (cfg.uniqueTechHp || 0) + (cfg.hpBonus || 0);
+  const speed = d2(base.speed * (cfg.squires ? 1.10 : 1) * (cfg.speedMult || 1));
+  const reload = d2(INFANTRY_RELOAD * (cfg.atkSpeedMult || 1));
+  const dps = d2(attack / reload);
+  return { hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
+}
+function cavalryMaxStats(cfg) {
+  const base = CAVALRY_BASE[cfg.tier];
+  const atkBonus = meleeAtkTotal(cfg.meleeAtk, cfg.meleeAtkDoubled);
+  const arm = armorTotal(cfg.cavArmor, false);
+  const attack = base.attack + atkBonus + (cfg.uniqueTechAtk || 0);
+  const meleeArmor = base.melee + arm.melee + (cfg.civMelee || 0) + (cfg.uniqueTechMelee || 0);
+  const pierceArmor = base.pierce + arm.pierce + (cfg.uniqueTechPierce || 0);
+  let hp = base.hp;
+  if (cfg.hpMult) hp = Math.round(hp * cfg.hpMult);
+  hp += (cfg.bloodlines ? 20 : 0);
+  const speed = d2(base.speed * (cfg.husbandry ? 1.15 : 1) * (cfg.speedMult || 1));
+  const reload = d2(base.reload * (cfg.atkSpeedMult || 1));
+  const dps = d2(attack / reload);
+  return { hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
+}
+const MELEE_COLS = [
+  ['rank', '#', false], ['line', 'Line', false], ['civ', 'Civ', false],
+  ['hp', 'HP', true], ['attack', 'Attack', true], ['armorTotal', 'Armor', true],
+  ['speed', 'Speed', true], ['reload', 'Reload', true], ['dps', 'DPS', true],
+  ['cost', 'Cost', true], ['dpsPer100', 'DPS / 100 res', true],
+];
+let meleeSort = { key: 'dps', dir: -1 };
+function renderMeleeTable() {
+  const tableEl = document.getElementById('all-maxed-melee-table');
+  const enabledTypes = new Set([...document.querySelectorAll('.melee-type-toggle:checked')].map(cb => cb.dataset.type));
+  const tierLabel = { manAtArms: 'MaA', longsword: 'LS', thsw: 'THS', champion: 'CHMP', knight: 'KNGT', cavalier: 'CAVL', paladin: 'PLDN' };
+  const rows = [
+    ...Object.entries(INFANTRY_CIVS).map(([civ, cfg]) => ({ line: tierLabel[cfg.tier], civ, ...infantryMaxStats(cfg), cost: INFANTRY_COST, dpsPer100: 0, kind: 'infantry' })),
+    ...Object.entries(CAVALRY_CIVS).map(([civ, cfg]) => ({ line: tierLabel[cfg.tier], civ, ...cavalryMaxStats(cfg), cost: CAVALRY_COST, dpsPer100: 0, kind: 'cavalry' })),
+  ].map(r => ({ ...r, dpsPer100: d2(r.dps / r.cost * 100) }))
+   .filter(r => enabledTypes.has(r.kind));
+  const { key, dir } = meleeSort;
+  rows.sort((a, b) => {
+    if (key === 'civ' || key === 'line') return a[key].localeCompare(b[key]) * dir || a.civ.localeCompare(b.civ);
+    return (a[key] - b[key]) * dir || a.civ.localeCompare(b.civ);
+  });
+  const thead = `<thead><tr>${MELEE_COLS.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
+  const tbody = rows.map((r, i) => `<tr>
+    <td class="num">${i + 1}</td>
+    <td><span class="res-pill ${r.kind === 'infantry' ? 'wood' : 'gold'}">${r.line}</span></td>
+    <td>${r.civ}</td>
+    <td class="num">${r.hp}</td><td class="num">${r.attack}</td>
+    <td class="num">${r.meleeArmor}/${r.pierceArmor}</td>
+    <td class="num">${r.speed}</td>
+    <td class="num">${r.reload}s</td>
+    <td class="num" style="font-weight:${key === 'dps' ? 700 : 400};">${r.dps}</td>
+    <td class="num">${r.cost}</td>
+    <td class="num" style="font-weight:${key === 'dpsPer100' ? 700 : 400};">${r.dpsPer100}</td>
+  </tr>`).join('');
+  tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
+  tableEl.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const k = th.dataset.sortKey;
+      meleeSort = { key: k, dir: meleeSort.key === k ? -meleeSort.dir : (k === 'civ' || k === 'line' ? 1 : -1) };
+      renderMeleeTable();
+    });
+  });
+}
+document.querySelectorAll('.melee-type-toggle').forEach(cb => cb.addEventListener('change', renderMeleeTable));
+renderMeleeTable();
 
 // Unit Stats toggle (2026-09-17, site owner request) — Base/Castle techs/
 // Imperial techs, applying every tech available by that age to a generic
