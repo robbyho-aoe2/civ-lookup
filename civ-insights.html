@@ -413,6 +413,11 @@ select:focus{outline:none;border-color:var(--amber);}
         resource-efficiency proxy as the CA/MCB table above. Sort by DPS/100 res for an
         equal-resources comparison.
       </p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
+        <button class="infantry-age-toggle-btn unit-stats-toggle-btn" data-age="feudal">Feudal</button>
+        <button class="infantry-age-toggle-btn unit-stats-toggle-btn" data-age="castle">Castle</button>
+        <button class="infantry-age-toggle-btn unit-stats-toggle-btn on" data-age="imperial">Imperial</button>
+      </div>
       <div class="overflow-x">
         <table id="all-maxed-infantry-table"></table>
       </div>
@@ -449,6 +454,11 @@ select:focus{outline:none;border-color:var(--amber);}
         aren't factored in — same simplified resource-efficiency proxy as the CA/MCB table above.
         Sort by DPS/100 res for an equal-resources comparison.
       </p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
+        <button class="cavalry-age-toggle-btn unit-stats-toggle-btn" data-age="feudal">Feudal</button>
+        <button class="cavalry-age-toggle-btn unit-stats-toggle-btn" data-age="castle">Castle</button>
+        <button class="cavalry-age-toggle-btn unit-stats-toggle-btn on" data-age="imperial">Imperial</button>
+      </div>
       <div class="overflow-x">
         <table id="all-maxed-cavalry-table"></table>
       </div>
@@ -640,7 +650,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.55</div>
+    <div class="version">v0.56</div>
   </div>
 </div>
 
@@ -1839,24 +1849,24 @@ function armorTotal(armorArr, doubled) {
 }
 // All 53 civs' real Militia-line access, pulled live from index.html's own
 // civData (civData[civ].units.has(id)/.techs.has(id) under the Sept 22
-// toggle) — NOT hand-typed. `tier` is each civ's own real ceiling: most
-// reach 'champion', but Incas/Mapuche/Muisca/Tupi cap at 'manAtArms' (no
-// Long Swordsman at all — the real, well-known "no Barracks upgrades"
-// Meso/Andean civ design), Jurchens caps at 'longsword', and Persians/
-// Romans/Varangians cap at 'thsw' (real — Persians and Romans genuinely
-// lack Champion, checked directly, not assumed). `gambesons` (id 875,
-// "Infantry +1 pierce armor") is a REAL 4th armor tech separate from the
-// 3 Blacksmith Mail Armor techs — found via a second pass cross-checking
-// this site's own archetype-bonus-scoring categorization ("Arson, Gambesons
-// free": Infantry) against what was already modeled, which is exactly how
-// this whole table was double-checked end to end per the site owner's own
-// suggestion. Real civ-bonus overrides (small, hand-verified list, each
-// sourced directly from index.html's own CB/UNIQUE_TECH_DESCRIPTIONS text):
-// Armenians (Fereters +30 HP), Bulgarians (Bagains +5 melee armor), Burmese
-// (+3 attack), Celts (+20% speed), Japanese (attacks +33% faster), Khitans
-// (melee-attack techs doubled), Malians (+3 pierce armor), Mapuche (+15
-// HP), Romans (armor techs doubled), Teutons (+2 melee armor — shared with
-// Cavalry below), Vikings (+20% HP).
+// toggle) — NOT hand-typed. `tier` is each civ's own real CEILING (highest
+// tier ever reachable, at any age) — most reach 'champion', but Incas/
+// Mapuche/Muisca/Tupi cap at 'manAtArms' (no Long Swordsman at all — the
+// real, well-known "no Barracks upgrades" Meso/Andean civ design),
+// Jurchens caps at 'longsword', and Persians/Romans/Varangians cap at
+// 'thsw' (real — Persians and Romans genuinely lack Champion, checked
+// directly, not assumed). `gambesons` (id 875, "Infantry +1 pierce armor")
+// is a REAL 4th armor tech separate from the 3 Blacksmith Mail Armor techs
+// — found via a second pass cross-checking this site's own archetype-
+// bonus-scoring categorization ("Arson, Gambesons free": Infantry) against
+// what was already modeled. Per-age-progressive civ bonuses (Burmese,
+// Celts, Malians, Mapuche, Teutons) live in INFANTRY_AGE_BONUS below, NOT
+// here — flat, non-progressive real civ-bonus overrides that stay in this
+// object: Armenians (Fereters unique tech, +30 HP, Imperial-gated),
+// Bulgarians (Bagains unique tech, +5 melee armor, Imperial-gated),
+// Japanese (attacks +33% faster, real from Feudal Age onward), Khitans
+// (melee-attack Blacksmith techs doubled), Romans (armor Blacksmith techs
+// doubled), Vikings (+20% HP, real from Feudal Age onward).
 const INFANTRY_CIVS = {
   Armenians: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, uniqueTechHp: 30 },
   Aztecs: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
@@ -1866,9 +1876,9 @@ const INFANTRY_CIVS = {
   Britons: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
   Bulgarians: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, uniqueTechMelee: 5 },
   Burgundians: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
-  Burmese: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, civAtk: 3 },
+  Burmese: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
   Byzantines: { tier: 'champion', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: true, squires: true },
-  Celts: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: false, speedMult: 1.20 },
+  Celts: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: false },
   Chinese: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
   Cumans: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
   Danes: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
@@ -1890,8 +1900,8 @@ const INFANTRY_CIVS = {
   Lithuanians: { tier: 'champion', meleeAtk: [true,true,false], infArmor: [true,true,false], gambesons: false, squires: true },
   Magyars: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: false },
   Malay: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
-  Malians: { tier: 'champion', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true, civPierce: 3 },
-  Mapuche: { tier: 'manAtArms', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: false, hpBonus: 15 },
+  Malians: { tier: 'champion', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+  Mapuche: { tier: 'manAtArms', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: false },
   Maya: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
   Mongols: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
   Muisca: { tier: 'manAtArms', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
@@ -1906,7 +1916,7 @@ const INFANTRY_CIVS = {
   Slavs: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
   Spanish: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
   Tatars: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,false,false], gambesons: false, squires: true },
-  Teutons: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, civMelee: 2 },
+  Teutons: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
   Tupi: { tier: 'manAtArms', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
   Turks: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
   Varangians: { tier: 'thsw', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
@@ -1920,14 +1930,17 @@ const INFANTRY_CIVS = {
 // Khitans, Mapuche, Maya, Muisca, Tupi, plus Wei/Shu/Wu who train "Hei
 // Guang Cavalry" instead of Cavalier/Paladin — are simply absent, same
 // convention as CA_CIVS excluding non-CA civs). `tier` is each civ's real
-// ceiling: most reach 'paladin', several cap at 'cavalier', Saracens caps
+// CEILING: most reach 'paladin', several cap at 'cavalier', Saracens caps
 // at plain 'knight' (real — checked directly, Savar is their own Paladin-
 // tier replacement per UNIT_IDS but civData shows they lack the standard
-// unlock — flagged here rather than silently assumed). Real civ-bonus
-// overrides: Bulgarians (Stirrups, attacks +33% faster), Cumans (+15%
-// speed), Franks (+20% HP), Lithuanians (+1 attack/garrisoned Relic, max
-// +4 — shown at that max), Malians (Farimba, +5 attack), Sicilians
-// (Hauberk, +1 melee/+2 pierce armor), Teutons (+2 melee armor).
+// unlock). Per-age-progressive bonuses (Cumans, Teutons) live in
+// CAVALRY_AGE_BONUS below. Flat, non-progressive overrides staying here:
+// Bulgarians (Stirrups unique tech, attacks +33% faster, Castle-gated),
+// Franks (+20% HP, real from Feudal Age onward), Lithuanians (+1 attack
+// per garrisoned Relic, max +4 — shown at that max, a real conditional
+// this table can't otherwise express), Malians (Farimba unique tech, +5
+// attack, Imperial-gated), Sicilians (Hauberk unique tech, +1 melee/+2
+// pierce armor, Imperial-gated).
 const CAVALRY_CIVS = {
   Armenians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
   Berbers: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
@@ -1939,7 +1952,7 @@ const CAVALRY_CIVS = {
   Byzantines: { tier: 'paladin', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: false, husbandry: true },
   Celts: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
   Chinese: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
-  Cumans: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false, speedMult: 1.15 },
+  Cumans: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false },
   Danes: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Ethiopians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
   Franks: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: false, husbandry: true, hpMult: 1.20 },
@@ -1965,65 +1978,164 @@ const CAVALRY_CIVS = {
   Slavs: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Spanish: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Tatars: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
-  Teutons: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false, civMelee: 2 },
+  Teutons: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false },
   Turks: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Varangians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Vietnamese: { tier: 'cavalier', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Vikings: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: false },
 };
-function infantryMaxStats(cfg) {
-  const base = INFANTRY_BASE[cfg.tier];
-  const atkBonus = meleeAtkTotal(cfg.meleeAtk, cfg.meleeAtkDoubled);
-  const arm = armorTotal(cfg.infArmor, cfg.armorDoubled);
-  const attack = base.attack + atkBonus + (cfg.civAtk || 0);
-  const meleeArmor = base.melee + arm.melee + (cfg.civMelee || 0);
-  const pierceArmor = base.pierce + arm.pierce + (cfg.gambesons ? 1 : 0);
+// ── Age gating (Feudal/Castle/Imperial toggle, 2026-09-18 site owner
+// request) — real tech/unit-tier ages pulled live from index.html's own
+// TECH_TREE_CATEGORIES flowchart data (its Infantry/Cavalry category
+// chains), not assumed: Forging/Scale Mail Armor/Bloodlines/Scale Barding
+// Armor = Feudal; Iron Casting/Chain Mail Armor/Squires/Gambesons/
+// Husbandry/Chain Barding Armor = Castle; Blast Furnace/Plate Mail Armor/
+// Plate Barding Armor = Imperial. Array-index age order matches each civ
+// object's own meleeAtk/infArmor arrays exactly (Feudal,Castle,Imperial)
+// — but `cavArmor`'s real index order is [Plate(Imperial), Scale(Feudal),
+// Chain(Castle)], NOT chronological (confirmed via the same source: Scale
+// Barding Armor id=81, Chain Barding Armor id=82, Plate Barding Armor
+// id=80 — the cavArmor arrays above were built checking ids [80,81,82] in
+// that exact order), so CAV_ARMOR_TECH_AGES is deliberately out of order
+// to match.
+const AGE_RANK = { Feudal: 1, Castle: 2, Imperial: 3 };
+const MELEE_ATK_TECH_AGES = ['Feudal', 'Castle', 'Imperial'];
+const INF_ARMOR_TECH_AGES = ['Feudal', 'Castle', 'Imperial'];
+const CAV_ARMOR_TECH_AGES = ['Imperial', 'Feudal', 'Castle'];
+const INFANTRY_TIER_ORDER = ['manAtArms', 'longsword', 'thsw', 'champion'];
+const INFANTRY_TIER_AGE = { manAtArms: 'Feudal', longsword: 'Castle', thsw: 'Imperial', champion: 'Imperial' };
+// Armenians is a REAL, confirmed per-civ exception (site owner correction,
+// 2026-09-18): "Spearman- and Militia-line upgrades (except Man-at-Arms)
+// available one age earlier" shifts their whole Militia-line one age
+// earlier past Man-at-Arms — Long Swordsman in Feudal (their own real
+// example), Two-Handed Swordsman in Castle, and Champion in Castle too
+// (both normally-Imperial upgrades land in the same shifted age, since
+// Champion requires Two-Handed Swordsman as a prerequisite either way).
+const INFANTRY_TIER_AGE_OVERRIDE = { Armenians: { longsword: 'Feudal', thsw: 'Castle', champion: 'Castle' } };
+const INFANTRY_TIER_NAME = { manAtArms: 'Man-at-Arms', longsword: 'Long Swordsman', thsw: 'Two-Handed Swordsman', champion: 'Champion' };
+const CAVALRY_TIER_ORDER = ['knight', 'cavalier', 'paladin'];
+const CAVALRY_TIER_AGE = { knight: 'Castle', cavalier: 'Castle', paladin: 'Imperial' };
+const CAVALRY_TIER_NAME = { knight: 'Knight', cavalier: 'Cavalier', paladin: 'Paladin' };
+function effectiveTier(realTier, order, tierAgeMap, toggleAge) {
+  const maxIdx = order.indexOf(realTier);
+  let best = -1;
+  for (let i = 0; i <= maxIdx; i++) {
+    if (AGE_RANK[tierAgeMap[order[i]]] <= AGE_RANK[toggleAge]) best = i;
+  }
+  return best === -1 ? null : order[best];
+}
+// Real per-age-progressive civ bonuses — the exact CB wording's own
+// Feudal/Castle/Imperial numbers (not just the Imperial max this table
+// used before the age toggle existed).
+const INFANTRY_AGE_BONUS = {
+  Burmese: { civAtk: [1, 2, 3] }, // "Infantry +1/+2/+3 attack in Feudal/Castle/Imperial Age"
+  Celts: { speedMult: [1.10, 1.15, 1.20] }, // "...+5/10/15/20% faster in Dark/Feudal/Castle/Imperial" (toggle floor is Feudal=10%)
+  Malians: { civPierce: [1, 2, 3] }, // "Barracks Units +1/+2/+3 pierce armor in Feudal/Castle/Imperial Age"
+  Mapuche: { hpBonus: [5, 10, 15] }, // "Infantry...+5/10/15 HP in Feudal/Castle/Imperial Age"
+  Teutons: { civMelee: [0, 1, 2] }, // "Barracks and Stable Units +1/+2 melee armor in Castle/Imperial Age" (0 in Feudal)
+};
+const CAVALRY_AGE_BONUS = {
+  Cumans: { speedMult: [1.05, 1.10, 1.15] }, // "Mounted Units move +5/10/15% faster in Feudal/Castle/Imperial Age"
+  Teutons: { civMelee: [0, 1, 2] },
+};
+// Unique techs are Castle- or Imperial-tier by AoE2's own design (every
+// civ gets exactly one of each) — index.html's own UNIQUE_TECHS array is
+// always ordered [Castle-tier, Imperial-tier], confirmed against 4 known
+// examples (Franks' Bearded Axe/Chivalry, Armenians' Cilician Fleet/
+// Fereters, Bulgarians' Stirrups/Bagains, Malians' Tigui/Farimba).
+const INFANTRY_UNIQUE_TECH_AGE = { Armenians: 'Imperial', Bulgarians: 'Imperial' }; // Fereters, Bagains
+const CAVALRY_UNIQUE_TECH_AGE = { Bulgarians: 'Castle', Malians: 'Imperial', Sicilians: 'Imperial' }; // Stirrups, Farimba, Hauberk
+function infantryMaxStats(civ, cfg, age) {
+  const tierAgeMap = INFANTRY_TIER_AGE_OVERRIDE[civ] ? { ...INFANTRY_TIER_AGE, ...INFANTRY_TIER_AGE_OVERRIDE[civ] } : INFANTRY_TIER_AGE;
+  const tier = effectiveTier(cfg.tier, INFANTRY_TIER_ORDER, tierAgeMap, age);
+  if (!tier) return null;
+  const rank = AGE_RANK[age];
+  const base = INFANTRY_BASE[tier];
+  const meleeAtkAtAge = cfg.meleeAtk.map((has, i) => has && AGE_RANK[MELEE_ATK_TECH_AGES[i]] <= rank);
+  const infArmorAtAge = cfg.infArmor.map((has, i) => has && AGE_RANK[INF_ARMOR_TECH_AGES[i]] <= rank);
+  const gambesonsAtAge = cfg.gambesons && AGE_RANK.Castle <= rank;
+  const squiresAtAge = cfg.squires && AGE_RANK.Castle <= rank;
+  const atkBonus = meleeAtkTotal(meleeAtkAtAge, cfg.meleeAtkDoubled);
+  const arm = armorTotal(infArmorAtAge, cfg.armorDoubled);
+  const ageBonus = INFANTRY_AGE_BONUS[civ];
+  const civAtk = ageBonus?.civAtk ? ageBonus.civAtk[rank - 1] : 0;
+  const civMelee = ageBonus?.civMelee ? ageBonus.civMelee[rank - 1] : 0;
+  const hpBonusAge = ageBonus?.hpBonus ? ageBonus.hpBonus[rank - 1] : 0;
+  const speedMultAge = ageBonus?.speedMult ? ageBonus.speedMult[rank - 1] : 1;
+  // civPierce (Malians) folds into pierceArmor below alongside Gambesons.
+  const civPierce = ageBonus?.civPierce ? ageBonus.civPierce[rank - 1] : 0;
+  const uniqueGateOk = !INFANTRY_UNIQUE_TECH_AGE[civ] || AGE_RANK[INFANTRY_UNIQUE_TECH_AGE[civ]] <= rank;
+  const attack = base.attack + atkBonus + civAtk;
+  const meleeArmor = base.melee + arm.melee + civMelee + (uniqueGateOk ? (cfg.uniqueTechMelee || 0) : 0);
+  const pierceArmor = base.pierce + arm.pierce + (gambesonsAtAge ? 1 : 0) + civPierce;
   // HP stacking order matches the corrected CA/MCB formula above: a % civ
   // multiplier applies to base HP only, flat bonuses (unique techs) are
   // added AFTER — a real bug was found and fixed there (Xianbei Raider/
   // Vietnamese), same order enforced here from the start.
   let hp = base.hp;
   if (cfg.hpMult) hp = Math.round(hp * cfg.hpMult);
-  hp += (cfg.uniqueTechHp || 0) + (cfg.hpBonus || 0);
-  const speed = d2(base.speed * (cfg.squires ? 1.10 : 1) * (cfg.speedMult || 1));
+  hp += (uniqueGateOk ? (cfg.uniqueTechHp || 0) : 0) + hpBonusAge;
+  const speed = d2(base.speed * (squiresAtAge ? 1.10 : 1) * speedMultAge);
   const reload = d2(INFANTRY_RELOAD * (cfg.atkSpeedMult || 1));
   const dps = d2(attack / reload);
-  return { hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
+  return { tierName: INFANTRY_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
 }
-function cavalryMaxStats(cfg) {
-  const base = CAVALRY_BASE[cfg.tier];
-  const atkBonus = meleeAtkTotal(cfg.meleeAtk, cfg.meleeAtkDoubled);
-  const arm = armorTotal(cfg.cavArmor, false);
-  const attack = base.attack + atkBonus + (cfg.uniqueTechAtk || 0);
-  const meleeArmor = base.melee + arm.melee + (cfg.civMelee || 0) + (cfg.uniqueTechMelee || 0);
-  const pierceArmor = base.pierce + arm.pierce + (cfg.uniqueTechPierce || 0);
+function cavalryMaxStats(civ, cfg, age) {
+  const tier = effectiveTier(cfg.tier, CAVALRY_TIER_ORDER, CAVALRY_TIER_AGE, age);
+  if (!tier) return null;
+  const rank = AGE_RANK[age];
+  const base = CAVALRY_BASE[tier];
+  const meleeAtkAtAge = cfg.meleeAtk.map((has, i) => has && AGE_RANK[MELEE_ATK_TECH_AGES[i]] <= rank);
+  const cavArmorAtAge = cfg.cavArmor.map((has, i) => has && AGE_RANK[CAV_ARMOR_TECH_AGES[i]] <= rank);
+  const atkBonus = meleeAtkTotal(meleeAtkAtAge, cfg.meleeAtkDoubled);
+  const arm = armorTotal(cavArmorAtAge, false);
+  const ageBonus = CAVALRY_AGE_BONUS[civ];
+  const civMelee = ageBonus?.civMelee ? ageBonus.civMelee[rank - 1] : 0;
+  const speedMultAge = ageBonus?.speedMult ? ageBonus.speedMult[rank - 1] : 1;
+  const uniqueGateOk = !CAVALRY_UNIQUE_TECH_AGE[civ] || AGE_RANK[CAVALRY_UNIQUE_TECH_AGE[civ]] <= rank;
+  const attack = base.attack + atkBonus + (uniqueGateOk ? (cfg.uniqueTechAtk || 0) : 0);
+  const meleeArmor = base.melee + arm.melee + civMelee + (uniqueGateOk ? (cfg.uniqueTechMelee || 0) : 0);
+  const pierceArmor = base.pierce + arm.pierce + (uniqueGateOk ? (cfg.uniqueTechPierce || 0) : 0);
   let hp = base.hp;
   if (cfg.hpMult) hp = Math.round(hp * cfg.hpMult);
   hp += (cfg.bloodlines ? 20 : 0);
-  const speed = d2(base.speed * (cfg.husbandry ? 1.15 : 1) * (cfg.speedMult || 1));
-  const reload = d2(base.reload * (cfg.atkSpeedMult || 1));
+  const husbandryAtAge = cfg.husbandry && AGE_RANK.Castle <= rank;
+  const speed = d2(base.speed * (husbandryAtAge ? 1.15 : 1) * speedMultAge);
+  const reload = d2(base.reload * (uniqueGateOk ? (cfg.atkSpeedMult || 1) : 1));
   const dps = d2(attack / reload);
-  return { hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
+  return { tierName: CAVALRY_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
 }
 const MELEE_COLS = [
-  ['rank', '#', false], ['line', 'Line', false], ['civ', 'Civ', false],
+  ['rank', '#', false], ['line', 'Unit', false], ['civ', 'Civ', false],
   ['hp', 'HP', true], ['attack', 'Attack', true], ['armorTotal', 'Armor', true],
   ['speed', 'Speed', true], ['reload', 'Reload', true], ['dps', 'DPS', true],
   ['cost', 'Cost', true], ['dpsPer100', 'DPS / 100 res', true],
 ];
-const MELEE_TIER_LABEL = { manAtArms: 'MaA', longsword: 'LS', thsw: 'THS', champion: 'CHMP', knight: 'KNGT', cavalier: 'CAVL', paladin: 'PLDN' };
+const MELEE_AGE_LABEL = { feudal: 'Feudal', castle: 'Castle', imperial: 'Imperial' };
 // Shared table factory for the Infantry and Cavalry sections — separate
 // tables/sections now (split apart per site owner request, 2026-09-18; used
 // to be one combined table with a type-filter toggle), but the render/sort
-// logic itself is identical, so it's still one implementation.
-function makeMeleeTableRenderer(tableId, civsObj, statsFn, cost, pillClass) {
+// logic itself is identical, so it's still one implementation. `statsFn`
+// now takes (civ, cfg, ageLabel) and can return null (no real unit yet at
+// that age — e.g. every Cavalry civ at Feudal, since Knight itself is
+// Castle-gated) — those civs are simply omitted from that age's table
+// rather than shown with fabricated stats.
+function makeMeleeTableRenderer(tableId, toggleBtnSelector, civsObj, statsFn, cost, pillClass, emptyMsg) {
   let sort = { key: 'dps', dir: -1 };
+  let ageKey = 'imperial';
   function render() {
     const tableEl = document.getElementById(tableId);
-    const rows = Object.entries(civsObj).map(([civ, cfg]) => {
-      const s = statsFn(cfg);
-      return { line: MELEE_TIER_LABEL[cfg.tier], civ, ...s, cost, dpsPer100: d2(s.dps / cost * 100) };
-    });
+    const ageLabel = MELEE_AGE_LABEL[ageKey];
+    const rows = Object.entries(civsObj)
+      .map(([civ, cfg]) => {
+        const s = statsFn(civ, cfg, ageLabel);
+        return s && { line: s.tierName, civ, ...s, cost, dpsPer100: d2(s.dps / cost * 100) };
+      })
+      .filter(Boolean);
+    if (!rows.length) {
+      tableEl.innerHTML = `<tbody><tr><td style="padding:14px;color:var(--text3);">${emptyMsg}</td></tr></tbody>`;
+      return;
+    }
     const { key, dir } = sort;
     rows.sort((a, b) => {
       if (key === 'civ' || key === 'line') return a[key].localeCompare(b[key]) * dir || a.civ.localeCompare(b.civ);
@@ -2051,10 +2163,17 @@ function makeMeleeTableRenderer(tableId, civsObj, statsFn, cost, pillClass) {
       });
     });
   }
+  document.querySelectorAll(toggleBtnSelector).forEach(btn => {
+    btn.addEventListener('click', () => {
+      ageKey = btn.dataset.age;
+      document.querySelectorAll(toggleBtnSelector).forEach(b => b.classList.toggle('on', b === btn));
+      render();
+    });
+  });
   return render;
 }
-makeMeleeTableRenderer('all-maxed-infantry-table', INFANTRY_CIVS, infantryMaxStats, INFANTRY_COST, 'wood')();
-makeMeleeTableRenderer('all-maxed-cavalry-table', CAVALRY_CIVS, cavalryMaxStats, CAVALRY_COST, 'gold')();
+makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', INFANTRY_CIVS, infantryMaxStats, INFANTRY_COST, 'wood', '—')();
+makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', CAVALRY_CIVS, cavalryMaxStats, CAVALRY_COST, 'gold', 'No civ trains a Knight-line unit before Castle Age.')();
 
 // Unit Stats toggle (2026-09-17, site owner request) — Base/Castle techs/
 // Imperial techs, applying every tech available by that age to a generic
