@@ -380,52 +380,77 @@ select:focus{outline:none;border-color:var(--amber);}
   </details>
 
   <details class="section">
-    <summary>All Maxed Infantry / Cavalry Civs, by DPS <span class="summary-hint">every civ's real Champion/Paladin-line, one sorted list</span></summary>
+    <summary>All Maxed Infantry Civs, by DPS <span class="summary-hint">every civ's real Champion-line, one sorted list</span></summary>
     <div class="card">
-      <h2>All Maxed Infantry / Cavalry Civs, by DPS</h2>
+      <h2>All Maxed Infantry Civs, by DPS</h2>
       <p class="desc">
-        Every civ's real Militia-line (Man-at-Arms/Long Swordsman/Two-Handed Swordsman/Champion) and
-        Knight-line (Knight/Cavalier/Paladin) access, each capped at its own real max tier — not every
-        civ reaches Champion or Paladin, some are capped lower (e.g. Incas/Mapuche/Muisca/Tupi never get
-        past Man-at-Arms; Persians/Romans/Varangians are capped at Two-Handed Swordsman; Jurchens at Long
-        Swordsman) — and 15 civs with zero Stable/Knight access at all (Aztecs, Bengalis, Dravidians,
-        Gurjaras, Hindustanis, Incas, Jurchens, Khitans, Mapuche, Maya, Muisca, Tupi, plus Wei/Shu/Wu who
-        train "Hei Guang Cavalry" instead of Cavalier/Paladin — not modeled here yet) are simply absent
-        from the Cavalry list. Base stats and reload times cross-checked against two independent
-        sources (this site's own build-order.html hover-stats data and the cached aoe2techtree data.json)
-        and tier availability pulled live from index.html's own civData, not typed from memory — the
-        same real-CB-bonus-sweep approach used for the CA/MCB table above, this time checked line by line
-        for every civ's actual "Infantry"/"Cavalry"/"Mounted Units"/"Barracks Units"/"Stable Units"
-        wording rather than assuming. Click any column header to sort.
+        Every civ's real Militia-line (Man-at-Arms/Long Swordsman/Two-Handed Swordsman/Champion)
+        access, each capped at its own real max tier — not every civ reaches Champion, some are
+        capped lower (Incas/Mapuche/Muisca/Tupi never get past Man-at-Arms; Persians/Romans/
+        Varangians are capped at Two-Handed Swordsman; Jurchens at Long Swordsman). Base stats and
+        reload times cross-checked against two independent sources (this site's own build-order.html
+        hover-stats data and the cached aoe2techtree data.json) and tier availability pulled live
+        from index.html's own civData, not typed from memory — the same real-CB-bonus-sweep
+        approach used for the CA/MCB table above, cross-checked a second time against this site's
+        own archetype-bonus-scoring categorization (every `include:['Infantry']`-tagged bonus line)
+        to catch anything a plain text read might miss. Click any column header to sort.
       </p>
       <p class="desc" style="color:var(--text3)">
-        Real civ bonuses folded in — <b>Infantry:</b> Armenians (Fereters: +30 HP), Bulgarians (Bagains:
-        +5 melee armor), Burmese (+3 attack), Celts (+20% speed), Japanese (attacks +33% faster), Khitans
+        Real civ bonuses folded in: Armenians (Fereters: +30 HP), Bulgarians (Bagains: +5 melee
+        armor), Burmese (+3 attack), Celts (+20% speed), Japanese (attacks +33% faster), Khitans
         (melee-attack Blacksmith techs doubled), Malians (+3 pierce armor), Mapuche (+15 HP), Romans
-        (armor Blacksmith techs doubled), Teutons (+2 melee armor, shared with Cavalry below), Vikings
-        (+20% HP). <b>Cavalry:</b> Bulgarians (Stirrups: attacks +33% faster), Cumans (+15% speed),
-        Franks (+20% HP), Lithuanians (+1 attack per garrisoned Relic, max +4 — shown at that max, a
-        real conditional this table can't otherwise express), Malians (Farimba: +5 attack), Sicilians
-        (Hauberk: +1 melee/+2 pierce armor), Teutons (+2 melee armor). <b>Not modeled</b> (situational or
-        non-static, not a fixed stat this table's columns can represent): Bengalis'/Burmese's/Vikings'
-        vs.-specific-unit-class bonuses, Dravidians' Wootz Steel (Infantry/Cavalry ignore armor — depends
-        on the opponent, not a number of their own), Sicilians' -40% bonus damage taken, Khitans' Lamellar
-        Armor damage reflection, Romans' Comitatenses charge attack, Danes' Hamask (scales with missing
-        HP), Varangians' Vendel Legacy trample.
+        (armor Blacksmith techs doubled), Teutons (+2 melee armor), Vikings (+20% HP). Also folds in
+        Gambesons — a real 4th Infantry armor tech (+1 pierce armor) separate from the 3 Blacksmith
+        Mail Armor techs, gated per-civ (roughly half the roster has it). <b>Not modeled</b>
+        (situational or non-static, not a fixed stat this table's columns can represent): Bengalis'/
+        Burmese's/Vikings' vs.-specific-unit-class bonuses, Dravidians' Wootz Steel (Infantry attacks
+        ignore armor — depends on the opponent, not a number of their own), Khitans' Lamellar Armor
+        damage reflection, Romans' Comitatenses charge attack, Danes' Hamask (scales with missing HP).
       </p>
-      <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 0;font-size:0.9em;">
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="melee-type-toggle" data-type="infantry" checked>Infantry (Man-at-Arms → Champion)</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="melee-type-toggle" data-type="cavalry" checked>Cavalry (Knight → Paladin)</label>
-      </div>
       <p class="desc" style="color:var(--text3)">
-        Cost is flat per unit TYPE, not per civ — every civ pays the same 50f/20g (Infantry) or
-        60f/75g (Cavalry) here. Real per-civ cost discounts (Goths' Infantry discount, Incas' food
-        discount, Szlachta Privileges' -60% gold Knight-line, etc.) aren't factored in — same
-        simplified resource-efficiency proxy as the table above. Sort by DPS/100 res for an
+        Cost is flat per civ — every civ pays the same 50f/20g here. Real per-civ cost discounts
+        (Goths, Incas, Forced Levy's gold→food conversion, etc.) aren't factored in — same simplified
+        resource-efficiency proxy as the CA/MCB table above. Sort by DPS/100 res for an
         equal-resources comparison.
       </p>
       <div class="overflow-x">
-        <table id="all-maxed-melee-table"></table>
+        <table id="all-maxed-infantry-table"></table>
+      </div>
+    </div>
+  </details>
+
+  <details class="section">
+    <summary>All Maxed Cavalry Civs, by DPS <span class="summary-hint">every civ's real Paladin-line, one sorted list</span></summary>
+    <div class="card">
+      <h2>All Maxed Cavalry Civs, by DPS</h2>
+      <p class="desc">
+        Every civ's real Knight-line (Knight/Cavalier/Paladin) access, each capped at its own real
+        max tier — most reach Paladin, several cap at Cavalier, Saracens caps at plain Knight. 15
+        civs with zero Stable/Knight access at all (Aztecs, Bengalis, Dravidians, Gurjaras,
+        Hindustanis, Incas, Jurchens, Khitans, Mapuche, Maya, Muisca, Tupi, plus Wei/Shu/Wu who train
+        "Hei Guang Cavalry" instead of Cavalier/Paladin — not modeled here yet) are simply absent
+        from this list. Same sourcing as the Infantry table above — live civData, not memory, cross-
+        checked a second time against this site's own archetype-bonus-scoring categorization (every
+        `include:['Cavalry']`-tagged bonus line). Click any column header to sort.
+      </p>
+      <p class="desc" style="color:var(--text3)">
+        Real civ bonuses folded in: Bulgarians (Stirrups: attacks +33% faster), Cumans (+15% speed),
+        Franks (+20% HP), Lithuanians (+1 attack per garrisoned Relic, max +4 — shown at that max, a
+        real conditional this table can't otherwise express), Malians (Farimba: +5 attack), Sicilians
+        (Hauberk: +1 melee/+2 pierce armor), Teutons (+2 melee armor). <b>Not modeled</b> (situational
+        or non-static, not a fixed stat this table's columns can represent): Bengalis'/Burmese's
+        vs.-specific-unit-class bonuses, Dravidians' Wootz Steel (Cavalry attacks ignore armor —
+        Dravidians has no real Knight-line access anyway, so this is moot here), Sicilians' -40%
+        bonus damage taken, Varangians' Vendel Legacy trample.
+      </p>
+      <p class="desc" style="color:var(--text3)">
+        Cost is flat per civ — every civ pays the same 60f/75g here. Real per-civ cost discounts
+        (Szlachta Privileges' -60% gold Knight-line, Corvinian Army's gold→food conversion, etc.)
+        aren't factored in — same simplified resource-efficiency proxy as the CA/MCB table above.
+        Sort by DPS/100 res for an equal-resources comparison.
+      </p>
+      <div class="overflow-x">
+        <table id="all-maxed-cavalry-table"></table>
       </div>
     </div>
   </details>
@@ -615,7 +640,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.54</div>
+    <div class="version">v0.55</div>
   </div>
 </div>
 
@@ -1986,45 +2011,50 @@ const MELEE_COLS = [
   ['speed', 'Speed', true], ['reload', 'Reload', true], ['dps', 'DPS', true],
   ['cost', 'Cost', true], ['dpsPer100', 'DPS / 100 res', true],
 ];
-let meleeSort = { key: 'dps', dir: -1 };
-function renderMeleeTable() {
-  const tableEl = document.getElementById('all-maxed-melee-table');
-  const enabledTypes = new Set([...document.querySelectorAll('.melee-type-toggle:checked')].map(cb => cb.dataset.type));
-  const tierLabel = { manAtArms: 'MaA', longsword: 'LS', thsw: 'THS', champion: 'CHMP', knight: 'KNGT', cavalier: 'CAVL', paladin: 'PLDN' };
-  const rows = [
-    ...Object.entries(INFANTRY_CIVS).map(([civ, cfg]) => ({ line: tierLabel[cfg.tier], civ, ...infantryMaxStats(cfg), cost: INFANTRY_COST, dpsPer100: 0, kind: 'infantry' })),
-    ...Object.entries(CAVALRY_CIVS).map(([civ, cfg]) => ({ line: tierLabel[cfg.tier], civ, ...cavalryMaxStats(cfg), cost: CAVALRY_COST, dpsPer100: 0, kind: 'cavalry' })),
-  ].map(r => ({ ...r, dpsPer100: d2(r.dps / r.cost * 100) }))
-   .filter(r => enabledTypes.has(r.kind));
-  const { key, dir } = meleeSort;
-  rows.sort((a, b) => {
-    if (key === 'civ' || key === 'line') return a[key].localeCompare(b[key]) * dir || a.civ.localeCompare(b.civ);
-    return (a[key] - b[key]) * dir || a.civ.localeCompare(b.civ);
-  });
-  const thead = `<thead><tr>${MELEE_COLS.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
-  const tbody = rows.map((r, i) => `<tr>
-    <td class="num">${i + 1}</td>
-    <td><span class="res-pill ${r.kind === 'infantry' ? 'wood' : 'gold'}">${r.line}</span></td>
-    <td>${r.civ}</td>
-    <td class="num">${r.hp}</td><td class="num">${r.attack}</td>
-    <td class="num">${r.meleeArmor}/${r.pierceArmor}</td>
-    <td class="num">${r.speed}</td>
-    <td class="num">${r.reload}s</td>
-    <td class="num" style="font-weight:${key === 'dps' ? 700 : 400};">${r.dps}</td>
-    <td class="num">${r.cost}</td>
-    <td class="num" style="font-weight:${key === 'dpsPer100' ? 700 : 400};">${r.dpsPer100}</td>
-  </tr>`).join('');
-  tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
-  tableEl.querySelectorAll('th.sortable').forEach(th => {
-    th.addEventListener('click', () => {
-      const k = th.dataset.sortKey;
-      meleeSort = { key: k, dir: meleeSort.key === k ? -meleeSort.dir : (k === 'civ' || k === 'line' ? 1 : -1) };
-      renderMeleeTable();
+const MELEE_TIER_LABEL = { manAtArms: 'MaA', longsword: 'LS', thsw: 'THS', champion: 'CHMP', knight: 'KNGT', cavalier: 'CAVL', paladin: 'PLDN' };
+// Shared table factory for the Infantry and Cavalry sections — separate
+// tables/sections now (split apart per site owner request, 2026-09-18; used
+// to be one combined table with a type-filter toggle), but the render/sort
+// logic itself is identical, so it's still one implementation.
+function makeMeleeTableRenderer(tableId, civsObj, statsFn, cost, pillClass) {
+  let sort = { key: 'dps', dir: -1 };
+  function render() {
+    const tableEl = document.getElementById(tableId);
+    const rows = Object.entries(civsObj).map(([civ, cfg]) => {
+      const s = statsFn(cfg);
+      return { line: MELEE_TIER_LABEL[cfg.tier], civ, ...s, cost, dpsPer100: d2(s.dps / cost * 100) };
     });
-  });
+    const { key, dir } = sort;
+    rows.sort((a, b) => {
+      if (key === 'civ' || key === 'line') return a[key].localeCompare(b[key]) * dir || a.civ.localeCompare(b.civ);
+      return (a[key] - b[key]) * dir || a.civ.localeCompare(b.civ);
+    });
+    const thead = `<thead><tr>${MELEE_COLS.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
+    const tbody = rows.map((r, i) => `<tr>
+      <td class="num">${i + 1}</td>
+      <td><span class="res-pill ${pillClass}">${r.line}</span></td>
+      <td>${r.civ}</td>
+      <td class="num">${r.hp}</td><td class="num">${r.attack}</td>
+      <td class="num">${r.meleeArmor}/${r.pierceArmor}</td>
+      <td class="num">${r.speed}</td>
+      <td class="num">${r.reload}s</td>
+      <td class="num" style="font-weight:${key === 'dps' ? 700 : 400};">${r.dps}</td>
+      <td class="num">${r.cost}</td>
+      <td class="num" style="font-weight:${key === 'dpsPer100' ? 700 : 400};">${r.dpsPer100}</td>
+    </tr>`).join('');
+    tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
+    tableEl.querySelectorAll('th.sortable').forEach(th => {
+      th.addEventListener('click', () => {
+        const k = th.dataset.sortKey;
+        sort = { key: k, dir: sort.key === k ? -sort.dir : (k === 'civ' || k === 'line' ? 1 : -1) };
+        render();
+      });
+    });
+  }
+  return render;
 }
-document.querySelectorAll('.melee-type-toggle').forEach(cb => cb.addEventListener('change', renderMeleeTable));
-renderMeleeTable();
+makeMeleeTableRenderer('all-maxed-infantry-table', INFANTRY_CIVS, infantryMaxStats, INFANTRY_COST, 'wood')();
+makeMeleeTableRenderer('all-maxed-cavalry-table', CAVALRY_CIVS, cavalryMaxStats, CAVALRY_COST, 'gold')();
 
 // Unit Stats toggle (2026-09-17, site owner request) — Base/Castle techs/
 // Imperial techs, applying every tech available by that age to a generic
