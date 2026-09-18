@@ -650,7 +650,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.56</div>
+    <div class="version">v0.57</div>
   </div>
 </div>
 
@@ -2014,7 +2014,20 @@ const INFANTRY_TIER_AGE = { manAtArms: 'Feudal', longsword: 'Castle', thsw: 'Imp
 const INFANTRY_TIER_AGE_OVERRIDE = { Armenians: { longsword: 'Feudal', thsw: 'Castle', champion: 'Castle' } };
 const INFANTRY_TIER_NAME = { manAtArms: 'Man-at-Arms', longsword: 'Long Swordsman', thsw: 'Two-Handed Swordsman', champion: 'Champion' };
 const CAVALRY_TIER_ORDER = ['knight', 'cavalier', 'paladin'];
-const CAVALRY_TIER_AGE = { knight: 'Castle', cavalier: 'Castle', paladin: 'Imperial' };
+// Cavalier's real DEFAULT age is Imperial, not Castle — this was WRONG in
+// the first version of this toggle (site owner caught it, 2026-09-18).
+// TECH_TREE_CATEGORIES tags it 'age':'Castle', but that field turned out
+// to represent the EARLIEST age it's achievable by ANY civ (a flowchart-
+// display simplification), not the typical per-civ default — a real trap,
+// the same class of mistake flagged (but not resolved) in this memory's
+// own earlier entry about Cavalier. The tell: Burgundians' own CB bonus
+// text is literally "Cavalier upgrade available in Castle Age" — a real,
+// deliberately-designed civ bonus is never redundant, so if EVERY civ
+// already got Cavalier at Castle by default, this bonus would do nothing.
+// Modeled the same way as Armenians' Militia-line shift: a per-civ
+// override on top of the real Imperial default.
+const CAVALRY_TIER_AGE = { knight: 'Castle', cavalier: 'Imperial', paladin: 'Imperial' };
+const CAVALRY_TIER_AGE_OVERRIDE = { Burgundians: { cavalier: 'Castle' } };
 const CAVALRY_TIER_NAME = { knight: 'Knight', cavalier: 'Cavalier', paladin: 'Paladin' };
 function effectiveTier(realTier, order, tierAgeMap, toggleAge) {
   const maxIdx = order.indexOf(realTier);
@@ -2081,7 +2094,8 @@ function infantryMaxStats(civ, cfg, age) {
   return { tierName: INFANTRY_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
 }
 function cavalryMaxStats(civ, cfg, age) {
-  const tier = effectiveTier(cfg.tier, CAVALRY_TIER_ORDER, CAVALRY_TIER_AGE, age);
+  const tierAgeMap = CAVALRY_TIER_AGE_OVERRIDE[civ] ? { ...CAVALRY_TIER_AGE, ...CAVALRY_TIER_AGE_OVERRIDE[civ] } : CAVALRY_TIER_AGE;
+  const tier = effectiveTier(cfg.tier, CAVALRY_TIER_ORDER, tierAgeMap, age);
   if (!tier) return null;
   const rank = AGE_RANK[age];
   const base = CAVALRY_BASE[tier];
