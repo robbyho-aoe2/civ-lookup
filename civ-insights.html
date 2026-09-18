@@ -428,6 +428,20 @@ select:focus{outline:none;border-color:var(--amber);}
         <button class="infantry-age-toggle-btn unit-stats-toggle-btn" data-age="castle">Castle</button>
         <button class="infantry-age-toggle-btn unit-stats-toggle-btn on" data-age="imperial">Imperial</button>
       </div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 0;font-size:0.9em;">
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="infantry-type-toggle" data-type="militia" checked>Militia-line</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="infantry-type-toggle" data-type="eagle" checked>Eagle-line</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="infantry-type-toggle" data-type="regional" checked>Regional units</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="infantry-type-toggle" data-type="unique" checked>Unique units</label>
+      </div>
+      <p class="desc" style="color:var(--text3)">
+        <b>Regional units</b> — shared units trained at a normal Barracks, not the Castle: Fire Lancer
+        (Chinese/Jurchens/Khitans/Koreans/Vietnamese) and Temple Guard (Muisca). <b>Unique units</b> —
+        standard single-civ Castle-trained UUs, being added incrementally as real stats come in: Woad
+        Raider (Celts) so far. Both categories get that civ's own real Blacksmith Infantry techs
+        applied, same formula as the Militia/Eagle lines above. Varangian Guard (Byzantines/Danes/
+        Saxons/Varangians/Vikings) is confirmed but not shown yet — missing a confirmed real cost.
+      </p>
       <div class="overflow-x">
         <table id="all-maxed-infantry-table"></table>
       </div>
@@ -671,7 +685,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.60</div>
+    <div class="version">v0.61</div>
   </div>
 </div>
 
@@ -2204,6 +2218,70 @@ function eagleMaxStats(civ, cfg, age) {
   const dps = d2(attack / reload);
   return { tierName: EAGLE_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
 }
+// Regional / Unique Infantry units (2026-09-19/20, site owner request) —
+// real single- or two-tier units, not a full Militia/Eagle-style line,
+// each still benefiting from its own civ's real Blacksmith Infantry techs
+// the same way Militia-line does. Base tier is Castle-gated, Elite tier
+// (where one exists) is Imperial-gated, matching this site's established
+// base/Elite convention for every other unique unit. "Regional" = shared
+// units trained at a normal Barracks, not a Castle (Fire Lancer, Temple
+// Guard); "Unique" = standard single-civ Castle-trained UUs (Woad Raider
+// so far, more to follow as real stats come in). Real stats: Fire Lancer/
+// Elite Fire Lancer, Woad Raider (no real Elite exists), and Temple Guard/
+// Elite Temple Guard all from the cached aoe2techtree data.json (site
+// owner-confirmed source, "the siegeengineers dataset") — Varangian Guard
+// (Byzantines/Danes/Saxons/Varangians/Vikings, real base+Elite stats
+// supplied directly by the site owner since it's too new for that
+// dataset) is NOT included yet, still missing a confirmed real cost.
+const UNIQUE_INFANTRY_CIVS = {
+  Chinese: { unit: 'Fire Lancer', kind: 'regional', cost: 90,
+    base: { hp: 65, attack: 9, melee: 1, pierce: 0, speed: 0.96, reload: 2 },
+    elite: { hp: 85, attack: 10, melee: 2, pierce: 1, speed: 0.96, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Jurchens: { unit: 'Fire Lancer', kind: 'regional', cost: 90,
+    base: { hp: 65, attack: 9, melee: 1, pierce: 0, speed: 0.96, reload: 2 },
+    elite: { hp: 85, attack: 10, melee: 2, pierce: 1, speed: 0.96, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: true, squires: true },
+  Khitans: { unit: 'Fire Lancer', kind: 'regional', cost: 90,
+    base: { hp: 65, attack: 9, melee: 1, pierce: 0, speed: 0.96, reload: 2 },
+    elite: { hp: 85, attack: 10, melee: 2, pierce: 1, speed: 0.96, reload: 2 },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: true, squires: true, meleeAtkDoubled: true },
+  Koreans: { unit: 'Fire Lancer', kind: 'regional', cost: 90,
+    base: { hp: 65, attack: 9, melee: 1, pierce: 0, speed: 0.96, reload: 2 },
+    elite: { hp: 85, attack: 10, melee: 2, pierce: 1, speed: 0.96, reload: 2 },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+  Vietnamese: { unit: 'Fire Lancer', kind: 'regional', cost: 90,
+    base: { hp: 65, attack: 9, melee: 1, pierce: 0, speed: 0.96, reload: 2 },
+    elite: { hp: 85, attack: 10, melee: 2, pierce: 1, speed: 0.96, reload: 2 },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+  Muisca: { unit: 'Temple Guard', kind: 'regional', cost: 115,
+    base: { hp: 100, attack: 12, melee: 1, pierce: 1, speed: 0.95, reload: 2 },
+    elite: { hp: 115, attack: 14, melee: 2, pierce: 2, speed: 0.95, reload: 2 },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+  Celts: { unit: 'Woad Raider', kind: 'unique', cost: 95,
+    base: { hp: 70, attack: 11, melee: 0, pierce: 1, speed: 1.17, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: false },
+};
+function uniqueInfantryMaxStats(civ, cfg, age) {
+  const rank = AGE_RANK[age];
+  if (rank < AGE_RANK.Castle) return null;
+  const useElite = !!cfg.elite && rank >= AGE_RANK.Imperial;
+  const tierStats = useElite ? cfg.elite : cfg.base;
+  const meleeAtkAtAge = cfg.meleeAtk.map((has, i) => has && AGE_RANK[MELEE_ATK_TECH_AGES[i]] <= rank);
+  const infArmorAtAge = cfg.infArmor.map((has, i) => has && AGE_RANK[INF_ARMOR_TECH_AGES[i]] <= rank);
+  const gambesonsAtAge = cfg.gambesons && AGE_RANK.Castle <= rank;
+  const squiresAtAge = cfg.squires && AGE_RANK.Castle <= rank;
+  const atkBonus = meleeAtkTotal(meleeAtkAtAge, cfg.meleeAtkDoubled);
+  const arm = armorTotal(infArmorAtAge, INF_ARMOR_DELTAS, cfg.armorDoubled);
+  const attack = tierStats.attack + atkBonus;
+  const meleeArmor = tierStats.melee + arm.melee;
+  const pierceArmor = tierStats.pierce + arm.pierce + (gambesonsAtAge ? 1 : 0);
+  const hp = tierStats.hp;
+  const speed = d2(tierStats.speed * (squiresAtAge ? 1.10 : 1));
+  const reload = tierStats.reload;
+  const dps = d2(attack / reload);
+  return { tierName: `${useElite ? 'Elite ' : ''}${cfg.unit}`, hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
+}
 function cavalryMaxStats(civ, cfg, age) {
   const tier = effectiveTier(cfg.tier, CAVALRY_TIER_ORDER, CAVALRY_TIER_AGE, age);
   if (!tier) return null;
@@ -2349,23 +2427,33 @@ const MELEE_AGE_LABEL = { feudal: 'Feudal', castle: 'Castle', imperial: 'Imperia
 // that age — e.g. every Cavalry civ at Feudal, since Knight itself is
 // Castle-gated) — those civs are simply omitted from that age's table
 // rather than shown with fabricated stats.
-// `sources` is an array of [civsObj, statsFn, cost] triples, flattened into
-// one row list — lets the Infantry table combine INFANTRY_CIVS (Militia-
-// line) with EAGLE_CIVS (Aztecs/Maya's real second line) without a second
-// table, since both Aztecs and Maya are meant to show up TWICE (once per
-// line), not replace one with the other.
-function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, emptyMsg) {
+// `sources` is an array of [civsObj, statsFn, cost, kind] tuples, flattened
+// into one row list — lets the Infantry table combine INFANTRY_CIVS
+// (Militia-line), EAGLE_CIVS (Aztecs/Maya's real second line) and
+// UNIQUE_INFANTRY_CIVS (Regional/Unique units) without a second table,
+// since a civ can show up more than once (once per real line/unit it has),
+// not replace one entry with another. `kind` is the default type-filter
+// tag for every row from that source; an individual civ entry can override
+// it via its own `cfg.kind` (used by UNIQUE_INFANTRY_CIVS, where regional
+// and unique-Castle units share one object). `cost` works the same way —
+// a flat per-source default, overridable per row via `cfg.cost`.
+function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, emptyMsg, typeToggleSelector) {
   let sort = { key: 'dps', dir: -1 };
   let ageKey = 'imperial';
   function render() {
     const tableEl = document.getElementById(tableId);
     const ageLabel = MELEE_AGE_LABEL[ageKey];
-    const rows = sources.flatMap(([civsObj, statsFn, cost]) => Object.entries(civsObj)
+    const enabledTypes = typeToggleSelector
+      ? new Set([...document.querySelectorAll(typeToggleSelector + ':checked')].map(cb => cb.dataset.type))
+      : null;
+    const rows = sources.flatMap(([civsObj, statsFn, cost, kind]) => Object.entries(civsObj)
       .map(([civ, cfg]) => {
         const s = statsFn(civ, cfg, ageLabel);
-        return s && { line: s.tierName, civ, ...s, cost, dpsPer100: d2(s.dps / cost * 100) };
+        const rowCost = cfg.cost || cost;
+        return s && { line: s.tierName, civ, ...s, cost: rowCost, dpsPer100: d2(s.dps / rowCost * 100), kind: cfg.kind || kind };
       })
-      .filter(Boolean));
+      .filter(Boolean))
+      .filter(r => !enabledTypes || enabledTypes.has(r.kind));
     if (!rows.length) {
       tableEl.innerHTML = `<tbody><tr><td style="padding:14px;color:var(--text3);">${emptyMsg}</td></tr></tbody>`;
       return;
@@ -2404,9 +2492,16 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       render();
     });
   });
+  if (typeToggleSelector) {
+    document.querySelectorAll(typeToggleSelector).forEach(cb => cb.addEventListener('change', render));
+  }
   return render;
 }
-makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', [[INFANTRY_CIVS, infantryMaxStats, INFANTRY_COST], [EAGLE_CIVS, eagleMaxStats, EAGLE_COST]], 'wood', '—')();
+makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', [
+  [INFANTRY_CIVS, infantryMaxStats, INFANTRY_COST, 'militia'],
+  [EAGLE_CIVS, eagleMaxStats, EAGLE_COST, 'eagle'],
+  [UNIQUE_INFANTRY_CIVS, uniqueInfantryMaxStats, null, 'regional'],
+], 'wood', '—', '.infantry-type-toggle')();
 makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [[CAVALRY_CIVS, cavalryMaxStats, CAVALRY_COST], [SCOUT_CIVS, scoutMaxStats, SCOUT_COST]], 'gold', 'No civ trains a Knight-line or Scout-line unit before Feudal Age.')();
 
 // Unit Stats toggle (2026-09-17, site owner request) — Base/Castle techs/
