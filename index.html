@@ -275,7 +275,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.33</div>
+    <div class="version">v2.34</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2010,7 +2010,7 @@ const TECH_TREE_CATEGORIES = [
       { name: 'Man-at-Arms', age: 'Feudal', always: true, techs: [{name:'Forging',id:T.Forging},{name:'Scale Mail Armor',id:T['Scale Mail Armor']},{name:'Arson',id:T.Arson}] },
       { name: 'Long Swordsman', age: 'Castle', id: 75, techs: [{name:'Iron Casting',id:T['Iron Casting']},{name:'Chain Mail Armor',id:T['Chain Mail Armor']},{name:'Squires',id:T.Squires},{name:'Gambesons',id:T.Gambesons}] },
       { name: 'Two-Handed Swordsman', age: 'Imperial', id: 77, techs: [{name:'Blast Furnace',id:T['Blast Furnace']},{name:'Plate Mail Armor',id:T['Plate Mail Armor']}] },
-      { name: 'Champion', age: 'Imperial', id: 473, extra: [2554, 1792] },
+      { name: 'Champion', age: 'Imperial', id: 473, extra: [2554, 1792], nameById: { 2554: 'Elite Champi Warrior', 1792: 'Elite Centurion' } },
     ]},
     // Spearman/Eagle lines get the SAME Blacksmith techs as Militia at the
     // same ages (Forging/Iron Casting/Blast Furnace boost ALL melee units,
@@ -2149,7 +2149,21 @@ const TECH_TREE_CATEGORIES = [
 // check CIV_ARCHETYPES' own scoring already uses) rather than a separate
 // mechanism.
 function techTreeNodeAvailable(cd, node) {
-  if (node.always) return true;
+  if (node.always) {
+    // Real exception (site owner correction, 2026-09-18): Incas, Mapuche,
+    // Muisca and Tupi replace the Militia-line's Man-at-Arms-and-later
+    // upgrades with Champi Warrior / Elite Champi Warrior, but still keep
+    // the real base Dark-age Militia unit itself (and the unrelated
+    // Spearman/Eagle Scout `always` nodes are untouched too) — scoped to
+    // the Man-at-Arms node specifically by name, not every `always` node,
+    // after an over-broad first version of this fix wrongly zeroed out
+    // base Militia/Spearman availability for these civs too. Detected via
+    // a real signal (has Champi Warrior, lacks Long Swordsman) rather than
+    // a hardcoded civ list, so this stays correct if another civ ever gets
+    // the same treatment.
+    if (node.name === 'Man-at-Arms' && cd && cd.units.has(2552) && !cd.units.has(75)) return false;
+    return true;
+  }
   if (!cd) return false;
   // Deliberately NOT hasIdsEquiv/equivalenceGroups() here — that mechanism
   // unions equivalence groups GLOBALLY across every CIV_ARCHETYPES item, so
