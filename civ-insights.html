@@ -436,11 +436,14 @@ select:focus{outline:none;border-color:var(--amber);}
       </div>
       <p class="desc" style="color:var(--text3)">
         <b>Regional units</b> — shared units trained at a normal Barracks, not the Castle: Fire Lancer
-        (Chinese/Jurchens/Khitans/Koreans/Vietnamese) and Temple Guard (Muisca). <b>Unique units</b> —
-        standard single-civ Castle-trained UUs, being added incrementally as real stats come in: Woad
-        Raider (Celts) so far. Both categories get that civ's own real Blacksmith Infantry techs
-        applied, same formula as the Militia/Eagle lines above. Varangian Guard (Byzantines/Danes/
-        Saxons/Varangians/Vikings) is confirmed but not shown yet — missing a confirmed real cost.
+        (Chinese/Jurchens/Khitans/Koreans/Vietnamese), Temple Guard (Muisca), Varangian Guard
+        (Byzantines/Danes/Saxons/Varangians/Vikings), and Champi Warrior (Incas/Mapuche/Muisca/Tupi's
+        real Militia-line replacement — see the note above INFANTRY_CIVS for why those 4 civs are
+        absent from the Militia-line rows). Muisca shows twice here (Temple Guard AND Champi
+        Warrior — both real). <b>Unique units</b> — standard single-civ Castle-trained UUs, being
+        added incrementally as real stats come in: Woad Raider (Celts) so far. Both categories get
+        that civ's own real Blacksmith Infantry techs applied, same formula as the Militia/Eagle
+        lines above.
       </p>
       <div class="overflow-x">
         <table id="all-maxed-infantry-table"></table>
@@ -685,7 +688,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.61</div>
+    <div class="version">v0.62</div>
   </div>
 </div>
 
@@ -2229,38 +2232,96 @@ function eagleMaxStats(civ, cfg, age) {
 // so far, more to follow as real stats come in). Real stats: Fire Lancer/
 // Elite Fire Lancer, Woad Raider (no real Elite exists), and Temple Guard/
 // Elite Temple Guard all from the cached aoe2techtree data.json (site
-// owner-confirmed source, "the siegeengineers dataset") — Varangian Guard
-// (Byzantines/Danes/Saxons/Varangians/Vikings, real base+Elite stats
-// supplied directly by the site owner since it's too new for that
-// dataset) is NOT included yet, still missing a confirmed real cost.
+// owner-confirmed source, "the siegeengineers dataset"). Varangian Guard
+// (Byzantines/Danes/Saxons/Varangians/Vikings) is too new for that
+// dataset — real base+Elite stats and cost (65f/45g) supplied directly by
+// the site owner instead, including a real speed correction (1.05, not
+// the 1.15 first given — resolved against this page's own existing
+// changelog entry above, which already had 1.05 from real patch notes).
+// Keyed by a synthetic "civ_unit" string, NOT plain civ name — Muisca
+// needs two independent entries (Temple Guard AND Champi Warrior), so the
+// object key can't just be the civ (an earlier draft of this block used
+// bare civ names as keys and would have silently overwritten Muisca's
+// first entry with its second — caught before shipping). Each entry
+// carries its own explicit `civ` field for display; `uniqueInfantryMaxStats`
+// and the render factory both use `cfg.civ`, not the object key.
 const UNIQUE_INFANTRY_CIVS = {
-  Chinese: { unit: 'Fire Lancer', kind: 'regional', cost: 90,
+  Chinese_FireLancer: { civ: 'Chinese', unit: 'Fire Lancer', kind: 'regional', cost: 90,
     base: { hp: 65, attack: 9, melee: 1, pierce: 0, speed: 0.96, reload: 2 },
     elite: { hp: 85, attack: 10, melee: 2, pierce: 1, speed: 0.96, reload: 2 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
-  Jurchens: { unit: 'Fire Lancer', kind: 'regional', cost: 90,
+  Jurchens_FireLancer: { civ: 'Jurchens', unit: 'Fire Lancer', kind: 'regional', cost: 90,
     base: { hp: 65, attack: 9, melee: 1, pierce: 0, speed: 0.96, reload: 2 },
     elite: { hp: 85, attack: 10, melee: 2, pierce: 1, speed: 0.96, reload: 2 },
     meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: true, squires: true },
-  Khitans: { unit: 'Fire Lancer', kind: 'regional', cost: 90,
+  Khitans_FireLancer: { civ: 'Khitans', unit: 'Fire Lancer', kind: 'regional', cost: 90,
     base: { hp: 65, attack: 9, melee: 1, pierce: 0, speed: 0.96, reload: 2 },
     elite: { hp: 85, attack: 10, melee: 2, pierce: 1, speed: 0.96, reload: 2 },
     meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: true, squires: true, meleeAtkDoubled: true },
-  Koreans: { unit: 'Fire Lancer', kind: 'regional', cost: 90,
+  Koreans_FireLancer: { civ: 'Koreans', unit: 'Fire Lancer', kind: 'regional', cost: 90,
     base: { hp: 65, attack: 9, melee: 1, pierce: 0, speed: 0.96, reload: 2 },
     elite: { hp: 85, attack: 10, melee: 2, pierce: 1, speed: 0.96, reload: 2 },
     meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
-  Vietnamese: { unit: 'Fire Lancer', kind: 'regional', cost: 90,
+  Vietnamese_FireLancer: { civ: 'Vietnamese', unit: 'Fire Lancer', kind: 'regional', cost: 90,
     base: { hp: 65, attack: 9, melee: 1, pierce: 0, speed: 0.96, reload: 2 },
     elite: { hp: 85, attack: 10, melee: 2, pierce: 1, speed: 0.96, reload: 2 },
     meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
-  Muisca: { unit: 'Temple Guard', kind: 'regional', cost: 115,
+  Muisca_TempleGuard: { civ: 'Muisca', unit: 'Temple Guard', kind: 'regional', cost: 115,
     base: { hp: 100, attack: 12, melee: 1, pierce: 1, speed: 0.95, reload: 2 },
     elite: { hp: 115, attack: 14, melee: 2, pierce: 2, speed: 0.95, reload: 2 },
     meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
-  Celts: { unit: 'Woad Raider', kind: 'unique', cost: 95,
+  Celts_WoadRaider: { civ: 'Celts', unit: 'Woad Raider', kind: 'unique', cost: 95,
     base: { hp: 70, attack: 11, melee: 0, pierce: 1, speed: 1.17, reload: 2 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: false },
+  // Varangian Guard — regional, Byzantines/Danes/Saxons/Varangians/Vikings.
+  // Real base+Elite stats and cost (65f/45g) supplied directly by the site
+  // owner, 2026-09-20 (too new for the cached aoe2techtree data.json),
+  // including a real speed correction (1.05, not the 1.15 first given —
+  // resolved against this page's own existing changelog entry, which
+  // already had 1.05 from real patch notes).
+  Byzantines_VarangianGuard: { civ: 'Byzantines', unit: 'Varangian Guard', kind: 'regional', cost: 110,
+    base: { hp: 70, attack: 13, melee: 2, pierce: 1, speed: 1.05, reload: 2 },
+    elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.35, reload: 1.6 },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: true, squires: true },
+  Danes_VarangianGuard: { civ: 'Danes', unit: 'Varangian Guard', kind: 'regional', cost: 110,
+    base: { hp: 70, attack: 13, melee: 2, pierce: 1, speed: 1.05, reload: 2 },
+    elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.35, reload: 1.6 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Saxons_VarangianGuard: { civ: 'Saxons', unit: 'Varangian Guard', kind: 'regional', cost: 110,
+    base: { hp: 70, attack: 13, melee: 2, pierce: 1, speed: 1.05, reload: 2 },
+    elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.35, reload: 1.6 },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: true, squires: true },
+  Varangians_VarangianGuard: { civ: 'Varangians', unit: 'Varangian Guard', kind: 'regional', cost: 110,
+    base: { hp: 70, attack: 13, melee: 2, pierce: 1, speed: 1.05, reload: 2 },
+    elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.35, reload: 1.6 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Vikings_VarangianGuard: { civ: 'Vikings', unit: 'Varangian Guard', kind: 'regional', cost: 110,
+    base: { hp: 70, attack: 13, melee: 2, pierce: 1, speed: 1.05, reload: 2 },
+    elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.35, reload: 1.6 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  // Champi Warrior — regional per site owner (2026-09-20): Incas, Mapuche,
+  // Muisca, Tupi's real Militia-line replacement (see the Militia-line
+  // exclusion comment above INFANTRY_CIVS) — grouped here rather than
+  // treated as a 5th tier of the standard line, since it's a genuinely
+  // different unit with its own real stats, not a capped continuation.
+  // Real stats from data.json (ids 2552/2554 agree exactly with this
+  // site's own UNIT_IDS, unlike several other units hit this session).
+  Incas_ChampiWarrior: { civ: 'Incas', unit: 'Champi Warrior', kind: 'regional', cost: 75,
+    base: { hp: 55, attack: 9, melee: 0, pierce: 3, speed: 1.1, reload: 2 },
+    elite: { hp: 65, attack: 11, melee: 0, pierce: 4, speed: 1.1, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Mapuche_ChampiWarrior: { civ: 'Mapuche', unit: 'Champi Warrior', kind: 'regional', cost: 75,
+    base: { hp: 55, attack: 9, melee: 0, pierce: 3, speed: 1.1, reload: 2 },
+    elite: { hp: 65, attack: 11, melee: 0, pierce: 4, speed: 1.1, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: false },
+  Muisca_ChampiWarrior: { civ: 'Muisca', unit: 'Champi Warrior', kind: 'regional', cost: 75,
+    base: { hp: 55, attack: 9, melee: 0, pierce: 3, speed: 1.1, reload: 2 },
+    elite: { hp: 65, attack: 11, melee: 0, pierce: 4, speed: 1.1, reload: 2 },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+  Tupi_ChampiWarrior: { civ: 'Tupi', unit: 'Champi Warrior', kind: 'regional', cost: 75,
+    base: { hp: 55, attack: 9, melee: 0, pierce: 3, speed: 1.1, reload: 2 },
+    elite: { hp: 65, attack: 11, melee: 0, pierce: 4, speed: 1.1, reload: 2 },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
 };
 function uniqueInfantryMaxStats(civ, cfg, age) {
   const rank = AGE_RANK[age];
@@ -2450,7 +2511,7 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       .map(([civ, cfg]) => {
         const s = statsFn(civ, cfg, ageLabel);
         const rowCost = cfg.cost || cost;
-        return s && { line: s.tierName, civ, ...s, cost: rowCost, dpsPer100: d2(s.dps / rowCost * 100), kind: cfg.kind || kind };
+        return s && { line: s.tierName, civ: cfg.civ || civ, ...s, cost: rowCost, dpsPer100: d2(s.dps / rowCost * 100), kind: cfg.kind || kind };
       })
       .filter(Boolean))
       .filter(r => !enabledTypes || enabledTypes.has(r.kind));
