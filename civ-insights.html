@@ -439,14 +439,17 @@ select:focus{outline:none;border-color:var(--amber);}
     <div class="card">
       <h2>All Maxed Cavalry Civs, by DPS</h2>
       <p class="desc">
-        Every civ's real Knight-line (Knight/Cavalier/Paladin) access, each capped at its own real
-        max tier — most reach Paladin, several cap at Cavalier. 15
-        civs with zero Stable/Knight access at all (Aztecs, Bengalis, Dravidians, Gurjaras,
-        Hindustanis, Incas, Jurchens, Khitans, Mapuche, Maya, Muisca, Tupi, plus Wei/Shu/Wu who train
-        "Hei Guang Cavalry" instead of Cavalier/Paladin — not modeled here yet) are simply absent
-        from this list. Same sourcing as the Infantry table above — live civData, not memory, cross-
-        checked a second time against this site's own archetype-bonus-scoring categorization (every
-        `include:['Cavalry']`-tagged bonus line). Click any column header to sort.
+        Every civ's real Knight-line (Knight/Cavalier/Paladin) AND Scout-line (Scout Cavalry/Light
+        Cavalry/Hussar) access, each capped at its own real max tier — most reach Paladin/Hussar,
+        several cap lower. 50 of 56 civs have real Scout-line access (the same 6 without it — Aztecs,
+        Incas, Mapuche, Maya, Muisca, Tupi — have no Stable at all); 15 civs with zero Knight-line
+        access (Aztecs, Bengalis, Dravidians, Gurjaras, Hindustanis, Incas, Jurchens, Khitans,
+        Mapuche, Maya, Muisca, Tupi, plus Wei/Shu/Wu who train "Hei Guang Cavalry" instead of
+        Cavalier/Paladin — not modeled here yet). Most civs appear twice (one row per real line they
+        have), same convention as Aztecs/Maya's Eagle-line row in the Infantry table above. Same
+        sourcing as the Infantry table above — live civData, not memory, cross-checked a second time
+        against this site's own archetype-bonus-scoring categorization (every `include:['Cavalry']`-
+        tagged bonus line). Click any column header to sort.
       </p>
       <p class="desc" style="color:var(--text3)">
         Real civ bonuses folded in: Bulgarians (Stirrups: attacks +33% faster, Castle-gated), Cumans
@@ -458,6 +461,8 @@ select:focus{outline:none;border-color:var(--amber);}
         is Castle-age for every civ here (not just Burgundians, whose own "Cavalier upgrade available
         in Castle Age" bonus text appears outdated — confirmed via two independent real sources in
         index.html, TECH_TREE_CATEGORIES and the explicitly wiki-verified ITEM_AGES table).
+        <b>Scout-line:</b> Mongols (+20/30% HP in Castle/Imperial Age, 0% Feudal), Tatars (Silk Armor:
+        +1 melee/+1 pierce armor, Castle-gated), Turks (+1 pierce armor, flat).
         <b>Not modeled</b> (situational or non-static, not a fixed stat this table's
         columns can represent): Bengalis'/Burmese's (and Khitans'/Persians'/Varangians' team bonus)
         vs.-specific-unit-class bonuses, Dravidians' Wootz Steel (Cavalry attacks ignore armor —
@@ -666,7 +671,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.59</div>
+    <div class="version">v0.60</div>
   </div>
 </div>
 
@@ -1851,16 +1856,29 @@ const CAVALRY_COST = 60 + 75, CAVALRY_TRAIN = 30;
 const MELEE_ATK_DELTAS = [1, 1, 2];
 // Scale/Chain/Plate Mail (Infantry) and Scale/Chain/Plate Barding (Cavalry)
 // Armor — same real per-tech deltas both lines: +1/+1, +1/+1, +1/+2 melee/
-// pierce (total +3/+4), confirmed via TECH_DESCRIPTIONS for both.
-const ARMOR_DELTAS = [[1, 1], [1, 1], [1, 2]];
+// pierce (total +3/+4), confirmed via TECH_DESCRIPTIONS for both. Infantry
+// armor arrays are chronological (Scale/Chain/Plate = index 0/1/2) so
+// INF_ARMOR_DELTAS lines up directly. Cavalry armor arrays are NOT
+// chronological (index 0/1/2 = Plate/Scale/Chain, per the real id order
+// [80,81,82] used to build every `cavArmor` array on this page) — using
+// the infantry-shaped deltas there silently gave Plate the SMALL delta and
+// Chain the BIG one, which only happened to cancel out when a civ had all
+// three (every earlier spot-check happened to hit that case). Real bug
+// found and fixed 2026-09-19 while building the new Scout-line addition,
+// caught on Mongols (missing Plate specifically) showing pierce armor 5
+// instead of the real 4 — same underlying formula, so this also silently
+// affected the already-shipped Knight-line Cavalry table for every civ
+// missing exactly one of the three Barding Armor techs, not just Scout.
+const INF_ARMOR_DELTAS = [[1, 1], [1, 1], [1, 2]];
+const CAV_ARMOR_DELTAS = [[1, 2], [1, 1], [1, 1]];
 function meleeAtkTotal(meleeAtk, doubled) {
   return meleeAtk.reduce((sum, has, i) => sum + (has ? MELEE_ATK_DELTAS[i] * (doubled ? 2 : 1) : 0), 0);
 }
-function armorTotal(armorArr, doubled) {
+function armorTotal(armorArr, deltas, doubled) {
   return armorArr.reduce((acc, has, i) => {
     if (!has) return acc;
     const mult = doubled ? 2 : 1;
-    return { melee: acc.melee + ARMOR_DELTAS[i][0] * mult, pierce: acc.pierce + ARMOR_DELTAS[i][1] * mult };
+    return { melee: acc.melee + deltas[i][0] * mult, pierce: acc.pierce + deltas[i][1] * mult };
   }, { melee: 0, pierce: 0 });
 }
 // All real Militia-line civs, pulled live from index.html's own civData
@@ -2107,7 +2125,7 @@ function infantryMaxStats(civ, cfg, age) {
   const gambesonsAtAge = cfg.gambesons && AGE_RANK.Castle <= rank;
   const squiresAtAge = cfg.squires && AGE_RANK.Castle <= rank;
   const atkBonus = meleeAtkTotal(meleeAtkAtAge, cfg.meleeAtkDoubled);
-  const arm = armorTotal(infArmorAtAge, cfg.armorDoubled);
+  const arm = armorTotal(infArmorAtAge, INF_ARMOR_DELTAS, cfg.armorDoubled);
   const ageBonus = INFANTRY_AGE_BONUS[civ];
   const civAtk = ageBonus?.civAtk ? ageBonus.civAtk[rank - 1] : 0;
   const civMelee = ageBonus?.civMelee ? ageBonus.civMelee[rank - 1] : 0;
@@ -2175,7 +2193,7 @@ function eagleMaxStats(civ, cfg, age) {
   const gambesonsAtAge = cfg.gambesons && AGE_RANK.Castle <= rank;
   const squiresAtAge = cfg.squires && AGE_RANK.Castle <= rank;
   const atkBonus = meleeAtkTotal(meleeAtkAtAge, false);
-  const arm = armorTotal(infArmorAtAge, false);
+  const arm = armorTotal(infArmorAtAge, INF_ARMOR_DELTAS, false);
   const attack = base.attack + atkBonus;
   const meleeArmor = base.melee + arm.melee;
   const pierceArmor = base.pierce + arm.pierce + (gambesonsAtAge ? 1 : 0);
@@ -2194,7 +2212,7 @@ function cavalryMaxStats(civ, cfg, age) {
   const meleeAtkAtAge = cfg.meleeAtk.map((has, i) => has && AGE_RANK[MELEE_ATK_TECH_AGES[i]] <= rank);
   const cavArmorAtAge = cfg.cavArmor.map((has, i) => has && AGE_RANK[CAV_ARMOR_TECH_AGES[i]] <= rank);
   const atkBonus = meleeAtkTotal(meleeAtkAtAge, cfg.meleeAtkDoubled);
-  const arm = armorTotal(cavArmorAtAge, false);
+  const arm = armorTotal(cavArmorAtAge, CAV_ARMOR_DELTAS, false);
   const ageBonus = CAVALRY_AGE_BONUS[civ];
   const civMelee = ageBonus?.civMelee ? ageBonus.civMelee[rank - 1] : 0;
   const speedMultAge = ageBonus?.speedMult ? ageBonus.speedMult[rank - 1] : 1;
@@ -2210,6 +2228,111 @@ function cavalryMaxStats(civ, cfg, age) {
   const reload = d2(base.reload * (uniqueGateOk ? (cfg.atkSpeedMult || 1) : 1));
   const dps = d2(attack / reload);
   return { tierName: CAVALRY_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
+}
+// Scout-line (Scout Cavalry/Light Cavalry/Hussar) — a REAL second cavalry
+// line, added alongside Knight-line per site owner request, 2026-09-19.
+// 50 of 56 civs have it (the 6 without: Aztecs, Incas, Mapuche, Maya,
+// Muisca, Tupi — the same Meso/Andean civs with no Stable at all, real and
+// consistent with their already-confirmed lack of Knight-line). Base
+// stats from build-order.html's own UNIT_STATS['scout-cavalry-line'],
+// reload/cost cross-validated against data.json (Reload 2.0s flat, Cost
+// 80 food ONLY — a real, well-known trait: Scout-line costs no gold at
+// all, unlike every other cavalry line). Melee armor is 0 at every tier, a
+// real design trait (Scout-line is pierce-armor-only, same pattern as
+// Eagle-line above) — still gains melee armor from Barding Armor techs the
+// same as Knight-line, since it's civ-wide-Blacksmith-class "Cavalry" for
+// tech-availability purposes. Real civ bonuses folded in: Turks (+1 pierce
+// armor, flat — "Scout Cavalry-line +1 pierce armor and upgrades free"),
+// Tatars (Silk Armor unique tech: +1 melee/+1 pierce armor, Castle-gated —
+// their OWN 1st/Castle-tier unique tech per the [Castle,Imperial]
+// UNIQUE_TECHS ordering, distinct from Knight-line's own unique-tech
+// gating so tracked in its own SCOUT_UNIQUE_TECH_AGE map), Mongols
+// (+20/30% HP in Castle/Imperial Age, 0% Feudal — "Scout Cavalry-line and
+// Steppe Lancers +20/30% HP").
+const SCOUT_BASE = {
+  scoutCavalry: { hp: 45, attack: 3, melee: 0, pierce: 2, speed: 1.2, reload: 2.0 },
+  lightCavalry: { hp: 60, attack: 7, melee: 0, pierce: 2, speed: 1.5, reload: 2.0 },
+  hussar: { hp: 75, attack: 7, melee: 0, pierce: 2, speed: 1.5, reload: 2.0 },
+};
+const SCOUT_COST = 80;
+const SCOUT_TIER_ORDER = ['scoutCavalry', 'lightCavalry', 'hussar'];
+const SCOUT_TIER_AGE = { scoutCavalry: 'Feudal', lightCavalry: 'Castle', hussar: 'Imperial' };
+const SCOUT_TIER_NAME = { scoutCavalry: 'Scout Cavalry', lightCavalry: 'Light Cavalry', hussar: 'Hussar' };
+const SCOUT_AGE_BONUS = { Mongols: { hpMult: [1.0, 1.2, 1.3] } };
+const SCOUT_UNIQUE_TECH_AGE = { Tatars: 'Castle' }; // Silk Armor
+const SCOUT_CIVS = {
+  Armenians: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
+  Bengalis: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Berbers: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Bohemians: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
+  Britons: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: false, husbandry: true },
+  Bulgarians: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Burgundians: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: false, husbandry: true },
+  Burmese: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Byzantines: { tier: 'hussar', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: false, husbandry: true },
+  Celts: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
+  Chinese: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Cumans: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false },
+  Danes: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Dravidians: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
+  Ethiopians: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
+  Franks: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: false, husbandry: true },
+  Georgians: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Goths: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
+  Gurjaras: { tier: 'hussar', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Hindustanis: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Huns: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Italians: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Japanese: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
+  Jurchens: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Khitans: { tier: 'hussar', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: false, husbandry: true },
+  Khmer: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Koreans: { tier: 'hussar', meleeAtk: [true,true,false], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
+  Lithuanians: { tier: 'hussar', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Magyars: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Malay: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [false,true,false], bloodlines: false, husbandry: true },
+  Malians: { tier: 'lightCavalry', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Mongols: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
+  Persians: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Poles: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
+  Portuguese: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Romans: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Saracens: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Saxons: { tier: 'hussar', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Shu: { tier: 'lightCavalry', meleeAtk: [true,false,false], cavArmor: [true,true,true], bloodlines: false, husbandry: true },
+  Sicilians: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Slavs: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Spanish: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Tatars: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true, uniqueTechMelee: 1, uniqueTechPierce: 1 },
+  Teutons: { tier: 'scoutCavalry', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false },
+  Turks: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true, civPierce: 1 },
+  Varangians: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Vietnamese: { tier: 'lightCavalry', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Vikings: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: false },
+  Wei: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
+  Wu: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+};
+function scoutMaxStats(civ, cfg, age) {
+  const tier = effectiveTier(cfg.tier, SCOUT_TIER_ORDER, SCOUT_TIER_AGE, age);
+  if (!tier) return null;
+  const rank = AGE_RANK[age];
+  const base = SCOUT_BASE[tier];
+  const meleeAtkAtAge = cfg.meleeAtk.map((has, i) => has && AGE_RANK[MELEE_ATK_TECH_AGES[i]] <= rank);
+  const cavArmorAtAge = cfg.cavArmor.map((has, i) => has && AGE_RANK[CAV_ARMOR_TECH_AGES[i]] <= rank);
+  const atkBonus = meleeAtkTotal(meleeAtkAtAge, false);
+  const arm = armorTotal(cavArmorAtAge, CAV_ARMOR_DELTAS, false);
+  const ageBonus = SCOUT_AGE_BONUS[civ];
+  const hpMultAge = ageBonus?.hpMult ? ageBonus.hpMult[rank - 1] : 1;
+  const uniqueGateOk = !SCOUT_UNIQUE_TECH_AGE[civ] || AGE_RANK[SCOUT_UNIQUE_TECH_AGE[civ]] <= rank;
+  const attack = base.attack + atkBonus;
+  const meleeArmor = base.melee + arm.melee + (uniqueGateOk ? (cfg.uniqueTechMelee || 0) : 0);
+  const pierceArmor = base.pierce + arm.pierce + (cfg.civPierce || 0) + (uniqueGateOk ? (cfg.uniqueTechPierce || 0) : 0);
+  const hp = Math.round(base.hp * hpMultAge) + (cfg.bloodlines ? 20 : 0);
+  const husbandryAtAge = cfg.husbandry && AGE_RANK.Castle <= rank;
+  const speed = d2(base.speed * (husbandryAtAge ? 1.15 : 1));
+  const reload = base.reload;
+  const dps = d2(attack / reload);
+  return { tierName: SCOUT_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
 }
 const MELEE_COLS = [
   ['rank', '#', false], ['line', 'Unit', false], ['civ', 'Civ', false],
@@ -2284,7 +2407,7 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
   return render;
 }
 makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', [[INFANTRY_CIVS, infantryMaxStats, INFANTRY_COST], [EAGLE_CIVS, eagleMaxStats, EAGLE_COST]], 'wood', '—')();
-makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [[CAVALRY_CIVS, cavalryMaxStats, CAVALRY_COST]], 'gold', 'No civ trains a Knight-line unit before Castle Age.')();
+makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [[CAVALRY_CIVS, cavalryMaxStats, CAVALRY_COST], [SCOUT_CIVS, scoutMaxStats, SCOUT_COST]], 'gold', 'No civ trains a Knight-line or Scout-line unit before Feudal Age.')();
 
 // Unit Stats toggle (2026-09-17, site owner request) — Base/Castle techs/
 // Imperial techs, applying every tech available by that age to a generic
