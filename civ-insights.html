@@ -396,16 +396,19 @@ select:focus{outline:none;border-color:var(--amber);}
         to catch anything a plain text read might miss. Click any column header to sort.
       </p>
       <p class="desc" style="color:var(--text3)">
-        Real civ bonuses folded in: Armenians (Fereters: +30 HP), Bulgarians (Bagains: +5 melee
-        armor), Burmese (+3 attack), Celts (+20% speed), Japanese (attacks +33% faster), Khitans
-        (melee-attack Blacksmith techs doubled), Malians (+3 pierce armor), Mapuche (+15 HP), Romans
-        (armor Blacksmith techs doubled), Teutons (+2 melee armor), Vikings (+20% HP). Also folds in
-        Gambesons — a real 4th Infantry armor tech (+1 pierce armor) separate from the 3 Blacksmith
-        Mail Armor techs, gated per-civ (roughly half the roster has it). <b>Not modeled</b>
+        Real civ bonuses folded in: Armenians (Fereters: +30 HP; also their whole Militia-line past
+        Man-at-Arms unlocks one age earlier — Long Swordsman in Feudal, Champion in Castle), Bulgarians
+        (Bagains: +5 melee armor), Burmese (+1/+2/+3 attack by age), Celts (+10/+15/+20% speed by
+        age), Japanese (attacks +33% faster), Khitans (melee-attack Blacksmith techs doubled), Malians
+        (+1/+2/+3 pierce armor by age), Mapuche (+5/+10/+15 HP by age), Romans (armor Blacksmith techs
+        doubled), Teutons (+0/+1/+2 melee armor by age, shared with Cavalry below), Vikings (+20% HP).
+        Also folds in Gambesons — a real 4th Infantry armor tech (+1 pierce armor) separate from the 3
+        Blacksmith Mail Armor techs, gated per-civ (roughly half the roster has it). <b>Not modeled</b>
         (situational or non-static, not a fixed stat this table's columns can represent): Bengalis'/
-        Burmese's/Vikings' vs.-specific-unit-class bonuses, Dravidians' Wootz Steel (Infantry attacks
-        ignore armor — depends on the opponent, not a number of their own), Khitans' Lamellar Armor
-        damage reflection, Romans' Comitatenses charge attack, Danes' Hamask (scales with missing HP).
+        Burmese's/Vikings' (and Khitans'/Persians' team bonus) vs.-specific-unit-class bonuses,
+        Dravidians' Wootz Steel (Infantry attacks ignore armor — depends on the opponent, not a number
+        of their own), Khitans' Lamellar Armor damage reflection, Romans' Comitatenses charge attack,
+        Danes' Hamask (scales with missing HP).
       </p>
       <p class="desc" style="color:var(--text3)">
         Cost is flat per civ — every civ pays the same 50f/20g here. Real per-civ cost discounts
@@ -430,7 +433,7 @@ select:focus{outline:none;border-color:var(--amber);}
       <h2>All Maxed Cavalry Civs, by DPS</h2>
       <p class="desc">
         Every civ's real Knight-line (Knight/Cavalier/Paladin) access, each capped at its own real
-        max tier — most reach Paladin, several cap at Cavalier, Saracens caps at plain Knight. 15
+        max tier — most reach Paladin, several cap at Cavalier. 15
         civs with zero Stable/Knight access at all (Aztecs, Bengalis, Dravidians, Gurjaras,
         Hindustanis, Incas, Jurchens, Khitans, Mapuche, Maya, Muisca, Tupi, plus Wei/Shu/Wu who train
         "Hei Guang Cavalry" instead of Cavalier/Paladin — not modeled here yet) are simply absent
@@ -439,14 +442,20 @@ select:focus{outline:none;border-color:var(--amber);}
         `include:['Cavalry']`-tagged bonus line). Click any column header to sort.
       </p>
       <p class="desc" style="color:var(--text3)">
-        Real civ bonuses folded in: Bulgarians (Stirrups: attacks +33% faster), Cumans (+15% speed),
-        Franks (+20% HP), Lithuanians (+1 attack per garrisoned Relic, max +4 — shown at that max, a
-        real conditional this table can't otherwise express), Malians (Farimba: +5 attack), Sicilians
-        (Hauberk: +1 melee/+2 pierce armor), Teutons (+2 melee armor). <b>Not modeled</b> (situational
-        or non-static, not a fixed stat this table's columns can represent): Bengalis'/Burmese's
+        Real civ bonuses folded in: Bulgarians (Stirrups: attacks +33% faster, Castle-gated), Cumans
+        (+5/+10/+15% speed by age), Franks (+20% HP), Lithuanians (+1 attack per garrisoned Relic, max
+        +4 — shown at that max, a real conditional this table can't otherwise express), Malians
+        (Farimba: +5 attack, Imperial-gated), Sicilians (Hauberk: +1 melee/+2 pierce armor,
+        Imperial-gated), Teutons (+0/+1/+2 melee armor by age), Varangians (Bloodlines' own +20 HP is
+        amplified to +30 by their real "Bloodlines and Caravan effects +50%" bonus). Cavalier itself
+        is Castle-age for every civ here (not just Burgundians, whose own "Cavalier upgrade available
+        in Castle Age" bonus text appears outdated — confirmed via two independent real sources in
+        index.html, TECH_TREE_CATEGORIES and the explicitly wiki-verified ITEM_AGES table).
+        <b>Not modeled</b> (situational or non-static, not a fixed stat this table's
+        columns can represent): Bengalis'/Burmese's (and Khitans'/Persians'/Varangians' team bonus)
         vs.-specific-unit-class bonuses, Dravidians' Wootz Steel (Cavalry attacks ignore armor —
-        Dravidians has no real Knight-line access anyway, so this is moot here), Sicilians' -40%
-        bonus damage taken, Varangians' Vendel Legacy trample.
+        Dravidians has no real Knight-line access anyway, so this is moot here), Sicilians' -40% bonus
+        damage taken, Varangians' Vendel Legacy trample.
       </p>
       <p class="desc" style="color:var(--text3)">
         Cost is flat per civ — every civ pays the same 60f/75g here. Real per-civ cost discounts
@@ -650,7 +659,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.57</div>
+    <div class="version">v0.58</div>
   </div>
 </div>
 
@@ -1930,10 +1939,13 @@ const INFANTRY_CIVS = {
 // Khitans, Mapuche, Maya, Muisca, Tupi, plus Wei/Shu/Wu who train "Hei
 // Guang Cavalry" instead of Cavalier/Paladin — are simply absent, same
 // convention as CA_CIVS excluding non-CA civs). `tier` is each civ's real
-// CEILING: most reach 'paladin', several cap at 'cavalier', Saracens caps
-// at plain 'knight' (real — checked directly, Savar is their own Paladin-
-// tier replacement per UNIT_IDS but civData shows they lack the standard
-// unlock). Per-age-progressive bonuses (Cumans, Teutons) live in
+// CEILING: most reach 'paladin', several cap at 'cavalier' — all under the
+// Sept 22 patch toggle, matching CA_CIVS' own convention above (Saracens
+// in particular only reaches 'cavalier' under Sept 22; under the current
+// patch they're capped at plain 'knight' — a real patch-dependent
+// difference, not a mistake either way, but this table follows Sept 22
+// throughout for consistency with the rest of this page). Per-age-
+// progressive bonuses (Cumans, Teutons) live in
 // CAVALRY_AGE_BONUS below. Flat, non-progressive overrides staying here:
 // Bulgarians (Stirrups unique tech, attacks +33% faster, Castle-gated),
 // Franks (+20% HP, real from Feudal Age onward), Lithuanians (+1 attack
@@ -1972,7 +1984,13 @@ const CAVALRY_CIVS = {
   Poles: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
   Portuguese: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Romans: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
-  Saracens: { tier: 'knight', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  // tier:'cavalier' corrected 2026-09-18 (was wrongly 'knight') — a data-
+  // gathering inconsistency, not a real civ fact: this whole table's data
+  // was meant to be pulled under the Sept 22 patch toggle (matching
+  // CA_CIVS' own established convention above), but this specific value
+  // was captured with the toggle at its default 'current' state instead,
+  // where Saracens really does lack Cavalier. Under Sept 22 they gain it.
+  Saracens: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Saxons: { tier: 'cavalier', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Sicilians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true, uniqueTechMelee: 1, uniqueTechPierce: 2 },
   Slavs: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
@@ -1980,7 +1998,11 @@ const CAVALRY_CIVS = {
   Tatars: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Teutons: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false },
   Turks: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
-  Varangians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  // bloodlinesHp:30 = real Varangians civ bonus "Bloodlines and Caravan
+  // effects +50%" (Bloodlines' own +20 HP becomes +30) -- found via a
+  // re-audit of the team-bonus/civ-bonus text after the Cavalier-age fix,
+  // 2026-09-18. Nobody else amplifies Bloodlines this way.
+  Varangians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true, bloodlinesHp: 30 },
   Vietnamese: { tier: 'cavalier', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Vikings: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: false },
 };
@@ -2014,20 +2036,23 @@ const INFANTRY_TIER_AGE = { manAtArms: 'Feudal', longsword: 'Castle', thsw: 'Imp
 const INFANTRY_TIER_AGE_OVERRIDE = { Armenians: { longsword: 'Feudal', thsw: 'Castle', champion: 'Castle' } };
 const INFANTRY_TIER_NAME = { manAtArms: 'Man-at-Arms', longsword: 'Long Swordsman', thsw: 'Two-Handed Swordsman', champion: 'Champion' };
 const CAVALRY_TIER_ORDER = ['knight', 'cavalier', 'paladin'];
-// Cavalier's real DEFAULT age is Imperial, not Castle — this was WRONG in
-// the first version of this toggle (site owner caught it, 2026-09-18).
-// TECH_TREE_CATEGORIES tags it 'age':'Castle', but that field turned out
-// to represent the EARLIEST age it's achievable by ANY civ (a flowchart-
-// display simplification), not the typical per-civ default — a real trap,
-// the same class of mistake flagged (but not resolved) in this memory's
-// own earlier entry about Cavalier. The tell: Burgundians' own CB bonus
-// text is literally "Cavalier upgrade available in Castle Age" — a real,
-// deliberately-designed civ bonus is never redundant, so if EVERY civ
-// already got Cavalier at Castle by default, this bonus would do nothing.
-// Modeled the same way as Armenians' Militia-line shift: a per-civ
-// override on top of the real Imperial default.
-const CAVALRY_TIER_AGE = { knight: 'Castle', cavalier: 'Imperial', paladin: 'Imperial' };
-const CAVALRY_TIER_AGE_OVERRIDE = { Burgundians: { cavalier: 'Castle' } };
+// Cavalier IS Castle-age for every civ, confirmed by TWO independent real
+// sources in this codebase: TECH_TREE_CATEGORIES' own 'age':'Castle' tag
+// AND index.html's separate, explicitly wiki-verified `ITEM_AGES.unit[283]
+// = 2` (Castle) — a table whose own comment says it was cross-checked
+// against the AoE2 Wiki and aoe2db.com and had several Castle/Imperial
+// mixups deliberately corrected in a prior pass. A same-day "fix" briefly
+// made Cavalier Imperial-by-default with a Burgundians-only Castle
+// override, reasoning from Burgundians' own CB bonus text ("Cavalier
+// upgrade available in Castle Age") on the assumption a real bonus is
+// never redundant — reverted once ITEM_AGES was found and checked:
+// Burgundians' bonus text is almost certainly outdated/vestigial (Cavalier
+// was likely moved to Castle for everyone in a past balance patch this
+// site's data already reflects, and that bonus's text was never updated
+// to match). Lesson: when two real-but-different lines of evidence
+// disagree, go find a THIRD, more authoritative source before trusting
+// either — don't just pick the one that resolves the tension first.
+const CAVALRY_TIER_AGE = { knight: 'Castle', cavalier: 'Castle', paladin: 'Imperial' };
 const CAVALRY_TIER_NAME = { knight: 'Knight', cavalier: 'Cavalier', paladin: 'Paladin' };
 function effectiveTier(realTier, order, tierAgeMap, toggleAge) {
   const maxIdx = order.indexOf(realTier);
@@ -2094,8 +2119,7 @@ function infantryMaxStats(civ, cfg, age) {
   return { tierName: INFANTRY_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
 }
 function cavalryMaxStats(civ, cfg, age) {
-  const tierAgeMap = CAVALRY_TIER_AGE_OVERRIDE[civ] ? { ...CAVALRY_TIER_AGE, ...CAVALRY_TIER_AGE_OVERRIDE[civ] } : CAVALRY_TIER_AGE;
-  const tier = effectiveTier(cfg.tier, CAVALRY_TIER_ORDER, tierAgeMap, age);
+  const tier = effectiveTier(cfg.tier, CAVALRY_TIER_ORDER, CAVALRY_TIER_AGE, age);
   if (!tier) return null;
   const rank = AGE_RANK[age];
   const base = CAVALRY_BASE[tier];
@@ -2112,7 +2136,7 @@ function cavalryMaxStats(civ, cfg, age) {
   const pierceArmor = base.pierce + arm.pierce + (uniqueGateOk ? (cfg.uniqueTechPierce || 0) : 0);
   let hp = base.hp;
   if (cfg.hpMult) hp = Math.round(hp * cfg.hpMult);
-  hp += (cfg.bloodlines ? 20 : 0);
+  hp += (cfg.bloodlines ? (cfg.bloodlinesHp || 20) : 0);
   const husbandryAtAge = cfg.husbandry && AGE_RANK.Castle <= rank;
   const speed = d2(base.speed * (husbandryAtAge ? 1.15 : 1) * speedMultAge);
   const reload = d2(base.reload * (uniqueGateOk ? (cfg.atkSpeedMult || 1) : 1));
