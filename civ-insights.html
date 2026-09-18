@@ -386,29 +386,36 @@ select:focus{outline:none;border-color:var(--amber);}
       <p class="desc">
         Every civ's real Militia-line (Man-at-Arms/Long Swordsman/Two-Handed Swordsman/Champion)
         access, each capped at its own real max tier — not every civ reaches Champion, some are
-        capped lower (Incas/Mapuche/Muisca/Tupi never get past Man-at-Arms; Persians/Romans/
-        Varangians are capped at Two-Handed Swordsman; Jurchens at Long Swordsman). Base stats and
-        reload times cross-checked against two independent sources (this site's own build-order.html
-        hover-stats data and the cached aoe2techtree data.json) and tier availability pulled live
-        from index.html's own civData, not typed from memory — the same real-CB-bonus-sweep
-        approach used for the CA/MCB table above, cross-checked a second time against this site's
-        own archetype-bonus-scoring categorization (every `include:['Infantry']`-tagged bonus line)
-        to catch anything a plain text read might miss. Click any column header to sort.
+        capped lower (Persians/Romans/Varangians are capped at Two-Handed Swordsman; Jurchens at Long
+        Swordsman). <b>Incas, Mapuche, Muisca and Tupi are absent</b> — real correction (site owner,
+        2026-09-18): these 4 civs have ZERO Militia-line access at all, not even Man-at-Arms — they
+        train the Champi Warrior / Elite Champi Warrior line instead, a genuine replacement this table
+        doesn't have real base stats for yet, so they're left out rather than guessed at (an earlier
+        version wrongly showed them capped at a fabricated "Man-at-Arms" tier). <b>Aztecs and Maya
+        appear twice</b> — they're the only 2 civs with real access to the separate Eagle-line (Eagle
+        Scout/Eagle Warrior/Elite Eagle Warrior) on top of their normal Militia-line, so both real
+        lines get their own row. Base stats and reload times cross-checked against two independent
+        sources (this site's own build-order.html hover-stats data and the cached aoe2techtree
+        data.json) and tier/line availability pulled live from index.html's own civData, not typed
+        from memory — the same real-CB-bonus-sweep approach used for the CA/MCB table above,
+        cross-checked a second time against this site's own archetype-bonus-scoring categorization
+        (every `include:['Infantry']`-tagged bonus line) to catch anything a plain text read might
+        miss. Click any column header to sort.
       </p>
       <p class="desc" style="color:var(--text3)">
         Real civ bonuses folded in: Armenians (Fereters: +30 HP; also their whole Militia-line past
         Man-at-Arms unlocks one age earlier — Long Swordsman in Feudal, Champion in Castle), Bulgarians
         (Bagains: +5 melee armor), Burmese (+1/+2/+3 attack by age), Celts (+10/+15/+20% speed by
         age), Japanese (attacks +33% faster), Khitans (melee-attack Blacksmith techs doubled), Malians
-        (+1/+2/+3 pierce armor by age), Mapuche (+5/+10/+15 HP by age), Romans (armor Blacksmith techs
-        doubled), Teutons (+0/+1/+2 melee armor by age, shared with Cavalry below), Vikings (+20% HP).
-        Also folds in Gambesons — a real 4th Infantry armor tech (+1 pierce armor) separate from the 3
-        Blacksmith Mail Armor techs, gated per-civ (roughly half the roster has it). <b>Not modeled</b>
-        (situational or non-static, not a fixed stat this table's columns can represent): Bengalis'/
-        Burmese's/Vikings' (and Khitans'/Persians' team bonus) vs.-specific-unit-class bonuses,
-        Dravidians' Wootz Steel (Infantry attacks ignore armor — depends on the opponent, not a number
-        of their own), Khitans' Lamellar Armor damage reflection, Romans' Comitatenses charge attack,
-        Danes' Hamask (scales with missing HP).
+        (+1/+2/+3 pierce armor by age), Maya (Holcans: Eagle Warriors +40 HP, Imperial-gated), Romans
+        (armor Blacksmith techs doubled), Teutons (+0/+1/+2 melee armor by age, shared with Cavalry
+        below), Vikings (+20% HP). Also folds in Gambesons — a real 4th Infantry armor tech (+1 pierce
+        armor) separate from the 3 Blacksmith Mail Armor techs, gated per-civ (roughly half the roster
+        has it). <b>Not modeled</b> (situational or non-static, not a fixed stat this table's columns
+        can represent): Bengalis'/Burmese's/Vikings' (and Khitans'/Persians' team bonus)
+        vs.-specific-unit-class bonuses, Dravidians' Wootz Steel (Infantry attacks ignore armor —
+        depends on the opponent, not a number of their own), Khitans' Lamellar Armor damage
+        reflection, Romans' Comitatenses charge attack, Danes' Hamask (scales with missing HP).
       </p>
       <p class="desc" style="color:var(--text3)">
         Cost is flat per civ — every civ pays the same 50f/20g here. Real per-civ cost discounts
@@ -659,7 +666,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.58</div>
+    <div class="version">v0.59</div>
   </div>
 </div>
 
@@ -1856,13 +1863,23 @@ function armorTotal(armorArr, doubled) {
     return { melee: acc.melee + ARMOR_DELTAS[i][0] * mult, pierce: acc.pierce + ARMOR_DELTAS[i][1] * mult };
   }, { melee: 0, pierce: 0 });
 }
-// All 53 civs' real Militia-line access, pulled live from index.html's own
-// civData (civData[civ].units.has(id)/.techs.has(id) under the Sept 22
-// toggle) — NOT hand-typed. `tier` is each civ's own real CEILING (highest
-// tier ever reachable, at any age) — most reach 'champion', but Incas/
-// Mapuche/Muisca/Tupi cap at 'manAtArms' (no Long Swordsman at all — the
-// real, well-known "no Barracks upgrades" Meso/Andean civ design),
-// Jurchens caps at 'longsword', and Persians/Romans/Varangians cap at
+// All real Militia-line civs, pulled live from index.html's own civData
+// (civData[civ].units.has(id)/.techs.has(id) under the Sept 22 toggle) —
+// NOT hand-typed. `tier` is each civ's own real CEILING (highest tier ever
+// reachable, at any age) — most reach 'champion'. Incas, Mapuche, Muisca
+// and Tupi are DELIBERATELY ABSENT from this object (real correction, site
+// owner, 2026-09-18: these 4 civs have ZERO real Militia-line access, not
+// even Man-at-Arms — confirmed directly via civData, `civData[civ].units
+// .has(75)` false for all four and `.has(2552)` [Champi Warrior] true for
+// all four). They share the real Champi Warrior / Elite Champi Warrior
+// line instead — a genuine replacement, not a capped-down Militia-line —
+// but this table doesn't have real base stats for that line yet (not in
+// build-order.html's UNIT_STATS or anywhere else in this codebase), so
+// they're left out entirely rather than guessed. A prior version of this
+// table wrongly showed them capped at a fabricated 'manAtArms' tier by
+// defaulting to it whenever no higher tier matched, without ever
+// confirming real Man-at-Arms access itself. Jurchens caps at 'longsword',
+// and Persians/Romans/Varangians cap at
 // 'thsw' (real — Persians and Romans genuinely lack Champion, checked
 // directly, not assumed). `gambesons` (id 875, "Infantry +1 pierce armor")
 // is a REAL 4th armor tech separate from the 3 Blacksmith Mail Armor techs
@@ -1899,7 +1916,6 @@ const INFANTRY_CIVS = {
   Gurjaras: { tier: 'champion', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: false },
   Hindustanis: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true },
   Huns: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true },
-  Incas: { tier: 'manAtArms', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
   Italians: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
   Japanese: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, atkSpeedMult: 0.75 },
   Jurchens: { tier: 'longsword', meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: true, squires: true },
@@ -1910,10 +1926,8 @@ const INFANTRY_CIVS = {
   Magyars: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: false },
   Malay: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
   Malians: { tier: 'champion', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
-  Mapuche: { tier: 'manAtArms', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: false },
   Maya: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
   Mongols: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
-  Muisca: { tier: 'manAtArms', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
   Persians: { tier: 'thsw', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
   Poles: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
   Portuguese: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: false },
@@ -1926,7 +1940,6 @@ const INFANTRY_CIVS = {
   Spanish: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
   Tatars: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,false,false], gambesons: false, squires: true },
   Teutons: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
-  Tupi: { tier: 'manAtArms', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
   Turks: { tier: 'champion', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
   Varangians: { tier: 'thsw', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
   Vietnamese: { tier: 'champion', meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
@@ -2081,7 +2094,7 @@ const CAVALRY_AGE_BONUS = {
 // always ordered [Castle-tier, Imperial-tier], confirmed against 4 known
 // examples (Franks' Bearded Axe/Chivalry, Armenians' Cilician Fleet/
 // Fereters, Bulgarians' Stirrups/Bagains, Malians' Tigui/Farimba).
-const INFANTRY_UNIQUE_TECH_AGE = { Armenians: 'Imperial', Bulgarians: 'Imperial' }; // Fereters, Bagains
+const INFANTRY_UNIQUE_TECH_AGE = { Armenians: 'Imperial', Bulgarians: 'Imperial', Maya: 'Imperial' }; // Fereters, Bagains, Holcans
 const CAVALRY_UNIQUE_TECH_AGE = { Bulgarians: 'Castle', Malians: 'Imperial', Sicilians: 'Imperial' }; // Stirrups, Farimba, Hauberk
 function infantryMaxStats(civ, cfg, age) {
   const tierAgeMap = INFANTRY_TIER_AGE_OVERRIDE[civ] ? { ...INFANTRY_TIER_AGE, ...INFANTRY_TIER_AGE_OVERRIDE[civ] } : INFANTRY_TIER_AGE;
@@ -2117,6 +2130,61 @@ function infantryMaxStats(civ, cfg, age) {
   const reload = d2(INFANTRY_RELOAD * (cfg.atkSpeedMult || 1));
   const dps = d2(attack / reload);
   return { tierName: INFANTRY_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
+}
+// Eagle-line (Eagle Scout/Eagle Warrior/Elite Eagle Warrior) — a REAL
+// second infantry line most civs don't have at all: only Aztecs and Maya
+// get it in this site's model (real correction, site owner, 2026-09-18 —
+// confirmed directly via civData, `civData[civ].units.has(751)` true for
+// only these two of all 56 civs), and both of them also keep their real
+// Militia-line access (already in INFANTRY_CIVS above) — so this is an
+// ADDITIONAL row for these two civs, not a replacement. Base stats from
+// build-order.html's own UNIT_STATS['eagle-line'], reload/cost cross-
+// validated against the cached aoe2techtree data.json the same way the
+// Militia-line stats were (matching HP/Attack/Armor/Speed exactly once the
+// right rows were identified: Reload 2.0s flat across all 3 tiers, cost
+// 20f/50g flat). Same Blacksmith tech ages/deltas as Militia-line (index.
+// html's own TECH_TREE_CATEGORIES explicitly lists identical techs per
+// tier for the Eagle chain) — Eagle-line's own base melee armor is 0 at
+// every tier (a real, well-known design trait: pierce-tanky, not melee-
+// tanky), but still gains melee armor from Blacksmith Mail Armor techs the
+// same as Militia-line, since Eagles are civ-wide-Blacksmith-class
+// "Infantry" for tech-availability purposes (confirmed via the shared
+// tech list). Maya's real unique tech Holcans ("Eagle Warriors +40 HP")
+// is modeled as a flat HP bonus, Imperial-gated (2nd/major-tier unique
+// tech per this site's own [Castle,Imperial] UNIQUE_TECHS ordering).
+const EAGLE_BASE = {
+  eagleScout: { hp: 50, attack: 4, melee: 0, pierce: 2, speed: 1.1 },
+  eagleWarrior: { hp: 55, attack: 7, melee: 0, pierce: 3, speed: 1.15 },
+  eliteEagleWarrior: { hp: 60, attack: 9, melee: 0, pierce: 4, speed: 1.3 },
+};
+const EAGLE_RELOAD = 2.0, EAGLE_COST = 20 + 50;
+const EAGLE_TIER_ORDER = ['eagleScout', 'eagleWarrior', 'eliteEagleWarrior'];
+const EAGLE_TIER_AGE = { eagleScout: 'Feudal', eagleWarrior: 'Castle', eliteEagleWarrior: 'Imperial' };
+const EAGLE_TIER_NAME = { eagleScout: 'Eagle Scout', eagleWarrior: 'Eagle Warrior', eliteEagleWarrior: 'Elite Eagle Warrior' };
+const EAGLE_CIVS = {
+  Aztecs: { tier: 'eliteEagleWarrior', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Maya: { tier: 'eliteEagleWarrior', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true, uniqueTechHp: 40 },
+};
+function eagleMaxStats(civ, cfg, age) {
+  const tier = effectiveTier(cfg.tier, EAGLE_TIER_ORDER, EAGLE_TIER_AGE, age);
+  if (!tier) return null;
+  const rank = AGE_RANK[age];
+  const base = EAGLE_BASE[tier];
+  const meleeAtkAtAge = cfg.meleeAtk.map((has, i) => has && AGE_RANK[MELEE_ATK_TECH_AGES[i]] <= rank);
+  const infArmorAtAge = cfg.infArmor.map((has, i) => has && AGE_RANK[INF_ARMOR_TECH_AGES[i]] <= rank);
+  const gambesonsAtAge = cfg.gambesons && AGE_RANK.Castle <= rank;
+  const squiresAtAge = cfg.squires && AGE_RANK.Castle <= rank;
+  const atkBonus = meleeAtkTotal(meleeAtkAtAge, false);
+  const arm = armorTotal(infArmorAtAge, false);
+  const attack = base.attack + atkBonus;
+  const meleeArmor = base.melee + arm.melee;
+  const pierceArmor = base.pierce + arm.pierce + (gambesonsAtAge ? 1 : 0);
+  const uniqueGateOk = !INFANTRY_UNIQUE_TECH_AGE[civ] || AGE_RANK[INFANTRY_UNIQUE_TECH_AGE[civ]] <= rank;
+  const hp = base.hp + (uniqueGateOk ? (cfg.uniqueTechHp || 0) : 0);
+  const speed = d2(base.speed * (squiresAtAge ? 1.10 : 1));
+  const reload = EAGLE_RELOAD;
+  const dps = d2(attack / reload);
+  return { tierName: EAGLE_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
 }
 function cavalryMaxStats(civ, cfg, age) {
   const tier = effectiveTier(cfg.tier, CAVALRY_TIER_ORDER, CAVALRY_TIER_AGE, age);
@@ -2158,18 +2226,23 @@ const MELEE_AGE_LABEL = { feudal: 'Feudal', castle: 'Castle', imperial: 'Imperia
 // that age — e.g. every Cavalry civ at Feudal, since Knight itself is
 // Castle-gated) — those civs are simply omitted from that age's table
 // rather than shown with fabricated stats.
-function makeMeleeTableRenderer(tableId, toggleBtnSelector, civsObj, statsFn, cost, pillClass, emptyMsg) {
+// `sources` is an array of [civsObj, statsFn, cost] triples, flattened into
+// one row list — lets the Infantry table combine INFANTRY_CIVS (Militia-
+// line) with EAGLE_CIVS (Aztecs/Maya's real second line) without a second
+// table, since both Aztecs and Maya are meant to show up TWICE (once per
+// line), not replace one with the other.
+function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, emptyMsg) {
   let sort = { key: 'dps', dir: -1 };
   let ageKey = 'imperial';
   function render() {
     const tableEl = document.getElementById(tableId);
     const ageLabel = MELEE_AGE_LABEL[ageKey];
-    const rows = Object.entries(civsObj)
+    const rows = sources.flatMap(([civsObj, statsFn, cost]) => Object.entries(civsObj)
       .map(([civ, cfg]) => {
         const s = statsFn(civ, cfg, ageLabel);
         return s && { line: s.tierName, civ, ...s, cost, dpsPer100: d2(s.dps / cost * 100) };
       })
-      .filter(Boolean);
+      .filter(Boolean));
     if (!rows.length) {
       tableEl.innerHTML = `<tbody><tr><td style="padding:14px;color:var(--text3);">${emptyMsg}</td></tr></tbody>`;
       return;
@@ -2210,8 +2283,8 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, civsObj, statsFn, co
   });
   return render;
 }
-makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', INFANTRY_CIVS, infantryMaxStats, INFANTRY_COST, 'wood', '—')();
-makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', CAVALRY_CIVS, cavalryMaxStats, CAVALRY_COST, 'gold', 'No civ trains a Knight-line unit before Castle Age.')();
+makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', [[INFANTRY_CIVS, infantryMaxStats, INFANTRY_COST], [EAGLE_CIVS, eagleMaxStats, EAGLE_COST]], 'wood', '—')();
+makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [[CAVALRY_CIVS, cavalryMaxStats, CAVALRY_COST]], 'gold', 'No civ trains a Knight-line unit before Castle Age.')();
 
 // Unit Stats toggle (2026-09-17, site owner request) — Base/Castle techs/
 // Imperial techs, applying every tech available by that age to a generic
