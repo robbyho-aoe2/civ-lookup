@@ -513,6 +513,7 @@ select:focus{outline:none;border-color:var(--amber);}
         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="cavalry-type-toggle" data-type="scouts" checked>Scouts</label>
         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="cavalry-type-toggle" data-type="steppe" checked>Steppe Lancers</label>
         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="cavalry-type-toggle" data-type="camels" checked>Camels</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="cavalry-type-toggle" data-type="elephants" checked>Elephants</label>
         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="cavalry-type-toggle" data-type="regional" checked>Non-Castle unique units</label>
         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="cavalry-type-toggle" data-type="unique" checked>Castle unique units</label>
       </div>
@@ -520,9 +521,16 @@ select:focus{outline:none;border-color:var(--amber);}
         <b>Steppe Lancers</b> — 5 real civs (Cumans, Jurchens, Khitans, Mongols, Tatars), all reach
         Elite. <b>Camels</b> — 13 real civs; Hindustanis' real Imperial-tier upgrade is "Imperial
         Camel Rider" (140 HP/8 attack), a genuinely different unit from the generic Heavy Camel
-        Rider every other Camel civ gets. <b>Castle unique units</b> — Cataphract, Coustillier, Iron
-        Pagoda, Konnik, Leitis, Magyar Huszar, Monaspa, Obuch, Shrivamsha Rider, Tarkan, Tiger
-        Cavalry, Boyar, Liao Dao, Jarl — a full audit of every real Cavalry-archetype unique unit,
+        Rider every other Camel civ gets. <b>Elephants</b> — Battle Elephant (Bengalis, Burmese,
+        Dravidians, Khmer, Malay, Vietnamese) plus Persians' real separate unique unit War Elephant
+        (Savar already counts as Persians' own Paladin-tier replacement in the Knights category, so
+        it isn't shown twice). Real civ bonuses folded in: Bengalis (Paiks: Elephant Units attack
+        +20% faster), Burmese (+1 melee/+1 pierce armor flat, plus Howdah unique tech +1/+1 more,
+        stacking to +2/+2 total once both are active), Khmer (+10% speed flat, plus Tusk Swords
+        unique tech +3 attack), Vietnamese (Chatras unique tech: +100 HP). <b>Castle unique
+        units</b> — Cataphract, Coustillier, Iron Pagoda, Konnik, Leitis, Magyar Huszar, Monaspa,
+        Obuch, Shrivamsha Rider, Tarkan, Tiger Cavalry, Boyar, Liao Dao, Jarl, War Elephant — a full
+        audit of every real Cavalry- and Elephant-archetype unique unit,
         same sourcing as the Infantry table's own audit above (the cached aoe2techtree data.json,
         cross-checked civ-by-civ, verified for a real Elite tier via its own upgrade-tech table).
         Jarl's real base stats were supplied directly by the site owner (too new for that dataset,
@@ -723,7 +731,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.67</div>
+    <div class="version">v0.68</div>
   </div>
 </div>
 
@@ -2831,6 +2839,82 @@ function uniqueCavalryMaxStats(civ, cfg, age) {
   if (cfg.elite && rank >= AGE_RANK.Imperial) rows.push(uniqueCavalryTierStats(civ, cfg, cfg.elite, true, rank));
   return rows;
 }
+// Battle Elephant line (2026-09-20, site owner request) — real 2-tier line
+// (Battle Elephant/Elite Battle Elephant, Castle/Imperial, same "no Feudal
+// tier" convention as Camel/Steppe Lancer above — confirmed via
+// TECH_TREE_CATEGORIES' own Elephant category, which uses the SAME
+// Bloodlines/Barding Armor tech set as Cavalry, not a separate elephant-
+// specific line). Only 6 real civs: Bengalis, Burmese, Dravidians, Khmer,
+// Malay, Vietnamese (Persians has War Elephant instead — its own separate
+// entry below, not generic Battle Elephant, confirmed via civData). Base
+// stats from build-order.html's own UNIT_STATS['battle-elephant-line'],
+// cross-validated against data.json. Real civ bonuses folded in: Bengalis
+// (Paiks unique tech: Elephant Units attack +20% faster — already used
+// for their Ratha row on the CA/MCB table, same reload multiplier here),
+// Burmese (+1 melee/+1 pierce armor flat, PLUS Howdah unique tech +1
+// melee/+1 pierce more — these stack per the real CB text, total +2/+2
+// once both active), Khmer (+10% speed flat, PLUS Tusk Swords unique tech
+// +3 attack, Castle-gated), Vietnamese (Chatras unique tech +100 HP,
+// Castle-gated — a huge, easy-to-miss flat bonus).
+const ELEPHANT_BASE = {
+  battleElephant: { hp: 250, attack: 12, melee: 1, pierce: 2, speed: 0.9, reload: 2 },
+  eliteBattleElephant: { hp: 300, attack: 14, melee: 1, pierce: 3, speed: 0.9, reload: 2 },
+};
+const ELEPHANT_COST = 170;
+const ELEPHANT_TIER_ORDER = ['battleElephant', 'eliteBattleElephant'];
+const ELEPHANT_TIER_AGE = { battleElephant: 'Castle', eliteBattleElephant: 'Imperial' };
+const ELEPHANT_TIER_NAME = { battleElephant: 'Battle Elephant', eliteBattleElephant: 'Elite Battle Elephant' };
+const ELEPHANT_UNIQUE_TECH_AGE = { Burmese: 'Imperial', Khmer: 'Castle', Vietnamese: 'Castle' }; // Howdah, Tusk Swords, Chatras
+// NOTE: Battle Elephant does NOT get Husbandry's +15% speed — confirmed via
+// index.html's own real Tech Tree data (its Elephant chain lists Bloodlines/
+// Scale/Chain/Plate Barding Armor only, unlike the Knight/Camel/Steppe/Scout
+// chains which explicitly include Husbandry). husbandry left false below.
+const ELEPHANT_CIVS = {
+  Bengalis: { tier: 'eliteBattleElephant', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false, atkSpeedMult: PAIKS_RELOAD_MULT },
+  Burmese: { tier: 'eliteBattleElephant', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false, civMelee: 1, civPierce: 1, uniqueTechMelee: 1, uniqueTechPierce: 1 },
+  Dravidians: { tier: 'eliteBattleElephant', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: false },
+  Khmer: { tier: 'eliteBattleElephant', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false, speedMult: 1.10, uniqueTechAtk: 3 },
+  Malay: { tier: 'eliteBattleElephant', meleeAtk: [true,true,true], cavArmor: [false,true,false], bloodlines: false, husbandry: false },
+  Vietnamese: { tier: 'eliteBattleElephant', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: false, uniqueTechHp: 100 },
+};
+function elephantMaxStats(civ, cfg, age) {
+  const tier = effectiveTier(cfg.tier, ELEPHANT_TIER_ORDER, ELEPHANT_TIER_AGE, age);
+  if (!tier) return null;
+  const rank = AGE_RANK[age];
+  const base = ELEPHANT_BASE[tier];
+  const meleeAtkAtAge = cfg.meleeAtk.map((has, i) => has && AGE_RANK[MELEE_ATK_TECH_AGES[i]] <= rank);
+  const cavArmorAtAge = cfg.cavArmor.map((has, i) => has && AGE_RANK[CAV_ARMOR_TECH_AGES[i]] <= rank);
+  const atkBonus = meleeAtkTotal(meleeAtkAtAge, false);
+  const arm = armorTotal(cavArmorAtAge, CAV_ARMOR_DELTAS, false);
+  const uniqueGateOk = !ELEPHANT_UNIQUE_TECH_AGE[civ] || AGE_RANK[ELEPHANT_UNIQUE_TECH_AGE[civ]] <= rank;
+  const attack = base.attack + atkBonus + (uniqueGateOk ? (cfg.uniqueTechAtk || 0) : 0);
+  const meleeArmor = base.melee + arm.melee + (cfg.civMelee || 0) + (uniqueGateOk ? (cfg.uniqueTechMelee || 0) : 0);
+  const pierceArmor = base.pierce + arm.pierce + (cfg.civPierce || 0) + (uniqueGateOk ? (cfg.uniqueTechPierce || 0) : 0);
+  const hp = base.hp + (cfg.bloodlines ? 20 : 0) + (uniqueGateOk ? (cfg.uniqueTechHp || 0) : 0);
+  const husbandryAtAge = cfg.husbandry && AGE_RANK.Castle <= rank;
+  const speed = d2(base.speed * (husbandryAtAge ? 1.15 : 1) * (cfg.speedMult || 1));
+  const reload = d2(base.reload * (cfg.atkSpeedMult || 1));
+  const dps = d2(attack / reload);
+  return { tierName: ELEPHANT_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
+}
+// War Elephant — Persians' real Castle-trained Elephant-archetype unique
+// unit (distinct from Savar, which already counts as their Paladin-tier
+// Knight-line replacement in CAVALRY_CIVS above). Real base/Elite stats
+// from data.json, verified to have a real Elite tier via unit_upgrades.
+const ELEPHANT_UNIQUE_CIVS = {
+  Persians_WarElephant: { civ: 'Persians', unit: 'War Elephant', kind: 'unique', cost: 255,
+    base: { hp: 450, attack: 15, melee: 1, pierce: 2, speed: 0.8, reload: 2 },
+    elite: { hp: 600, attack: 20, melee: 1, pierce: 3, speed: 0.8, reload: 2 },
+    meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false },
+};
+function uniqueElephantMaxStats(civ, cfg, age) {
+  const rank = AGE_RANK[age];
+  const minRank = AGE_RANK[cfg.minAge || 'Castle'];
+  const rows = [];
+  if (rank >= minRank) rows.push(uniqueCavalryTierStats(civ, cfg, cfg.base, false, rank));
+  if (cfg.elite && rank >= AGE_RANK.Imperial) rows.push(uniqueCavalryTierStats(civ, cfg, cfg.elite, true, rank));
+  return rows;
+}
 const MELEE_COLS = [
   ['rank', '#', false], ['line', 'Unit', false], ['civ', 'Civ', false],
   ['hp', 'HP', true], ['attack', 'Attack', true], ['armorTotal', 'Armor', true],
@@ -2930,8 +3014,10 @@ makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [
   [SCOUT_CIVS, scoutMaxStats, SCOUT_COST, 'scouts'],
   [STEPPE_CIVS, steppeMaxStats, STEPPE_COST, 'steppe'],
   [CAMEL_CIVS, camelMaxStats, CAMEL_COST, 'camels'],
+  [ELEPHANT_CIVS, elephantMaxStats, ELEPHANT_COST, 'elephants'],
   [CAVALRY_UNIQUE_CIVS, uniqueCavalryMaxStats, null, 'unique'],
-], 'gold', 'No civ trains a Knight/Scout/Steppe Lancer/Camel-line unit before Feudal Age.', '.cavalry-type-toggle')();
+  [ELEPHANT_UNIQUE_CIVS, uniqueElephantMaxStats, null, 'unique'],
+], 'gold', 'No civ trains a Knight/Scout/Steppe Lancer/Camel/Elephant-line unit before Feudal Age.', '.cavalry-type-toggle')();
 
 // Unit Stats toggle (2026-09-17, site owner request) — Base/Castle techs/
 // Imperial techs, applying every tech available by that age to a generic
