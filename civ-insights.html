@@ -768,7 +768,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.73</div>
+    <div class="version">v0.74</div>
   </div>
 </div>
 
@@ -1962,14 +1962,16 @@ renderAllMaxedTable();
 // first" — not a weighted/normalized model), with reload and cost inverted
 // (lower is better) since those are the only two "smaller is better"
 // columns already on the table.
+// Labels kept short (vs. the full names used elsewhere on the page) so all
+// 17 columns fit the table width without every header wrapping/truncating.
 const CA_RANKING_CATEGORIES = [
-  ['hp', 'HP', true], ['attack', 'Attack', true],
-  ['meleeArmor', 'Melee Armor', true], ['pierceArmor', 'Pierce Armor', true],
-  ['range', 'Range', true], ['speed', 'Speed', true],
-  ['reload', 'Reload', false], ['dps', 'DPS', true],
-  ['dpsVsInfantry', 'DPS v. Infantry', true], ['dpsVsRanged', 'DPS v. Ranged', true],
-  ['accuracy', 'Accuracy', true], ['cost', 'Cost', false],
-  ['dpsPer100', 'DPS / 100 res', true],
+  ['hp', 'HP', true], ['attack', 'Atk', true],
+  ['meleeArmor', 'M.Arm', true], ['pierceArmor', 'P.Arm', true],
+  ['range', 'Rng', true], ['speed', 'Spd', true],
+  ['reload', 'Rld', false], ['dps', 'DPS', true],
+  ['dpsVsInfantry', 'v.Inf', true], ['dpsVsRanged', 'v.Rng', true],
+  ['accuracy', 'Acc', true], ['cost', 'Cost', false],
+  ['dpsPer100', 'DPS/100', true],
 ];
 // Standard competition ranking ("1224"): ties share a rank, the next
 // distinct value's rank skips past the tied count. Points = N - rank + 1,
@@ -2010,7 +2012,7 @@ function renderCaRankingTable() {
   const cols = [
     ['overallRank', 'Rank', true], ['line', 'Line', true], ['civ', 'Civ', true],
     ...CA_RANKING_CATEGORIES.map(([key, label]) => [key, label, true]),
-    ['totalPoints', 'Total Points', true],
+    ['totalPoints', 'Total', true],
   ];
   const thead = `<thead><tr>${cols.map(([k, label, sortable]) => `<th class="${sortable ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
   const tbody = ranked.map(r => `<tr>
