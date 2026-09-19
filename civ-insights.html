@@ -387,16 +387,18 @@ select:focus{outline:none;border-color:var(--amber);}
       <p class="desc">
         A "behind the scenes" composite ranking built from the table above, all 63 rows (CA/HCA/MCB/
         HMCB/EA and every unique unit) compared together, not split by line. Every stat column shown
-        above is its own ranking category (armor is 2 separate categories, melee and pierce, not one
-        combined number) — for each category, all 63 rows are ranked 1st through 63rd using standard
-        competition ranking (rows that tie on a value share the same rank and points; the next distinct
-        value's rank skips past however many rows tied). 1st place in a category scores 63 points, last
-        scores 1. A row's <b>Total Points</b> is the sum of its points across every category; <b>Rank</b>
-        is those totals ranked the same way. Reload and Cost are inverted (lower value scores more
+        above is its own ranking category behind the scenes (armor is 2 separate categories, melee and
+        pierce, not one combined number, so it counts twice toward a civ's rank) — for each category,
+        all 63 rows are ranked 1st through 63rd using standard competition ranking (rows that tie on a
+        value share the same rank and points; the next distinct value's rank skips past however many
+        rows tied). 1st place in a category scores 63 points, last scores 1; a row's <b>Rank</b> is the
+        sum of its points across every category, ranked the same way (the running point total itself
+        isn't shown, just the resulting Rank). Reload and Cost are inverted (lower value scores more
         points) since smaller is better for both — every other category is bigger-is-better. Every
-        column except Rank and Total Points shows the civ's real raw stat value, not its points — click
-        a column to sort by that category's ranking (best value first) while still reading the actual
-        number.
+        column except Rank shows the civ's real raw stat value, not its points — <b>Armor</b> shows
+        melee/pierce combined (X/Y) the same way the table above does, even though they're ranked
+        separately underneath. Click a column to sort by that category's ranking (best value first)
+        while still reading the actual number.
       </p>
       <p class="desc" style="color:var(--text3)">
         This is a deliberately rough, unweighted first pass (explicitly requested as a starting point,
@@ -768,7 +770,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.74</div>
+    <div class="version">v0.75</div>
   </div>
 </div>
 
@@ -1962,16 +1964,19 @@ renderAllMaxedTable();
 // first" — not a weighted/normalized model), with reload and cost inverted
 // (lower is better) since those are the only two "smaller is better"
 // columns already on the table.
-// Labels kept short (vs. the full names used elsewhere on the page) so all
-// 17 columns fit the table width without every header wrapping/truncating.
+// Melee/Pierce Armor are still 2 SEPARATE ranking categories (per the site
+// owner's own explicit request, see the note above), but display-wise they
+// recombine into one "Armor" column (X/Y, same convention as the table
+// above) — the display cols array below handles that merge; these labels
+// are only used for that main table's own per-category headers.
 const CA_RANKING_CATEGORIES = [
-  ['hp', 'HP', true], ['attack', 'Atk', true],
-  ['meleeArmor', 'M.Arm', true], ['pierceArmor', 'P.Arm', true],
-  ['range', 'Rng', true], ['speed', 'Spd', true],
-  ['reload', 'Rld', false], ['dps', 'DPS', true],
-  ['dpsVsInfantry', 'v.Inf', true], ['dpsVsRanged', 'v.Rng', true],
-  ['accuracy', 'Acc', true], ['cost', 'Cost', false],
-  ['dpsPer100', 'DPS/100', true],
+  ['hp', 'HP', true], ['attack', 'Attack', true],
+  ['meleeArmor', 'Melee Armor', true], ['pierceArmor', 'Pierce Armor', true],
+  ['range', 'Range', true], ['speed', 'Speed', true],
+  ['reload', 'Reload', false], ['dps', 'DPS', true],
+  ['dpsVsInfantry', 'DPS v. Infantry', true], ['dpsVsRanged', 'DPS v. Ranged', true],
+  ['accuracy', 'Accuracy', true], ['cost', 'Cost', false],
+  ['dpsPer100', 'DPS / 100 res', true],
 ];
 // Standard competition ranking ("1224"): ties share a rank, the next
 // distinct value's rank skips past the tied count. Points = N - rank + 1,
@@ -1998,29 +2003,41 @@ function computeRanking(rows, categories) {
   const overall = competitionRank(withPoints, r => r.totalPoints, true);
   return withPoints.map((r, i) => ({ ...r, overallRank: overall[i].rank }));
 }
-let caRankingSort = { key: 'totalPoints', dir: -1 };
+// Display columns: Rank/Total Points drive the ranking but Total Points
+// itself is hidden (site owner: "get rid of total (hide it)") — Rank alone
+// conveys the outcome. Melee/Pierce Armor recombine into one "Armor" column
+// (site owner: "recombine armors in display like 4/6"), sorted by their
+// raw sum (armorTotal, already on every row) rather than either armor
+// category's points individually, matching how the table above handles it.
+const CA_RANKING_DISPLAY_COLS = [
+  ['hp', 'HP'], ['attack', 'Attack'], ['armorTotal', 'Armor'],
+  ['range', 'Range'], ['speed', 'Speed'], ['reload', 'Reload'],
+  ['dps', 'DPS'], ['dpsVsInfantry', 'DPS v. Infantry'], ['dpsVsRanged', 'DPS v. Ranged'],
+  ['accuracy', 'Accuracy'], ['cost', 'Cost'], ['dpsPer100', 'DPS / 100 res'],
+];
+let caRankingSort = { key: 'overallRank', dir: 1 };
 function renderCaRankingTable() {
   const tableEl = document.getElementById('ca-ranking-table');
   const ranked = computeRanking(buildAllMaxedRows(), CA_RANKING_CATEGORIES);
   const { key, dir } = caRankingSort;
   ranked.sort((a, b) => {
     if (key === 'civ' || key === 'line') return a[key].localeCompare(b[key]) * dir || a.civ.localeCompare(b.civ);
-    if (key === 'totalPoints' || key === 'overallRank') return (a[key] - b[key]) * dir || a.civ.localeCompare(b.civ);
+    if (key === 'overallRank' || key === 'armorTotal') return (a[key] - b[key]) * dir || a.civ.localeCompare(b.civ);
     const ci = CA_RANKING_CATEGORIES.findIndex(([k]) => k === key);
     return (a.catResults[ci].points - b.catResults[ci].points) * dir || a.civ.localeCompare(b.civ);
   });
   const cols = [
     ['overallRank', 'Rank', true], ['line', 'Line', true], ['civ', 'Civ', true],
-    ...CA_RANKING_CATEGORIES.map(([key, label]) => [key, label, true]),
-    ['totalPoints', 'Total', true],
+    ...CA_RANKING_DISPLAY_COLS.map(([key, label]) => [key, label, true]),
   ];
   const thead = `<thead><tr>${cols.map(([k, label, sortable]) => `<th class="${sortable ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
   const tbody = ranked.map(r => `<tr>
     <td class="num" style="font-weight:700;">${r.overallRank}</td>
     <td><span class="res-pill ${['CA', 'HCA', 'EA', 'XR', 'MAN', 'CAM', 'ECAM', 'RAT', 'ERAT'].includes(r.line) ? 'gold' : 'wood'}">${r.line}</span></td>
     <td>${r.civ}</td>
-    ${CA_RANKING_CATEGORIES.map(([k]) => `<td class="num">${r[k]}${k === 'reload' ? 's' : k === 'accuracy' ? '%' : ''}</td>`).join('')}
-    <td class="num" style="font-weight:700;">${r.totalPoints}</td>
+    ${CA_RANKING_DISPLAY_COLS.map(([k]) => `<td class="num">${
+      k === 'armorTotal' ? `${r.meleeArmor}/${r.pierceArmor}` : `${r[k]}${k === 'reload' ? 's' : k === 'accuracy' ? '%' : ''}`
+    }</td>`).join('')}
   </tr>`).join('');
   tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
   tableEl.querySelectorAll('th.sortable').forEach(th => {
