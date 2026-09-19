@@ -393,8 +393,10 @@ select:focus{outline:none;border-color:var(--amber);}
         value's rank skips past however many rows tied). 1st place in a category scores 63 points, last
         scores 1. A row's <b>Total Points</b> is the sum of its points across every category; <b>Rank</b>
         is those totals ranked the same way. Reload and Cost are inverted (lower value scores more
-        points) since smaller is better for both — every other category is bigger-is-better. Click any
-        column to sort by that category's points instead.
+        points) since smaller is better for both — every other category is bigger-is-better. Every
+        column except Rank and Total Points shows the civ's real raw stat value, not its points — click
+        a column to sort by that category's ranking (best value first) while still reading the actual
+        number.
       </p>
       <p class="desc" style="color:var(--text3)">
         This is a deliberately rough, unweighted first pass (explicitly requested as a starting point,
@@ -766,7 +768,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.72</div>
+    <div class="version">v0.73</div>
   </div>
 </div>
 
@@ -2015,7 +2017,7 @@ function renderCaRankingTable() {
     <td class="num" style="font-weight:700;">${r.overallRank}</td>
     <td><span class="res-pill ${['CA', 'HCA', 'EA', 'XR', 'MAN', 'CAM', 'ECAM', 'RAT', 'ERAT'].includes(r.line) ? 'gold' : 'wood'}">${r.line}</span></td>
     <td>${r.civ}</td>
-    ${r.catResults.map(c => `<td class="num">${c.points}</td>`).join('')}
+    ${CA_RANKING_CATEGORIES.map(([k]) => `<td class="num">${r[k]}${k === 'reload' ? 's' : k === 'accuracy' ? '%' : ''}</td>`).join('')}
     <td class="num" style="font-weight:700;">${r.totalPoints}</td>
   </tr>`).join('');
   tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
