@@ -446,8 +446,9 @@ select:focus{outline:none;border-color:var(--amber);}
         units</b> — the standard single-civ pattern, trained at a Castle: Huskarl, Samurai, Jaguar
         Warrior, Centurion, Serjeant, Teutonic Knight, Throwing Axeman, Urumi Swordsman, Warrior
         Priest, White Feather Guard, Gbeto, Shotel Warrior, Karambit Warrior, Kamayuk, Ibirapema
-        Warrior, Jian Swordsman, Ghulam, Woad Raider — a full audit of every real Infantry-archetype
-        unique unit (2026-09-20), sourced the same way as everything else on this page (the cached
+        Warrior, Jian Swordsman, Ghulam, Woad Raider, Obuch — a full audit of every real
+        Infantry-archetype unique unit (2026-09-20, Obuch corrected in from the Cavalry table
+        2026-09-20), sourced the same way as everything else on this page (the cached
         aoe2techtree data.json, cross-checked civ-by-civ). Berserk (Vikings) and Hearth Troop (Saxons)
         are real Infantry UUs NOT included yet — Hearth Troop has no id in this site's civData at all
         (too new for the cached dataset, same as Varangian Guard/Jarl), and Berserk hit a real
@@ -529,8 +530,9 @@ select:focus{outline:none;border-color:var(--amber);}
         stacking to +2/+2 total once both are active), Khmer (+10% speed flat, plus Tusk Swords
         unique tech +3 attack), Vietnamese (Chatras unique tech: +100 HP). <b>Castle unique
         units</b> — Cataphract, Coustillier, Iron Pagoda, Konnik, Leitis, Magyar Huszar, Monaspa,
-        Obuch, Shrivamsha Rider, Tarkan, Tiger Cavalry, Boyar, Liao Dao, Jarl, War Elephant — a full
-        audit of every real Cavalry- and Elephant-archetype unique unit,
+        Shrivamsha Rider, Tarkan, Tiger Cavalry, Boyar, Liao Dao, Jarl, War Elephant — a full
+        audit of every real Cavalry- and Elephant-archetype unique unit (Obuch, originally included
+        here, is actually Infantry-archetype and lives on the Infantry table instead — see below),
         same sourcing as the Infantry table's own audit above (the cached aoe2techtree data.json,
         cross-checked civ-by-civ, verified for a real Elite tier via its own upgrade-tech table).
         Jarl's real base stats were supplied directly by the site owner (too new for that dataset,
@@ -731,7 +733,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.69</div>
+    <div class="version">v0.70</div>
   </div>
 </div>
 
@@ -2460,6 +2462,18 @@ const UNIQUE_INFANTRY_CIVS = {
     base: { hp: 60, attack: 9, melee: 0, pierce: 3, speed: 1.15, reload: 2 },
     elite: { hp: 70, attack: 11, melee: 0, pierce: 6, speed: 1.2, reload: 2 },
     meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true },
+  // Obuch (Poles) — real Infantry archetype (anti-cavalry heavy infantry),
+  // NOT Cavalry despite once being wrongly filed under CAVALRY_UNIQUE_CIVS
+  // in an earlier pass (site owner: "obuch is infantry not cav"). Real
+  // stats from data.json (id 1701/1703) confirm base 0.9 speed — a real
+  // infantry-speed value, another signal the earlier Cavalry classification
+  // was wrong. Real tech gating pulled fresh from Poles' own civData
+  // (Forging/Iron Casting/Blast Furnace and all 3 Mail Armor techs present,
+  // Squires present, Gambesons absent).
+  Poles_Obuch: { civ: 'Poles', unit: 'Obuch', kind: 'unique', cost: 75,
+    base: { hp: 80, attack: 8, melee: 2, pierce: 2, speed: 0.9, reload: 2 },
+    elite: { hp: 95, attack: 10, melee: 2, pierce: 2, speed: 0.9, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
 };
 // Returns ONE tier's stats, given which tier (base or elite) and which age
 // to apply techs up through. Split out of uniqueInfantryMaxStats so both
@@ -2778,10 +2792,6 @@ const CAVALRY_UNIQUE_CIVS = {
     base: { hp: 70, attack: 12, melee: 3, pierce: 2, speed: 1.4, reload: 1.8 },
     elite: { hp: 80, attack: 14, melee: 5, pierce: 2, speed: 1.4, reload: 1.8 },
     meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
-  Poles_Obuch: { civ: 'Poles', unit: 'Obuch', kind: 'unique', cost: 75,
-    base: { hp: 80, attack: 8, melee: 2, pierce: 2, speed: 0.9, reload: 2 },
-    elite: { hp: 95, attack: 10, melee: 2, pierce: 2, speed: 0.9, reload: 2 },
-    meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
   Gurjaras_ShrivamshaRider: { civ: 'Gurjaras', unit: 'Shrivamsha Rider', kind: 'unique', cost: 100,
     base: { hp: 55, attack: 8, melee: 0, pierce: 1, speed: 1.6, reload: 2 },
     elite: { hp: 70, attack: 11, melee: 0, pierce: 1, speed: 1.6, reload: 1.9 },
