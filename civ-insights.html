@@ -359,10 +359,10 @@ select:focus{outline:none;border-color:var(--amber);}
         the same way Heavy CA/MCB are.
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 0;font-size:0.9em;">
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="unit-type-toggle" data-type="ca" checked>Cavalry Archer (CA/HCA)</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="unit-type-toggle" data-type="mcb" checked>Mounted Crossbowman (MCB/HMCB)</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="unit-type-toggle" data-type="ea" checked>Elephant Archer (EA)</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="unit-type-toggle" data-type="unique" checked>Unique Units (XR/BOL/MAN/CAM/GEN/KIP/RAT/WW)</label>
+        <button class="unit-type-toggle toggle-btn on" data-type="ca">Cavalry Archer (CA/HCA)</button>
+        <button class="unit-type-toggle toggle-btn on" data-type="mcb">Mounted Crossbowman (MCB/HMCB)</button>
+        <button class="unit-type-toggle toggle-btn on" data-type="ea">Elephant Archer (EA)</button>
+        <button class="unit-type-toggle toggle-btn on" data-type="unique">Unique Units (XR/BOL/MAN/CAM/GEN/KIP/RAT/WW)</button>
       </div>
       <p class="desc" style="color:var(--text3)">
         Cost is flat per unit TYPE, not per civ — every civ pays the same 40w/60g (Cavalry Archer) or
@@ -430,10 +430,10 @@ select:focus{outline:none;border-color:var(--amber);}
         <button class="infantry-age-toggle-btn toggle-btn on" data-age="imperial">Imperial</button>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 0;font-size:0.9em;">
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="infantry-type-toggle" data-type="militia" checked>Militia-line</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="infantry-type-toggle" data-type="eagle" checked>Eagle-line</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="infantry-type-toggle" data-type="regional" checked>Non-Castle unique units</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="infantry-type-toggle" data-type="unique" checked>Castle unique units</label>
+        <button class="infantry-type-toggle toggle-btn on" data-type="militia">Militia-line</button>
+        <button class="infantry-type-toggle toggle-btn on" data-type="eagle">Eagle-line</button>
+        <button class="infantry-type-toggle toggle-btn on" data-type="regional">Non-Castle unique units</button>
+        <button class="infantry-type-toggle toggle-btn on" data-type="unique">Castle unique units</button>
       </div>
       <p class="desc" style="color:var(--text3)">
         <b>Non-Castle unique units</b> — trained at a normal building, not the Castle: Fire Lancer
@@ -509,13 +509,13 @@ select:focus{outline:none;border-color:var(--amber);}
         <button class="cavalry-age-toggle-btn toggle-btn on" data-age="imperial">Imperial</button>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 0;font-size:0.9em;">
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="cavalry-type-toggle" data-type="knights" checked>Knights</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="cavalry-type-toggle" data-type="scouts" checked>Scouts</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="cavalry-type-toggle" data-type="steppe" checked>Steppe Lancers</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="cavalry-type-toggle" data-type="camels" checked>Camels</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="cavalry-type-toggle" data-type="elephants" checked>Elephants</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="cavalry-type-toggle" data-type="regional" checked>Non-Castle unique units</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="cavalry-type-toggle" data-type="unique" checked>Castle unique units</label>
+        <button class="cavalry-type-toggle toggle-btn on" data-type="knights">Knights</button>
+        <button class="cavalry-type-toggle toggle-btn on" data-type="scouts">Scouts</button>
+        <button class="cavalry-type-toggle toggle-btn on" data-type="steppe">Steppe Lancers</button>
+        <button class="cavalry-type-toggle toggle-btn on" data-type="camels">Camels</button>
+        <button class="cavalry-type-toggle toggle-btn on" data-type="elephants">Elephants</button>
+        <button class="cavalry-type-toggle toggle-btn on" data-type="regional">Non-Castle unique units</button>
+        <button class="cavalry-type-toggle toggle-btn on" data-type="unique">Castle unique units</button>
       </div>
       <p class="desc" style="color:var(--text3)">
         <b>Steppe Lancers</b> — 5 real civs (Cumans, Jurchens, Khitans, Mongols, Tatars), all reach
@@ -731,7 +731,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.68</div>
+    <div class="version">v0.69</div>
   </div>
 </div>
 
@@ -1843,7 +1843,7 @@ let allMaxedSort = { key: 'dps', dir: -1 };
 const UNIQUE_LINES = ['XR', 'BOL', 'EBOL', 'MAN', 'CAM', 'ECAM', 'GEN', 'EGEN', 'KIP', 'RAT', 'WW'];
 function renderAllMaxedTable() {
   const tableEl = document.getElementById('all-maxed-table');
-  const enabledTypes = new Set([...document.querySelectorAll('.unit-type-toggle:checked')].map(cb => cb.dataset.type));
+  const enabledTypes = new Set([...document.querySelectorAll('.unit-type-toggle.on')].map(cb => cb.dataset.type));
   const rows = [
     ...Object.entries(CA_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, false); const cost = CA_COST_OVERRIDES[civ] || CA_COST; return { line: cfg.heavy ? 'HCA' : 'CA', civ, ...s, cost, dpsPer100: d2(s.dps / cost * 100) }; }),
     ...Object.entries(CA_MCB_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, true); const cost = MCB_COST_OVERRIDES[civ] || MCB_COST; return { line: cfg.heavy ? 'HMCB' : 'MCB', civ, ...s, cost, dpsPer100: d2(s.dps / cost * 100) }; }),
@@ -1885,7 +1885,7 @@ function renderAllMaxedTable() {
     });
   });
 }
-document.querySelectorAll('.unit-type-toggle').forEach(cb => cb.addEventListener('change', renderAllMaxedTable));
+document.querySelectorAll('.unit-type-toggle').forEach(btn => btn.addEventListener('click', () => { btn.classList.toggle('on'); renderAllMaxedTable(); }));
 renderAllMaxedTable();
 
 // ── Infantry (Militia-line) / Cavalry (Knight-line) maxed table ───────────
@@ -2865,17 +2865,18 @@ const ELEPHANT_TIER_ORDER = ['battleElephant', 'eliteBattleElephant'];
 const ELEPHANT_TIER_AGE = { battleElephant: 'Castle', eliteBattleElephant: 'Imperial' };
 const ELEPHANT_TIER_NAME = { battleElephant: 'Battle Elephant', eliteBattleElephant: 'Elite Battle Elephant' };
 const ELEPHANT_UNIQUE_TECH_AGE = { Burmese: 'Imperial', Khmer: 'Castle', Vietnamese: 'Castle' }; // Howdah, Tusk Swords, Chatras
-// NOTE: Battle Elephant does NOT get Husbandry's +15% speed — confirmed via
-// index.html's own real Tech Tree data (its Elephant chain lists Bloodlines/
-// Scale/Chain/Plate Barding Armor only, unlike the Knight/Camel/Steppe/Scout
-// chains which explicitly include Husbandry). husbandry left false below.
+// NOTE: Battle Elephant DOES get Husbandry's +15% speed (confirmed directly
+// by the site owner) — index.html's own TECH_TREE_CATEGORIES chain for
+// Elephant omits Husbandry from its listed tech set, but that chain is a
+// curated display list for the flowchart feature, not an exhaustive list of
+// every tech that affects the unit, so its omission isn't authoritative here.
 const ELEPHANT_CIVS = {
-  Bengalis: { tier: 'eliteBattleElephant', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false, atkSpeedMult: PAIKS_RELOAD_MULT },
-  Burmese: { tier: 'eliteBattleElephant', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false, civMelee: 1, civPierce: 1, uniqueTechMelee: 1, uniqueTechPierce: 1 },
-  Dravidians: { tier: 'eliteBattleElephant', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: false },
-  Khmer: { tier: 'eliteBattleElephant', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false, speedMult: 1.10, uniqueTechAtk: 3 },
-  Malay: { tier: 'eliteBattleElephant', meleeAtk: [true,true,true], cavArmor: [false,true,false], bloodlines: false, husbandry: false },
-  Vietnamese: { tier: 'eliteBattleElephant', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: false, uniqueTechHp: 100 },
+  Bengalis: { tier: 'eliteBattleElephant', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true, atkSpeedMult: PAIKS_RELOAD_MULT },
+  Burmese: { tier: 'eliteBattleElephant', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true, civMelee: 1, civPierce: 1, uniqueTechMelee: 1, uniqueTechPierce: 1 },
+  Dravidians: { tier: 'eliteBattleElephant', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
+  Khmer: { tier: 'eliteBattleElephant', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true, speedMult: 1.10, uniqueTechAtk: 3 },
+  Malay: { tier: 'eliteBattleElephant', meleeAtk: [true,true,true], cavArmor: [false,true,false], bloodlines: false, husbandry: true },
+  Vietnamese: { tier: 'eliteBattleElephant', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true, uniqueTechHp: 100 },
 };
 function elephantMaxStats(civ, cfg, age) {
   const tier = effectiveTier(cfg.tier, ELEPHANT_TIER_ORDER, ELEPHANT_TIER_AGE, age);
@@ -2905,7 +2906,7 @@ const ELEPHANT_UNIQUE_CIVS = {
   Persians_WarElephant: { civ: 'Persians', unit: 'War Elephant', kind: 'unique', cost: 255,
     base: { hp: 450, attack: 15, melee: 1, pierce: 2, speed: 0.8, reload: 2 },
     elite: { hp: 600, attack: 20, melee: 1, pierce: 3, speed: 0.8, reload: 2 },
-    meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false },
+    meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
 };
 function uniqueElephantMaxStats(civ, cfg, age) {
   const rank = AGE_RANK[age];
@@ -2947,7 +2948,7 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
     const tableEl = document.getElementById(tableId);
     const ageLabel = MELEE_AGE_LABEL[ageKey];
     const enabledTypes = typeToggleSelector
-      ? new Set([...document.querySelectorAll(typeToggleSelector + ':checked')].map(cb => cb.dataset.type))
+      ? new Set([...document.querySelectorAll(typeToggleSelector + '.on')].map(cb => cb.dataset.type))
       : null;
     const rows = sources.flatMap(([civsObj, statsFn, cost, kind]) => Object.entries(civsObj)
       .flatMap(([civ, cfg]) => {
@@ -3000,7 +3001,7 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
     });
   });
   if (typeToggleSelector) {
-    document.querySelectorAll(typeToggleSelector).forEach(cb => cb.addEventListener('change', render));
+    document.querySelectorAll(typeToggleSelector).forEach(btn => btn.addEventListener('click', () => { btn.classList.toggle('on'); render(); }));
   }
   return render;
 }
