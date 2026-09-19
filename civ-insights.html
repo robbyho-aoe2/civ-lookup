@@ -699,7 +699,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.63</div>
+    <div class="version">v0.64</div>
   </div>
 </div>
 
@@ -2281,8 +2281,14 @@ const UNIQUE_INFANTRY_CIVS = {
     base: { hp: 100, attack: 12, melee: 1, pierce: 1, speed: 0.95, reload: 2 },
     elite: { hp: 115, attack: 14, melee: 2, pierce: 2, speed: 0.95, reload: 2 },
     meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+  // Elite Woad Raider corrected in 2026-09-20, later same day — wrongly
+  // modeled as single-tier at first (site owner: "every castle unit has an
+  // elite version"). Real Elite stats confirmed via data.json's own
+  // upgrade-tech entry (Elite Woad Raider, 1000f/800g/45s research) and
+  // cross-matched unit stat block.
   Celts_WoadRaider: { civ: 'Celts', unit: 'Woad Raider', kind: 'unique', cost: 95,
     base: { hp: 70, attack: 11, melee: 0, pierce: 1, speed: 1.17, reload: 2 },
+    elite: { hp: 85, attack: 15, melee: 0, pierce: 1, speed: 1.17, reload: 2 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: false },
   // Varangian Guard — regional, Byzantines/Danes/Saxons/Varangians/Vikings.
   // Real base+Elite stats and cost (65f/45g) supplied directly by the site
@@ -2355,8 +2361,14 @@ const UNIQUE_INFANTRY_CIVS = {
     base: { hp: 60, attack: 10, melee: 0, pierce: 6, speed: 1.05, reload: 2 },
     elite: { hp: 70, attack: 12, melee: 0, pierce: 8, speed: 1.05, reload: 2 },
     meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true },
+  // Elite Samurai corrected in 2026-09-20, later same day — wrongly
+  // modeled as single-tier at first, same real mistake as Woad Raider
+  // above. Real Elite stats confirmed via data.json's own upgrade-tech
+  // entry (Elite Samurai, 750f/650g/60s research) and cross-matched unit
+  // stat block.
   Japanese_Samurai: { civ: 'Japanese', unit: 'Samurai', kind: 'unique', cost: 75,
     base: { hp: 70, attack: 10, melee: 1, pierce: 1, speed: 1, reload: 1.9 },
+    elite: { hp: 80, attack: 12, melee: 1, pierce: 1, speed: 1, reload: 1.9 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, atkSpeedMult: 0.75 },
   Aztecs_JaguarWarrior: { civ: 'Aztecs', unit: 'Jaguar Warrior', kind: 'unique', cost: 90,
     base: { hp: 65, attack: 15, melee: 1, pierce: 2, speed: 1, reload: 2 },
