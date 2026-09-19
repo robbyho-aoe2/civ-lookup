@@ -381,6 +381,37 @@ select:focus{outline:none;border-color:var(--amber);}
   </details>
 
   <details class="section">
+    <summary>CA / MCB Group — Overall Power Ranking <span class="summary-hint">experimental, points-based composite rank</span></summary>
+    <div class="card">
+      <h2>CA / MCB Group — Overall Power Ranking</h2>
+      <p class="desc">
+        A "behind the scenes" composite ranking built from the table above, all 63 rows (CA/HCA/MCB/
+        HMCB/EA and every unique unit) compared together, not split by line. Every stat column shown
+        above is its own ranking category (armor is 2 separate categories, melee and pierce, not one
+        combined number) — for each category, all 63 rows are ranked 1st through 63rd using standard
+        competition ranking (rows that tie on a value share the same rank and points; the next distinct
+        value's rank skips past however many rows tied). 1st place in a category scores 63 points, last
+        scores 1. A row's <b>Total Points</b> is the sum of its points across every category; <b>Rank</b>
+        is those totals ranked the same way. Reload and Cost are inverted (lower value scores more
+        points) since smaller is better for both — every other category is bigger-is-better. Click any
+        column to sort by that category's points instead.
+      </p>
+      <p class="desc" style="color:var(--text3)">
+        This is a deliberately rough, unweighted first pass (explicitly requested as a starting point,
+        not a final model) — every category counts equally regardless of how much it actually matters in
+        real play, and DPS/DPS-v-Infantry/DPS-v-Ranged/DPS-per-100-res are all derived from Attack and
+        Reload, which are ALSO their own separate categories, so a row's raw damage output gets counted
+        several times over relative to, say, Range or Accuracy. Worth revisiting with weights (or fewer,
+        less-correlated categories) once this rough version has been sanity-checked against known-strong
+        and known-weak civs.
+      </p>
+      <div class="overflow-x">
+        <table id="ca-ranking-table"></table>
+      </div>
+    </div>
+  </details>
+
+  <details class="section">
     <summary>All Maxed Infantry Civs <span class="summary-hint">every civ's real Champion-line, one sorted list</span></summary>
     <div class="card">
       <h2>All Maxed Infantry Civs</h2>
@@ -735,7 +766,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.71</div>
+    <div class="version">v0.72</div>
   </div>
 </div>
 
@@ -1845,15 +1876,21 @@ const ALL_MAXED_COLS = [
 ];
 let allMaxedSort = { key: 'dps', dir: -1 };
 const UNIQUE_LINES = ['XR', 'BOL', 'EBOL', 'MAN', 'CAM', 'ECAM', 'GEN', 'EGEN', 'KIP', 'RAT', 'WW'];
-function renderAllMaxedTable() {
-  const tableEl = document.getElementById('all-maxed-table');
-  const enabledTypes = new Set([...document.querySelectorAll('.unit-type-toggle.on')].map(cb => cb.dataset.type));
-  const rows = [
+// Factored out of renderAllMaxedTable so the ranking system below (and any
+// future consumer) can get the full, unfiltered 63-row set without
+// duplicating the maxedStatsFor/maxedStatsForEA wiring.
+function buildAllMaxedRows() {
+  return [
     ...Object.entries(CA_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, false); const cost = CA_COST_OVERRIDES[civ] || CA_COST; return { line: cfg.heavy ? 'HCA' : 'CA', civ, ...s, cost, dpsPer100: d2(s.dps / cost * 100) }; }),
     ...Object.entries(CA_MCB_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, true); const cost = MCB_COST_OVERRIDES[civ] || MCB_COST; return { line: cfg.heavy ? 'HMCB' : 'MCB', civ, ...s, cost, dpsPer100: d2(s.dps / cost * 100) }; }),
     ...Object.entries(EA_CIVS).map(([civ, cfg]) => ({ line: 'EA', civ, ...maxedStatsForEA(civ, cfg) })),
     ...EXTRA_UNIQUE_UNITS,
-  ].filter(r => {
+  ];
+}
+function renderAllMaxedTable() {
+  const tableEl = document.getElementById('all-maxed-table');
+  const enabledTypes = new Set([...document.querySelectorAll('.unit-type-toggle.on')].map(cb => cb.dataset.type));
+  const rows = buildAllMaxedRows().filter(r => {
     if (r.line === 'CA' || r.line === 'HCA') return enabledTypes.has('ca');
     if (r.line === 'MCB' || r.line === 'HMCB') return enabledTypes.has('mcb');
     if (r.line === 'EA') return enabledTypes.has('ea');
@@ -1891,6 +1928,106 @@ function renderAllMaxedTable() {
 }
 document.querySelectorAll('.unit-type-toggle').forEach(btn => btn.addEventListener('click', () => { btn.classList.toggle('on'); renderAllMaxedTable(); }));
 renderAllMaxedTable();
+
+// ── "Behind the scenes" overall power ranking (2026-09-19, site owner
+// request) — a points-based composite rank, built from the CA/MCB/EA/
+// Unique table first ("start with the ca group first"), with the plan to
+// build the same system for the Infantry and Cavalry tables next.
+//
+// Real design decisions confirmed directly by the site owner (not assumed):
+// 1. A "category" is a STAT COLUMN (HP, Attack, Melee Armor, ...), not an
+//    archetype/line grouping — an earlier proposed design (rank CA vs MCB
+//    vs EA separately, or use only DPS) was explicitly corrected: "no, i
+//    mean every category should get ranked and then summed... HP 1-63,
+//    attack 1-63, melee armor 1-63, and 1st place should get 63 points,
+//    last place 1 point. then sum all the catagory rankings and rank that
+//    number as the overall number."
+// 2. "all units within our comparison should be ranked together. dont
+//    separate ea vs ca for example" — one combined ranking across every row
+//    in the table (all 63: CA/HCA/MCB/HMCB/EA/unique units together), not
+//    four separate per-line leaderboards.
+// 3. Armor is NOT one combined category — a follow-up split it explicitly:
+//    "for armor, make 2 separate rankings, one for melee and one for
+//    pierce" (armorTotal itself is intentionally NOT a ranking category,
+//    to avoid double-counting melee+pierce a third time).
+// Points formula: standard competition ranking (ties share the same rank
+// and points; the next distinct value's rank skips past the tied count —
+// e.g. two rows tied for 1st both score N points, the next row is rank 3
+// and scores N-2) — chosen as the most common/intuitive convention for
+// "considering ties as well." Every stat column already shown on the table
+// is included as its own category (this is explicitly a rough, qualitative
+// first pass per the site owner — "lets see how the rough ranking does
+// first" — not a weighted/normalized model), with reload and cost inverted
+// (lower is better) since those are the only two "smaller is better"
+// columns already on the table.
+const CA_RANKING_CATEGORIES = [
+  ['hp', 'HP', true], ['attack', 'Attack', true],
+  ['meleeArmor', 'Melee Armor', true], ['pierceArmor', 'Pierce Armor', true],
+  ['range', 'Range', true], ['speed', 'Speed', true],
+  ['reload', 'Reload', false], ['dps', 'DPS', true],
+  ['dpsVsInfantry', 'DPS v. Infantry', true], ['dpsVsRanged', 'DPS v. Ranged', true],
+  ['accuracy', 'Accuracy', true], ['cost', 'Cost', false],
+  ['dpsPer100', 'DPS / 100 res', true],
+];
+// Standard competition ranking ("1224"): ties share a rank, the next
+// distinct value's rank skips past the tied count. Points = N - rank + 1,
+// so 1st place (rank 1) scores N points and last place scores 1.
+function competitionRank(rows, valueFn, higherIsBetter) {
+  const n = rows.length;
+  const order = rows.map((r, i) => ({ i, v: valueFn(r) }))
+    .sort((a, b) => higherIsBetter ? b.v - a.v : a.v - b.v);
+  const out = new Array(n);
+  let rank = 1;
+  order.forEach((o, idx) => {
+    if (idx > 0 && o.v !== order[idx - 1].v) rank = idx + 1;
+    out[o.i] = { rank, points: n - rank + 1 };
+  });
+  return out;
+}
+function computeRanking(rows, categories) {
+  const perCat = categories.map(([key, , higherIsBetter]) => competitionRank(rows, r => r[key], higherIsBetter));
+  const withPoints = rows.map((r, i) => {
+    const catResults = categories.map((c, ci) => perCat[ci][i]);
+    const totalPoints = catResults.reduce((sum, c) => sum + c.points, 0);
+    return { ...r, catResults, totalPoints };
+  });
+  const overall = competitionRank(withPoints, r => r.totalPoints, true);
+  return withPoints.map((r, i) => ({ ...r, overallRank: overall[i].rank }));
+}
+let caRankingSort = { key: 'totalPoints', dir: -1 };
+function renderCaRankingTable() {
+  const tableEl = document.getElementById('ca-ranking-table');
+  const ranked = computeRanking(buildAllMaxedRows(), CA_RANKING_CATEGORIES);
+  const { key, dir } = caRankingSort;
+  ranked.sort((a, b) => {
+    if (key === 'civ' || key === 'line') return a[key].localeCompare(b[key]) * dir || a.civ.localeCompare(b.civ);
+    if (key === 'totalPoints' || key === 'overallRank') return (a[key] - b[key]) * dir || a.civ.localeCompare(b.civ);
+    const ci = CA_RANKING_CATEGORIES.findIndex(([k]) => k === key);
+    return (a.catResults[ci].points - b.catResults[ci].points) * dir || a.civ.localeCompare(b.civ);
+  });
+  const cols = [
+    ['overallRank', 'Rank', true], ['line', 'Line', true], ['civ', 'Civ', true],
+    ...CA_RANKING_CATEGORIES.map(([key, label]) => [key, label, true]),
+    ['totalPoints', 'Total Points', true],
+  ];
+  const thead = `<thead><tr>${cols.map(([k, label, sortable]) => `<th class="${sortable ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
+  const tbody = ranked.map(r => `<tr>
+    <td class="num" style="font-weight:700;">${r.overallRank}</td>
+    <td><span class="res-pill ${['CA', 'HCA', 'EA', 'XR', 'MAN', 'CAM', 'ECAM', 'RAT', 'ERAT'].includes(r.line) ? 'gold' : 'wood'}">${r.line}</span></td>
+    <td>${r.civ}</td>
+    ${r.catResults.map(c => `<td class="num">${c.points}</td>`).join('')}
+    <td class="num" style="font-weight:700;">${r.totalPoints}</td>
+  </tr>`).join('');
+  tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
+  tableEl.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const k = th.dataset.sortKey;
+      caRankingSort = { key: k, dir: caRankingSort.key === k ? -caRankingSort.dir : (k === 'civ' || k === 'line' ? 1 : -1) };
+      renderCaRankingTable();
+    });
+  });
+}
+renderCaRankingTable();
 
 // ── Infantry (Militia-line) / Cavalry (Knight-line) maxed table ───────────
 // Base stats pulled from build-order.html's own UNIT_STATS (its hand-written
