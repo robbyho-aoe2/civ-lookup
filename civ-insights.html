@@ -457,8 +457,9 @@ select:focus{outline:none;border-color:var(--amber);}
         <b>Non-Castle unique units</b> — trained at a normal building, not the Castle: Fire Lancer
         (Barracks, Chinese/Jurchens/Khitans/Koreans/Vietnamese), Temple Guard (Barracks, Muisca),
         Varangian Guard (Barracks, Byzantines/Danes/Saxons/Varangians/Vikings), Champi Warrior
-        (Barracks, Incas/Mapuche/Muisca/Tupi's real Militia-line replacement — see the note above
-        INFANTRY_CIVS for why those 4 civs are absent from the Militia-line rows), Condottiero
+        (Barracks, Incas/Mapuche/Muisca/Tupi's real Militia-line replacement, available from Feudal
+        Age just like the Man-at-Arms it stands in for — see the note above INFANTRY_CIVS for why
+        those 4 civs are absent from the Militia-line rows), Condottiero
         (Barracks, Italians, Imperial Age only — a real, further exception even within this category),
         and Serjeant (Donjon, Sicilians, real from Feudal Age — Sicilians can build Donjons, their own
         Watch Tower-line replacement, from Dark Age). Muisca shows twice here (Temple Guard AND Champi
@@ -761,7 +762,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.81</div>
+    <div class="version">v0.82</div>
   </div>
 </div>
 
@@ -2463,19 +2464,25 @@ const UNIQUE_INFANTRY_CIVS = {
   // different unit with its own real stats, not a capped continuation.
   // Real stats from data.json (ids 2552/2554 agree exactly with this
   // site's own UNIT_IDS, unlike several other units hit this session).
-  Incas_ChampiWarrior: { civ: 'Incas', unit: 'Champi Warrior', kind: 'regional', cost: 75,
+  // minAge 'Feudal' added (site owner: "add champis", same Feudal-
+  // availability correction just made for Serjeant) — Champi Warrior IS
+  // these 4 civs' real Militia-line replacement (index.html's own unit
+  // description literally calls it the "Meso/South American Militia-line
+  // replacement"), not a bonus Castle-tier add-on, so it stands in for
+  // Man-at-Arms from Feudal Age onward, same as the line it replaces.
+  Incas_ChampiWarrior: { civ: 'Incas', unit: 'Champi Warrior', kind: 'regional', cost: 75, minAge: 'Feudal',
     base: { hp: 55, attack: 9, melee: 0, pierce: 3, speed: 1.1, reload: 2 },
     elite: { hp: 65, attack: 11, melee: 0, pierce: 4, speed: 1.1, reload: 2 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
-  Mapuche_ChampiWarrior: { civ: 'Mapuche', unit: 'Champi Warrior', kind: 'regional', cost: 75,
+  Mapuche_ChampiWarrior: { civ: 'Mapuche', unit: 'Champi Warrior', kind: 'regional', cost: 75, minAge: 'Feudal',
     base: { hp: 55, attack: 9, melee: 0, pierce: 3, speed: 1.1, reload: 2 },
     elite: { hp: 65, attack: 11, melee: 0, pierce: 4, speed: 1.1, reload: 2 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: false },
-  Muisca_ChampiWarrior: { civ: 'Muisca', unit: 'Champi Warrior', kind: 'regional', cost: 75,
+  Muisca_ChampiWarrior: { civ: 'Muisca', unit: 'Champi Warrior', kind: 'regional', cost: 75, minAge: 'Feudal',
     base: { hp: 55, attack: 9, melee: 0, pierce: 3, speed: 1.1, reload: 2 },
     elite: { hp: 65, attack: 11, melee: 0, pierce: 4, speed: 1.1, reload: 2 },
     meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
-  Tupi_ChampiWarrior: { civ: 'Tupi', unit: 'Champi Warrior', kind: 'regional', cost: 75,
+  Tupi_ChampiWarrior: { civ: 'Tupi', unit: 'Champi Warrior', kind: 'regional', cost: 75, minAge: 'Feudal',
     base: { hp: 55, attack: 9, melee: 0, pierce: 3, speed: 1.1, reload: 2 },
     elite: { hp: 65, attack: 11, melee: 0, pierce: 4, speed: 1.1, reload: 2 },
     meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
