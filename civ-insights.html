@@ -458,13 +458,15 @@ select:focus{outline:none;border-color:var(--amber);}
         (Barracks, Chinese/Jurchens/Khitans/Koreans/Vietnamese), Temple Guard (Barracks, Muisca),
         Varangian Guard (Barracks, Byzantines/Danes/Saxons/Varangians/Vikings), Champi Warrior
         (Barracks, Incas/Mapuche/Muisca/Tupi's real Militia-line replacement — see the note above
-        INFANTRY_CIVS for why those 4 civs are absent from the Militia-line rows), and Condottiero
-        (Barracks, Italians, Imperial Age only — a real, further exception even within this category).
-        Muisca shows twice here (Temple Guard AND Champi Warrior — both real). <b>Castle unique
-        units</b> — the standard single-civ pattern, trained at a Castle: Huskarl, Samurai, Jaguar
-        Warrior, Centurion, Serjeant, Teutonic Knight, Throwing Axeman, Urumi Swordsman, Warrior
-        Priest, White Feather Guard, Gbeto, Shotel Warrior, Karambit Warrior, Kamayuk, Ibirapema
-        Warrior, Jian Swordsman, Ghulam, Woad Raider, Obuch, Liao Dao — a full audit of every real
+        INFANTRY_CIVS for why those 4 civs are absent from the Militia-line rows), Condottiero
+        (Barracks, Italians, Imperial Age only — a real, further exception even within this category),
+        and Serjeant (Donjon, Sicilians, real from Feudal Age — Sicilians can build Donjons, their own
+        Watch Tower-line replacement, from Dark Age). Muisca shows twice here (Temple Guard AND Champi
+        Warrior — both real). <b>Castle unique units</b> — the standard single-civ pattern, trained at
+        a Castle: Huskarl, Samurai, Jaguar Warrior, Centurion, Teutonic Knight, Throwing Axeman, Urumi
+        Swordsman, Warrior Priest, White Feather Guard, Gbeto, Shotel Warrior, Karambit Warrior,
+        Kamayuk, Ibirapema Warrior, Jian Swordsman, Ghulam, Woad Raider, Obuch, Liao Dao — a full
+        audit of every real
         Infantry-archetype unique unit (2026-09-20; Obuch and Liao Dao both corrected in from the
         Cavalry table 2026-09-20, where they'd been wrongly classified), sourced the same way as
         everything else on this page (the cached
@@ -759,7 +761,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.80</div>
+    <div class="version">v0.81</div>
   </div>
 </div>
 
@@ -2516,7 +2518,15 @@ const UNIQUE_INFANTRY_CIVS = {
     base: { hp: 110, attack: 13, melee: 2, pierce: 3, speed: 1.35, reload: 1.9 },
     elite: { hp: 155, attack: 15, melee: 3, pierce: 3, speed: 1.35, reload: 1.9 },
     meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true, armorDoubled: true },
-  Sicilians_Serjeant: { civ: 'Sicilians', unit: 'Serjeant', kind: 'unique', cost: 80,
+  // Serjeant (Sicilians) — real NON-Castle unique unit, trained from the
+  // Donjon (Sicilians' own real replacement for the Watch Tower-line,
+  // buildable from Dark Age per their own CB text), not a Castle. Site
+  // owner: "sarjeants are available in feudal age too" — was wrongly
+  // defaulted to the standard Castle-tier minAge. Moved to 'regional'
+  // (non-Castle) with minAge 'Feudal', matching the same real-building
+  // exception pattern as Condottiero/Varangian Guard/Champi Warrior/Fire
+  // Lancer/Temple Guard above.
+  Sicilians_Serjeant: { civ: 'Sicilians', unit: 'Serjeant', kind: 'regional', cost: 80, minAge: 'Feudal',
     base: { hp: 50, attack: 5, melee: 2, pierce: 1, speed: 0.95, reload: 2 },
     elite: { hp: 85, attack: 11, melee: 6, pierce: 3, speed: 0.95, reload: 2 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
