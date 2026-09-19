@@ -319,9 +319,9 @@ select:focus{outline:none;border-color:var(--amber);}
   </details>
 
   <details class="section">
-    <summary>All Maxed Cavalry Archer / Mounted Crossbowman Civs, by DPS <span class="summary-hint">every real CA and MCB civ, one sorted list</span></summary>
+    <summary>All Maxed Cavalry Archer / Mounted Crossbowman Civs <span class="summary-hint">every real CA and MCB civ, one sorted list</span></summary>
     <div class="card">
-      <h2>All Maxed Cavalry Archer / Mounted Crossbowman Civs, by DPS</h2>
+      <h2>All Maxed Cavalry Archer / Mounted Crossbowman Civs</h2>
       <p class="desc">
         Every civ that has real Cavalry Archer or Mounted Crossbowman access under the Sept 22 patch
         (31 CA civs + 15 MCB civs), the 3 Elephant Archer civs, and 6 more real archer-cavalry unique
@@ -381,9 +381,9 @@ select:focus{outline:none;border-color:var(--amber);}
   </details>
 
   <details class="section">
-    <summary>All Maxed Infantry Civs, by DPS <span class="summary-hint">every civ's real Champion-line, one sorted list</span></summary>
+    <summary>All Maxed Infantry Civs <span class="summary-hint">every civ's real Champion-line, one sorted list</span></summary>
     <div class="card">
-      <h2>All Maxed Infantry Civs, by DPS</h2>
+      <h2>All Maxed Infantry Civs</h2>
       <p class="desc">
         Every civ's real Militia-line (Man-at-Arms/Long Swordsman/Two-Handed Swordsman/Champion)
         access, each capped at its own real max tier — not every civ reaches Champion, some are
@@ -463,9 +463,9 @@ select:focus{outline:none;border-color:var(--amber);}
   </details>
 
   <details class="section">
-    <summary>All Maxed Cavalry Civs, by DPS <span class="summary-hint">every civ's real Paladin-line, one sorted list</span></summary>
+    <summary>All Maxed Cavalry Civs <span class="summary-hint">every civ's real Paladin-line, one sorted list</span></summary>
     <div class="card">
-      <h2>All Maxed Cavalry Civs, by DPS</h2>
+      <h2>All Maxed Cavalry Civs</h2>
       <p class="desc">
         Every civ's real Knight-line (Knight/Cavalier/Paladin) AND Scout-line (Scout Cavalry/Light
         Cavalry/Hussar) access, each capped at its own real max tier — most reach Paladin/Hussar,
@@ -699,7 +699,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.64</div>
+    <div class="version">v0.65</div>
   </div>
 </div>
 
@@ -2429,11 +2429,17 @@ const UNIQUE_INFANTRY_CIVS = {
     elite: { hp: 70, attack: 11, melee: 0, pierce: 6, speed: 1.2, reload: 2 },
     meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true },
 };
-function uniqueInfantryMaxStats(civ, cfg, age) {
-  const rank = AGE_RANK[age];
-  if (rank < AGE_RANK[cfg.minAge || 'Castle']) return null;
-  const useElite = !!cfg.elite && rank >= AGE_RANK.Imperial;
-  const tierStats = useElite ? cfg.elite : cfg.base;
+// Returns ONE tier's stats, given which tier (base or elite) and which age
+// to apply techs up through. Split out of uniqueInfantryMaxStats so both
+// tiers can be computed independently — this table shows base AND Elite
+// as separate permanent rows once each is reached (matching the CA/MCB
+// table's own EXTRA_UNIQUE_UNITS convention, e.g. Kipchak/Elite Kipchak
+// both always listed), NOT one row that switches tiers as the age toggle
+// changes the way the Militia/Knight/Eagle/Scout lines above do — a real
+// UX regression the site owner caught right after the Castle-UU batch
+// shipped ("the castle units only shows the elite versions now... it
+// should show regular and elite").
+function uniqueInfantryTierStats(civ, cfg, tierStats, isElite, rank) {
   const meleeAtkAtAge = cfg.meleeAtk.map((has, i) => has && AGE_RANK[MELEE_ATK_TECH_AGES[i]] <= rank);
   const infArmorAtAge = cfg.infArmor.map((has, i) => has && AGE_RANK[INF_ARMOR_TECH_AGES[i]] <= rank);
   const gambesonsAtAge = cfg.gambesons && AGE_RANK.Castle <= rank;
@@ -2450,7 +2456,15 @@ function uniqueInfantryMaxStats(civ, cfg, age) {
   const speed = d2(tierStats.speed * (squiresAtAge ? 1.10 : 1));
   const reload = d2(tierStats.reload * (cfg.atkSpeedMult || 1));
   const dps = d2(attack / reload);
-  return { tierName: `${useElite ? 'Elite ' : ''}${cfg.unit}`, hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
+  return { tierName: `${isElite ? 'Elite ' : ''}${cfg.unit}`, hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
+}
+function uniqueInfantryMaxStats(civ, cfg, age) {
+  const rank = AGE_RANK[age];
+  const minRank = AGE_RANK[cfg.minAge || 'Castle'];
+  const rows = [];
+  if (rank >= minRank) rows.push(uniqueInfantryTierStats(civ, cfg, cfg.base, false, rank));
+  if (cfg.elite && rank >= AGE_RANK.Imperial) rows.push(uniqueInfantryTierStats(civ, cfg, cfg.elite, true, rank));
+  return rows;
 }
 function cavalryMaxStats(civ, cfg, age) {
   const tier = effectiveTier(cfg.tier, CAVALRY_TIER_ORDER, CAVALRY_TIER_AGE, age);
@@ -2617,12 +2631,16 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       ? new Set([...document.querySelectorAll(typeToggleSelector + ':checked')].map(cb => cb.dataset.type))
       : null;
     const rows = sources.flatMap(([civsObj, statsFn, cost, kind]) => Object.entries(civsObj)
-      .map(([civ, cfg]) => {
-        const s = statsFn(civ, cfg, ageLabel);
+      .flatMap(([civ, cfg]) => {
+        const result = statsFn(civ, cfg, ageLabel);
+        // statsFn returns either one stats-object-or-null (the Militia/
+        // Eagle/Knight/Scout lines, which replace tiers as age changes) or
+        // an array of stats-objects (uniqueInfantryMaxStats, which shows
+        // base AND Elite as separate permanent rows once each is reached).
+        const statsList = result == null ? [] : Array.isArray(result) ? result : [result];
         const rowCost = cfg.cost || cost;
-        return s && { line: s.tierName, civ: cfg.civ || civ, ...s, cost: rowCost, dpsPer100: d2(s.dps / rowCost * 100), kind: cfg.kind || kind };
-      })
-      .filter(Boolean))
+        return statsList.map(s => ({ line: s.tierName, civ: cfg.civ || civ, ...s, cost: rowCost, dpsPer100: d2(s.dps / rowCost * 100), kind: cfg.kind || kind }));
+      }))
       .filter(r => !enabledTypes || enabledTypes.has(r.kind));
     if (!rows.length) {
       tableEl.innerHTML = `<tbody><tr><td style="padding:14px;color:var(--text3);">${emptyMsg}</td></tr></tbody>`;
