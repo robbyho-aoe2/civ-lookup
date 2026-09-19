@@ -699,7 +699,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.65</div>
+    <div class="version">v0.66</div>
   </div>
 </div>
 
@@ -2538,7 +2538,12 @@ const SCOUT_CIVS = {
   Danes: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Dravidians: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
   Ethiopians: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
-  Franks: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: false, husbandry: true },
+  // hpMult:1.20 = Franks' real "Mounted Units +20% HP starting in Feudal
+  // Age" bonus — already applied to their Knight-line row (CAVALRY_CIVS
+  // above) but missed here at first (site owner caught it, 2026-09-20):
+  // the bonus is a blanket "Mounted Units" one, not Knight-line-specific,
+  // so it applies to Scout Cavalry/Light Cavalry/Hussar too.
+  Franks: { tier: 'lightCavalry', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: false, husbandry: true, hpMult: 1.20 },
   Georgians: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Goths: { tier: 'hussar', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
   Gurjaras: { tier: 'hussar', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
@@ -2589,7 +2594,7 @@ function scoutMaxStats(civ, cfg, age) {
   const attack = base.attack + atkBonus;
   const meleeArmor = base.melee + arm.melee + (uniqueGateOk ? (cfg.uniqueTechMelee || 0) : 0);
   const pierceArmor = base.pierce + arm.pierce + (cfg.civPierce || 0) + (uniqueGateOk ? (cfg.uniqueTechPierce || 0) : 0);
-  const hp = Math.round(base.hp * hpMultAge) + (cfg.bloodlines ? 20 : 0);
+  const hp = Math.round(base.hp * hpMultAge * (cfg.hpMult || 1)) + (cfg.bloodlines ? 20 : 0);
   const husbandryAtAge = cfg.husbandry && AGE_RANK.Castle <= rank;
   const speed = d2(base.speed * (husbandryAtAge ? 1.15 : 1));
   const reload = base.reload;
