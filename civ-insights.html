@@ -40,7 +40,8 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .res-pill.wood{color:var(--wood);}
 .res-pill.stone{color:var(--stone);}
 .res-pill.gold{color:var(--gold);}
-.unit-stats-toggle-btn{font:inherit;font-size:12px;font-weight:600;padding:6px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surf2);color:var(--text2);cursor:pointer;}
+.unit-stats-toggle-btn,.toggle-btn{font:inherit;font-size:12px;font-weight:600;padding:6px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surf2);color:var(--text2);cursor:pointer;}
+.toggle-btn.on{color:var(--amberL);border-color:var(--amber);background:var(--amberBg);}
 .unit-stats-toggle-btn:hover{color:var(--text);}
 .unit-stats-toggle-btn.on{color:var(--amberL);border-color:var(--amber);background:var(--amberBg);}
 .card .sub-heading{font-size:13px;font-weight:700;margin:20px 0 4px;padding-top:16px;border-top:1px solid var(--border);color:var(--text);}
@@ -424,26 +425,36 @@ select:focus{outline:none;border-color:var(--amber);}
         equal-resources comparison.
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
-        <button class="infantry-age-toggle-btn unit-stats-toggle-btn" data-age="feudal">Feudal</button>
-        <button class="infantry-age-toggle-btn unit-stats-toggle-btn" data-age="castle">Castle</button>
-        <button class="infantry-age-toggle-btn unit-stats-toggle-btn on" data-age="imperial">Imperial</button>
+        <button class="infantry-age-toggle-btn toggle-btn" data-age="feudal">Feudal</button>
+        <button class="infantry-age-toggle-btn toggle-btn" data-age="castle">Castle</button>
+        <button class="infantry-age-toggle-btn toggle-btn on" data-age="imperial">Imperial</button>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 0;font-size:0.9em;">
         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="infantry-type-toggle" data-type="militia" checked>Militia-line</label>
         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="infantry-type-toggle" data-type="eagle" checked>Eagle-line</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="infantry-type-toggle" data-type="regional" checked>Regional units</label>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="infantry-type-toggle" data-type="unique" checked>Unique units</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="infantry-type-toggle" data-type="regional" checked>Non-Castle unique units</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="infantry-type-toggle" data-type="unique" checked>Castle unique units</label>
       </div>
       <p class="desc" style="color:var(--text3)">
-        <b>Regional units</b> — shared units trained at a normal Barracks, not the Castle: Fire Lancer
-        (Chinese/Jurchens/Khitans/Koreans/Vietnamese), Temple Guard (Muisca), Varangian Guard
-        (Byzantines/Danes/Saxons/Varangians/Vikings), and Champi Warrior (Incas/Mapuche/Muisca/Tupi's
-        real Militia-line replacement — see the note above INFANTRY_CIVS for why those 4 civs are
-        absent from the Militia-line rows). Muisca shows twice here (Temple Guard AND Champi
-        Warrior — both real). <b>Unique units</b> — standard single-civ Castle-trained UUs, being
-        added incrementally as real stats come in: Woad Raider (Celts) so far. Both categories get
+        <b>Non-Castle unique units</b> — trained at a normal building, not the Castle: Fire Lancer
+        (Barracks, Chinese/Jurchens/Khitans/Koreans/Vietnamese), Temple Guard (Barracks, Muisca),
+        Varangian Guard (Barracks, Byzantines/Danes/Saxons/Varangians/Vikings), Champi Warrior
+        (Barracks, Incas/Mapuche/Muisca/Tupi's real Militia-line replacement — see the note above
+        INFANTRY_CIVS for why those 4 civs are absent from the Militia-line rows), and Condottiero
+        (Barracks, Italians, Imperial Age only — a real, further exception even within this category).
+        Muisca shows twice here (Temple Guard AND Champi Warrior — both real). <b>Castle unique
+        units</b> — the standard single-civ pattern, trained at a Castle: Huskarl, Samurai, Jaguar
+        Warrior, Centurion, Serjeant, Teutonic Knight, Throwing Axeman, Urumi Swordsman, Warrior
+        Priest, White Feather Guard, Gbeto, Shotel Warrior, Karambit Warrior, Kamayuk, Ibirapema
+        Warrior, Jian Swordsman, Ghulam, Woad Raider — a full audit of every real Infantry-archetype
+        unique unit (2026-09-20), sourced the same way as everything else on this page (the cached
+        aoe2techtree data.json, cross-checked civ-by-civ). Berserk (Vikings) and Hearth Troop (Saxons)
+        are real Infantry UUs NOT included yet — Hearth Troop has no id in this site's civData at all
+        (too new for the cached dataset, same as Varangian Guard/Jarl), and Berserk hit a real
+        id-space mismatch in that dataset; both need real stats supplied directly. Every entry gets
         that civ's own real Blacksmith Infantry techs applied, same formula as the Militia/Eagle
-        lines above.
+        lines above — Samurai's real "Infantry attacks +33% faster" civ bonus and Armenians' real
+        Fereters (+30 HP) are folded into their own UU rows too, not just their Militia-line rows.
       </p>
       <div class="overflow-x">
         <table id="all-maxed-infantry-table"></table>
@@ -493,9 +504,9 @@ select:focus{outline:none;border-color:var(--amber);}
         Sort by DPS/100 res for an equal-resources comparison.
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
-        <button class="cavalry-age-toggle-btn unit-stats-toggle-btn" data-age="feudal">Feudal</button>
-        <button class="cavalry-age-toggle-btn unit-stats-toggle-btn" data-age="castle">Castle</button>
-        <button class="cavalry-age-toggle-btn unit-stats-toggle-btn on" data-age="imperial">Imperial</button>
+        <button class="cavalry-age-toggle-btn toggle-btn" data-age="feudal">Feudal</button>
+        <button class="cavalry-age-toggle-btn toggle-btn" data-age="castle">Castle</button>
+        <button class="cavalry-age-toggle-btn toggle-btn on" data-age="imperial">Imperial</button>
       </div>
       <div class="overflow-x">
         <table id="all-maxed-cavalry-table"></table>
@@ -688,7 +699,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.62</div>
+    <div class="version">v0.63</div>
   </div>
 </div>
 
@@ -2322,10 +2333,93 @@ const UNIQUE_INFANTRY_CIVS = {
     base: { hp: 55, attack: 9, melee: 0, pierce: 3, speed: 1.1, reload: 2 },
     elite: { hp: 65, attack: 11, melee: 0, pierce: 4, speed: 1.1, reload: 2 },
     meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+  // Condottiero — Italians, non-Castle (real CB text: "Condottiero
+  // available at the Barracks in Imperial Age" — trained at a normal
+  // Barracks, and only from Imperial specifically, not Castle like every
+  // other entry here; modeled via minAge:'Imperial'). No real Elite tier.
+  Italians_Condottiero: { civ: 'Italians', unit: 'Condottiero', kind: 'regional', cost: 85, minAge: 'Imperial',
+    base: { hp: 80, attack: 10, melee: 1, pierce: 0, speed: 1.2, reload: 1.9 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  // ── Standard Castle-trained Unique Units (2026-09-20 audit) — real
+  // stats from the cached aoe2techtree data.json, each civ's own real
+  // Blacksmith Infantry tech flags copied directly from its INFANTRY_CIVS
+  // entry above (same civ-wide flags, not re-derived). Berserk (Vikings)
+  // and Hearth Troop (Saxons) are real Infantry-archetype UUs NOT included
+  // yet — Hearth Troop has no real id in this site's civData at all yet
+  // (too new, same as Varangian Guard/Jarl — see index.html's own comment
+  // on MANUAL_NEW_CIV_DATA), and Berserk hit the same id-space mismatch
+  // trap flagged elsewhere this session (this site's id 250 for Berserk
+  // isn't Berserk in the cached data.json). Both need real stats supplied
+  // directly, same as Varangian Guard was.
+  Goths_Huskarl: { civ: 'Goths', unit: 'Huskarl', kind: 'unique', cost: 110,
+    base: { hp: 60, attack: 10, melee: 0, pierce: 6, speed: 1.05, reload: 2 },
+    elite: { hp: 70, attack: 12, melee: 0, pierce: 8, speed: 1.05, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true },
+  Japanese_Samurai: { civ: 'Japanese', unit: 'Samurai', kind: 'unique', cost: 75,
+    base: { hp: 70, attack: 10, melee: 1, pierce: 1, speed: 1, reload: 1.9 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, atkSpeedMult: 0.75 },
+  Aztecs_JaguarWarrior: { civ: 'Aztecs', unit: 'Jaguar Warrior', kind: 'unique', cost: 90,
+    base: { hp: 65, attack: 15, melee: 1, pierce: 2, speed: 1, reload: 2 },
+    elite: { hp: 75, attack: 19, melee: 2, pierce: 2, speed: 1, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Romans_Centurion: { civ: 'Romans', unit: 'Centurion', kind: 'unique', cost: 160,
+    base: { hp: 110, attack: 13, melee: 2, pierce: 3, speed: 1.35, reload: 1.9 },
+    elite: { hp: 155, attack: 15, melee: 3, pierce: 3, speed: 1.35, reload: 1.9 },
+    meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true, armorDoubled: true },
+  Sicilians_Serjeant: { civ: 'Sicilians', unit: 'Serjeant', kind: 'unique', cost: 80,
+    base: { hp: 50, attack: 5, melee: 2, pierce: 1, speed: 0.95, reload: 2 },
+    elite: { hp: 85, attack: 11, melee: 6, pierce: 3, speed: 0.95, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Teutons_TeutonicKnight: { civ: 'Teutons', unit: 'Teutonic Knight', kind: 'unique', cost: 115,
+    base: { hp: 90, attack: 14, melee: 7, pierce: 2, speed: 0.8, reload: 2 },
+    elite: { hp: 110, attack: 17, melee: 10, pierce: 2, speed: 0.8, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Franks_ThrowingAxeman: { civ: 'Franks', unit: 'Throwing Axeman', kind: 'unique', cost: 80,
+    base: { hp: 60, attack: 7, melee: 0, pierce: 0, speed: 1, reload: 2 },
+    elite: { hp: 70, attack: 8, melee: 1, pierce: 0, speed: 1, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Dravidians_UrumiSwordsman: { civ: 'Dravidians', unit: 'Urumi Swordsman', kind: 'unique', cost: 85,
+    base: { hp: 55, attack: 9, melee: 1, pierce: 0, speed: 1.1, reload: 2 },
+    elite: { hp: 65, attack: 11, melee: 1, pierce: 0, speed: 1.1, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  Armenians_WarriorPriest: { civ: 'Armenians', unit: 'Warrior Priest', kind: 'unique', cost: 90,
+    base: { hp: 80, attack: 11, melee: 1, pierce: 1, speed: 0.85, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, uniqueTechHp: 30 },
+  Shu_WhiteFeatherGuard: { civ: 'Shu', unit: 'White Feather Guard', kind: 'unique', cost: 75,
+    base: { hp: 95, attack: 7, melee: 0, pierce: 2, speed: 0.95, reload: 2 },
+    elite: { hp: 100, attack: 8, melee: 0, pierce: 3, speed: 0.95, reload: 2 },
+    meleeAtk: [true,false,false], infArmor: [true,true,true], gambesons: true, squires: true },
+  Malians_Gbeto: { civ: 'Malians', unit: 'Gbeto', kind: 'unique', cost: 90,
+    base: { hp: 40, attack: 10, melee: 0, pierce: 0, speed: 1.25, reload: 2 },
+    elite: { hp: 50, attack: 13, melee: 0, pierce: 0, speed: 1.25, reload: 2 },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+  Ethiopians_ShotelWarrior: { civ: 'Ethiopians', unit: 'Shotel Warrior', kind: 'unique', cost: 80,
+    base: { hp: 45, attack: 16, melee: 0, pierce: 0, speed: 1.2, reload: 2 },
+    elite: { hp: 50, attack: 18, melee: 0, pierce: 1, speed: 1.2, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Malay_KarambitWarrior: { civ: 'Malay', unit: 'Karambit Warrior', kind: 'unique', cost: 40,
+    base: { hp: 30, attack: 7, melee: 0, pierce: 1, speed: 1.2, reload: 2 },
+    elite: { hp: 40, attack: 8, melee: 1, pierce: 1, speed: 1.2, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Incas_Kamayuk: { civ: 'Incas', unit: 'Kamayuk', kind: 'unique', cost: 100,
+    base: { hp: 70, attack: 7, melee: 1, pierce: 0, speed: 1, reload: 2 },
+    elite: { hp: 80, attack: 8, melee: 1, pierce: 1, speed: 1, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Tupi_IbirapemaWarrior: { civ: 'Tupi', unit: 'Ibirapema Warrior', kind: 'unique', cost: 90,
+    base: { hp: 80, attack: 8, melee: 2, pierce: 1, speed: 1, reload: 2 },
+    elite: { hp: 90, attack: 11, melee: 2, pierce: 1, speed: 1, reload: 2 },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+  Wu_JianSwordsman: { civ: 'Wu', unit: 'Jian Swordsman', kind: 'unique', cost: 95,
+    base: { hp: 70, attack: 8, melee: 0, pierce: 5, speed: 1, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  Hindustanis_Ghulam: { civ: 'Hindustanis', unit: 'Ghulam', kind: 'unique', cost: 75,
+    base: { hp: 60, attack: 9, melee: 0, pierce: 3, speed: 1.15, reload: 2 },
+    elite: { hp: 70, attack: 11, melee: 0, pierce: 6, speed: 1.2, reload: 2 },
+    meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true },
 };
 function uniqueInfantryMaxStats(civ, cfg, age) {
   const rank = AGE_RANK[age];
-  if (rank < AGE_RANK.Castle) return null;
+  if (rank < AGE_RANK[cfg.minAge || 'Castle']) return null;
   const useElite = !!cfg.elite && rank >= AGE_RANK.Imperial;
   const tierStats = useElite ? cfg.elite : cfg.base;
   const meleeAtkAtAge = cfg.meleeAtk.map((has, i) => has && AGE_RANK[MELEE_ATK_TECH_AGES[i]] <= rank);
@@ -2334,12 +2428,15 @@ function uniqueInfantryMaxStats(civ, cfg, age) {
   const squiresAtAge = cfg.squires && AGE_RANK.Castle <= rank;
   const atkBonus = meleeAtkTotal(meleeAtkAtAge, cfg.meleeAtkDoubled);
   const arm = armorTotal(infArmorAtAge, INF_ARMOR_DELTAS, cfg.armorDoubled);
+  const uniqueGateOk = !INFANTRY_UNIQUE_TECH_AGE[civ] || AGE_RANK[INFANTRY_UNIQUE_TECH_AGE[civ]] <= rank;
+  const ageBonus = INFANTRY_AGE_BONUS[civ];
+  const civPierceAge = ageBonus?.civPierce ? ageBonus.civPierce[rank - 1] : 0;
   const attack = tierStats.attack + atkBonus;
   const meleeArmor = tierStats.melee + arm.melee;
-  const pierceArmor = tierStats.pierce + arm.pierce + (gambesonsAtAge ? 1 : 0);
-  const hp = tierStats.hp;
+  const pierceArmor = tierStats.pierce + arm.pierce + (gambesonsAtAge ? 1 : 0) + civPierceAge;
+  const hp = tierStats.hp + (uniqueGateOk ? (cfg.uniqueTechHp || 0) : 0);
   const speed = d2(tierStats.speed * (squiresAtAge ? 1.10 : 1));
-  const reload = tierStats.reload;
+  const reload = d2(tierStats.reload * (cfg.atkSpeedMult || 1));
   const dps = d2(attack / reload);
   return { tierName: `${useElite ? 'Elite ' : ''}${cfg.unit}`, hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
 }
