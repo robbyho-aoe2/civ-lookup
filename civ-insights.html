@@ -446,9 +446,10 @@ select:focus{outline:none;border-color:var(--amber);}
         units</b> — the standard single-civ pattern, trained at a Castle: Huskarl, Samurai, Jaguar
         Warrior, Centurion, Serjeant, Teutonic Knight, Throwing Axeman, Urumi Swordsman, Warrior
         Priest, White Feather Guard, Gbeto, Shotel Warrior, Karambit Warrior, Kamayuk, Ibirapema
-        Warrior, Jian Swordsman, Ghulam, Woad Raider, Obuch — a full audit of every real
-        Infantry-archetype unique unit (2026-09-20, Obuch corrected in from the Cavalry table
-        2026-09-20), sourced the same way as everything else on this page (the cached
+        Warrior, Jian Swordsman, Ghulam, Woad Raider, Obuch, Liao Dao — a full audit of every real
+        Infantry-archetype unique unit (2026-09-20; Obuch and Liao Dao both corrected in from the
+        Cavalry table 2026-09-20, where they'd been wrongly classified), sourced the same way as
+        everything else on this page (the cached
         aoe2techtree data.json, cross-checked civ-by-civ). Berserk (Vikings) and Hearth Troop (Saxons)
         are real Infantry UUs NOT included yet — Hearth Troop has no id in this site's civData at all
         (too new for the cached dataset, same as Varangian Guard/Jarl), and Berserk hit a real
@@ -530,9 +531,10 @@ select:focus{outline:none;border-color:var(--amber);}
         stacking to +2/+2 total once both are active), Khmer (+10% speed flat, plus Tusk Swords
         unique tech +3 attack), Vietnamese (Chatras unique tech: +100 HP). <b>Castle unique
         units</b> — Cataphract, Coustillier, Iron Pagoda, Konnik, Leitis, Magyar Huszar, Monaspa,
-        Shrivamsha Rider, Tarkan, Tiger Cavalry, Boyar, Liao Dao, Jarl, War Elephant — a full
-        audit of every real Cavalry- and Elephant-archetype unique unit (Obuch, originally included
-        here, is actually Infantry-archetype and lives on the Infantry table instead — see below),
+        Shrivamsha Rider, Tarkan, Tiger Cavalry, Boyar, Jarl, War Elephant — a full
+        audit of every real Cavalry- and Elephant-archetype unique unit (Obuch and Liao Dao, both
+        originally included here, are actually Infantry-archetype and live on the Infantry table
+        instead — see below),
         same sourcing as the Infantry table's own audit above (the cached aoe2techtree data.json,
         cross-checked civ-by-civ, verified for a real Elite tier via its own upgrade-tech table).
         Jarl's real base stats were supplied directly by the site owner (too new for that dataset,
@@ -733,7 +735,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.70</div>
+    <div class="version">v0.71</div>
   </div>
 </div>
 
@@ -2474,6 +2476,21 @@ const UNIQUE_INFANTRY_CIVS = {
     base: { hp: 80, attack: 8, melee: 2, pierce: 2, speed: 0.9, reload: 2 },
     elite: { hp: 95, attack: 10, melee: 2, pierce: 2, speed: 0.9, reload: 2 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  // Liao Dao (Khitans) — real Infantry archetype, NOT Cavalry despite an
+  // earlier pass filing it under CAVALRY_UNIQUE_CIVS with an explicit (and
+  // wrong) note claiming its "armor/speed profile matches a mounted unit"
+  // (site owner: "liao dao is infantry too" — same correction pattern as
+  // Obuch above). In hindsight the same real tell was already visible: base
+  // speed 1.0 is a textbook Infantry value, not the 1.3+ every genuine
+  // Cavalry UU on this table has. Real stats unchanged (data.json id
+  // 1920/1922) — only the tech-gating fields were wrong. Re-pulled Khitans'
+  // real infantry-tech access fresh from civData (Forging/Iron Casting
+  // present, Blast Furnace absent — matches the meleeAtk array already in
+  // use; all 3 Mail Armor techs present; Gambesons and Squires both present).
+  Khitans_LiaoDao: { civ: 'Khitans', unit: 'Liao Dao', kind: 'unique', cost: 80,
+    base: { hp: 75, attack: 9, melee: 3, pierce: 1, speed: 1, reload: 2.4 },
+    elite: { hp: 85, attack: 13, melee: 3, pierce: 1, speed: 1, reload: 2.4 },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: true, squires: true },
 };
 // Returns ONE tier's stats, given which tier (base or elite) and which age
 // to apply techs up through. Split out of uniqueInfantryMaxStats so both
@@ -2808,16 +2825,6 @@ const CAVALRY_UNIQUE_CIVS = {
     base: { hp: 100, attack: 12, melee: 4, pierce: 2, speed: 1.3, reload: 1.9 },
     elite: { hp: 130, attack: 14, melee: 8, pierce: 3, speed: 1.3, reload: 1.9 },
     meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
-  // Liao Dao — real Cavalry archetype (Khitans), despite this site's own
-  // archetype-SCORING system loosely tagging it "Infantry" for bucket-
-  // scoring purposes only, not literal unit-class truth (same caveat
-  // flagged for Battle Elephants under "Cavalry" scoring earlier this
-  // session) — real armor/speed profile here matches a mounted unit, not
-  // foot infantry.
-  Khitans_LiaoDao: { civ: 'Khitans', unit: 'Liao Dao', kind: 'unique', cost: 80,
-    base: { hp: 75, attack: 9, melee: 3, pierce: 1, speed: 1, reload: 2.4 },
-    elite: { hp: 85, attack: 13, melee: 3, pierce: 1, speed: 1, reload: 2.4 },
-    meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: false, husbandry: true },
   // Jarl — real base stats supplied directly by the site owner (65 HP/9
   // attack/2 melee/1 pierce/4 range, a thrown-melee attack like Mameluke's
   // — range not displayed, no range column on this table). Elite Jarl
