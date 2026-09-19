@@ -426,9 +426,10 @@ select:focus{outline:none;border-color:var(--amber);}
         each stat is min-max <b>normalized</b> to 0–1 across all 63 rows (0 = the worst value observed here,
         1 = the best), so a civ's real distance from the pack shows up, not just its rank position.
         <b>Double-counting</b>: Attack and Reload are dropped as their own categories (DPS already reflects
-        both), leaving 10 categories instead of 13, each given a <b>weight</b> — DPS 1.5 (the core "does
-        this unit win the fight" driver), HP 1.0, Melee/Pierce Armor 0.6 each, Range/Speed 0.4 each, DPS/100
-        res 0.8 (a real but secondary efficiency axis), DPS v. Infantry/v. Ranged and Accuracy 0.3 each
+        both), leaving 10 categories instead of 13, each given a <b>weight</b> — DPS 3.0, weighted well
+        above everything else per direct request (the core "does this unit win the fight" driver), HP
+        1.0, Melee/Pierce Armor 0.6 each, Range/Speed 0.4 each, DPS/100 res 0.8 (a real but secondary
+        efficiency axis), DPS v. Infantry/v. Ranged and Accuracy 0.3 each
         (narrower matchup-specific or smaller-magnitude signals). A row's <b>Weighted Score</b> is the
         weighted average of its normalized values, scaled to 0–100 (100 would require being #1 in literally
         every category at once — no real civ will approach it, so scores realistically cluster well under
@@ -803,7 +804,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.76</div>
+    <div class="version">v0.77</div>
   </div>
 </div>
 
@@ -2116,7 +2117,7 @@ const CA_WEIGHTED_CATEGORIES = [
   ['hp', 'HP', 1.0],
   ['meleeArmor', 'Melee Armor', 0.6], ['pierceArmor', 'Pierce Armor', 0.6],
   ['range', 'Range', 0.4], ['speed', 'Speed', 0.4],
-  ['dps', 'DPS', 1.5],
+  ['dps', 'DPS', 3.0],
   ['dpsVsInfantry', 'DPS v. Infantry', 0.3], ['dpsVsRanged', 'DPS v. Ranged', 0.3],
   ['accuracy', 'Accuracy', 0.3],
   ['dpsPer100', 'DPS / 100 res', 0.8],
