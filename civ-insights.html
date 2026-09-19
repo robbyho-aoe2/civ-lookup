@@ -442,6 +442,25 @@ select:focus{outline:none;border-color:var(--amber);}
         units on or off, but it DOES shift when you change the age toggle, since a different age means a
         genuinely different comparison (which civs even have a unit yet, and at which tier).
       </p>
+      <p class="desc" style="color:var(--text3)">
+        <b>DPS v. Shock Inf.</b> is base DPS plus each unit's own real bonus attack against the Shock
+        Infantry class (a real in-game armor class, confirmed via data.json's own class-tagging rather
+        than assumed) — this bonus is an INTRINSIC unit stat, not a tech, so it's fixed per tier/unit,
+        not gated by age beyond reaching that tier. The real Shock Infantry class members are Eagle
+        Scout/Eagle Warrior/Elite Eagle Warrior, Fire Lancer/Elite Fire Lancer, Jian Swordsman, and
+        Temple Guard/Elite Temple Guard — so this column matters most against Aztecs/Maya's own
+        Eagle-line, not a universal matchup. Militia-line gets a real +2/+6/+8/+8 bonus at Man-at-Arms/
+        Long Swordsman/Two-Handed Swordsman/Champion (Champion does NOT get more than Two-Handed
+        Swordsman — a real, non-obvious detail); several unique units get their own real bonus too
+        (Teutonic Knight and White Feather Guard +4/+4, Huskarl/Samurai/Obuch/Liao Dao/Urumi Swordsman/
+        Serjeant/Ibirapema Warrior +2/+3, Jaguar Warrior/Shotel Warrior/Karambit Warrior/Ghulam +2/+2,
+        Woad Raider +2/+3, Throwing Axeman +1/+2, Gbeto and all 4 Champi Warrior civs +1/+1) — each
+        confirmed by fingerprint-matching that unit's own already-trusted HP/Attack/Armor/Speed/Reload
+        against data.json's combat data, not guessed. Fire Lancer/Temple Guard/Eagle-line (all 4 real
+        class members) have no self-bonus, matching how units generally don't get bonus damage against
+        their own class. Not modeled for Cavalry or CA/MCB — no real civ bonus of this kind exists on
+        either archetype.
+      </p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
         <button class="infantry-age-toggle-btn toggle-btn" data-age="feudal">Feudal</button>
         <button class="infantry-age-toggle-btn toggle-btn" data-age="castle">Castle</button>
@@ -762,7 +781,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.82</div>
+    <div class="version">v0.83</div>
   </div>
 </div>
 
@@ -2283,6 +2302,21 @@ const CAVALRY_AGE_BONUS = {
 // Fereters, Bulgarians' Stirrups/Bagains, Malians' Tigui/Farimba).
 const INFANTRY_UNIQUE_TECH_AGE = { Armenians: 'Imperial', Bulgarians: 'Imperial', Maya: 'Imperial' }; // Fereters, Bagains, Holcans
 const CAVALRY_UNIQUE_TECH_AGE = { Bulgarians: 'Castle', Malians: 'Imperial', Sicilians: 'Imperial' }; // Stirrups, Farimba, Hauberk
+// DPS v. Shock Infantry (2026-09-19, site owner: "what are the shock
+// infantry units?" -> "yes" to building the column, flagged as "not
+// covered yet" earlier this session). Real per-tier bonus attack vs the
+// Shock Infantry class (armor class 29) is an INTRINSIC unit stat, not a
+// tech, confirmed via data.json fingerprint-matching each tier's own real
+// HP/Attack/Speed/Reload (already trusted from INFANTRY_BASE) against its
+// Attacks array: Man-at-Arms +2, Long Swordsman +6, Two-Handed Swordsman
+// +8, Champion +8 (Champion does NOT get more than Two-Handed Swordsman —
+// a real, non-obvious detail). The 4 real Shock Infantry CLASS MEMBERS
+// (confirmed via the same dataset's Armours-class tagging, not guessed)
+// are Eagle Scout/Eagle Warrior/Elite Eagle Warrior, Fire Lancer/Elite Fire
+// Lancer, Jian Swordsman, and Temple Guard/Elite Temple Guard — so this
+// column is most meaningful against Aztecs/Maya's own Eagle-line and a
+// few regional/unique infantry civs, not a universal matchup.
+const SHOCK_BONUS_BY_TIER = { manAtArms: 2, longsword: 6, thsw: 8, champion: 8 };
 function infantryMaxStats(civ, cfg, age) {
   const tierAgeMap = INFANTRY_TIER_AGE_OVERRIDE[civ] ? { ...INFANTRY_TIER_AGE, ...INFANTRY_TIER_AGE_OVERRIDE[civ] } : INFANTRY_TIER_AGE;
   const tier = effectiveTier(cfg.tier, INFANTRY_TIER_ORDER, tierAgeMap, age);
@@ -2316,7 +2350,8 @@ function infantryMaxStats(civ, cfg, age) {
   const speed = d2(base.speed * (squiresAtAge ? 1.10 : 1) * speedMultAge);
   const reload = d2(INFANTRY_RELOAD * (cfg.atkSpeedMult || 1));
   const dps = d2(attack / reload);
-  return { tierName: INFANTRY_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
+  const dpsVsShockInfantry = d2((attack + (SHOCK_BONUS_BY_TIER[tier] || 0)) / reload);
+  return { tierName: INFANTRY_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsShockInfantry };
 }
 // Eagle-line (Eagle Scout/Eagle Warrior/Elite Eagle Warrior) — a REAL
 // second infantry line most civs don't have at all: only Aztecs and Maya
@@ -2371,7 +2406,10 @@ function eagleMaxStats(civ, cfg, age) {
   const speed = d2(base.speed * (squiresAtAge ? 1.10 : 1));
   const reload = EAGLE_RELOAD;
   const dps = d2(attack / reload);
-  return { tierName: EAGLE_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
+  // Eagle-line is itself a Shock Infantry class member, not an attacker of
+  // it — no real self-bonus (confirmed: no Attacks-vs-class-29 entry for
+  // any Eagle tier in data.json), so this column is just base DPS here.
+  return { tierName: EAGLE_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsShockInfantry: dps };
 }
 // Regional / Unique Infantry units (2026-09-19/20, site owner request) —
 // real single- or two-tier units, not a full Militia/Eagle-style line,
@@ -2430,7 +2468,8 @@ const UNIQUE_INFANTRY_CIVS = {
   Celts_WoadRaider: { civ: 'Celts', unit: 'Woad Raider', kind: 'unique', cost: 95,
     base: { hp: 70, attack: 11, melee: 0, pierce: 1, speed: 1.17, reload: 2 },
     elite: { hp: 85, attack: 15, melee: 0, pierce: 1, speed: 1.17, reload: 2 },
-    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: false },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: false,
+    shockBonusBase: 2, shockBonusElite: 3 },
   // Varangian Guard — regional, Byzantines/Danes/Saxons/Varangians/Vikings.
   // Real base+Elite stats and cost (65f/45g) supplied directly by the site
   // owner, 2026-09-20 (too new for the cached aoe2techtree data.json),
@@ -2473,19 +2512,23 @@ const UNIQUE_INFANTRY_CIVS = {
   Incas_ChampiWarrior: { civ: 'Incas', unit: 'Champi Warrior', kind: 'regional', cost: 75, minAge: 'Feudal',
     base: { hp: 55, attack: 9, melee: 0, pierce: 3, speed: 1.1, reload: 2 },
     elite: { hp: 65, attack: 11, melee: 0, pierce: 4, speed: 1.1, reload: 2 },
-    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true,
+    shockBonusBase: 1, shockBonusElite: 1 },
   Mapuche_ChampiWarrior: { civ: 'Mapuche', unit: 'Champi Warrior', kind: 'regional', cost: 75, minAge: 'Feudal',
     base: { hp: 55, attack: 9, melee: 0, pierce: 3, speed: 1.1, reload: 2 },
     elite: { hp: 65, attack: 11, melee: 0, pierce: 4, speed: 1.1, reload: 2 },
-    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: false },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: false,
+    shockBonusBase: 1, shockBonusElite: 1 },
   Muisca_ChampiWarrior: { civ: 'Muisca', unit: 'Champi Warrior', kind: 'regional', cost: 75, minAge: 'Feudal',
     base: { hp: 55, attack: 9, melee: 0, pierce: 3, speed: 1.1, reload: 2 },
     elite: { hp: 65, attack: 11, melee: 0, pierce: 4, speed: 1.1, reload: 2 },
-    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true,
+    shockBonusBase: 1, shockBonusElite: 1 },
   Tupi_ChampiWarrior: { civ: 'Tupi', unit: 'Champi Warrior', kind: 'regional', cost: 75, minAge: 'Feudal',
     base: { hp: 55, attack: 9, melee: 0, pierce: 3, speed: 1.1, reload: 2 },
     elite: { hp: 65, attack: 11, melee: 0, pierce: 4, speed: 1.1, reload: 2 },
-    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true,
+    shockBonusBase: 1, shockBonusElite: 1 },
   // Condottiero — Italians, non-Castle (real CB text: "Condottiero
   // available at the Barracks in Imperial Age" — trained at a normal
   // Barracks, and only from Imperial specifically, not Castle like every
@@ -2507,7 +2550,8 @@ const UNIQUE_INFANTRY_CIVS = {
   Goths_Huskarl: { civ: 'Goths', unit: 'Huskarl', kind: 'unique', cost: 110,
     base: { hp: 60, attack: 10, melee: 0, pierce: 6, speed: 1.05, reload: 2 },
     elite: { hp: 70, attack: 12, melee: 0, pierce: 8, speed: 1.05, reload: 2 },
-    meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true },
+    meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true,
+    shockBonusBase: 2, shockBonusElite: 3 },
   // Elite Samurai corrected in 2026-09-20, later same day — wrongly
   // modeled as single-tier at first, same real mistake as Woad Raider
   // above. Real Elite stats confirmed via data.json's own upgrade-tech
@@ -2516,11 +2560,13 @@ const UNIQUE_INFANTRY_CIVS = {
   Japanese_Samurai: { civ: 'Japanese', unit: 'Samurai', kind: 'unique', cost: 75,
     base: { hp: 70, attack: 10, melee: 1, pierce: 1, speed: 1, reload: 1.9 },
     elite: { hp: 80, attack: 12, melee: 1, pierce: 1, speed: 1, reload: 1.9 },
-    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, atkSpeedMult: 0.75 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, atkSpeedMult: 0.75,
+    shockBonusBase: 2, shockBonusElite: 3 },
   Aztecs_JaguarWarrior: { civ: 'Aztecs', unit: 'Jaguar Warrior', kind: 'unique', cost: 90,
     base: { hp: 65, attack: 15, melee: 1, pierce: 2, speed: 1, reload: 2 },
     elite: { hp: 75, attack: 19, melee: 2, pierce: 2, speed: 1, reload: 2 },
-    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true,
+    shockBonusBase: 2, shockBonusElite: 2 },
   Romans_Centurion: { civ: 'Romans', unit: 'Centurion', kind: 'unique', cost: 160,
     base: { hp: 110, attack: 13, melee: 2, pierce: 3, speed: 1.35, reload: 1.9 },
     elite: { hp: 155, attack: 15, melee: 3, pierce: 3, speed: 1.35, reload: 1.9 },
@@ -2536,38 +2582,46 @@ const UNIQUE_INFANTRY_CIVS = {
   Sicilians_Serjeant: { civ: 'Sicilians', unit: 'Serjeant', kind: 'regional', cost: 80, minAge: 'Feudal',
     base: { hp: 50, attack: 5, melee: 2, pierce: 1, speed: 0.95, reload: 2 },
     elite: { hp: 85, attack: 11, melee: 6, pierce: 3, speed: 0.95, reload: 2 },
-    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true,
+    shockBonusBase: 2, shockBonusElite: 3 },
   Teutons_TeutonicKnight: { civ: 'Teutons', unit: 'Teutonic Knight', kind: 'unique', cost: 115,
     base: { hp: 90, attack: 14, melee: 7, pierce: 2, speed: 0.8, reload: 2 },
     elite: { hp: 110, attack: 17, melee: 10, pierce: 2, speed: 0.8, reload: 2 },
-    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true,
+    shockBonusBase: 4, shockBonusElite: 4 },
   Franks_ThrowingAxeman: { civ: 'Franks', unit: 'Throwing Axeman', kind: 'unique', cost: 80,
     base: { hp: 60, attack: 7, melee: 0, pierce: 0, speed: 1, reload: 2 },
     elite: { hp: 70, attack: 8, melee: 1, pierce: 0, speed: 1, reload: 2 },
-    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true,
+    shockBonusBase: 1, shockBonusElite: 2 },
   Dravidians_UrumiSwordsman: { civ: 'Dravidians', unit: 'Urumi Swordsman', kind: 'unique', cost: 85,
     base: { hp: 55, attack: 9, melee: 1, pierce: 0, speed: 1.1, reload: 2 },
     elite: { hp: 65, attack: 11, melee: 1, pierce: 0, speed: 1.1, reload: 2 },
-    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true,
+    shockBonusBase: 2, shockBonusElite: 3 },
   Armenians_WarriorPriest: { civ: 'Armenians', unit: 'Warrior Priest', kind: 'unique', cost: 90,
     base: { hp: 80, attack: 11, melee: 1, pierce: 1, speed: 0.85, reload: 2 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, uniqueTechHp: 30 },
   Shu_WhiteFeatherGuard: { civ: 'Shu', unit: 'White Feather Guard', kind: 'unique', cost: 75,
     base: { hp: 95, attack: 7, melee: 0, pierce: 2, speed: 0.95, reload: 2 },
     elite: { hp: 100, attack: 8, melee: 0, pierce: 3, speed: 0.95, reload: 2 },
-    meleeAtk: [true,false,false], infArmor: [true,true,true], gambesons: true, squires: true },
+    meleeAtk: [true,false,false], infArmor: [true,true,true], gambesons: true, squires: true,
+    shockBonusBase: 4, shockBonusElite: 4 },
   Malians_Gbeto: { civ: 'Malians', unit: 'Gbeto', kind: 'unique', cost: 90,
     base: { hp: 40, attack: 10, melee: 0, pierce: 0, speed: 1.25, reload: 2 },
     elite: { hp: 50, attack: 13, melee: 0, pierce: 0, speed: 1.25, reload: 2 },
-    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true,
+    shockBonusBase: 1, shockBonusElite: 1 },
   Ethiopians_ShotelWarrior: { civ: 'Ethiopians', unit: 'Shotel Warrior', kind: 'unique', cost: 80,
     base: { hp: 45, attack: 16, melee: 0, pierce: 0, speed: 1.2, reload: 2 },
     elite: { hp: 50, attack: 18, melee: 0, pierce: 1, speed: 1.2, reload: 2 },
-    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true,
+    shockBonusBase: 2, shockBonusElite: 2 },
   Malay_KarambitWarrior: { civ: 'Malay', unit: 'Karambit Warrior', kind: 'unique', cost: 40,
     base: { hp: 30, attack: 7, melee: 0, pierce: 1, speed: 1.2, reload: 2 },
     elite: { hp: 40, attack: 8, melee: 1, pierce: 1, speed: 1.2, reload: 2 },
-    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true,
+    shockBonusBase: 2, shockBonusElite: 2 },
   Incas_Kamayuk: { civ: 'Incas', unit: 'Kamayuk', kind: 'unique', cost: 100,
     base: { hp: 70, attack: 7, melee: 1, pierce: 0, speed: 1, reload: 2 },
     elite: { hp: 80, attack: 8, melee: 1, pierce: 1, speed: 1, reload: 2 },
@@ -2575,14 +2629,16 @@ const UNIQUE_INFANTRY_CIVS = {
   Tupi_IbirapemaWarrior: { civ: 'Tupi', unit: 'Ibirapema Warrior', kind: 'unique', cost: 90,
     base: { hp: 80, attack: 8, melee: 2, pierce: 1, speed: 1, reload: 2 },
     elite: { hp: 90, attack: 11, melee: 2, pierce: 1, speed: 1, reload: 2 },
-    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: false, squires: true,
+    shockBonusBase: 2, shockBonusElite: 3 },
   Wu_JianSwordsman: { civ: 'Wu', unit: 'Jian Swordsman', kind: 'unique', cost: 95,
     base: { hp: 70, attack: 8, melee: 0, pierce: 5, speed: 1, reload: 2 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
   Hindustanis_Ghulam: { civ: 'Hindustanis', unit: 'Ghulam', kind: 'unique', cost: 75,
     base: { hp: 60, attack: 9, melee: 0, pierce: 3, speed: 1.15, reload: 2 },
     elite: { hp: 70, attack: 11, melee: 0, pierce: 6, speed: 1.2, reload: 2 },
-    meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true },
+    meleeAtk: [true,true,true], infArmor: [true,true,false], gambesons: false, squires: true,
+    shockBonusBase: 2, shockBonusElite: 2 },
   // Obuch (Poles) — real Infantry archetype (anti-cavalry heavy infantry),
   // NOT Cavalry despite once being wrongly filed under CAVALRY_UNIQUE_CIVS
   // in an earlier pass (site owner: "obuch is infantry not cav"). Real
@@ -2594,7 +2650,8 @@ const UNIQUE_INFANTRY_CIVS = {
   Poles_Obuch: { civ: 'Poles', unit: 'Obuch', kind: 'unique', cost: 75,
     base: { hp: 80, attack: 8, melee: 2, pierce: 2, speed: 0.9, reload: 2 },
     elite: { hp: 95, attack: 10, melee: 2, pierce: 2, speed: 0.9, reload: 2 },
-    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true,
+    shockBonusBase: 2, shockBonusElite: 3 },
   // Liao Dao (Khitans) — real Infantry archetype, NOT Cavalry despite an
   // earlier pass filing it under CAVALRY_UNIQUE_CIVS with an explicit (and
   // wrong) note claiming its "armor/speed profile matches a mounted unit"
@@ -2609,7 +2666,8 @@ const UNIQUE_INFANTRY_CIVS = {
   Khitans_LiaoDao: { civ: 'Khitans', unit: 'Liao Dao', kind: 'unique', cost: 80,
     base: { hp: 75, attack: 9, melee: 3, pierce: 1, speed: 1, reload: 2.4 },
     elite: { hp: 85, attack: 13, melee: 3, pierce: 1, speed: 1, reload: 2.4 },
-    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: true, squires: true },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: true, squires: true,
+    shockBonusBase: 2, shockBonusElite: 3 },
 };
 // Returns ONE tier's stats, given which tier (base or elite) and which age
 // to apply techs up through. Split out of uniqueInfantryMaxStats so both
@@ -2638,7 +2696,16 @@ function uniqueInfantryTierStats(civ, cfg, tierStats, isElite, rank) {
   const speed = d2(tierStats.speed * (squiresAtAge ? 1.10 : 1));
   const reload = d2(tierStats.reload * (cfg.atkSpeedMult || 1));
   const dps = d2(attack / reload);
-  return { tierName: `${isElite ? 'Elite ' : ''}${cfg.unit}`, hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
+  // Real per-unit bonus attack vs Shock Infantry (armor class 29), where
+  // confirmed via data.json fingerprint-matching (HP/Attack/Armor/Speed/
+  // Reload all matching this entry's own already-trusted base/elite
+  // stats) — cfg.shockBonusBase/shockBonusElite, both default to 0 when
+  // unconfirmed (e.g. Varangian Guard, too new for the cached dataset;
+  // Centurion/Condottiero/Fire Lancer/Temple Guard/Warrior Priest, real
+  // confirmed zero).
+  const shockBonus = (isElite ? cfg.shockBonusElite : cfg.shockBonusBase) || 0;
+  const dpsVsShockInfantry = d2((attack + shockBonus) / reload);
+  return { tierName: `${isElite ? 'Elite ' : ''}${cfg.unit}`, hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsShockInfantry };
 }
 function uniqueInfantryMaxStats(civ, cfg, age) {
   const rank = AGE_RANK[age];
@@ -3092,7 +3159,7 @@ const MELEE_WEIGHTED_CATEGORIES = [
 // it via its own `cfg.kind` (used by UNIQUE_INFANTRY_CIVS, where regional
 // and unique-Castle units share one object). `cost` works the same way —
 // a flat per-source default, overridable per row via `cfg.cost`.
-function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, emptyMsg, typeToggleSelector) {
+function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, emptyMsg, typeToggleSelector, extraCols = []) {
   let sort = { key: 'dps', dir: -1 };
   let ageKey = 'imperial';
   function render() {
@@ -3128,7 +3195,8 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       if (key === 'civ' || key === 'line') return a[key].localeCompare(b[key]) * dir || a.civ.localeCompare(b.civ);
       return (a[key] - b[key]) * dir || a.civ.localeCompare(b.civ);
     });
-    const thead = `<thead><tr>${MELEE_COLS.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
+    const cols = [...MELEE_COLS, ...extraCols];
+    const thead = `<thead><tr>${cols.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
     const tbody = rows.map((r, i) => `<tr>
       <td class="num">${i + 1}</td>
       <td><span class="res-pill ${pillClass}">${r.line}</span></td>
@@ -3141,6 +3209,7 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       <td class="num">${r.cost}</td>
       <td class="num" style="font-weight:${key === 'dpsPer100' ? 700 : 400};">${r.dpsPer100}</td>
       <td class="num" style="font-weight:${key === 'rankWtd' ? 700 : 400};">${r.rankWtd}</td>
+      ${extraCols.map(([k]) => `<td class="num" style="font-weight:${key === k ? 700 : 400};">${r[k]}</td>`).join('')}
     </tr>`).join('');
     tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
     tableEl.querySelectorAll('th.sortable').forEach(th => {
@@ -3167,7 +3236,7 @@ makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', [
   [INFANTRY_CIVS, infantryMaxStats, INFANTRY_COST, 'militia'],
   [EAGLE_CIVS, eagleMaxStats, EAGLE_COST, 'eagle'],
   [UNIQUE_INFANTRY_CIVS, uniqueInfantryMaxStats, null, 'regional'],
-], 'wood', '—', '.infantry-type-toggle')();
+], 'wood', '—', '.infantry-type-toggle', [['dpsVsShockInfantry', 'DPS v.<br>Shock Inf.', true]])();
 makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [
   [CAVALRY_CIVS, cavalryMaxStats, CAVALRY_COST, 'knights'],
   [SCOUT_CIVS, scoutMaxStats, SCOUT_COST, 'scouts'],
