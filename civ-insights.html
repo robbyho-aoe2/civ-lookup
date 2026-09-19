@@ -375,22 +375,17 @@ select:focus{outline:none;border-color:var(--amber);}
         raw cost-to-damage ratio.
       </p>
       <p class="desc" style="color:var(--text3)">
-        <b>Rank (Pts)</b> and <b>Rank (Wtd)</b> are 2 "behind the scenes" composite rankings, both
-        computed over all 63 rows together (not split by CA/MCB/EA/Unique). <b>Rank (Pts)</b>: every stat
-        column above is its own ranking category (armor counts as 2 — melee and pierce separately), each
-        ranked 1st–63rd with standard competition ranking (ties share a rank and skip the next positions
-        accordingly), 1st scoring 63 points and last scoring 1 (Reload/Cost inverted, since smaller is
-        better there); a row's rank is those points summed and re-ranked. It's a deliberately rough,
-        equally-weighted first pass — DPS/DPS-v-Infantry/DPS-v-Ranged/DPS-per-100-res all derive from
-        Attack and Reload, which are ALSO their own categories, so raw damage output gets counted several
-        times over. <b>Rank (Wtd)</b> addresses that: Attack/Reload are dropped (DPS already reflects
-        them), each stat is min-max normalized to 0–1 across all 63 rows (so real magnitude of the gap
-        matters, not just order), and each category gets a weight — DPS 3.0 (weighted well above
-        everything else per direct request), HP 1.0, Melee/Pierce Armor 0.6 each, Range/Speed 0.4 each,
-        DPS/100 res 0.8, DPS v. Infantry/v. Ranged and Accuracy 0.3 each — combined into a 0–100 score and
-        ranked the same way. Both are experimental and a judgment call, not a claim about real competitive
-        importance — worth sanity-checking against known-strong/known-weak civs, and comparing where the
-        two disagree (they often do).
+        <b>Rank</b> is a "behind the scenes" composite ranking, computed over all 63 rows together (not
+        split by CA/MCB/EA/Unique). Attack and Reload aren't their own categories (DPS already reflects
+        both), so each remaining stat is min-max normalized to 0–1 across all 63 rows (0 = worst observed
+        here, 1 = best — preserving real magnitude of the gap between civs, not just who's ahead), then
+        combined with a weight per category — DPS 3.0 (weighted well above everything else per direct
+        request), HP 1.0, Melee/Pierce Armor 0.6 each, Range/Speed 0.4 each, DPS/100 res 0.8, DPS v.
+        Infantry/v. Ranged and Accuracy 0.3 each — into a 0–100 score, which Rank then orders (ties share a
+        rank via standard competition ranking). Experimental and a judgment call, not a claim about real
+        competitive importance — worth sanity-checking against known-strong/known-weak civs. An earlier
+        equal-weighted, points-based version of this (every category ranked 1st–63rd, summed) was tried
+        and shown side by side with this one before being removed in favor of just this weighted version.
       </p>
       <div class="overflow-x">
         <table id="all-maxed-table"></table>
@@ -440,7 +435,12 @@ select:focus{outline:none;border-color:var(--amber);}
         Cost is flat per civ — every civ pays the same 50f/20g here. Real per-civ cost discounts
         (Goths, Incas, Forced Levy's gold→food conversion, etc.) aren't factored in — same simplified
         resource-efficiency proxy as the CA/MCB table above. Sort by DPS/100 res for an
-        equal-resources comparison.
+        equal-resources comparison. <b>Rank</b> is the same "behind the scenes" weighted composite as the
+        CA/MCB table (HP/Melee Armor/Pierce Armor/Speed/DPS/DPS-per-100-res normalized and weighted, DPS
+        weighted well above the rest), computed fresh for every row currently shown at this age — before
+        the type-toggle filter below, so it doesn't shift when you toggle Militia-line/Eagle-line/unique
+        units on or off, but it DOES shift when you change the age toggle, since a different age means a
+        genuinely different comparison (which civs even have a unit yet, and at which tier).
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
         <button class="infantry-age-toggle-btn toggle-btn" data-age="feudal">Feudal</button>
@@ -521,7 +521,13 @@ select:focus{outline:none;border-color:var(--amber);}
         Cost is flat per civ — every civ pays the same 60f/75g here. Real per-civ cost discounts
         (Szlachta Privileges' -60% gold Knight-line, Corvinian Army's gold→food conversion, etc.)
         aren't factored in — same simplified resource-efficiency proxy as the CA/MCB table above.
-        Sort by DPS/100 res for an equal-resources comparison.
+        Sort by DPS/100 res for an equal-resources comparison. <b>Rank</b> is the same "behind the
+        scenes" weighted composite as the CA/MCB and Infantry tables (HP/Melee Armor/Pierce Armor/
+        Speed/DPS/DPS-per-100-res normalized and weighted, DPS weighted well above the rest), computed
+        fresh for every row currently shown at this age — before the type-toggle filter below, so it
+        doesn't shift when you toggle Knights/Scouts/Steppe/Camels/Elephants/unique units on or off, but
+        it DOES shift when you change the age toggle, since a different age means a genuinely different
+        comparison (which civs even have a unit yet, and at which tier).
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
         <button class="cavalry-age-toggle-btn toggle-btn" data-age="feudal">Feudal</button>
@@ -753,7 +759,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.79</div>
+    <div class="version">v0.80</div>
   </div>
 </div>
 
@@ -1860,7 +1866,7 @@ const ALL_MAXED_COLS = [
   ['dps', 'DPS', true], ['dpsVsInfantry', 'DPS v.<br>Infantry', true],
   ['dpsVsRanged', 'DPS v.<br>Ranged', true], ['accuracy', 'Accuracy', true],
   ['cost', 'Cost', true], ['dpsPer100', 'DPS / 100 res', true],
-  ['rankPts', 'Rank (Pts)', true], ['rankWtd', 'Rank (Wtd)', true],
+  ['rankWtd', 'Rank', true],
 ];
 let allMaxedSort = { key: 'dps', dir: -1 };
 const UNIQUE_LINES = ['XR', 'BOL', 'EBOL', 'MAN', 'CAM', 'ECAM', 'GEN', 'EGEN', 'KIP', 'RAT', 'WW'];
@@ -1875,51 +1881,34 @@ function buildAllMaxedRows() {
     ...EXTRA_UNIQUE_UNITS,
   ];
 }
-// ── "Behind the scenes" ranking system (2026-09-19, site owner request) —
-// 2 parallel composite scores, both folded directly into the main
-// comparison table's own columns (Rank (Pts) / Rank (Wtd)) rather than kept
-// as separate standalone tables — site owner: "just put both in the main
-// comp and put both weighted and raw rankings." Both are computed over the
-// FULL unfiltered 63-row set (independent of the CA/MCB/EA/Unique
-// type-toggle filter below), then merged onto each row before the existing
-// filter/sort logic runs, so the ranks stay stable regardless of what's
-// currently toggled on/off in the table.
+// ── "Behind the scenes" weighted power ranking (2026-09-19, site owner
+// request), folded directly into the main comparison table's own "Rank"
+// column rather than kept as a separate standalone table — site owner:
+// "just put both in the main comp and put both weighted and raw rankings",
+// then later "lets get rid of pts ranking, just keep the weighted one"
+// (an earlier points-based composite — every stat column ranked 1st-63rd
+// with ties handled via standard competition ranking, summed into a Total
+// Points value — was tried first, shown alongside this one, then removed
+// entirely once compared; ONLY the weighted/normalized version survives).
+// Computed over the FULL unfiltered 63-row set (independent of the CA/MCB/
+// EA/Unique type-toggle filter below), then merged onto each row before
+// the existing filter/sort logic runs, so ranks stay stable regardless of
+// what's currently toggled on/off in the table.
 //
-// RANK (PTS) — a points-based composite, real design decisions confirmed
-// directly by the site owner (not assumed):
-// 1. A "category" is a STAT COLUMN (HP, Attack, Melee Armor, ...), not an
-//    archetype/line grouping — an earlier proposed design (rank CA vs MCB
-//    vs EA separately, or use only DPS) was explicitly corrected: "no, i
-//    mean every category should get ranked and then summed... HP 1-63,
-//    attack 1-63, melee armor 1-63, and 1st place should get 63 points,
-//    last place 1 point. then sum all the catagory rankings and rank that
-//    number as the overall number."
-// 2. "all units within our comparison should be ranked together. dont
-//    separate ea vs ca for example" — one combined ranking across every row
-//    in the table, not four separate per-line leaderboards.
-// 3. Armor is NOT one combined category — a follow-up split it explicitly:
-//    "for armor, make 2 separate rankings, one for melee and one for
-//    pierce" (armorTotal itself is intentionally NOT a ranking category,
-//    to avoid double-counting melee+pierce a third time).
-// Standard competition ranking ("1224") handles ties: tied rows share the
-// same rank AND points; the next distinct value's rank skips past the tied
-// count. Points = N - rank + 1, so 1st scores N (63) and last scores 1.
-// Reload and Cost are inverted (lower is better) since those are the only
-// two "smaller is better" columns on the table; every other category
-// (including Melee/Pierce Armor separately) is bigger-is-better. This is
-// explicitly a rough, qualitative pass (site owner: "lets see how the
-// rough ranking does first") — it double/triple-counts raw damage output,
-// since DPS/DPS-v-Infantry/DPS-v-Ranged/DPS-per-100res are all derived from
-// Attack and Reload, which are ALSO their own separate categories.
-const CA_RANKING_CATEGORIES = [
-  ['hp', 'HP', true], ['attack', 'Attack', true],
-  ['meleeArmor', 'Melee Armor', true], ['pierceArmor', 'Pierce Armor', true],
-  ['range', 'Range', true], ['speed', 'Speed', true],
-  ['reload', 'Reload', false], ['dps', 'DPS', true],
-  ['dpsVsInfantry', 'DPS v. Infantry', true], ['dpsVsRanged', 'DPS v. Ranged', true],
-  ['accuracy', 'Accuracy', true], ['cost', 'Cost', false],
-  ['dpsPer100', 'DPS / 100 res', true],
-];
+// Real design, per the site owner's own exploratory question ("what kind
+// of weighting or different ratio based way of ranking would be better?")
+// and follow-up ("yeah try it"): each stat is min-max NORMALIZED to 0-1
+// across all 63 rows (0 = worst observed, 1 = best observed) — preserves
+// real magnitude of the gap between civs, unlike pure rank-position points
+// where a civ 1 HP behind the leader loses the same amount as one 50 HP
+// behind. Attack/Reload are dropped as their own categories (DPS already
+// reflects both, avoiding double-counting), and each remaining category
+// gets a WEIGHT reflecting how much it should matter in real play — DPS
+// raised from 1.5 to 3.0 per direct request ("lets weight dps more than
+// other cats then"), now clearly the dominant factor (~2x HP's weight,
+// ~10x the matchup-bonus/Accuracy categories). Weights are a judgment
+// call, not derived from anything. Since Reload/Cost are dropped, every
+// remaining category is bigger-is-better — no inversion logic needed.
 function competitionRank(rows, valueFn, higherIsBetter) {
   const n = rows.length;
   const order = rows.map((r, i) => ({ i, v: valueFn(r) }))
@@ -1932,31 +1921,6 @@ function competitionRank(rows, valueFn, higherIsBetter) {
   });
   return out;
 }
-function computeRanking(rows, categories) {
-  const perCat = categories.map(([key, , higherIsBetter]) => competitionRank(rows, r => r[key], higherIsBetter));
-  const withPoints = rows.map((r, i) => {
-    const catResults = categories.map((c, ci) => perCat[ci][i]);
-    const totalPoints = catResults.reduce((sum, c) => sum + c.points, 0);
-    return { ...r, catResults, totalPoints };
-  });
-  const overall = competitionRank(withPoints, r => r.totalPoints, true);
-  return withPoints.map((r, i) => ({ ...r, overallRank: overall[i].rank }));
-}
-// RANK (WTD) — a second, parallel scoring pass addressing Rank (Pts)'s own
-// 2 flagged weaknesses (site owner: "what kind of weighting or different
-// ratio based way of ranking would be better?" -> "yeah try it"):
-// 1. Rank-position points are magnitude-blind — a civ 1 HP behind the
-//    leader scores the same 1-point penalty as one 50 HP behind. Fixed via
-//    min-max NORMALIZING each stat to 0-1 across all 63 rows (0 = worst
-//    observed, 1 = best observed) before combining, so real gaps show up.
-// 2. Double/triple-counting — Attack/Reload are dropped as their own
-//    categories (DPS already captures them) and every remaining category
-//    gets a WEIGHT reflecting how much it should matter in real play. DPS
-//    was raised from 1.5 to 3.0 per direct request ("lets weight dps more
-//    than other cats then") — now clearly the dominant factor (~2x HP's
-//    weight, ~10x the matchup-bonus/Accuracy categories). Weights are a
-//    judgment call, not derived from anything. Since Reload/Cost are
-//    dropped, every remaining category is bigger-is-better.
 // weightedScore = weighted average of normalized values, scaled to 0-100
 // (100 would require being #1 in literally every category at once).
 const CA_WEIGHTED_CATEGORIES = [
@@ -1987,10 +1951,9 @@ function renderAllMaxedTable() {
   const tableEl = document.getElementById('all-maxed-table');
   const enabledTypes = new Set([...document.querySelectorAll('.unit-type-toggle.on')].map(cb => cb.dataset.type));
   const fullRows = buildAllMaxedRows();
-  const rankedPts = computeRanking(fullRows, CA_RANKING_CATEGORIES);
   const rankedWtd = computeWeightedRanking(fullRows, CA_WEIGHTED_CATEGORIES);
   const rows = fullRows
-    .map((r, i) => ({ ...r, rankPts: rankedPts[i].overallRank, rankWtd: rankedWtd[i].weightedRank }))
+    .map((r, i) => ({ ...r, rankWtd: rankedWtd[i].weightedRank }))
     .filter(r => {
       if (r.line === 'CA' || r.line === 'HCA') return enabledTypes.has('ca');
       if (r.line === 'MCB' || r.line === 'HMCB') return enabledTypes.has('mcb');
@@ -2017,7 +1980,6 @@ function renderAllMaxedTable() {
     <td class="num">${r.accuracy}%</td>
     <td class="num">${r.cost}</td>
     <td class="num" style="font-weight:${key === 'dpsPer100' ? 700 : 400};">${r.dpsPer100}</td>
-    <td class="num" style="font-weight:${key === 'rankPts' ? 700 : 400};">${r.rankPts}</td>
     <td class="num" style="font-weight:${key === 'rankWtd' ? 700 : 400};">${r.rankWtd}</td>
   </tr>`).join('');
   tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
@@ -3078,8 +3040,23 @@ const MELEE_COLS = [
   ['hp', 'HP', true], ['attack', 'Attack', true], ['armorTotal', 'Armor', true],
   ['speed', 'Speed', true], ['reload', 'Reload', true], ['dps', 'DPS', true],
   ['cost', 'Cost', true], ['dpsPer100', 'DPS / 100 res', true],
+  ['rankWtd', 'Rank', true],
 ];
 const MELEE_AGE_LABEL = { feudal: 'Feudal', castle: 'Castle', imperial: 'Imperial' };
+// Same "behind the scenes" weighted power ranking as the CA/MCB table above
+// (site owner: "and then do the same for infantry and cav") — reuses
+// competitionRank/computeWeightedRanking/minMaxNormalize as-is, just with
+// its own category list since this table has no Range/Accuracy/DPS-v-X
+// columns (those are archer-specific). DPS weighted well above everything
+// else, matching the CA/MCB table's own DPS=3.0 (site owner: "lets weight
+// dps more than other cats then").
+const MELEE_WEIGHTED_CATEGORIES = [
+  ['hp', 'HP', 1.0],
+  ['meleeArmor', 'Melee Armor', 0.6], ['pierceArmor', 'Pierce Armor', 0.6],
+  ['speed', 'Speed', 0.4],
+  ['dps', 'DPS', 3.0],
+  ['dpsPer100', 'DPS / 100 res', 0.8],
+];
 // Shared table factory for the Infantry and Cavalry sections — separate
 // tables/sections now (split apart per site owner request, 2026-09-18; used
 // to be one combined table with a type-filter toggle), but the render/sort
@@ -3107,7 +3084,7 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
     const enabledTypes = typeToggleSelector
       ? new Set([...document.querySelectorAll(typeToggleSelector + '.on')].map(cb => cb.dataset.type))
       : null;
-    const rows = sources.flatMap(([civsObj, statsFn, cost, kind]) => Object.entries(civsObj)
+    const fullRows = sources.flatMap(([civsObj, statsFn, cost, kind]) => Object.entries(civsObj)
       .flatMap(([civ, cfg]) => {
         const result = statsFn(civ, cfg, ageLabel);
         // statsFn returns either one stats-object-or-null (the Militia/
@@ -3117,7 +3094,13 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
         const statsList = result == null ? [] : Array.isArray(result) ? result : [result];
         const rowCost = cfg.cost || cost;
         return statsList.map(s => ({ line: s.tierName, civ: cfg.civ || civ, ...s, cost: rowCost, dpsPer100: d2(s.dps / rowCost * 100), kind: cfg.kind || kind }));
-      }))
+      }));
+    // Ranked over the full set at this age, BEFORE the type-toggle filter,
+    // same pattern as the CA/MCB table — rank stays stable regardless of
+    // what's currently toggled on/off, only the age selection changes it.
+    const rankedWtd = computeWeightedRanking(fullRows, MELEE_WEIGHTED_CATEGORIES);
+    const rows = fullRows
+      .map((r, i) => ({ ...r, rankWtd: rankedWtd[i].weightedRank }))
       .filter(r => !enabledTypes || enabledTypes.has(r.kind));
     if (!rows.length) {
       tableEl.innerHTML = `<tbody><tr><td style="padding:14px;color:var(--text3);">${emptyMsg}</td></tr></tbody>`;
@@ -3140,6 +3123,7 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       <td class="num" style="font-weight:${key === 'dps' ? 700 : 400};">${r.dps}</td>
       <td class="num">${r.cost}</td>
       <td class="num" style="font-weight:${key === 'dpsPer100' ? 700 : 400};">${r.dpsPer100}</td>
+      <td class="num" style="font-weight:${key === 'rankWtd' ? 700 : 400};">${r.rankWtd}</td>
     </tr>`).join('');
     tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
     tableEl.querySelectorAll('th.sortable').forEach(th => {
