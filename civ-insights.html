@@ -406,11 +406,9 @@ select:focus{outline:none;border-color:var(--amber);}
       <p class="desc" style="color:var(--text3)">
         Cost is flat per civ (60f/75g), except Poles' discounted Knight-line. Sort by DPS/100 res for an
         equal-resources comparison. <b>Rank</b> is based on real matchup outcomes (Seconds to Survive/Kill
-        vs. reference Spearman/Archer/Skirmisher/Camel/Knight-line units) — switch the pill below to
-        "Matchup" to see those numbers as columns. <b>Hits Taken v. Halberdier</b> (Pikeman/Spearman at
-        Castle/Feudal) shows how many hits a generic Spearman-line unit needs to kill this row — its real
-        anti-Cavalry/Camel/Elephant bonus differs by target class, and Elephants take the Cavalry+Elephant
-        bonus combined.
+        vs. reference Spearman/Archer/Skirmisher/Camel/Knight-line units, its real anti-Cavalry/Camel/
+        Elephant bonus differing by target class) — switch the pill below to "Matchup" to see those
+        numbers as columns, named for the reference unit's own real tier at the current age.
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
         <button class="cavalry-age-toggle-btn toggle-btn" data-age="feudal">Feudal</button>
@@ -626,7 +624,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.96</div>
+    <div class="version">v0.97</div>
   </div>
 </div>
 
@@ -3099,13 +3097,19 @@ function uniqueElephantMaxStats(civ, cfg, age) {
   if (cfg.elite && rank >= AGE_RANK.Imperial) rows.push(uniqueCavalryTierStats(civ, cfg, cfg.elite, true, rank));
   return rows;
 }
-const MELEE_COLS = [
+// Split into 3 groups (2026-09-20, site owner: "only show matchups on the
+// matchup toggler... remove the HP-Attack etc. all the way up to and
+// including dps/100 res") — Stats mode shows base+stat+rank, Matchup mode
+// shows base+rank only, with matchup columns filling the rest of the row.
+const MELEE_BASE_COLS = [
   ['rank', '#', false], ['line', 'Unit', false], ['civ', 'Civ', false],
+];
+const MELEE_STAT_COLS = [
   ['hp', 'HP', true], ['attack', 'Attack', true], ['armorTotal', 'Armor', true],
   ['speed', 'Speed', true], ['reload', 'Reload', true], ['dps', 'DPS', true],
   ['cost', 'Cost', true], ['dpsPer100', 'DPS / 100 res', true],
-  ['rankWtd', 'Rank', true],
 ];
+const MELEE_RANK_COL = ['rankWtd', 'Rank', true];
 const MELEE_AGE_LABEL = { feudal: 'Feudal', castle: 'Castle', imperial: 'Imperial' };
 // Same "behind the scenes" weighted power ranking as the CA/MCB table above
 // (site owner: "and then do the same for infantry and cav") — reuses
@@ -3276,6 +3280,8 @@ const ARCHER_LINE_BASE = { archer: { hp: 30, attack: 4, reload: 2 }, crossbowman
 const SKIRMISHER_LINE_BASE = { skirmisher: { hp: 30, attack: 2, reload: 3 }, eliteSkirmisher: { hp: 35, attack: 3, reload: 3 } };
 const ARCHER_TIER_BY_AGE = { feudal: 'archer', castle: 'crossbowman', imperial: 'arbalest' };
 const SKIRMISHER_TIER_BY_AGE = { feudal: 'skirmisher', castle: 'eliteSkirmisher', imperial: 'eliteSkirmisher' };
+const ARCHER_TIER_NAME = { archer: 'Archer', crossbowman: 'Crossbowman', arbalest: 'Arbalest' };
+const SKIRMISHER_TIER_NAME = { skirmisher: 'Skirmisher', eliteSkirmisher: 'Elite Skirmisher' };
 const ARCHER_ATK_TECH_AGES = ['Feudal', 'Castle', 'Imperial', 'Imperial']; // Fletching, Bodkin Arrow, Bracer, Chemistry
 function archerLineTechBonus(ageKey) {
   const rank = AGE_RANK[MELEE_AGE_LABEL[ageKey]];
@@ -3287,12 +3293,14 @@ function archerLineTechBonus(ageKey) {
 // named techs) — needed for the Cavalry table's offensive "Seconds to
 // Kill Archer-line" category (Cavalry deals melee damage).
 function archerLineRef(ageKey) {
-  const base = ARCHER_LINE_BASE[ARCHER_TIER_BY_AGE[ageKey]];
-  return { hp: base.hp, attack: base.attack + archerLineTechBonus(ageKey), reload: base.reload, meleeArmor: 0 };
+  const tier = ARCHER_TIER_BY_AGE[ageKey];
+  const base = ARCHER_LINE_BASE[tier];
+  return { hp: base.hp, attack: base.attack + archerLineTechBonus(ageKey), reload: base.reload, meleeArmor: 0, tierName: ARCHER_TIER_NAME[tier] };
 }
 function skirmisherLineRef(ageKey) {
-  const base = SKIRMISHER_LINE_BASE[SKIRMISHER_TIER_BY_AGE[ageKey]];
-  return { hp: base.hp, attack: base.attack + archerLineTechBonus(ageKey), reload: base.reload, meleeArmor: 0 };
+  const tier = SKIRMISHER_TIER_BY_AGE[ageKey];
+  const base = SKIRMISHER_LINE_BASE[tier];
+  return { hp: base.hp, attack: base.attack + archerLineTechBonus(ageKey), reload: base.reload, meleeArmor: 0, tierName: SKIRMISHER_TIER_NAME[tier] };
 }
 // Generic, no-civ-bonus, full-tech reference civs — reused via this file's
 // own already-trusted formulas rather than re-derived.
@@ -3371,11 +3379,12 @@ const CAMEL_VS_CAVALRY_BONUS_BY_AGE = { feudal: 0, castle: 9, imperial: 18 }; //
 function camelLineRefVsCavalry(ageKey) {
   const stats = camelMaxStats('Generic', GENERIC_CAMEL_CFG, MELEE_AGE_LABEL[ageKey]);
   if (!stats) return null;
-  return { hp: stats.hp, attack: stats.attack + CAMEL_VS_CAVALRY_BONUS_BY_AGE[ageKey], reload: stats.reload };
+  return { hp: stats.hp, attack: stats.attack + CAMEL_VS_CAVALRY_BONUS_BY_AGE[ageKey], reload: stats.reload, tierName: stats.tierName };
 }
 function spearmanLineRefFor(ageKey, targetClass) {
-  const base = SPEARMAN_LINE_BASE[SPEARMAN_TIER_BY_AGE[ageKey]];
-  return { hp: base.hp, attack: spearmanMaxedAttack(ageKey, targetClass), reload: base.reload };
+  const tier = SPEARMAN_TIER_BY_AGE[ageKey];
+  const base = SPEARMAN_LINE_BASE[tier];
+  return { hp: base.hp, attack: spearmanMaxedAttack(ageKey, targetClass), reload: base.reload, tierName: SPEARMAN_TIER_NAME[tier] };
 }
 function computeCavalryMatchupRefs(ageKey) {
   const ageLabel = MELEE_AGE_LABEL[ageKey];
@@ -3417,28 +3426,49 @@ const CAVALRY_WEIGHTED_CATEGORIES = [
 // Displayable versions of the matchup fields (site owner: "make new
 // columns visible but collapsed for all") — same keys the ranking
 // categories above read, just with column labels, shown only when the
-// matchup-details toggle is on.
-const INFANTRY_MATCHUP_COLS = [
-  ['survMilitia', 'Surv v.<br>Militia', true], ['survArcher', 'Surv v.<br>Archer', true],
-  ['survSkirmisher', 'Surv v.<br>Skirm', true], ['survScout', 'Surv v.<br>Scout', true],
-  ['survKnight', 'Surv v.<br>Knight', true], ['killMilitia', 'Kill<br>Militia', true],
-  ['killScout', 'Kill<br>Scout', true], ['killKnight', 'Kill<br>Knight', true],
-];
-const CAVALRY_MATCHUP_COLS = [
-  ['survSpearman', 'Surv v.<br>Spearman', true], ['survArcher', 'Surv v.<br>Archer', true],
-  ['survSkirmisher', 'Surv v.<br>Skirm', true], ['survCamel', 'Surv v.<br>Camel', true],
-  ['survKnight', 'Surv v.<br>Knight', true], ['killMilitia', 'Kill<br>Militia', true],
-  ['killArcher', 'Kill<br>Archer', true], ['killKnight', 'Kill<br>Knight', true],
-];
+// Matchup pill is on. Built as functions (not static arrays) so the
+// header text can name the reference unit's actual age-appropriate tier
+// (site owner: "change the spearman/pikeman/halb by age in the column
+// header... use similar approach for all the unit types we are
+// comparing") — every ref object already carries its own real tierName
+// (from the same tiered-line functions used throughout this page), so
+// this just reads it live instead of hardcoding a generic category name.
+// Surv/Kill pairs against the SAME reference unit are placed next to each
+// other (site owner: "survive v militia/kill militia should be next to
+// each other") rather than grouped as all-Surv-then-all-Kill.
+function buildInfantryMatchupCols(refs) {
+  return [
+    ['survMilitia', `Surv v.<br>${refs.militia.tierName}`, true],
+    ['killMilitia', `Kill<br>${refs.militia.tierName}`, true],
+    ['survArcher', `Surv v.<br>${refs.archer.tierName}`, true],
+    ['survSkirmisher', `Surv v.<br>${refs.skirmisher.tierName}`, true],
+    ['survScout', refs.scout ? `Surv v.<br>${refs.scout.tierName}` : 'Surv v.<br>Scout-line', true],
+    ['killScout', refs.scout ? `Kill<br>${refs.scout.tierName}` : 'Kill<br>Scout-line', true],
+    ['survKnight', refs.knight ? `Surv v.<br>${refs.knight.tierName}` : 'Surv v.<br>Knight-line', true],
+    ['killKnight', refs.knight ? `Kill<br>${refs.knight.tierName}` : 'Kill<br>Knight-line', true],
+  ];
+}
+function buildCavalryMatchupCols(refs) {
+  return [
+    ['survSpearman', `Surv v.<br>${refs.spearman.tierName}`, true],
+    ['survArcher', `Surv v.<br>${refs.archer.tierName}`, true],
+    ['killArcher', `Kill<br>${refs.archer.tierName}`, true],
+    ['survSkirmisher', `Surv v.<br>${refs.skirmisher.tierName}`, true],
+    ['survCamel', refs.camel ? `Surv v.<br>${refs.camel.tierName}` : 'Surv v.<br>Camel-line', true],
+    ['survKnight', refs.knight ? `Surv v.<br>${refs.knight.tierName}` : 'Surv v.<br>Knight-line', true],
+    ['killKnight', refs.knight ? `Kill<br>${refs.knight.tierName}` : 'Kill<br>Knight-line', true],
+    ['killMilitia', `Kill<br>${refs.militia.tierName}`, true],
+  ];
+}
 // `sources` tuples take an optional 5th element, `targetClass` ('cavalry'
-// [default], 'camel', or 'elephant') — used only when `opts.hitsTakenVsSpear`
-// is on (Cavalry table), to pick which of the Spearman-line's 3 real,
-// different bonus-vs-class values applies to that source's rows (site
+// [default], 'camel', or 'elephant') — picks which of the Spearman-line's 3
+// real, different bonus-vs-class values applies to that source's rows in
+// the Cavalry table's own "Surv v. Spearman-line" matchup column (site
 // owner: "remember spear line does bonus damage, different for cav, ele,
 // etc.").
 function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, emptyMsg, typeToggleSelector, opts = {}) {
-  const { extraCols = [], weightedCategories = MELEE_WEIGHTED_CATEGORIES, hitsTakenVsSpear = false, dmgTakenVsMilitia = false,
-    infantryMatchupRanking = false, cavalryMatchupRanking = false, matchupCols = [], colModeSelector = null, rowIcon = () => '' } = opts;
+  const { extraCols = [], weightedCategories = MELEE_WEIGHTED_CATEGORIES, dmgTakenVsMilitia = false,
+    infantryMatchupRanking = false, cavalryMatchupRanking = false, matchupColsFn = null, colModeSelector = null, rowIcon = () => '' } = opts;
   let sort = { key: 'dps', dir: -1 };
   let ageKey = 'imperial';
   // Stats vs. Matchup columns are mutually exclusive (a pill, not an
@@ -3463,38 +3493,24 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       }));
     // Infantry/Cavalry's matchup-based ranking inputs (Seconds to Survive/
     // Kill vs. 5 real reference archetypes each) — computed BEFORE
-    // computeWeightedRanking so the new categories can read them. Now also
-    // real, sortable columns (toggled via matchupColsVisible below), not
-    // purely hidden. See the big design comments above
-    // computeInfantryMatchupRefs/computeCavalryMatchupRefs for the story.
+    // computeWeightedRanking so the new categories can read them. `refs`
+    // is also what the Matchup pill's own column headers read (real,
+    // age-appropriate tier names — see buildInfantryMatchupCols/
+    // buildCavalryMatchupCols), so it's captured in an outer-scoped var.
+    let matchupRefs = null;
     if (infantryMatchupRanking) {
-      const refs = computeInfantryMatchupRefs(ageKey);
-      fullRows = fullRows.map(r => ({ ...r, ...computeInfantryMatchupFields(r, refs) }));
+      matchupRefs = computeInfantryMatchupRefs(ageKey);
+      fullRows = fullRows.map(r => ({ ...r, ...computeInfantryMatchupFields(r, matchupRefs) }));
     }
     if (cavalryMatchupRanking) {
-      const refs = computeCavalryMatchupRefs(ageKey);
-      fullRows = fullRows.map(r => ({ ...r, ...computeCavalryMatchupFields(r, refs) }));
+      matchupRefs = computeCavalryMatchupRefs(ageKey);
+      fullRows = fullRows.map(r => ({ ...r, ...computeCavalryMatchupFields(r, matchupRefs) }));
     }
     // Ranked over the full set at this age, BEFORE the type-toggle filter,
     // same pattern as the CA/MCB table — rank stays stable regardless of
     // what's currently toggled on/off, only the age selection changes it.
     const rankedWtd = computeWeightedRanking(fullRows, weightedCategories);
     let rows = fullRows.map((r, i) => ({ ...r, rankWtd: rankedWtd[i].weightedRank }));
-    // "Hits Taken v. <age-appropriate Spearman-line tier>" (Cavalry table
-    // only, site owner: "add a colum to cav... 'hits taken from
-    // halberdier' change to pikeman in castle and spearman in feudal...
-    // assume a generic version with maxxedout upgrades for that age...
-    // show how many attacks the unit can withstand up to 2 decimals").
-    // Computed here (not per-statsFn) since it only depends on the current
-    // age + each row's own hp/meleeArmor/targetClass, not civ-specific cfg.
-    const spearTierKey = hitsTakenVsSpear ? SPEARMAN_TIER_BY_AGE[ageKey] : null;
-    const spearActiveCols = hitsTakenVsSpear
-      ? [['hitsTakenVsSpear', `Hits Taken<br>v. ${SPEARMAN_TIER_NAME[spearTierKey]}`, true]]
-      : [];
-    if (hitsTakenVsSpear) {
-      const spearAtk = { cavalry: spearmanMaxedAttack(ageKey, 'cavalry'), camel: spearmanMaxedAttack(ageKey, 'camel'), elephant: spearmanMaxedAttack(ageKey, 'elephant') };
-      rows = rows.map(r => ({ ...r, hitsTakenVsSpear: d2(r.hp / Math.max(1, spearAtk[r.targetClass] - r.meleeArmor)) }));
-    }
     // "Dmg Taken v. <age-appropriate Militia-line tier>" (Infantry table
     // only) — see militiaLineMaxedAttack's own comment above for the full
     // design. Every row gets a real value; the Shock Infantry bonus only
@@ -3518,20 +3534,27 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       if (key === 'civ' || key === 'line') return a[key].localeCompare(b[key]) * dir || a.civ.localeCompare(b.civ);
       return (a[key] - b[key]) * dir || a.civ.localeCompare(b.civ);
     });
-    const allExtraCols = colMode === 'matchup' ? [...extraCols, ...spearActiveCols, ...militiaActiveCols, ...matchupCols] : [];
-    const cols = [...MELEE_COLS, ...allExtraCols];
+    // Matchup mode drops the raw stat columns (HP through DPS/100 res)
+    // entirely rather than adding matchup columns on top of them (site
+    // owner: "only show matchups on the matchup toggler... remove the
+    // HP-Attack etc. all the way up to and including dps/100 res and just
+    // show the matchup data") — #/Unit/Civ/Rank stay either way.
+    const showStats = colMode !== 'matchup';
+    const allExtraCols = showStats ? [] : [...extraCols, ...militiaActiveCols, ...(matchupColsFn ? matchupColsFn(matchupRefs) : [])];
+    const cols = showStats ? [...MELEE_BASE_COLS, ...MELEE_STAT_COLS, MELEE_RANK_COL] : [...MELEE_BASE_COLS, MELEE_RANK_COL, ...allExtraCols];
     const thead = `<thead><tr>${cols.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
     const tbody = rows.map((r, i) => `<tr>
       <td class="num">${i + 1}</td>
       <td>${rowIcon(r)} <span class="res-pill ${pillClass}">${r.line}</span></td>
       <td>${r.civ}</td>
+      ${showStats ? `
       <td class="num">${r.hp}</td><td class="num">${r.attack}</td>
       <td class="num">${r.meleeArmor}/${r.pierceArmor}</td>
       <td class="num">${r.speed}</td>
       <td class="num">${r.reload}s</td>
       <td class="num" style="font-weight:${key === 'dps' ? 700 : 400};">${r.dps}</td>
       <td class="num">${r.cost}</td>
-      <td class="num" style="font-weight:${key === 'dpsPer100' ? 700 : 400};">${r.dpsPer100}</td>
+      <td class="num" style="font-weight:${key === 'dpsPer100' ? 700 : 400};">${r.dpsPer100}</td>` : ''}
       <td class="num" style="font-weight:${key === 'rankWtd' ? 700 : 400};">${r.rankWtd}</td>
       ${allExtraCols.map(([k]) => `<td class="num" style="font-weight:${key === k ? 700 : 400};">${r[k] ?? '—'}</td>`).join('')}
     </tr>`).join('');
@@ -3572,7 +3595,7 @@ makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', [
   weightedCategories: INFANTRY_WEIGHTED_CATEGORIES,
   dmgTakenVsMilitia: true,
   infantryMatchupRanking: true,
-  matchupCols: INFANTRY_MATCHUP_COLS,
+  matchupColsFn: buildInfantryMatchupCols,
   colModeSelector: '.infantry-col-mode-pill',
   rowIcon: () => '🛡',
 })();
@@ -3585,10 +3608,9 @@ makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [
   [CAVALRY_UNIQUE_CIVS, uniqueCavalryMaxStats, null, 'unique', 'cavalry'],
   [ELEPHANT_UNIQUE_CIVS, uniqueElephantMaxStats, null, 'unique', 'elephant'],
 ], 'gold', 'No civ trains a Knight/Scout/Steppe Lancer/Camel/Elephant-line unit before Feudal Age.', '.cavalry-type-toggle', {
-  hitsTakenVsSpear: true,
   weightedCategories: CAVALRY_WEIGHTED_CATEGORIES,
   cavalryMatchupRanking: true,
-  matchupCols: CAVALRY_MATCHUP_COLS,
+  matchupColsFn: buildCavalryMatchupCols,
   colModeSelector: '.cavalry-col-mode-pill',
   rowIcon: r => r.targetClass === 'camel' ? '🐪' : r.targetClass === 'elephant' ? '🐘' : '⚔️',
 })();
