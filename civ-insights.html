@@ -624,7 +624,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.97</div>
+    <div class="version">v0.98</div>
   </div>
 </div>
 
@@ -3541,12 +3541,16 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
     // show the matchup data") — #/Unit/Civ/Rank stay either way.
     const showStats = colMode !== 'matchup';
     const allExtraCols = showStats ? [] : [...extraCols, ...militiaActiveCols, ...(matchupColsFn ? matchupColsFn(matchupRefs) : [])];
-    const cols = showStats ? [...MELEE_BASE_COLS, ...MELEE_STAT_COLS, MELEE_RANK_COL] : [...MELEE_BASE_COLS, MELEE_RANK_COL, ...allExtraCols];
+    // Rank stays in the same spot (right after Civ) in both modes, not
+    // pushed to the far right in Stats mode — site owner: "keep 'rank' on
+    // the left where it is for 'matchup' for stats as well."
+    const cols = [...MELEE_BASE_COLS, MELEE_RANK_COL, ...(showStats ? MELEE_STAT_COLS : allExtraCols)];
     const thead = `<thead><tr>${cols.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
     const tbody = rows.map((r, i) => `<tr>
       <td class="num">${i + 1}</td>
       <td>${rowIcon(r)} <span class="res-pill ${pillClass}">${r.line}</span></td>
       <td>${r.civ}</td>
+      <td class="num" style="font-weight:${key === 'rankWtd' ? 700 : 400};">${r.rankWtd}</td>
       ${showStats ? `
       <td class="num">${r.hp}</td><td class="num">${r.attack}</td>
       <td class="num">${r.meleeArmor}/${r.pierceArmor}</td>
@@ -3555,7 +3559,6 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       <td class="num" style="font-weight:${key === 'dps' ? 700 : 400};">${r.dps}</td>
       <td class="num">${r.cost}</td>
       <td class="num" style="font-weight:${key === 'dpsPer100' ? 700 : 400};">${r.dpsPer100}</td>` : ''}
-      <td class="num" style="font-weight:${key === 'rankWtd' ? 700 : 400};">${r.rankWtd}</td>
       ${allExtraCols.map(([k]) => `<td class="num" style="font-weight:${key === k ? 700 : 400};">${r[k] ?? '—'}</td>`).join('')}
     </tr>`).join('');
     tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
