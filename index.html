@@ -275,7 +275,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.34</div>
+    <div class="version">v2.35</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2089,7 +2089,7 @@ const TECH_TREE_CATEGORIES = [
     { name: 'Knight', chain: [
       { name: 'Knight', age: 'Castle', id: 38, extra: [1944, 2566, 1751], techs: [{name:'Bloodlines',id:T.Bloodlines},{name:'Scale Barding Armor',id:T['Scale Barding Armor']},{name:'Forging',id:T.Forging}] },
       { name: 'Cavalier', age: 'Castle', id: 283, extra: [1946, 2568, 1753], techs: [{name:'Chain Barding Armor',id:T['Chain Barding Armor']},{name:'Husbandry',id:T.Husbandry},{name:'Iron Casting',id:T['Iron Casting']}] },
-      { name: 'Paladin', age: 'Imperial', id: [569, 1813], extra: [1946, 2568, 1753, 558, 1372], techs: [{name:'Plate Barding Armor',id:T['Plate Barding Armor']},{name:'Blast Furnace',id:T['Blast Furnace']}] },
+      { name: 'Paladin', age: 'Imperial', id: [569, 1813], extra: [1946, 2568, 1753, 558, 1372], nameById: { 558: 'Savar' }, techs: [{name:'Plate Barding Armor',id:T['Plate Barding Armor']},{name:'Blast Furnace',id:T['Blast Furnace']}] },
     ]},
     // No Feudal tier to house Scale Barding/Bloodlines separately, so its
     // one pre-Imperial tier absorbs the full Feudal+Castle bucket.
