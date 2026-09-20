@@ -810,7 +810,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.90</div>
+    <div class="version">v0.91</div>
   </div>
 </div>
 
@@ -2659,7 +2659,24 @@ const UNIQUE_INFANTRY_CIVS = {
   // above. Real Elite stats confirmed via data.json's own upgrade-tech
   // entry (Elite Samurai, 750f/650g/60s research) and cross-matched unit
   // stat block.
+  // Samurai-line has 2 real, extra mechanics beyond its already-modeled
+  // stats/tech access (site owner supplied the exact wiki text directly):
+  // (1) "Charge attack: charges its attack by +1 over 30 seconds" — a real
+  //     unit-intrinsic ramp-up, modeled via chargeAttackBonus at its max
+  //     (a sustained fight reaches full charge), same "shown at max"
+  //     convention as every other conditional bonus on this page.
+  // (2) "Speed charge: activates when its target is within 2 to 6 tiles (7
+  //     for Elite). Speed increases 25% (to 1.25 before Squires, 1.375
+  //     after) in this distance, and DISSIPATES once impact is made" — a
+  //     real, but purely pre-engagement gap-closing mechanic, not a
+  //     sustained-combat stat. Recorded here as data (chargeSpeed: 1.25,
+  //     chargeRangeTiles/chargeRangeTilesElite: 6/7) but deliberately NOT
+  //     applied to the displayed Speed column — that column represents
+  //     ongoing combat speed, which is exactly what this mechanic
+  //     dissipates back to once melee contact happens, so the existing
+  //     1.0 base speed remains the correct value to show there.
   Japanese_Samurai: { civ: 'Japanese', unit: 'Samurai', kind: 'unique', cost: 75,
+    chargeAttackBonus: 1, chargeSpeed: 1.25, chargeRangeTiles: 6, chargeRangeTilesElite: 7,
     base: { hp: 70, attack: 10, melee: 1, pierce: 1, speed: 1, reload: 1.9 },
     elite: { hp: 80, attack: 12, melee: 1, pierce: 1, speed: 1, reload: 1.9 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, atkSpeedMult: 0.75,
@@ -2803,7 +2820,12 @@ function uniqueInfantryTierStats(civ, cfg, tierStats, isElite, rank) {
   const uniqueGateOk = !INFANTRY_UNIQUE_TECH_AGE[civ] || AGE_RANK[INFANTRY_UNIQUE_TECH_AGE[civ]] <= rank;
   const ageBonus = INFANTRY_AGE_BONUS[civ];
   const civPierceAge = ageBonus?.civPierce ? ageBonus.civPierce[rank - 1] : 0;
-  const attack = tierStats.attack + atkBonus;
+  // cfg.chargeAttackBonus: a real, unit-intrinsic charge-up mechanic (not a
+  // tech) — Samurai-line's own real "charges its attack by +1 over 30
+  // seconds," shown at its max (a sustained fight reaches full charge),
+  // same "shown at max" convention as every other real conditional bonus
+  // on this page (Lithuanians' relic attack, Saxons' cost discount, etc.).
+  const attack = tierStats.attack + atkBonus + (cfg.chargeAttackBonus || 0);
   const meleeArmor = tierStats.melee + arm.melee;
   const pierceArmor = tierStats.pierce + arm.pierce + (gambesonsAtAge ? 1 : 0) + civPierceAge;
   // cfg.uniqueTechHpMult: a real Castle unique tech, percentage-based HP
