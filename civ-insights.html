@@ -564,6 +564,18 @@ select:focus{outline:none;border-color:var(--amber);}
         it DOES shift when you change the age toggle, since a different age means a genuinely different
         comparison (which civs even have a unit yet, and at which tier).
       </p>
+      <p class="desc" style="color:var(--text3)">
+        <b>Hits Taken v. Halberdier</b> (renamed to Pikeman/Spearman at Castle/Feudal) shows how many
+        hits a generic, no-civ-bonus, fully-teched Spearman-line unit for that age needs to kill this
+        row — <code>hp / max(1, spearman's attack − this row's melee armor)</code>. The Spearman-line's
+        real bonus damage is genuinely different per target class, not one flat number: it gets +15/+22/
+        +32 (Feudal/Castle/Imperial) vs. Cavalry, +12/+18/+26 vs. Camels, and +15/+25/+28 vs. Elephants
+        <b>on top of</b> the Cavalry bonus (Elephants are a real subclass of Mounted in the game's own
+        data, confirmed by Battle Elephant carrying both class tags at once) — so Knights/Scouts/Steppe
+        Lancers/Cavalry unique units use the Cavalry number, Camel-line uses the Camel number, and
+        Elephant-line uses the COMBINED Cavalry+Elephant number, matching why Elephants melt to
+        Halberdiers so fast in real play despite their huge HP.
+      </p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
         <button class="cavalry-age-toggle-btn toggle-btn" data-age="feudal">Feudal</button>
         <button class="cavalry-age-toggle-btn toggle-btn" data-age="castle">Castle</button>
@@ -794,7 +806,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.86</div>
+    <div class="version">v0.87</div>
   </div>
 </div>
 
@@ -2546,7 +2558,12 @@ const UNIQUE_INFANTRY_CIVS = {
     base: { hp: 70, attack: 13, melee: 2, pierce: 1, speed: 1.27, reload: 2 },
     elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.27, reload: 1.6 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
-  Saxons_VarangianGuard: { civ: 'Saxons', unit: 'Varangian Guard', kind: 'regional', cost: 110, shockInfantryMember: true,
+  // Saxons' real "Foot Soldiers cost -5% per Town Center or Castle
+  // controlled (maximum -20%)" applied at its max, same "shown at max, a
+  // real conditional this table can't otherwise express" convention as
+  // Lithuanians' relic-attack bonus — site owner: "the saxons should
+  // assume the max discount for vg in the comparison tool." 110 * 0.8 = 88.
+  Saxons_VarangianGuard: { civ: 'Saxons', unit: 'Varangian Guard', kind: 'regional', cost: 88, shockInfantryMember: true,
     base: { hp: 70, attack: 13, melee: 2, pierce: 1, speed: 1.05, reload: 2 },
     elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.05, reload: 1.6 },
     meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: true, squires: true },
@@ -3262,7 +3279,52 @@ const INFANTRY_WEIGHTED_CATEGORIES = [
 // it via its own `cfg.kind` (used by UNIQUE_INFANTRY_CIVS, where regional
 // and unique-Castle units share one object). `cost` works the same way —
 // a flat per-source default, overridable per row via `cfg.cost`.
-function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, emptyMsg, typeToggleSelector, extraCols = [], weightedCategories = MELEE_WEIGHTED_CATEGORIES) {
+// "Hits Taken v. <Spearman-line tier>" (2026-09-20, site owner request) —
+// real per-tier bonus-vs-class values, confirmed via data.json's own
+// Attacks-array class tagging, cross-verified against real units' own
+// Armours-array class MEMBERSHIP (not guessed from a label table): Class 8
+// = Cavalry/Mounted (confirmed via Cavalier/Scout Cavalry/Steppe Lancer/
+// Cataphract/Coustillier all being tagged Class 8 in their own Armours),
+// Class 30 = Camel (Camel Rider tagged Class 30 ONLY, not Class 8 — Camels
+// are their own separate class, not a Cavalry subclass), Class 5 =
+// Elephant (Battle Elephant tagged BOTH Class 5 AND Class 8 — Elephants
+// are a real subclass of Mounted, so they take the SUM of both bonuses).
+// Site owner: "remember spear line does bonus damage, different for cav,
+// ele, etc." — this 3-way split is why. Real per-tier fingerprints (HP/
+// Attack matched against build-order.html's own trusted UNIT_STATS
+// ['spearman-line'], id-space-mismatch trap hit again as usual — data.
+// json's own internal_name for these ids reads misleadingly):
+// Spearman(Feudal) hp45/atk3, Pikeman(Castle) hp55/atk4, Halberdier
+// (Imperial) hp60/atk6, all reload 3.0s flat.
+const SPEARMAN_LINE_BASE = {
+  spearman: { hp: 45, attack: 3, cavalryBonus: 15, camelBonus: 12, elephantBonus: 15, reload: 3 },
+  pikeman: { hp: 55, attack: 4, cavalryBonus: 22, camelBonus: 18, elephantBonus: 25, reload: 3 },
+  halberdier: { hp: 60, attack: 6, cavalryBonus: 32, camelBonus: 26, elephantBonus: 28, reload: 3 },
+};
+const SPEARMAN_TIER_BY_AGE = { feudal: 'spearman', castle: 'pikeman', imperial: 'halberdier' };
+const SPEARMAN_TIER_NAME = { spearman: 'Spearman', pikeman: 'Pikeman', halberdier: 'Halberdier' };
+// Generic maxed reference attack (no civ bonus, "assume a generic version
+// with maxed out upgrades for that age" per the site owner) — base attack
+// + all melee-attack techs available by that age + the real bonus vs the
+// given target class (elephant = Class 5 + Class 8 combined, per the real
+// dual-class-membership fact above).
+function spearmanMaxedAttack(ageKey, targetClass) {
+  const tier = SPEARMAN_TIER_BY_AGE[ageKey];
+  const base = SPEARMAN_LINE_BASE[tier];
+  const rank = AGE_RANK[MELEE_AGE_LABEL[ageKey]];
+  const meleeAtkAtAge = [true, true, true].map((has, i) => AGE_RANK[MELEE_ATK_TECH_AGES[i]] <= rank);
+  const atkBonus = meleeAtkTotal(meleeAtkAtAge, false);
+  const classBonus = targetClass === 'camel' ? base.camelBonus : targetClass === 'elephant' ? base.cavalryBonus + base.elephantBonus : base.cavalryBonus;
+  return base.attack + atkBonus + classBonus;
+}
+// `sources` tuples take an optional 5th element, `targetClass` ('cavalry'
+// [default], 'camel', or 'elephant') — used only when `opts.hitsTakenVsSpear`
+// is on (Cavalry table), to pick which of the Spearman-line's 3 real,
+// different bonus-vs-class values applies to that source's rows (site
+// owner: "remember spear line does bonus damage, different for cav, ele,
+// etc.").
+function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, emptyMsg, typeToggleSelector, opts = {}) {
+  const { extraCols = [], weightedCategories = MELEE_WEIGHTED_CATEGORIES, hitsTakenVsSpear = false } = opts;
   let sort = { key: 'dps', dir: -1 };
   let ageKey = 'imperial';
   function render() {
@@ -3271,7 +3333,7 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
     const enabledTypes = typeToggleSelector
       ? new Set([...document.querySelectorAll(typeToggleSelector + '.on')].map(cb => cb.dataset.type))
       : null;
-    const fullRows = sources.flatMap(([civsObj, statsFn, cost, kind]) => Object.entries(civsObj)
+    const fullRows = sources.flatMap(([civsObj, statsFn, cost, kind, targetClass = 'cavalry']) => Object.entries(civsObj)
       .flatMap(([civ, cfg]) => {
         const result = statsFn(civ, cfg, ageLabel);
         // statsFn returns either one stats-object-or-null (the Militia/
@@ -3280,15 +3342,29 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
         // base AND Elite as separate permanent rows once each is reached).
         const statsList = result == null ? [] : Array.isArray(result) ? result : [result];
         const rowCost = cfg.cost || cost;
-        return statsList.map(s => ({ line: s.tierName, civ: cfg.civ || civ, ...s, cost: rowCost, dpsPer100: d2(s.dps / rowCost * 100), kind: cfg.kind || kind }));
+        return statsList.map(s => ({ line: s.tierName, civ: cfg.civ || civ, ...s, cost: rowCost, dpsPer100: d2(s.dps / rowCost * 100), kind: cfg.kind || kind, targetClass: cfg.targetClass || targetClass }));
       }));
     // Ranked over the full set at this age, BEFORE the type-toggle filter,
     // same pattern as the CA/MCB table — rank stays stable regardless of
     // what's currently toggled on/off, only the age selection changes it.
     const rankedWtd = computeWeightedRanking(fullRows, weightedCategories);
-    const rows = fullRows
-      .map((r, i) => ({ ...r, rankWtd: rankedWtd[i].weightedRank }))
-      .filter(r => !enabledTypes || enabledTypes.has(r.kind));
+    let rows = fullRows.map((r, i) => ({ ...r, rankWtd: rankedWtd[i].weightedRank }));
+    // "Hits Taken v. <age-appropriate Spearman-line tier>" (Cavalry table
+    // only, site owner: "add a colum to cav... 'hits taken from
+    // halberdier' change to pikeman in castle and spearman in feudal...
+    // assume a generic version with maxxedout upgrades for that age...
+    // show how many attacks the unit can withstand up to 2 decimals").
+    // Computed here (not per-statsFn) since it only depends on the current
+    // age + each row's own hp/meleeArmor/targetClass, not civ-specific cfg.
+    const spearTierKey = hitsTakenVsSpear ? SPEARMAN_TIER_BY_AGE[ageKey] : null;
+    const spearActiveCols = hitsTakenVsSpear
+      ? [['hitsTakenVsSpear', `Hits Taken<br>v. ${SPEARMAN_TIER_NAME[spearTierKey]}`, true]]
+      : [];
+    if (hitsTakenVsSpear) {
+      const spearAtk = { cavalry: spearmanMaxedAttack(ageKey, 'cavalry'), camel: spearmanMaxedAttack(ageKey, 'camel'), elephant: spearmanMaxedAttack(ageKey, 'elephant') };
+      rows = rows.map(r => ({ ...r, hitsTakenVsSpear: d2(r.hp / Math.max(1, spearAtk[r.targetClass] - r.meleeArmor)) }));
+    }
+    rows = rows.filter(r => !enabledTypes || enabledTypes.has(r.kind));
     if (!rows.length) {
       tableEl.innerHTML = `<tbody><tr><td style="padding:14px;color:var(--text3);">${emptyMsg}</td></tr></tbody>`;
       return;
@@ -3298,7 +3374,8 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       if (key === 'civ' || key === 'line') return a[key].localeCompare(b[key]) * dir || a.civ.localeCompare(b.civ);
       return (a[key] - b[key]) * dir || a.civ.localeCompare(b.civ);
     });
-    const cols = [...MELEE_COLS, ...extraCols];
+    const allExtraCols = [...extraCols, ...spearActiveCols];
+    const cols = [...MELEE_COLS, ...allExtraCols];
     const thead = `<thead><tr>${cols.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
     const tbody = rows.map((r, i) => `<tr>
       <td class="num">${i + 1}</td>
@@ -3312,7 +3389,7 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       <td class="num">${r.cost}</td>
       <td class="num" style="font-weight:${key === 'dpsPer100' ? 700 : 400};">${r.dpsPer100}</td>
       <td class="num" style="font-weight:${key === 'rankWtd' ? 700 : 400};">${r.rankWtd}</td>
-      ${extraCols.map(([k]) => `<td class="num" style="font-weight:${key === k ? 700 : 400};">${r[k] ?? '—'}</td>`).join('')}
+      ${allExtraCols.map(([k]) => `<td class="num" style="font-weight:${key === k ? 700 : 400};">${r[k] ?? '—'}</td>`).join('')}
     </tr>`).join('');
     tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
     tableEl.querySelectorAll('th.sortable').forEach(th => {
@@ -3339,18 +3416,21 @@ makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', [
   [INFANTRY_CIVS, infantryMaxStats, INFANTRY_COST, 'militia'],
   [EAGLE_CIVS, eagleMaxStats, EAGLE_COST, 'eagle'],
   [UNIQUE_INFANTRY_CIVS, uniqueInfantryMaxStats, null, 'regional'],
-], 'wood', '—', '.infantry-type-toggle',
-  [['dpsVsShockInfantry', 'DPS v.<br>Shock Inf.', true], ['dmgTakenVsChampion', 'Dmg Taken<br>v. Champion', true]],
-  INFANTRY_WEIGHTED_CATEGORIES)();
+], 'wood', '—', '.infantry-type-toggle', {
+  extraCols: [['dpsVsShockInfantry', 'DPS v.<br>Shock Inf.', true], ['dmgTakenVsChampion', 'Dmg Taken<br>v. Champion', true]],
+  weightedCategories: INFANTRY_WEIGHTED_CATEGORIES,
+})();
 makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [
-  [CAVALRY_CIVS, cavalryMaxStats, CAVALRY_COST, 'knights'],
-  [SCOUT_CIVS, scoutMaxStats, SCOUT_COST, 'scouts'],
-  [STEPPE_CIVS, steppeMaxStats, STEPPE_COST, 'steppe'],
-  [CAMEL_CIVS, camelMaxStats, CAMEL_COST, 'camels'],
-  [ELEPHANT_CIVS, elephantMaxStats, ELEPHANT_COST, 'elephants'],
-  [CAVALRY_UNIQUE_CIVS, uniqueCavalryMaxStats, null, 'unique'],
-  [ELEPHANT_UNIQUE_CIVS, uniqueElephantMaxStats, null, 'unique'],
-], 'gold', 'No civ trains a Knight/Scout/Steppe Lancer/Camel/Elephant-line unit before Feudal Age.', '.cavalry-type-toggle')();
+  [CAVALRY_CIVS, cavalryMaxStats, CAVALRY_COST, 'knights', 'cavalry'],
+  [SCOUT_CIVS, scoutMaxStats, SCOUT_COST, 'scouts', 'cavalry'],
+  [STEPPE_CIVS, steppeMaxStats, STEPPE_COST, 'steppe', 'cavalry'],
+  [CAMEL_CIVS, camelMaxStats, CAMEL_COST, 'camels', 'camel'],
+  [ELEPHANT_CIVS, elephantMaxStats, ELEPHANT_COST, 'elephants', 'elephant'],
+  [CAVALRY_UNIQUE_CIVS, uniqueCavalryMaxStats, null, 'unique', 'cavalry'],
+  [ELEPHANT_UNIQUE_CIVS, uniqueElephantMaxStats, null, 'unique', 'elephant'],
+], 'gold', 'No civ trains a Knight/Scout/Steppe Lancer/Camel/Elephant-line unit before Feudal Age.', '.cavalry-type-toggle', {
+  hitsTakenVsSpear: true,
+})();
 
 // Unit Stats toggle (2026-09-17, site owner request) — Base/Castle techs/
 // Imperial techs, applying every tech available by that age to a generic
