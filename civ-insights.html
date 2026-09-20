@@ -808,7 +808,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.88</div>
+    <div class="version">v0.89</div>
   </div>
 </div>
 
@@ -2239,7 +2239,19 @@ const CAVALRY_CIVS = {
   Malay: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,false], bloodlines: false, husbandry: true },
   Malians: { tier: 'cavalier', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true, uniqueTechAtk: 5 },
   Mongols: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
-  Persians: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  // Persians' Imperial-tier Knight-line unit is really "Savar", not generic
+  // Paladin — real stats supplied directly by the site owner (from the
+  // in-game/wiki unit page): 145 HP/14 attack/3 melee/4 pierce armor/1.35
+  // speed/1.8s reload/60f+75g cost (cost matches CAVALRY_COST already, no
+  // override needed there), plus a real "+4 attack vs. Archers" situational
+  // bonus — recorded as vsArchersBonus but NOT YET wired into any displayed
+  // column (no "DPS v. Archers" column exists on this table). index.html's
+  // own Tech Tree flowchart already shows "Savar" as the node label for
+  // Persians (nameById fix, same conversation) — this is the matching real-
+  // stats fix on the civ-insights.html side.
+  Persians: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true,
+    paladinOverride: { hp: 145, attack: 14, melee: 3, pierce: 4, speed: 1.35, reload: 1.8 }, paladinNameOverride: 'Savar',
+    vsArchersBonus: 4 },
   // Real Castle unique tech Szlachta Privileges: "Knight-line costs -60%
   // gold" — site owner: "poles have a castle tech that reduces cost of
   // knight line, make sure to include that in costs." Applied as a flat
@@ -2823,7 +2835,15 @@ function cavalryMaxStats(civ, cfg, age) {
   const tier = effectiveTier(cfg.tier, CAVALRY_TIER_ORDER, CAVALRY_TIER_AGE, age);
   if (!tier) return null;
   const rank = AGE_RANK[age];
-  const base = CAVALRY_BASE[tier];
+  // paladinOverride/paladinNameOverride — Persians' real "Savar" (a true
+  // replacement, not a rename: real base 145 HP/14 attack/3 melee/4 pierce
+  // armor/1.35 speed/1.8s reload, all genuinely different from generic
+  // Paladin's 160/14/2/3/1.40/1.9) — same eliteOverride/eliteNameOverride
+  // pattern CAMEL_CIVS.Hindustanis already uses for Imperial Camel Rider.
+  // Techs (meleeAtk/cavArmor/bloodlines/husbandry) still apply on top of
+  // these base numbers the normal way, same as every other override.
+  const useOverride = tier === 'paladin' && cfg.paladinOverride;
+  const base = useOverride ? cfg.paladinOverride : CAVALRY_BASE[tier];
   const meleeAtkAtAge = cfg.meleeAtk.map((has, i) => has && AGE_RANK[MELEE_ATK_TECH_AGES[i]] <= rank);
   const cavArmorAtAge = cfg.cavArmor.map((has, i) => has && AGE_RANK[CAV_ARMOR_TECH_AGES[i]] <= rank);
   const atkBonus = meleeAtkTotal(meleeAtkAtAge, cfg.meleeAtkDoubled);
@@ -2842,7 +2862,8 @@ function cavalryMaxStats(civ, cfg, age) {
   const speed = d2(base.speed * (husbandryAtAge ? 1.15 : 1) * speedMultAge);
   const reload = d2(base.reload * (uniqueGateOk ? (cfg.atkSpeedMult || 1) : 1));
   const dps = d2(attack / reload);
-  return { tierName: CAVALRY_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
+  const tierName = useOverride ? cfg.paladinNameOverride : CAVALRY_TIER_NAME[tier];
+  return { tierName, hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps };
 }
 // Scout-line (Scout Cavalry/Light Cavalry/Hussar) — a REAL second cavalry
 // line, added alongside Knight-line per site owner request, 2026-09-19.
