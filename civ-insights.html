@@ -435,12 +435,25 @@ select:focus{outline:none;border-color:var(--amber);}
         Cost is flat per civ — every civ pays the same 50f/20g here. Real per-civ cost discounts
         (Goths, Incas, Forced Levy's gold→food conversion, etc.) aren't factored in — same simplified
         resource-efficiency proxy as the CA/MCB table above. Sort by DPS/100 res for an
-        equal-resources comparison. <b>Rank</b> is the same "behind the scenes" weighted composite as the
-        CA/MCB table (HP/Melee Armor/Pierce Armor/Speed/DPS/DPS-per-100-res normalized and weighted, DPS
-        weighted well above the rest), computed fresh for every row currently shown at this age — before
-        the type-toggle filter below, so it doesn't shift when you toggle Militia-line/Eagle-line/unique
-        units on or off, but it DOES shift when you change the age toggle, since a different age means a
-        genuinely different comparison (which civs even have a unit yet, and at which tier).
+        equal-resources comparison.
+      </p>
+      <p class="desc" style="color:var(--text3)">
+        <b>Rank</b> uses a different, more "real world" model than the other 2 tables' raw-stat
+        composite: instead of ranking HP/Armor/DPS directly, it ranks real MATCHUP outcomes — how long
+        this unit survives against, and how fast it kills, several real reference opponents (a generic,
+        no-civ-bonus, fully-teched Militia-line/Archer-line/Skirmisher-line/Scout-line/Knight-line unit
+        at this same age). "Seconds to Survive" (HP × their reload ÷ their damage-per-hit against your
+        armor) naturally folds HP and armor together into one number — a bigger number is always
+        better. "Seconds to Kill" (their HP × your reload ÷ your damage-per-hit against their armor)
+        is the reverse — a SMALLER number is better here, you kill faster. No "Seconds to Kill Archer-
+        line" exists — Infantry rarely lands a real hit on kiting Archers, so that matchup was left out
+        rather than force-fit. DPS/100 res and Speed are also in the mix; raw DPS itself is NOT (it's
+        still shown as its own column, just no longer weighted — the Seconds-to-Kill categories already
+        capture offensive output more realistically). These 8 matchup numbers are computed fresh for
+        every row at the current age (a different age is a genuinely different comparison — which
+        civs even have a unit yet, at which tier, AND which reference opponents exist yet: Knight-line
+        itself doesn't exist before Castle Age) and are intentionally NOT shown as their own columns —
+        purely behind-the-scenes inputs to Rank.
       </p>
       <p class="desc" style="color:var(--text3)">
         <b>DPS v. Shock Inf.</b> is base DPS plus each unit's own real bonus attack against the Shock
@@ -810,7 +823,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.91</div>
+    <div class="version">v0.92</div>
   </div>
 </div>
 
@@ -3315,10 +3328,6 @@ const MELEE_WEIGHTED_CATEGORIES = [
 // being vulnerable to this mechanic at all really is the ideal case).
 // Weight 0.3 matches the low weight given to other narrow/situational
 // categories (DPS v. Infantry/Ranged on the CA/MCB table).
-const INFANTRY_WEIGHTED_CATEGORIES = [
-  ...MELEE_WEIGHTED_CATEGORIES,
-  ['dmgTakenVsChampion', 'Dmg Taken v. Champion', 0.3, false],
-];
 // Shared table factory for the Infantry and Cavalry sections — separate
 // tables/sections now (split apart per site owner request, 2026-09-18; used
 // to be one combined table with a type-filter toggle), but the render/sort
@@ -3398,6 +3407,141 @@ function militiaLineMaxedAttack(ageKey) {
   const atkBonus = meleeAtkTotal(meleeAtkAtAge, false);
   return base.attack + atkBonus;
 }
+// ── Infantry ranking redesign (2026-09-20, site owner discussion) — the
+// rank-points/weighted systems built earlier this session ranked mostly
+// RAW STATS (HP, Melee/Pierce Armor, DPS). Site owner's own critique:
+// "dmg taken is actually more useful than armor as it reflects real world
+// use cases" (armor alone doesn't tell you how a fight actually goes —
+// combining it with HP and a REAL opponent's real attack does), landing on
+// "Seconds to Survive" (HP × opponent's reload ÷ damage-per-hit) and
+// "Seconds to Kill" (opponent's HP × our reload ÷ our damage-per-hit) as
+// the two shapes — both fold HP+armor+the opponent's own real stats into
+// one meaningful number, agreed to replace HP/Melee Armor/Pierce Armor/DPS
+// as ranking categories entirely (DPS stays a visible COLUMN, just drops
+// out of the weighted Rank). Final scope, confirmed over several messages:
+// - Defensive (Seconds to Survive, bigger is better): v. Militia-line,
+//   Archer-line, Skirmisher-line, Scout-line, Knight-line.
+// - Offensive (Seconds to Kill, SMALLER is better — kill faster): v.
+//   Militia-line, Scout-line, Knight-line. NOT v. Archer-line — site
+//   owner: "dps given to archers doesnt make sense as its hard to attack
+//   them" (a real, deliberately-excluded matchup — Archers kite, Infantry
+//   rarely lands the hit in practice).
+// - DPS/100 res and Speed both stay in the ranking (site owner: "keep
+//   dps/100 res"; Speed confirmed earlier).
+// - A "v. Buildings" category was raised (some units have real building-
+//   attack bonuses) but deliberately DEFERRED — needs its own research
+//   pass (which building is the right generic reference, real armor/HP)
+//   rather than a rushed guess.
+// - These are explicitly "hidden, behind the scenes" — no new visible
+//   columns, purely feeds Rank. The already-visible "Dmg Taken v.
+//   <tier>" column stays on the table (like DPS v. Shock Infantry) but is
+//   now DEMOTED out of the ranking, superseded by the richer Seconds-to-
+//   Survive-v-Militia-line category below.
+//
+// Real per-target-class attack TYPE (melee vs. pierce) was verified via
+// data.json's own primary Attacks-class tag (Class 4 = Melee, Class 3 =
+// Pierce), not assumed — EVERY real Infantry-archetype unit checked
+// (Gbeto, Shotel Warrior, Karambit Warrior, Huskarl, Samurai, Teutonic
+// Knight, Jaguar Warrior, Woad Raider, Urumi Swordsman, White Feather
+// Guard, Throwing Axeman, Fire Lancer, Champion — used as a known-good
+// control) came back Melee, including several with an unusual "thrown
+// weapon" flavor that looked like a real pierce-attack candidate at a
+// glance. Archer-line/Skirmisher-line both confirmed Pierce the same way.
+// Scout-line/Knight-line both confirmed Melee. This means every offensive
+// "Seconds to Kill" calc can safely use a fixed melee-vs-melee-armor
+// formula — no per-unit attack-type flag needed anywhere on this table.
+//
+// Reference-unit stats: Militia-line/Scout-line/Knight-line reuse this
+// file's own ALREADY-TRUSTED formulas (infantryMaxStats/scoutMaxStats/
+// cavalryMaxStats) via a synthetic "generic, full tech access, no civ
+// bonus" cfg — proven code, not re-derived. Archer-line/Skirmisher-line
+// have no existing formula on this page (this file has never modeled
+// foot archers before), so their real base stats were sourced fresh:
+// fingerprint-matched against build-order.html's own trusted
+// UNIT_STATS['archer-line'/'skirmisher-line'] (Archer 30hp/4atk, Crossbowman
+// 35hp/5atk, Arbalest 40hp/6atk; Skirmisher 30hp/2atk/3pierce-armor, Elite
+// Skirmisher 35hp/3atk/4pierce-armor — Skirmisher-line genuinely has no
+// Imperial tier, Elite IS the ceiling), then data.json for real reload
+// (Archer-line 2.0s flat, Skirmisher-line 3.0s flat, both confirmed, not
+// assumed uniform with Militia-line's own 2.0s). Real archer-attack tech
+// deltas (Fletching/Bodkin Arrow/Bracer, +1 each, Feudal/Castle/Imperial)
+// plus Chemistry (+1, Imperial, already-established universal tech) apply
+// to BOTH lines identically — these 4 techs are universal/tech-availability
+// non-civ-specific for a "generic maxed" reference, same treatment as the
+// Spearman-line/Militia-line references above.
+const ARCHER_LINE_BASE = { archer: { hp: 30, attack: 4, reload: 2 }, crossbowman: { hp: 35, attack: 5, reload: 2 }, arbalest: { hp: 40, attack: 6, reload: 2 } };
+const SKIRMISHER_LINE_BASE = { skirmisher: { hp: 30, attack: 2, reload: 3 }, eliteSkirmisher: { hp: 35, attack: 3, reload: 3 } };
+const ARCHER_TIER_BY_AGE = { feudal: 'archer', castle: 'crossbowman', imperial: 'arbalest' };
+const SKIRMISHER_TIER_BY_AGE = { feudal: 'skirmisher', castle: 'eliteSkirmisher', imperial: 'eliteSkirmisher' };
+const ARCHER_ATK_TECH_AGES = ['Feudal', 'Castle', 'Imperial', 'Imperial']; // Fletching, Bodkin Arrow, Bracer, Chemistry
+function archerLineTechBonus(ageKey) {
+  const rank = AGE_RANK[MELEE_AGE_LABEL[ageKey]];
+  return ARCHER_ATK_TECH_AGES.filter(a => AGE_RANK[a] <= rank).length; // +1 each, all 4 real deltas are +1
+}
+function archerLineRef(ageKey) {
+  const base = ARCHER_LINE_BASE[ARCHER_TIER_BY_AGE[ageKey]];
+  return { hp: base.hp, attack: base.attack + archerLineTechBonus(ageKey), reload: base.reload };
+}
+function skirmisherLineRef(ageKey) {
+  const base = SKIRMISHER_LINE_BASE[SKIRMISHER_TIER_BY_AGE[ageKey]];
+  return { hp: base.hp, attack: base.attack + archerLineTechBonus(ageKey), reload: base.reload };
+}
+// Generic, no-civ-bonus, full-tech reference civs — reused via this file's
+// own already-trusted formulas rather than re-derived.
+const GENERIC_MILITIA_CFG = { tier: 'champion', meleeAtk: [true, true, true], infArmor: [true, true, true], gambesons: true, squires: true };
+const GENERIC_SCOUT_CFG = { tier: 'hussar', meleeAtk: [true, true, true], cavArmor: [true, true, true], bloodlines: true, husbandry: true };
+const GENERIC_KNIGHT_CFG = { tier: 'paladin', meleeAtk: [true, true, true], cavArmor: [true, true, true], bloodlines: true, husbandry: true };
+function computeInfantryMatchupRefs(ageKey) {
+  const ageLabel = MELEE_AGE_LABEL[ageKey];
+  return {
+    militia: infantryMaxStats('Generic', GENERIC_MILITIA_CFG, ageLabel),
+    scout: scoutMaxStats('Generic', GENERIC_SCOUT_CFG, ageLabel),
+    knight: cavalryMaxStats('Generic', GENERIC_KNIGHT_CFG, ageLabel),
+    archer: archerLineRef(ageKey),
+    skirmisher: skirmisherLineRef(ageKey),
+  };
+}
+// secondsToSurvive: OUR hp, REFERENCE attacker's reload/attack, OUR armor
+// of the matching type (meleeArmor for Militia/Scout/Knight-line
+// attackers, pierceArmor for Archer/Skirmisher-line). Bigger = better.
+// secondsToKill: REFERENCE target's hp, OUR reload/attack, REFERENCE
+// target's own melee armor (every Infantry-archetype unit deals melee
+// damage, confirmed above — no per-unit attack-type branch needed).
+// Smaller = better (kill faster), so these 3 categories get inverted in
+// the weighted-ranking category list below.
+function computeInfantryMatchupFields(row, refs) {
+  // Knight-line doesn't exist before Castle Age (Knight itself is Castle-
+  // gated) — cavalryMaxStats correctly returns null at Feudal, so refs.knight
+  // can be null there. Guard every reference the same way for robustness;
+  // leaving a field undefined (rather than crashing) makes minMaxNormalize
+  // treat it as a uniform 0 for every row that age — since EVERY row gets
+  // the same non-applicable value, it contributes a neutral (non-distorting)
+  // score rather than crashing or silently favoring one row over another.
+  const survive = (ref, armorKey) => ref ? d2(row.hp * ref.reload / Math.max(1, ref.attack - row[armorKey])) : undefined;
+  const kill = (ref) => ref ? d2(ref.hp * row.reload / Math.max(1, row.attack - ref.meleeArmor)) : undefined;
+  return {
+    survMilitia: survive(refs.militia, 'meleeArmor'),
+    survArcher: survive(refs.archer, 'pierceArmor'),
+    survSkirmisher: survive(refs.skirmisher, 'pierceArmor'),
+    survScout: survive(refs.scout, 'meleeArmor'),
+    survKnight: survive(refs.knight, 'meleeArmor'),
+    killMilitia: kill(refs.militia),
+    killScout: kill(refs.scout),
+    killKnight: kill(refs.knight),
+  };
+}
+const INFANTRY_WEIGHTED_CATEGORIES = [
+  ['survMilitia', 'Seconds to Survive v. Militia-line', 1.0],
+  ['survArcher', 'Seconds to Survive v. Archer-line', 1.0],
+  ['survSkirmisher', 'Seconds to Survive v. Skirmisher-line', 0.6],
+  ['survScout', 'Seconds to Survive v. Scout-line', 0.8],
+  ['survKnight', 'Seconds to Survive v. Knight-line', 0.8],
+  ['killMilitia', 'Seconds to Kill Militia-line', 1.0, false],
+  ['killScout', 'Seconds to Kill Scout-line', 0.8, false],
+  ['killKnight', 'Seconds to Kill Knight-line', 0.8, false],
+  ['dpsPer100', 'DPS / 100 res', 0.5],
+  ['speed', 'Speed', 0.4],
+];
 // `sources` tuples take an optional 5th element, `targetClass` ('cavalry'
 // [default], 'camel', or 'elephant') — used only when `opts.hitsTakenVsSpear`
 // is on (Cavalry table), to pick which of the Spearman-line's 3 real,
@@ -3405,7 +3549,7 @@ function militiaLineMaxedAttack(ageKey) {
 // owner: "remember spear line does bonus damage, different for cav, ele,
 // etc.").
 function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, emptyMsg, typeToggleSelector, opts = {}) {
-  const { extraCols = [], weightedCategories = MELEE_WEIGHTED_CATEGORIES, hitsTakenVsSpear = false, dmgTakenVsMilitia = false } = opts;
+  const { extraCols = [], weightedCategories = MELEE_WEIGHTED_CATEGORIES, hitsTakenVsSpear = false, dmgTakenVsMilitia = false, infantryMatchupRanking = false } = opts;
   let sort = { key: 'dps', dir: -1 };
   let ageKey = 'imperial';
   function render() {
@@ -3414,7 +3558,7 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
     const enabledTypes = typeToggleSelector
       ? new Set([...document.querySelectorAll(typeToggleSelector + '.on')].map(cb => cb.dataset.type))
       : null;
-    const fullRows = sources.flatMap(([civsObj, statsFn, cost, kind, targetClass = 'cavalry']) => Object.entries(civsObj)
+    let fullRows = sources.flatMap(([civsObj, statsFn, cost, kind, targetClass = 'cavalry']) => Object.entries(civsObj)
       .flatMap(([civ, cfg]) => {
         const result = statsFn(civ, cfg, ageLabel);
         // statsFn returns either one stats-object-or-null (the Militia/
@@ -3425,6 +3569,15 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
         const rowCost = cfg.cost || cost;
         return statsList.map(s => ({ line: s.tierName, civ: cfg.civ || civ, ...s, cost: rowCost, dpsPer100: d2(s.dps / rowCost * 100), kind: cfg.kind || kind, targetClass: cfg.targetClass || targetClass, shockInfantryMember: !!cfg.shockInfantryMember }));
       }));
+    // Infantry's redesigned ranking inputs (Seconds to Survive/Kill vs. 5
+    // real reference archetypes) — hidden, behind-the-scenes fields, no
+    // display column. Computed BEFORE computeWeightedRanking so the new
+    // categories can read them. See the big design comment above
+    // computeInfantryMatchupRefs for the full story.
+    if (infantryMatchupRanking) {
+      const refs = computeInfantryMatchupRefs(ageKey);
+      fullRows = fullRows.map(r => ({ ...r, ...computeInfantryMatchupFields(r, refs) }));
+    }
     // Ranked over the full set at this age, BEFORE the type-toggle filter,
     // same pattern as the CA/MCB table — rank stays stable regardless of
     // what's currently toggled on/off, only the age selection changes it.
@@ -3514,6 +3667,7 @@ makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', [
   extraCols: [['dpsVsShockInfantry', 'DPS v.<br>Shock Inf.', true]],
   weightedCategories: INFANTRY_WEIGHTED_CATEGORIES,
   dmgTakenVsMilitia: true,
+  infantryMatchupRanking: true,
 })();
 makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [
   [CAVALRY_CIVS, cavalryMaxStats, CAVALRY_COST, 'knights', 'cavalry'],
