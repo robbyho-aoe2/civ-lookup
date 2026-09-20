@@ -42,6 +42,9 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .res-pill.gold{color:var(--gold);}
 .unit-stats-toggle-btn,.toggle-btn{font:inherit;font-size:12px;font-weight:600;padding:6px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surf2);color:var(--text2);cursor:pointer;}
 .toggle-btn.on{color:var(--amberL);border-color:var(--amber);background:var(--amberBg);}
+.col-mode-pill{display:flex;width:fit-content;background:var(--surf);border:1px solid var(--border2);border-radius:8px;overflow:hidden;margin:10px 0;}
+.col-mode-pill button{font:inherit;font-size:12px;font-weight:600;padding:6px 14px;background:none;border:none;color:var(--text2);cursor:pointer;}
+.col-mode-pill button.on{background:var(--amberBg);color:var(--amberL);}
 .unit-stats-toggle-btn:hover{color:var(--text);}
 .unit-stats-toggle-btn.on{color:var(--amberL);border-color:var(--amber);background:var(--amberBg);}
 .card .sub-heading{font-size:13px;font-weight:700;margin:20px 0 4px;padding-top:16px;border-top:1px solid var(--border);color:var(--text);}
@@ -323,40 +326,10 @@ select:focus{outline:none;border-color:var(--amber);}
     <div class="card">
       <h2>All Maxed Cavalry Archer / Mounted Crossbowman Civs</h2>
       <p class="desc">
-        Every civ that has real Cavalry Archer or Mounted Crossbowman access under the Sept 22 patch
-        (31 CA civs + 15 MCB civs), the 3 Elephant Archer civs, and 6 more real archer-cavalry unique
-        units — <b>XR</b> Xianbei Raider (Wei), <b>BOL</b> Bolas Rider (Mapuche), <b>MAN</b> Mangudai
-        (Mongols), <b>CAM</b> Camel Archer (Berbers), <b>GEN</b> Genitour (Berbers), <b>KIP</b> Kipchak
-        (Cumans), <b>RAT</b> Ratha, Ranged (Bengalis), and <b>WW</b> War Wagon (Koreans) — each maxed
-        out on its own real tech access. Bolas Rider/Camel Archer/Genitour/Ratha/War Wagon/Kipchak also
-        each have a matching <b>E-prefixed row</b> (EBOL/ECAM/EGEN/ERAT/EWW/EKIP) for their real Elite
-        tier — Xianbei Raider has no Elite upgrade in the real game, and Mangudai's own row already
-        represents Elite (its base tier isn't shown separately). Kipchak fires 1 main arrow (scales with
-        the normal archer-attack techs) plus 2 extra arrows at base/3 at Elite, each a flat +1 unaffected
-        by any tech — its Attack column is the main arrow's maxed value plus that flat extra-arrow total.
-        Same formula as the card above — Chemistry/Fletching/Bodkin
-        Arrow/Padded+Leather Archer Armor universal, Bracer/Ring Archer Armor/Bloodlines/Husbandry/
-        Parthian Tactics/Thumb Ring per-civ, Cranequins as Parthian Tactics' MCB-only substitute.
-        DPS v. Infantry/v. Ranged also fold in real CIV bonuses, not just techs — checked every civ's
-        own bonus text directly rather than assuming: Japanese (+2 vs. Ranged Soldiers, except
-        Skirmishers) is the only match for v. Ranged; Cranequins' own +2 vs. Infantry is the only match
-        for v. Infantry. Pulled live from index.html's own civData under the Sept 22 toggle plus the
-        cached aoe2techtree data.json for base stats, not guessed. Click any column header to sort.
-      </p>
-      <p class="desc" style="color:var(--text3)">
-        Real exceptions worth knowing: <b>Xianbei Raider</b> has a periodic ~30s "charge" volley (5 main
-        + 5x1 secondary arrows, secondaries scaling to 5 each at full upgrades — 34 total maxed) blended
-        into its DPS as an approximation, not an exact model. <b>Bolas Rider</b> has the same kind of
-        charge mechanic but no numbers were available, so its DPS is sustained-attack-only and
-        understates its real ceiling. Every one of these 8 unique units gets the full normal Cavalry
-        Archer tech set (Fletching/Bodkin Arrow/Bracer, Padded/Leather/Ring Archer Armor, Parthian
-        Tactics, Bloodlines, Husbandry, Thumb Ring, Chemistry, Ballistics), each on its OWN civ's real
-        access — <b>War Wagon</b> included, corrected from an earlier version of this table that wrongly
-        modeled it as Siege-Engineers-only with no archer-tech bonus at all. Every unique unit here
-        (XR/BOL/MAN/CAM/GEN/KIP/RAT/WW) is modeled at its BASE tier only, matching this site's own
-        established convention of never tracking a unique unit's Elite upgrade — Elephant Archer is the
-        one exception, since it's a real generic/regional line with a genuine Elite tier already modeled
-        the same way Heavy CA/MCB are.
+        Every civ with real Cavalry Archer or Mounted Crossbowman access, the 3 Elephant Archer civs, and
+        8 archer-cavalry unique units (Xianbei Raider, Bolas Rider, Mangudai, Camel Archer, Genitour,
+        Kipchak, Ratha, War Wagon), each maxed out on its own real tech access. Click a column header to
+        sort.
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 0;font-size:0.9em;">
         <button class="unit-type-toggle toggle-btn on" data-type="ca">Cavalry Archer (CA/HCA)</button>
@@ -365,27 +338,10 @@ select:focus{outline:none;border-color:var(--amber);}
         <button class="unit-type-toggle toggle-btn on" data-type="unique">Unique Units (XR/BOL/MAN/CAM/GEN/KIP/RAT/WW)</button>
       </div>
       <p class="desc" style="color:var(--text3)">
-        Cost is flat per unit TYPE, not per civ — every civ pays the same 40w/60g (Cavalry Archer) or
-        40w/65g (Mounted Crossbowman) here, and each unique/regional unit uses its own single real cost —
-        with one real exception: <b>Franks</b> pay 40w/39g for Mounted Crossbowman (Ordonnance
-        Companies' real -40% gold discount, applied here). Other real per-civ gold discounts
-        (Portuguese/Spanish economy bonuses, etc.) still aren't factored in — this is a simplified
-        resource-efficiency proxy, not a precise per-civ cost model. Sort by the DPS/100 res column for
-        an equal-resources comparison. Doesn't account for population cap or training time either, just
-        raw cost-to-damage ratio.
-      </p>
-      <p class="desc" style="color:var(--text3)">
-        <b>Rank</b> is a "behind the scenes" composite ranking, computed over all 63 rows together (not
-        split by CA/MCB/EA/Unique). Attack and Reload aren't their own categories (DPS already reflects
-        both), so each remaining stat is min-max normalized to 0–1 across all 63 rows (0 = worst observed
-        here, 1 = best — preserving real magnitude of the gap between civs, not just who's ahead), then
-        combined with a weight per category — DPS 3.0 (weighted well above everything else per direct
-        request), HP 1.0, Melee/Pierce Armor 0.6 each, Range/Speed 0.4 each, DPS/100 res 0.8, DPS v.
-        Infantry/v. Ranged and Accuracy 0.3 each — into a 0–100 score, which Rank then orders (ties share a
-        rank via standard competition ranking). Experimental and a judgment call, not a claim about real
-        competitive importance — worth sanity-checking against known-strong/known-weak civs. An earlier
-        equal-weighted, points-based version of this (every category ranked 1st–63rd, summed) was tried
-        and shown side by side with this one before being removed in favor of just this weighted version.
+        Cost is flat per unit type (40w/60g Cavalry Archer, 40w/65g Mounted Crossbowman), except Franks'
+        discounted Mounted Crossbowman. Sort by DPS/100 res for an equal-resources comparison.
+        <b>Rank</b> is a weighted composite (DPS weighted highest, plus HP/armor/speed/DPS-per-cost) — a
+        judgment call, not a definitive tier list.
       </p>
       <div class="overflow-x">
         <table id="all-maxed-table"></table>
@@ -398,96 +354,18 @@ select:focus{outline:none;border-color:var(--amber);}
     <div class="card">
       <h2>All Maxed Infantry Civs</h2>
       <p class="desc">
-        Every civ's real Militia-line (Man-at-Arms/Long Swordsman/Two-Handed Swordsman/Champion)
-        access, each capped at its own real max tier — not every civ reaches Champion, some are
-        capped lower (Persians/Romans/Varangians are capped at Two-Handed Swordsman; Jurchens at Long
-        Swordsman). <b>Incas, Mapuche, Muisca and Tupi are absent</b> — real correction (site owner,
-        2026-09-18): these 4 civs have ZERO Militia-line access at all, not even Man-at-Arms — they
-        train the Champi Warrior / Elite Champi Warrior line instead, a genuine replacement this table
-        doesn't have real base stats for yet, so they're left out rather than guessed at (an earlier
-        version wrongly showed them capped at a fabricated "Man-at-Arms" tier). <b>Aztecs and Maya
-        appear twice</b> — they're the only 2 civs with real access to the separate Eagle-line (Eagle
-        Scout/Eagle Warrior/Elite Eagle Warrior) on top of their normal Militia-line, so both real
-        lines get their own row. Base stats and reload times cross-checked against two independent
-        sources (this site's own build-order.html hover-stats data and the cached aoe2techtree
-        data.json) and tier/line availability pulled live from index.html's own civData, not typed
-        from memory — the same real-CB-bonus-sweep approach used for the CA/MCB table above,
-        cross-checked a second time against this site's own archetype-bonus-scoring categorization
-        (every `include:['Infantry']`-tagged bonus line) to catch anything a plain text read might
-        miss. Click any column header to sort.
+        Every civ's real Militia-line (Man-at-Arms/Long Swordsman/Two-Handed Swordsman/Champion) access,
+        capped at each civ's own real max tier. Aztecs/Maya also get an Eagle-line row; Incas/Mapuche/
+        Muisca/Tupi have no Militia-line at all and are absent. Click a column header to sort.
       </p>
       <p class="desc" style="color:var(--text3)">
-        Real civ bonuses folded in: Armenians (Fereters: +30 HP; also their whole Militia-line past
-        Man-at-Arms unlocks one age earlier — Long Swordsman in Feudal, Champion in Castle), Bulgarians
-        (Bagains: +5 melee armor), Burmese (+1/+2/+3 attack by age), Celts (+10/+15/+20% speed by
-        age), Japanese (attacks +33% faster), Khitans (melee-attack Blacksmith techs doubled), Malians
-        (+1/+2/+3 pierce armor by age), Maya (Holcans: Eagle Warriors +40 HP, Imperial-gated), Romans
-        (armor Blacksmith techs doubled), Teutons (+0/+1/+2 melee armor by age, shared with Cavalry
-        below), Vikings (+20% HP). Also folds in Gambesons — a real 4th Infantry armor tech (+1 pierce
-        armor) separate from the 3 Blacksmith Mail Armor techs, gated per-civ (roughly half the roster
-        has it). <b>Not modeled</b> (situational or non-static, not a fixed stat this table's columns
-        can represent): Bengalis'/Burmese's/Vikings' (and Khitans'/Persians' team bonus)
-        vs.-specific-unit-class bonuses, Dravidians' Wootz Steel (Infantry attacks ignore armor —
-        depends on the opponent, not a number of their own), Khitans' Lamellar Armor damage
-        reflection, Romans' Comitatenses charge attack, Danes' Hamask (scales with missing HP).
-      </p>
-      <p class="desc" style="color:var(--text3)">
-        Cost is flat per civ — every civ pays the same 50f/20g here. Real per-civ cost discounts
-        (Goths, Incas, Forced Levy's gold→food conversion, etc.) aren't factored in — same simplified
-        resource-efficiency proxy as the CA/MCB table above. Sort by DPS/100 res for an
-        equal-resources comparison.
-      </p>
-      <p class="desc" style="color:var(--text3)">
-        <b>Rank</b> uses a different, more "real world" model than the other 2 tables' raw-stat
-        composite: instead of ranking HP/Armor/DPS directly, it ranks real MATCHUP outcomes — how long
-        this unit survives against, and how fast it kills, several real reference opponents (a generic,
-        no-civ-bonus, fully-teched Militia-line/Archer-line/Skirmisher-line/Scout-line/Knight-line unit
-        at this same age). "Seconds to Survive" (HP × their reload ÷ their damage-per-hit against your
-        armor) naturally folds HP and armor together into one number — a bigger number is always
-        better. "Seconds to Kill" (their HP × your reload ÷ your damage-per-hit against their armor)
-        is the reverse — a SMALLER number is better here, you kill faster. No "Seconds to Kill Archer-
-        line" exists — Infantry rarely lands a real hit on kiting Archers, so that matchup was left out
-        rather than force-fit. DPS/100 res and Speed are also in the mix; raw DPS itself is NOT (it's
-        still shown as its own column, just no longer weighted — the Seconds-to-Kill categories already
-        capture offensive output more realistically). These 8 matchup numbers are computed fresh for
-        every row at the current age (a different age is a genuinely different comparison — which
-        civs even have a unit yet, at which tier, AND which reference opponents exist yet: Knight-line
-        itself doesn't exist before Castle Age) and are intentionally NOT shown as their own columns —
-        purely behind-the-scenes inputs to Rank.
-      </p>
-      <p class="desc" style="color:var(--text3)">
-        <b>DPS v. Shock Inf.</b> is base DPS plus each unit's own real bonus attack against the Shock
-        Infantry class (a real in-game armor class, confirmed via data.json's own class-tagging rather
-        than assumed) — this bonus is an INTRINSIC unit stat, not a tech, so it's fixed per tier/unit,
-        not gated by age beyond reaching that tier. The real Shock Infantry class members are Eagle
-        Scout/Eagle Warrior/Elite Eagle Warrior, Fire Lancer/Elite Fire Lancer, Jian Swordsman, and
-        Temple Guard/Elite Temple Guard — so this column matters most against Aztecs/Maya's own
-        Eagle-line, not a universal matchup. Militia-line gets a real +2/+6/+8/+8 bonus at Man-at-Arms/
-        Long Swordsman/Two-Handed Swordsman/Champion (Champion does NOT get more than Two-Handed
-        Swordsman — a real, non-obvious detail); several unique units get their own real bonus too
-        (Teutonic Knight and White Feather Guard +4/+4, Huskarl/Samurai/Obuch/Liao Dao/Urumi Swordsman/
-        Serjeant/Ibirapema Warrior +2/+3, Jaguar Warrior/Shotel Warrior/Karambit Warrior/Ghulam +2/+2,
-        Woad Raider +2/+3, Throwing Axeman +1/+2, Gbeto and all 4 Champi Warrior civs +1/+1) — each
-        confirmed by fingerprint-matching that unit's own already-trusted HP/Attack/Armor/Speed/Reload
-        against data.json's combat data, not guessed. Fire Lancer/Temple Guard/Eagle-line (all 4 real
-        class members) have no self-bonus, matching how units generally don't get bonus damage against
-        their own class. Not modeled for Cavalry or CA/MCB — no real civ bonus of this kind exists on
-        either archetype.
-      </p>
-      <p class="desc" style="color:var(--text3)">
-        <b>Dmg Taken v. &lt;age-appropriate tier&gt;</b> flips the question: bonus damage DEALT is a
-        fixed attacker-side stat (the column above), but bonus damage TAKEN isn't fixed for a defender —
-        it depends on which of the many real attackers you're facing, each with a different bonus. This
-        column uses a single reference attacker, the Militia-line's own real progression — a generic
-        maxed (no civ bonus) Man-at-Arms at Feudal, Long Swordsman at Castle, or Champion at Imperial,
-        following the age toggle below — and shows <code>max(1, reference attack − target's melee
-        armor)</code> converted to DPS. EVERY row gets a real value now, not just the 5 real Shock
-        Infantry class members (Eagle-line, Fire Lancer, Jian Swordsman, Temple Guard, Varangian Guard) —
-        those 5 additionally get the reference unit's own real Shock Infantry bonus (+2/+6/+8 at
-        Man-at-Arms/Long Swordsman/Champion) added on top; everyone else just takes the reference unit's
-        standard, non-bonus damage, so every row is comparable on equal footing. This column IS factored
-        into <b>Rank</b> (weight 0.3, inverted — lower is better) — the DPS v. Shock Infantry column
-        above is NOT factored into Rank, kept purely informational.
+        Cost is flat per civ (50f/20g). Sort by DPS/100 res for an equal-resources comparison.
+        <b>Rank</b> is based on real matchup outcomes (Seconds to Survive/Kill vs. reference Militia/
+        Archer/Skirmisher/Scout/Knight-line units) rather than raw HP/Armor/DPS — switch the pill below
+        to "Matchup" to see those numbers as columns instead of the usual stat columns.
+        <b>DPS v. Shock Inf.</b> and <b>Dmg Taken v. &lt;tier&gt;</b> account for the real Shock Infantry
+        bonus-damage class (Eagle-line, Fire Lancer, Jian Swordsman, Temple Guard, Varangian Guard); only
+        Dmg Taken feeds into Rank.
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
         <button class="infantry-age-toggle-btn toggle-btn" data-age="feudal">Feudal</button>
@@ -500,34 +378,15 @@ select:focus{outline:none;border-color:var(--amber);}
         <button class="infantry-type-toggle toggle-btn on" data-type="regional">Non-Castle unique units</button>
         <button class="infantry-type-toggle toggle-btn on" data-type="unique">Castle unique units</button>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
-        <button class="infantry-matchup-toggle-btn toggle-btn">▸ Show Matchup Details</button>
+      <div class="col-mode-pill infantry-col-mode-pill">
+        <button data-mode="stats" class="on">Stats</button>
+        <button data-mode="matchup">Matchup</button>
       </div>
       <p class="desc" style="color:var(--text3)">
-        <b>Non-Castle unique units</b> — trained at a normal building, not the Castle: Fire Lancer
-        (Barracks, Chinese/Jurchens/Khitans/Koreans/Vietnamese), Temple Guard (Barracks, Muisca),
-        Varangian Guard (Barracks, Byzantines/Danes/Saxons/Varangians/Vikings), Champi Warrior
-        (Barracks, Incas/Mapuche/Muisca/Tupi's real Militia-line replacement, available from Feudal
-        Age just like the Man-at-Arms it stands in for — see the note above INFANTRY_CIVS for why
-        those 4 civs are absent from the Militia-line rows), Condottiero
-        (Barracks, Italians, Imperial Age only — a real, further exception even within this category),
-        and Serjeant (Donjon, Sicilians, real from Feudal Age — Sicilians can build Donjons, their own
-        Watch Tower-line replacement, from Dark Age). Muisca shows twice here (Temple Guard AND Champi
-        Warrior — both real). <b>Castle unique units</b> — the standard single-civ pattern, trained at
-        a Castle: Huskarl, Samurai, Jaguar Warrior, Centurion, Teutonic Knight, Throwing Axeman, Urumi
-        Swordsman, Warrior Priest, White Feather Guard, Gbeto, Shotel Warrior, Karambit Warrior,
-        Kamayuk, Ibirapema Warrior, Jian Swordsman, Ghulam, Woad Raider, Obuch, Liao Dao — a full
-        audit of every real
-        Infantry-archetype unique unit (2026-09-20; Obuch and Liao Dao both corrected in from the
-        Cavalry table 2026-09-20, where they'd been wrongly classified), sourced the same way as
-        everything else on this page (the cached
-        aoe2techtree data.json, cross-checked civ-by-civ). Berserk (Vikings) and Hearth Troop (Saxons)
-        are real Infantry UUs NOT included yet — Hearth Troop has no id in this site's civData at all
-        (too new for the cached dataset, same as Varangian Guard/Jarl), and Berserk hit a real
-        id-space mismatch in that dataset; both need real stats supplied directly. Every entry gets
-        that civ's own real Blacksmith Infantry techs applied, same formula as the Militia/Eagle
-        lines above — Samurai's real "Infantry attacks +33% faster" civ bonus and Armenians' real
-        Fereters (+30 HP) are folded into their own UU rows too, not just their Militia-line rows.
+        <b>Non-Castle unique units</b> — Fire Lancer, Temple Guard, Varangian Guard, Champi Warrior,
+        Condottiero, Serjeant. <b>Castle unique units</b> — every other real Infantry-archetype UU
+        (Huskarl, Samurai, Teutonic Knight, etc.). Berserk (Vikings) and Hearth Troop (Saxons) aren't in
+        yet — real stats still needed.
       </p>
       <div class="overflow-x">
         <table id="all-maxed-infantry-table"></table>
@@ -541,60 +400,17 @@ select:focus{outline:none;border-color:var(--amber);}
       <h2>All Maxed Cavalry Civs</h2>
       <p class="desc">
         Every civ's real Knight-line (Knight/Cavalier/Paladin) AND Scout-line (Scout Cavalry/Light
-        Cavalry/Hussar) access, each capped at its own real max tier — most reach Paladin/Hussar,
-        several cap lower. 50 of 56 civs have real Scout-line access (the same 6 without it — Aztecs,
-        Incas, Mapuche, Maya, Muisca, Tupi — have no Stable at all); 15 civs with zero Knight-line
-        access (Aztecs, Bengalis, Dravidians, Gurjaras, Hindustanis, Incas, Jurchens, Khitans,
-        Mapuche, Maya, Muisca, Tupi, plus Wei/Shu/Wu who train "Hei Guang Cavalry" instead of
-        Cavalier/Paladin — not modeled here yet). Most civs appear twice (one row per real line they
-        have), same convention as Aztecs/Maya's Eagle-line row in the Infantry table above. Same
-        sourcing as the Infantry table above — live civData, not memory, cross-checked a second time
-        against this site's own archetype-bonus-scoring categorization (every `include:['Cavalry']`-
-        tagged bonus line). Click any column header to sort.
+        Cavalry/Hussar) access, each capped at its own real max tier. Most civs appear twice (one row per
+        line they have). Click a column header to sort.
       </p>
       <p class="desc" style="color:var(--text3)">
-        Real civ bonuses folded in: Bulgarians (Stirrups: attacks +33% faster, Castle-gated), Cumans
-        (+5/+10/+15% speed by age), Franks (+20% HP), Lithuanians (+1 attack per garrisoned Relic, max
-        +4 — shown at that max, a real conditional this table can't otherwise express), Malians
-        (Farimba: +5 attack, Imperial-gated), Sicilians (Hauberk: +1 melee/+2 pierce armor,
-        Imperial-gated), Teutons (+0/+1/+2 melee armor by age), Varangians (Bloodlines' own +20 HP is
-        amplified to +30 by their real "Bloodlines and Caravan effects +50%" bonus). Cavalier itself
-        is Castle-age for every civ here (not just Burgundians, whose own "Cavalier upgrade available
-        in Castle Age" bonus text appears outdated — confirmed via two independent real sources in
-        index.html, TECH_TREE_CATEGORIES and the explicitly wiki-verified ITEM_AGES table).
-        <b>Scout-line:</b> Mongols (+20/30% HP in Castle/Imperial Age, 0% Feudal), Tatars (Silk Armor:
-        +1 melee/+1 pierce armor, Castle-gated), Turks (+1 pierce armor, flat).
-        <b>Not modeled</b> (situational or non-static, not a fixed stat this table's
-        columns can represent): Bengalis'/Burmese's (and Khitans'/Persians'/Varangians' team bonus)
-        vs.-specific-unit-class bonuses, Dravidians' Wootz Steel (Cavalry attacks ignore armor —
-        Dravidians has no real Knight-line access anyway, so this is moot here), Sicilians' -40% bonus
-        damage taken, Varangians' Vendel Legacy trample.
-      </p>
-      <p class="desc" style="color:var(--text3)">
-        Cost is flat per civ — every civ pays the same 60f/75g here, except <b>Poles</b> (real Castle
-        unique tech Szlachta Privileges, Knight-line -60% gold: 60f/30g = 90 total, always assumed
-        researched since Knight-line itself never shows before Castle Age for any civ). Other real
-        per-civ cost discounts (Corvinian Army's gold→food conversion, etc.) still aren't factored in —
-        same simplified resource-efficiency proxy as the CA/MCB table above. Sort by DPS/100 res for an
-        equal-resources comparison. <b>Rank</b> is the same "behind the
-        scenes" weighted composite as the CA/MCB and Infantry tables (HP/Melee Armor/Pierce Armor/
-        Speed/DPS/DPS-per-100-res normalized and weighted, DPS weighted well above the rest), computed
-        fresh for every row currently shown at this age — before the type-toggle filter below, so it
-        doesn't shift when you toggle Knights/Scouts/Steppe/Camels/Elephants/unique units on or off, but
-        it DOES shift when you change the age toggle, since a different age means a genuinely different
-        comparison (which civs even have a unit yet, and at which tier).
-      </p>
-      <p class="desc" style="color:var(--text3)">
-        <b>Hits Taken v. Halberdier</b> (renamed to Pikeman/Spearman at Castle/Feudal) shows how many
-        hits a generic, no-civ-bonus, fully-teched Spearman-line unit for that age needs to kill this
-        row — <code>hp / max(1, spearman's attack − this row's melee armor)</code>. The Spearman-line's
-        real bonus damage is genuinely different per target class, not one flat number: it gets +15/+22/
-        +32 (Feudal/Castle/Imperial) vs. Cavalry, +12/+18/+26 vs. Camels, and +15/+25/+28 vs. Elephants
-        <b>on top of</b> the Cavalry bonus (Elephants are a real subclass of Mounted in the game's own
-        data, confirmed by Battle Elephant carrying both class tags at once) — so Knights/Scouts/Steppe
-        Lancers/Cavalry unique units use the Cavalry number, Camel-line uses the Camel number, and
-        Elephant-line uses the COMBINED Cavalry+Elephant number, matching why Elephants melt to
-        Halberdiers so fast in real play despite their huge HP.
+        Cost is flat per civ (60f/75g), except Poles' discounted Knight-line. Sort by DPS/100 res for an
+        equal-resources comparison. <b>Rank</b> is based on real matchup outcomes (Seconds to Survive/Kill
+        vs. reference Spearman/Archer/Skirmisher/Camel/Knight-line units) — switch the pill below to
+        "Matchup" to see those numbers as columns. <b>Hits Taken v. Halberdier</b> (Pikeman/Spearman at
+        Castle/Feudal) shows how many hits a generic Spearman-line unit needs to kill this row — its real
+        anti-Cavalry/Camel/Elephant bonus differs by target class, and Elephants take the Cavalry+Elephant
+        bonus combined.
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
         <button class="cavalry-age-toggle-btn toggle-btn" data-age="feudal">Feudal</button>
@@ -609,34 +425,15 @@ select:focus{outline:none;border-color:var(--amber);}
         <button class="cavalry-type-toggle toggle-btn on" data-type="elephants">Elephants</button>
         <button class="cavalry-type-toggle toggle-btn on" data-type="unique">Castle unique units</button>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
-        <button class="cavalry-matchup-toggle-btn toggle-btn">▸ Show Matchup Details</button>
+      <div class="col-mode-pill cavalry-col-mode-pill">
+        <button data-mode="stats" class="on">Stats</button>
+        <button data-mode="matchup">Matchup</button>
       </div>
       <p class="desc" style="color:var(--text3)">
-        <b>Steppe Lancers</b> — 5 real civs (Cumans, Jurchens, Khitans, Mongols, Tatars), all reach
-        Elite. <b>Camels</b> — 13 real civs; Hindustanis' real Imperial-tier upgrade is "Imperial
-        Camel Rider" (140 HP/8 attack), a genuinely different unit from the generic Heavy Camel
-        Rider every other Camel civ gets. <b>Elephants</b> — Battle Elephant (Bengalis, Burmese,
-        Dravidians, Khmer, Malay, Vietnamese) plus Persians' real separate unique unit War Elephant
-        (Savar already counts as Persians' own Paladin-tier replacement in the Knights category, so
-        it isn't shown twice). Real civ bonuses folded in: Bengalis (Paiks: Elephant Units attack
-        +20% faster), Burmese (+1 melee/+1 pierce armor flat, plus Howdah unique tech +1/+1 more,
-        stacking to +2/+2 total once both are active), Khmer (+10% speed flat, plus Tusk Swords
-        unique tech +3 attack), Vietnamese (Chatras unique tech: +100 HP). <b>Castle unique
-        units</b> — Cataphract, Coustillier, Iron Pagoda, Konnik, Leitis, Magyar Huszar, Monaspa,
-        Shrivamsha Rider, Tarkan, Tiger Cavalry, Boyar, Jarl, War Elephant — a full
-        audit of every real Cavalry- and Elephant-archetype unique unit (Obuch and Liao Dao, both
-        originally included here, are actually Infantry-archetype and live on the Infantry table
-        instead — see below),
-        same sourcing as the Infantry table's own audit above (the cached aoe2techtree data.json,
-        cross-checked civ-by-civ, verified for a real Elite tier via its own upgrade-tech table).
-        Jarl's real base stats were supplied directly by the site owner (too new for that dataset,
-        same as Varangian Guard) — Elite Jarl still needed. No real non-Castle Cavalry unique unit was
-        identified this session (Huns' Marauders lets Tarkan train at a Stable too, but that's a
-        tech-conditional option on top of its real default Castle training, not a reclassification), so
-        that toggle was removed rather than left empty — easy to re-add if one turns up. Every entry
-        gets that civ's own real Blacksmith Cavalry techs applied, same formula as the Knight/Scout
-        lines above.
+        <b>Steppe Lancers</b> — 5 real civs. <b>Camels</b> — 13 real civs. <b>Elephants</b> — Battle
+        Elephant civs plus Persians' War Elephant. <b>Castle unique units</b> — every other real Cavalry/
+        Elephant-archetype UU (Cataphract, Coustillier, Leitis, Boyar, Jarl, etc.). Elite Jarl still
+        needs real stats.
       </p>
       <div class="overflow-x">
         <table id="all-maxed-cavalry-table"></table>
@@ -829,7 +626,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.93</div>
+    <div class="version">v0.94</div>
   </div>
 </div>
 
@@ -3641,14 +3438,12 @@ const CAVALRY_MATCHUP_COLS = [
 // etc.").
 function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, emptyMsg, typeToggleSelector, opts = {}) {
   const { extraCols = [], weightedCategories = MELEE_WEIGHTED_CATEGORIES, hitsTakenVsSpear = false, dmgTakenVsMilitia = false,
-    infantryMatchupRanking = false, cavalryMatchupRanking = false, matchupCols = [], matchupToggleSelector = null } = opts;
+    infantryMatchupRanking = false, cavalryMatchupRanking = false, matchupCols = [], colModeSelector = null } = opts;
   let sort = { key: 'dps', dir: -1 };
   let ageKey = 'imperial';
-  // Matchup columns (Seconds to Survive/Kill — see the big design comments
-  // above) are REAL, sortable columns now, not purely hidden — but start
-  // collapsed (site owner: "make new columns visible but collapsed for
-  // all"), toggled by matchupToggleSelector's own button.
-  let matchupColsVisible = false;
+  // Stats vs. Matchup columns are mutually exclusive (a pill, not an
+  // add-on toggle) to keep the table from getting too wide.
+  let colMode = 'stats';
   function render() {
     const tableEl = document.getElementById(tableId);
     const ageLabel = MELEE_AGE_LABEL[ageKey];
@@ -3723,7 +3518,7 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       if (key === 'civ' || key === 'line') return a[key].localeCompare(b[key]) * dir || a.civ.localeCompare(b.civ);
       return (a[key] - b[key]) * dir || a.civ.localeCompare(b.civ);
     });
-    const allExtraCols = [...extraCols, ...spearActiveCols, ...militiaActiveCols, ...(matchupColsVisible ? matchupCols : [])];
+    const allExtraCols = colMode === 'matchup' ? matchupCols : [...extraCols, ...spearActiveCols, ...militiaActiveCols];
     const cols = [...MELEE_COLS, ...allExtraCols];
     const thead = `<thead><tr>${cols.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
     const tbody = rows.map((r, i) => `<tr>
@@ -3759,11 +3554,10 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
   if (typeToggleSelector) {
     document.querySelectorAll(typeToggleSelector).forEach(btn => btn.addEventListener('click', () => { btn.classList.toggle('on'); render(); }));
   }
-  if (matchupToggleSelector) {
-    document.querySelectorAll(matchupToggleSelector).forEach(btn => btn.addEventListener('click', () => {
-      matchupColsVisible = !matchupColsVisible;
-      btn.classList.toggle('on', matchupColsVisible);
-      btn.textContent = matchupColsVisible ? '▾ Hide Matchup Details' : '▸ Show Matchup Details';
+  if (colModeSelector) {
+    document.querySelectorAll(`${colModeSelector} button`).forEach(btn => btn.addEventListener('click', () => {
+      colMode = btn.dataset.mode;
+      document.querySelectorAll(`${colModeSelector} button`).forEach(b => b.classList.toggle('on', b === btn));
       render();
     }));
   }
@@ -3779,7 +3573,7 @@ makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', [
   dmgTakenVsMilitia: true,
   infantryMatchupRanking: true,
   matchupCols: INFANTRY_MATCHUP_COLS,
-  matchupToggleSelector: '.infantry-matchup-toggle-btn',
+  colModeSelector: '.infantry-col-mode-pill',
 })();
 makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [
   [CAVALRY_CIVS, cavalryMaxStats, CAVALRY_COST, 'knights', 'cavalry'],
@@ -3794,7 +3588,7 @@ makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [
   weightedCategories: CAVALRY_WEIGHTED_CATEGORIES,
   cavalryMatchupRanking: true,
   matchupCols: CAVALRY_MATCHUP_COLS,
-  matchupToggleSelector: '.cavalry-matchup-toggle-btn',
+  colModeSelector: '.cavalry-col-mode-pill',
 })();
 
 // Unit Stats toggle (2026-09-17, site owner request) — Base/Castle techs/
