@@ -462,17 +462,19 @@ select:focus{outline:none;border-color:var(--amber);}
         either archetype.
       </p>
       <p class="desc" style="color:var(--text3)">
-        <b>Dmg Taken v. Champion</b> flips the question: bonus damage DEALT is a fixed attacker-side
-        stat (the column above), but bonus damage TAKEN isn't fixed for a defender — it depends on which
-        of the many real attackers you're facing, each with a different bonus. This column uses a single
-        reference attacker, a generic maxed Champion (no civ bonus, the classic Militia-line-vs-Eagle
-        matchup), and shows <code>max(1, 26 − target's melee armor)</code> converted to DPS (26 = Champion's
-        real base 14 attack + all 3 melee-attack techs + its own +8 Shock Infantry bonus) — only for the 5
-        real Shock Infantry class members shown on this table (Eagle-line, Fire Lancer, Jian Swordsman,
-        Temple Guard, and Varangian Guard — confirmed directly by the site owner, too new for the cached
-        dataset like everything else about that unit). Every other row shows "—", not a misleading 0. This
-        column IS factored into <b>Rank</b> (weight 0.3, inverted — lower is better), where not being a
-        Shock Infantry class member at all counts as the best possible outcome for this specific category.
+        <b>Dmg Taken v. &lt;age-appropriate tier&gt;</b> flips the question: bonus damage DEALT is a
+        fixed attacker-side stat (the column above), but bonus damage TAKEN isn't fixed for a defender —
+        it depends on which of the many real attackers you're facing, each with a different bonus. This
+        column uses a single reference attacker, the Militia-line's own real progression — a generic
+        maxed (no civ bonus) Man-at-Arms at Feudal, Long Swordsman at Castle, or Champion at Imperial,
+        following the age toggle below — and shows <code>max(1, reference attack − target's melee
+        armor)</code> converted to DPS. EVERY row gets a real value now, not just the 5 real Shock
+        Infantry class members (Eagle-line, Fire Lancer, Jian Swordsman, Temple Guard, Varangian Guard) —
+        those 5 additionally get the reference unit's own real Shock Infantry bonus (+2/+6/+8 at
+        Man-at-Arms/Long Swordsman/Champion) added on top; everyone else just takes the reference unit's
+        standard, non-bonus damage, so every row is comparable on equal footing. This column IS factored
+        into <b>Rank</b> (weight 0.3, inverted — lower is better) — the DPS v. Shock Infantry column
+        above is NOT factored into Rank, kept purely informational.
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
         <button class="infantry-age-toggle-btn toggle-btn" data-age="feudal">Feudal</button>
@@ -589,7 +591,6 @@ select:focus{outline:none;border-color:var(--amber);}
         <button class="cavalry-type-toggle toggle-btn on" data-type="steppe">Steppe Lancers</button>
         <button class="cavalry-type-toggle toggle-btn on" data-type="camels">Camels</button>
         <button class="cavalry-type-toggle toggle-btn on" data-type="elephants">Elephants</button>
-        <button class="cavalry-type-toggle toggle-btn on" data-type="regional">Non-Castle unique units</button>
         <button class="cavalry-type-toggle toggle-btn on" data-type="unique">Castle unique units</button>
       </div>
       <p class="desc" style="color:var(--text3)">
@@ -611,11 +612,12 @@ select:focus{outline:none;border-color:var(--amber);}
         same sourcing as the Infantry table's own audit above (the cached aoe2techtree data.json,
         cross-checked civ-by-civ, verified for a real Elite tier via its own upgrade-tech table).
         Jarl's real base stats were supplied directly by the site owner (too new for that dataset,
-        same as Varangian Guard) — Elite Jarl still needed. <b>Non-Castle unique units</b> — no real
-        one identified for Cavalry yet (Huns' Marauders lets Tarkan train at a Stable too, but that's
-        a tech-conditional option on top of its real default Castle training, not a reclassification)
-        — the toggle exists for if one turns up. Every entry gets that civ's own real Blacksmith
-        Cavalry techs applied, same formula as the Knight/Scout lines above.
+        same as Varangian Guard) — Elite Jarl still needed. No real non-Castle Cavalry unique unit was
+        identified this session (Huns' Marauders lets Tarkan train at a Stable too, but that's a
+        tech-conditional option on top of its real default Castle training, not a reclassification), so
+        that toggle was removed rather than left empty — easy to re-add if one turns up. Every entry
+        gets that civ's own real Blacksmith Cavalry techs applied, same formula as the Knight/Scout
+        lines above.
       </p>
       <div class="overflow-x">
         <table id="all-maxed-cavalry-table"></table>
@@ -808,7 +810,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.89</div>
+    <div class="version">v0.90</div>
   </div>
 </div>
 
@@ -2361,7 +2363,7 @@ const CAVALRY_AGE_BONUS = {
 // always ordered [Castle-tier, Imperial-tier], confirmed against 4 known
 // examples (Franks' Bearded Axe/Chivalry, Armenians' Cilician Fleet/
 // Fereters, Bulgarians' Stirrups/Bagains, Malians' Tigui/Farimba).
-const INFANTRY_UNIQUE_TECH_AGE = { Armenians: 'Imperial', Bulgarians: 'Imperial', Maya: 'Imperial' }; // Fereters, Bagains, Holcans
+const INFANTRY_UNIQUE_TECH_AGE = { Armenians: 'Imperial', Bulgarians: 'Imperial', Maya: 'Imperial', Shu: 'Castle' }; // Fereters, Bagains, Holcans, Coiled Serpent Array
 const CAVALRY_UNIQUE_TECH_AGE = { Bulgarians: 'Castle', Malians: 'Imperial', Sicilians: 'Imperial' }; // Stirrups, Farimba, Hauberk
 // DPS v. Shock Infantry (2026-09-19, site owner: "what are the shock
 // infantry units?" -> "yes" to building the column, flagged as "not
@@ -2378,29 +2380,19 @@ const CAVALRY_UNIQUE_TECH_AGE = { Bulgarians: 'Castle', Malians: 'Imperial', Sic
 // column is most meaningful against Aztecs/Maya's own Eagle-line and a
 // few regional/unique infantry civs, not a universal matchup.
 const SHOCK_BONUS_BY_TIER = { manAtArms: 2, longsword: 6, thsw: 8, champion: 8 };
-// "Dmg Taken v. Champion" (2026-09-19, site owner: "shock infantry also
-// take that bonus damage... maybe we should have 'bonus damage taken'?" ->
-// "add damage taken v champion column and rank it"). Bonus damage dealt is
-// a fixed attacker-side stat (already modeled above), but bonus damage
-// TAKEN isn't a fixed defender-side number — it depends entirely on which
-// of the ~17 real attackers you're facing, each with a different bonus (2
-// to 8). Champion is used as the single reference attacker (the classic,
-// best-known Militia-line-vs-Eagle matchup), maxed on a GENERIC (no civ
-// bonus) basis, same convention as this page's own UNIT_STATS_TOGGLE
-// "hypothetical full-tech civ" reference: base attack 14 + all 3 melee-atk
-// techs (+4) + the Shock Infantry bonus itself (+8) = 26 total attack.
-// Damage taken = max(1, 26 - target's own melee armor), matching AoE2's
-// real damage formula (armor reduces 1:1 down to a floor of 1), converted
-// to DPS via Champion's own flat 2.0s reload — only computed for the REAL
-// Shock Infantry class members (Eagle-line, Fire Lancer, Jian Swordsman,
-// Temple Guard — confirmed via data.json's own class-tagging, see the
-// dedicated memory note — plus Varangian Guard, confirmed directly by the
-// site owner since it's too new for that cached dataset). Every other
-// row gets `null` (rendered as "—"), not a misleading 0.
-const CHAMPION_MAXED_ATTACK = INFANTRY_BASE.champion.attack + MELEE_ATK_DELTAS.reduce((a, b) => a + b, 0) + SHOCK_BONUS_BY_TIER.champion;
-function dmgTakenVsChampion(meleeArmor, isShockInfantryMember) {
-  return isShockInfantryMember ? d2(Math.max(1, CHAMPION_MAXED_ATTACK - meleeArmor) / INFANTRY_RELOAD) : null;
-}
+// "Dmg Taken v. <age-appropriate Militia-line tier>" (2026-09-19, site
+// owner: "add damage taken v champion column and rank it"; 2026-09-20
+// follow-up: "lets update that by age so it should be maa, long swords,
+// and them champions by age, then also include every unit we have into.
+// even if tehy dont take bonus damage, just use the standard damage so we
+// can compare"). Now computed generically at render() time (same pattern
+// as the Cavalry table's "Hits Taken v. Spearman-line") — see
+// MILITIA_REF_TIER_BY_AGE/militiaLineMaxedAttack below, defined near
+// makeMeleeTableRenderer alongside the Spearman-line reference. EVERY row
+// gets a real value now (not just the ~9 Shock Infantry members) — the
+// Shock Infantry bonus only applies on top for rows with
+// cfg.shockInfantryMember, everyone else just takes the reference
+// attacker's standard (non-bonus) damage, so every row is comparable.
 function infantryMaxStats(civ, cfg, age) {
   const tierAgeMap = INFANTRY_TIER_AGE_OVERRIDE[civ] ? { ...INFANTRY_TIER_AGE, ...INFANTRY_TIER_AGE_OVERRIDE[civ] } : INFANTRY_TIER_AGE;
   const tier = effectiveTier(cfg.tier, INFANTRY_TIER_ORDER, tierAgeMap, age);
@@ -2436,7 +2428,7 @@ function infantryMaxStats(civ, cfg, age) {
   const dps = d2(attack / reload);
   const dpsVsShockInfantry = d2((attack + (SHOCK_BONUS_BY_TIER[tier] || 0)) / reload);
   // Militia-line is not itself a Shock Infantry class member.
-  return { tierName: INFANTRY_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsShockInfantry, dmgTakenVsChampion: null };
+  return { tierName: INFANTRY_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsShockInfantry };
 }
 // Eagle-line (Eagle Scout/Eagle Warrior/Elite Eagle Warrior) — a REAL
 // second infantry line most civs don't have at all: only Aztecs and Maya
@@ -2469,8 +2461,8 @@ const EAGLE_TIER_ORDER = ['eagleScout', 'eagleWarrior', 'eliteEagleWarrior'];
 const EAGLE_TIER_AGE = { eagleScout: 'Feudal', eagleWarrior: 'Castle', eliteEagleWarrior: 'Imperial' };
 const EAGLE_TIER_NAME = { eagleScout: 'Eagle Scout', eagleWarrior: 'Eagle Warrior', eliteEagleWarrior: 'Elite Eagle Warrior' };
 const EAGLE_CIVS = {
-  Aztecs: { tier: 'eliteEagleWarrior', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
-  Maya: { tier: 'eliteEagleWarrior', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true, uniqueTechHp: 40 },
+  Aztecs: { tier: 'eliteEagleWarrior', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, shockInfantryMember: true },
+  Maya: { tier: 'eliteEagleWarrior', meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true, uniqueTechHp: 40, shockInfantryMember: true },
 };
 function eagleMaxStats(civ, cfg, age) {
   const tier = effectiveTier(cfg.tier, EAGLE_TIER_ORDER, EAGLE_TIER_AGE, age);
@@ -2496,7 +2488,7 @@ function eagleMaxStats(civ, cfg, age) {
   // any Eagle tier in data.json), so this column is just base DPS here.
   // It IS a real target of the Dmg Taken v. Champion column, though —
   // every Eagle-line civ is a confirmed Shock Infantry class member.
-  return { tierName: EAGLE_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsShockInfantry: dps, dmgTakenVsChampion: dmgTakenVsChampion(meleeArmor, true) };
+  return { tierName: EAGLE_TIER_NAME[tier], hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsShockInfantry: dps };
 }
 // Regional / Unique Infantry units (2026-09-19/20, site owner request) —
 // real single- or two-tier units, not a full Militia/Eagle-style line,
@@ -2712,11 +2704,17 @@ const UNIQUE_INFANTRY_CIVS = {
   Armenians_WarriorPriest: { civ: 'Armenians', unit: 'Warrior Priest', kind: 'unique', cost: 90,
     base: { hp: 80, attack: 11, melee: 1, pierce: 1, speed: 0.85, reload: 2 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true, uniqueTechHp: 30 },
+  // Coiled Serpent Array (Shu's real Castle unique tech): "Gain +0.5% HP
+  // (max +15%) per Spearman and White Feather Guard in 15 radius" — a real
+  // stacking, conditional bonus, modeled at its real max (+15%), same
+  // "shown at max" convention as Lithuanians' relic-attack bonus. Applies
+  // to both tiers (site owner: "for the white feather guard and elite add
+  // in +15% hp").
   Shu_WhiteFeatherGuard: { civ: 'Shu', unit: 'White Feather Guard', kind: 'unique', cost: 75,
     base: { hp: 95, attack: 7, melee: 0, pierce: 2, speed: 0.95, reload: 2 },
     elite: { hp: 100, attack: 8, melee: 0, pierce: 3, speed: 0.95, reload: 2 },
     meleeAtk: [true,false,false], infArmor: [true,true,true], gambesons: true, squires: true,
-    shockBonusBase: 4, shockBonusElite: 4 },
+    shockBonusBase: 4, shockBonusElite: 4, uniqueTechHpMult: 1.15 },
   Malians_Gbeto: { civ: 'Malians', unit: 'Gbeto', kind: 'unique', cost: 90,
     base: { hp: 40, attack: 10, melee: 0, pierce: 0, speed: 1.25, reload: 2 },
     elite: { hp: 50, attack: 13, melee: 0, pierce: 0, speed: 1.25, reload: 2 },
@@ -2808,7 +2806,13 @@ function uniqueInfantryTierStats(civ, cfg, tierStats, isElite, rank) {
   const attack = tierStats.attack + atkBonus;
   const meleeArmor = tierStats.melee + arm.melee;
   const pierceArmor = tierStats.pierce + arm.pierce + (gambesonsAtAge ? 1 : 0) + civPierceAge;
-  const hp = tierStats.hp + (uniqueGateOk ? (cfg.uniqueTechHp || 0) : 0);
+  // cfg.uniqueTechHpMult: a real Castle unique tech, percentage-based HP
+  // bonus — Shu's Coiled Serpent Array ("+0.5% HP, max +15%, per Spearman/
+  // White Feather Guard in 15 radius"), modeled at its real max (+15%),
+  // same "shown at max, a real conditional this table can't otherwise
+  // express" convention as Lithuanians' relic-attack bonus.
+  let hp = tierStats.hp + (uniqueGateOk ? (cfg.uniqueTechHp || 0) : 0);
+  if (uniqueGateOk && cfg.uniqueTechHpMult) hp = Math.round(hp * cfg.uniqueTechHpMult);
   const speed = d2(tierStats.speed * (squiresAtAge ? 1.10 : 1));
   const reload = d2(tierStats.reload * (cfg.atkSpeedMult || 1));
   const dps = d2(attack / reload);
@@ -2821,7 +2825,7 @@ function uniqueInfantryTierStats(civ, cfg, tierStats, isElite, rank) {
   // confirmed zero).
   const shockBonus = (isElite ? cfg.shockBonusElite : cfg.shockBonusBase) || 0;
   const dpsVsShockInfantry = d2((attack + shockBonus) / reload);
-  return { tierName: `${isElite ? 'Elite ' : ''}${cfg.unit}`, hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsShockInfantry, dmgTakenVsChampion: dmgTakenVsChampion(meleeArmor, !!cfg.shockInfantryMember) };
+  return { tierName: `${isElite ? 'Elite ' : ''}${cfg.unit}`, hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsShockInfantry };
 }
 function uniqueInfantryMaxStats(civ, cfg, age) {
   const rank = AGE_RANK[age];
@@ -3349,6 +3353,29 @@ function spearmanMaxedAttack(ageKey, targetClass) {
   const classBonus = targetClass === 'camel' ? base.camelBonus : targetClass === 'elephant' ? base.cavalryBonus + base.elephantBonus : base.cavalryBonus;
   return base.attack + atkBonus + classBonus;
 }
+// "Dmg Taken v. <age-appropriate Militia-line tier>" reference (Infantry
+// table only) — same age-following pattern as the Spearman-line one above
+// (site owner: "lets update that by age so it should be maa, long swords,
+// and them champions by age"), reusing INFANTRY_BASE/SHOCK_BONUS_BY_TIER
+// already defined for the (attacker-side) DPS v. Shock Infantry column.
+// Feudal->Man-at-Arms, Castle->Long Swordsman, Imperial->Champion (Two-
+// Handed Swordsman, also real Imperial-tier, is intentionally skipped —
+// the site owner named only 3 reference tiers). EVERY row gets a value
+// now (site owner: "include every unit we have into. even if tehy dont
+// take bonus damage, just use the standard damage so we can compare") —
+// the Shock Infantry bonus only stacks on top for cfg.shockInfantryMember
+// rows, everyone else just takes the reference unit's standard (non-
+// bonus) damage.
+const DMG_TAKEN_REF_TIER_BY_AGE = { feudal: 'manAtArms', castle: 'longsword', imperial: 'champion' };
+const DMG_TAKEN_REF_NAME = { manAtArms: 'Man-at-Arms', longsword: 'Long Swordsman', champion: 'Champion' };
+function militiaLineMaxedAttack(ageKey) {
+  const tier = DMG_TAKEN_REF_TIER_BY_AGE[ageKey];
+  const base = INFANTRY_BASE[tier];
+  const rank = AGE_RANK[MELEE_AGE_LABEL[ageKey]];
+  const meleeAtkAtAge = [true, true, true].map((has, i) => AGE_RANK[MELEE_ATK_TECH_AGES[i]] <= rank);
+  const atkBonus = meleeAtkTotal(meleeAtkAtAge, false);
+  return base.attack + atkBonus;
+}
 // `sources` tuples take an optional 5th element, `targetClass` ('cavalry'
 // [default], 'camel', or 'elephant') — used only when `opts.hitsTakenVsSpear`
 // is on (Cavalry table), to pick which of the Spearman-line's 3 real,
@@ -3356,7 +3383,7 @@ function spearmanMaxedAttack(ageKey, targetClass) {
 // owner: "remember spear line does bonus damage, different for cav, ele,
 // etc.").
 function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, emptyMsg, typeToggleSelector, opts = {}) {
-  const { extraCols = [], weightedCategories = MELEE_WEIGHTED_CATEGORIES, hitsTakenVsSpear = false } = opts;
+  const { extraCols = [], weightedCategories = MELEE_WEIGHTED_CATEGORIES, hitsTakenVsSpear = false, dmgTakenVsMilitia = false } = opts;
   let sort = { key: 'dps', dir: -1 };
   let ageKey = 'imperial';
   function render() {
@@ -3374,7 +3401,7 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
         // base AND Elite as separate permanent rows once each is reached).
         const statsList = result == null ? [] : Array.isArray(result) ? result : [result];
         const rowCost = cfg.cost || cost;
-        return statsList.map(s => ({ line: s.tierName, civ: cfg.civ || civ, ...s, cost: rowCost, dpsPer100: d2(s.dps / rowCost * 100), kind: cfg.kind || kind, targetClass: cfg.targetClass || targetClass }));
+        return statsList.map(s => ({ line: s.tierName, civ: cfg.civ || civ, ...s, cost: rowCost, dpsPer100: d2(s.dps / rowCost * 100), kind: cfg.kind || kind, targetClass: cfg.targetClass || targetClass, shockInfantryMember: !!cfg.shockInfantryMember }));
       }));
     // Ranked over the full set at this age, BEFORE the type-toggle filter,
     // same pattern as the CA/MCB table — rank stays stable regardless of
@@ -3396,6 +3423,19 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       const spearAtk = { cavalry: spearmanMaxedAttack(ageKey, 'cavalry'), camel: spearmanMaxedAttack(ageKey, 'camel'), elephant: spearmanMaxedAttack(ageKey, 'elephant') };
       rows = rows.map(r => ({ ...r, hitsTakenVsSpear: d2(r.hp / Math.max(1, spearAtk[r.targetClass] - r.meleeArmor)) }));
     }
+    // "Dmg Taken v. <age-appropriate Militia-line tier>" (Infantry table
+    // only) — see militiaLineMaxedAttack's own comment above for the full
+    // design. Every row gets a real value; the Shock Infantry bonus only
+    // stacks on top for rows where cfg.shockInfantryMember was true.
+    const militiaTierKey = dmgTakenVsMilitia ? DMG_TAKEN_REF_TIER_BY_AGE[ageKey] : null;
+    const militiaActiveCols = dmgTakenVsMilitia
+      ? [['dmgTakenVsChampion', `Dmg Taken<br>v. ${DMG_TAKEN_REF_NAME[militiaTierKey]}`, true]]
+      : [];
+    if (dmgTakenVsMilitia) {
+      const refAttack = militiaLineMaxedAttack(ageKey);
+      const shockBonus = SHOCK_BONUS_BY_TIER[militiaTierKey];
+      rows = rows.map(r => ({ ...r, dmgTakenVsChampion: d2(Math.max(1, refAttack + (r.shockInfantryMember ? shockBonus : 0) - r.meleeArmor) / INFANTRY_RELOAD) }));
+    }
     rows = rows.filter(r => !enabledTypes || enabledTypes.has(r.kind));
     if (!rows.length) {
       tableEl.innerHTML = `<tbody><tr><td style="padding:14px;color:var(--text3);">${emptyMsg}</td></tr></tbody>`;
@@ -3406,7 +3446,7 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       if (key === 'civ' || key === 'line') return a[key].localeCompare(b[key]) * dir || a.civ.localeCompare(b.civ);
       return (a[key] - b[key]) * dir || a.civ.localeCompare(b.civ);
     });
-    const allExtraCols = [...extraCols, ...spearActiveCols];
+    const allExtraCols = [...extraCols, ...spearActiveCols, ...militiaActiveCols];
     const cols = [...MELEE_COLS, ...allExtraCols];
     const thead = `<thead><tr>${cols.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
     const tbody = rows.map((r, i) => `<tr>
@@ -3449,8 +3489,9 @@ makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', [
   [EAGLE_CIVS, eagleMaxStats, EAGLE_COST, 'eagle'],
   [UNIQUE_INFANTRY_CIVS, uniqueInfantryMaxStats, null, 'regional'],
 ], 'wood', '—', '.infantry-type-toggle', {
-  extraCols: [['dpsVsShockInfantry', 'DPS v.<br>Shock Inf.', true], ['dmgTakenVsChampion', 'Dmg Taken<br>v. Champion', true]],
+  extraCols: [['dpsVsShockInfantry', 'DPS v.<br>Shock Inf.', true]],
   weightedCategories: INFANTRY_WEIGHTED_CATEGORIES,
+  dmgTakenVsMilitia: true,
 })();
 makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [
   [CAVALRY_CIVS, cavalryMaxStats, CAVALRY_COST, 'knights', 'cavalry'],
