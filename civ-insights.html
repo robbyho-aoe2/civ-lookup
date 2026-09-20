@@ -553,10 +553,12 @@ select:focus{outline:none;border-color:var(--amber);}
         damage taken, Varangians' Vendel Legacy trample.
       </p>
       <p class="desc" style="color:var(--text3)">
-        Cost is flat per civ — every civ pays the same 60f/75g here. Real per-civ cost discounts
-        (Szlachta Privileges' -60% gold Knight-line, Corvinian Army's gold→food conversion, etc.)
-        aren't factored in — same simplified resource-efficiency proxy as the CA/MCB table above.
-        Sort by DPS/100 res for an equal-resources comparison. <b>Rank</b> is the same "behind the
+        Cost is flat per civ — every civ pays the same 60f/75g here, except <b>Poles</b> (real Castle
+        unique tech Szlachta Privileges, Knight-line -60% gold: 60f/30g = 90 total, always assumed
+        researched since Knight-line itself never shows before Castle Age for any civ). Other real
+        per-civ cost discounts (Corvinian Army's gold→food conversion, etc.) still aren't factored in —
+        same simplified resource-efficiency proxy as the CA/MCB table above. Sort by DPS/100 res for an
+        equal-resources comparison. <b>Rank</b> is the same "behind the
         scenes" weighted composite as the CA/MCB and Infantry tables (HP/Melee Armor/Pierce Armor/
         Speed/DPS/DPS-per-100-res normalized and weighted, DPS weighted well above the rest), computed
         fresh for every row currently shown at this age — before the type-toggle filter below, so it
@@ -806,7 +808,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.87</div>
+    <div class="version">v0.88</div>
   </div>
 </div>
 
@@ -2238,7 +2240,16 @@ const CAVALRY_CIVS = {
   Malians: { tier: 'cavalier', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true, uniqueTechAtk: 5 },
   Mongols: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
   Persians: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
-  Poles: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true },
+  // Real Castle unique tech Szlachta Privileges: "Knight-line costs -60%
+  // gold" — site owner: "poles have a castle tech that reduces cost of
+  // knight line, make sure to include that in costs." Applied as a flat
+  // cfg.cost override (60f + 75g*0.4=30g = 90 total) rather than threaded
+  // through the usual CAVALRY_UNIQUE_TECH_AGE age-gating mechanism, since
+  // Knight-line itself never shows before Castle Age for ANY civ (Knight
+  // requires Castle) — there's no age at which this row could render
+  // without the tech already being researchable, so a static override is
+  // correct, not a simplification.
+  Poles: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true, cost: 90 },
   Portuguese: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Romans: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   // tier:'cavalier' corrected 2026-09-18 (was wrongly 'knight') — a data-
