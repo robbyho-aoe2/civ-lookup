@@ -794,7 +794,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.85</div>
+    <div class="version">v0.86</div>
   </div>
 </div>
 
@@ -2537,23 +2537,34 @@ const UNIQUE_INFANTRY_CIVS = {
   // every other Varangian Guard fact on this page.
   Byzantines_VarangianGuard: { civ: 'Byzantines', unit: 'Varangian Guard', kind: 'regional', cost: 110, shockInfantryMember: true,
     base: { hp: 70, attack: 13, melee: 2, pierce: 1, speed: 1.05, reload: 2 },
-    elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.35, reload: 1.6 },
+    elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.05, reload: 1.6 },
     meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: true, squires: true },
+  // Danes' own Varangian Guard is real faster than the other 4 civs' —
+  // site owner: "only the danes is faster at 1.27 base for both normal and
+  // elite" — 1.27 on both tiers, not the standard 1.05 the rest share.
   Danes_VarangianGuard: { civ: 'Danes', unit: 'Varangian Guard', kind: 'regional', cost: 110, shockInfantryMember: true,
-    base: { hp: 70, attack: 13, melee: 2, pierce: 1, speed: 1.05, reload: 2 },
-    elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.35, reload: 1.6 },
+    base: { hp: 70, attack: 13, melee: 2, pierce: 1, speed: 1.27, reload: 2 },
+    elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.27, reload: 1.6 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
   Saxons_VarangianGuard: { civ: 'Saxons', unit: 'Varangian Guard', kind: 'regional', cost: 110, shockInfantryMember: true,
     base: { hp: 70, attack: 13, melee: 2, pierce: 1, speed: 1.05, reload: 2 },
-    elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.35, reload: 1.6 },
+    elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.05, reload: 1.6 },
     meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: true, squires: true },
   Varangians_VarangianGuard: { civ: 'Varangians', unit: 'Varangian Guard', kind: 'regional', cost: 110, shockInfantryMember: true,
     base: { hp: 70, attack: 13, melee: 2, pierce: 1, speed: 1.05, reload: 2 },
-    elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.35, reload: 1.6 },
+    elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.05, reload: 1.6 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  // Vikings' own Varangian Guard has a real situational bonus — site owner:
+  // "vikings vg has +5 attack vs. cavalry, +4 attack vs. camels" / "for
+  // elite" / "and standard" (applies to both tiers). Recorded here as real
+  // data (vsCavalryBonus/vsCamelBonus) but NOT YET wired into a displayed
+  // column — no "DPS v. Cavalry"/"DPS v. Camel" column exists on the
+  // Infantry table yet (only DPS v. Shock Infantry does). Needs a future
+  // pass to either add those columns or fold this into an existing one.
   Vikings_VarangianGuard: { civ: 'Vikings', unit: 'Varangian Guard', kind: 'regional', cost: 110, shockInfantryMember: true,
+    vsCavalryBonus: 5, vsCamelBonus: 4,
     base: { hp: 70, attack: 13, melee: 2, pierce: 1, speed: 1.05, reload: 2 },
-    elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.35, reload: 1.6 },
+    elite: { hp: 80, attack: 17, melee: 2, pierce: 2, speed: 1.05, reload: 1.6 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
   // Champi Warrior — regional per site owner (2026-09-20): Incas, Mapuche,
   // Muisca, Tupi's real Militia-line replacement (see the Militia-line
