@@ -364,9 +364,7 @@ select:focus{outline:none;border-color:var(--amber);}
         Offense/Speed as columns; <b>Expand</b> breaks those down into the individual matchups behind
         them.
       </p>
-      <div style="margin:10px 0;">
-        <button class="toggle-btn ca-matchup-expand-btn">▸ Expand</button>
-      </div>
+      <button class="toggle-btn ca-matchup-expand-btn" style="margin:10px 0;">▸ Expand</button>
       <div class="overflow-x">
         <table id="all-maxed-table"></table>
       </div>
@@ -421,9 +419,7 @@ select:focus{outline:none;border-color:var(--amber);}
         (Huskarl, Samurai, Teutonic Knight, etc.). Berserk (Vikings) and Hearth Troop (Saxons) aren't in
         yet — real stats still needed.
       </p>
-      <div style="margin:10px 0;">
-        <button class="toggle-btn infantry-matchup-expand-btn">▸ Expand</button>
-      </div>
+      <button class="toggle-btn infantry-matchup-expand-btn" style="margin:10px 0;">▸ Expand</button>
       <div class="overflow-x">
         <table id="all-maxed-infantry-table"></table>
       </div>
@@ -477,9 +473,7 @@ select:focus{outline:none;border-color:var(--amber);}
         Elephant civs plus Persians' War Elephant. <b>Castle unique units</b> — every other real Cavalry/
         Elephant-archetype UU (Cataphract, Coustillier, Leitis, Boyar, Jarl, etc.).
       </p>
-      <div style="margin:10px 0;">
-        <button class="toggle-btn cavalry-matchup-expand-btn">▸ Expand</button>
-      </div>
+      <button class="toggle-btn cavalry-matchup-expand-btn" style="margin:10px 0;">▸ Expand</button>
       <div class="overflow-x">
         <table id="all-maxed-cavalry-table"></table>
       </div>
@@ -671,7 +665,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.13</div>
+    <div class="version">v1.14</div>
   </div>
 </div>
 
@@ -2035,6 +2029,9 @@ function renderAllMaxedTable() {
   const activeCACategories = caRankMode === 'pop' ? CA_MATCHUP_WEIGHTED_CATEGORIES_POP : CA_MATCHUP_WEIGHTED_CATEGORIES;
   const caSummaryCols = activeCACategories.map(([key, label]) => [key, label, true]);
   const allExtraCols = showStats ? [] : (caMatchupExpanded ? buildCAMatchupCols(matchupRefs) : caSummaryCols);
+  // Expand button only makes sense in Matchup mode (site owner: "lets have
+  // it only there for matchup") — hidden entirely in Stats mode.
+  document.querySelectorAll('.ca-matchup-expand-btn').forEach(btn => { btn.hidden = showStats; });
   const cols = [...CA_BASE_COLS, CA_RANK_COL, ...(showStats ? CA_STAT_COLS : allExtraCols)];
   const thead = `<thead><tr>${cols.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
   const tbody = rows.map((r, i) => `<tr>
@@ -4033,6 +4030,11 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
     const allExtraCols = showStats ? [] : (matchupExpanded
       ? [...extraCols, ...militiaActiveCols, ...(matchupColsFn ? matchupColsFn(matchupRefs) : [])]
       : summaryCols);
+    // Expand button only makes sense in Matchup mode (site owner: "lets
+    // have it only there for matchup") — hidden entirely in Stats mode.
+    if (matchupExpandSelector) {
+      document.querySelectorAll(matchupExpandSelector).forEach(btn => { btn.hidden = showStats; });
+    }
     // Rank stays in the same spot (right after Civ) in both modes, not
     // pushed to the far right in Stats mode — site owner: "keep 'rank' on
     // the left where it is for 'matchup' for stats as well."
