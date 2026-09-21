@@ -347,6 +347,7 @@ select:focus{outline:none;border-color:var(--amber);}
         <button data-mode="stats" class="on">Stats</button>
         <button data-mode="matchup">Matchup</button>
       </div>
+      <button class="toggle-btn ca-matchup-expand-btn">▸ Expand</button>
       <div class="col-mode-pill ca-rank-mode-pill">
         <button data-rank="cost" class="on">Cost Efficient</button>
         <button data-rank="pop">Pop Efficient</button>
@@ -360,8 +361,9 @@ select:focus{outline:none;border-color:var(--amber);}
         other 2 tables). <b>Cost Efficient</b> (default) divides each matchup outcome by cost first,
         so a cheap unit that's merely good beats an expensive one that's only slightly better; <b>Pop
         Efficient</b> ignores cost and ranks raw per-unit strength, since every standard unit costs the
-        same 1 population slot regardless of price. Switch the other pill to "Matchup" to see the
-        individual matchup numbers as columns.
+        same 1 population slot regardless of price. Switch the other pill to "Matchup" to see Defense/
+        Offense/Speed as columns; <b>Expand</b> breaks those down into the individual matchups behind
+        them.
       </p>
       <div class="overflow-x">
         <table id="all-maxed-table"></table>
@@ -370,7 +372,7 @@ select:focus{outline:none;border-color:var(--amber);}
   </details>
 
   <details class="section">
-    <summary>🛡 All Maxed Infantry Civs <span class="summary-hint">every civ's real Champion-line, one sorted list</span></summary>
+    <summary>🛡 All Maxed Infantry Civs <span class="summary-hint">every civ's real Militia-line, one sorted list</span></summary>
     <div class="card">
       <h2>🛡 All Maxed Infantry Civs</h2>
       <p class="desc">
@@ -386,8 +388,8 @@ select:focus{outline:none;border-color:var(--amber);}
         Efficient</b> (default) divides each matchup outcome by cost first, so a cheap-but-solid unit can
         outrank an expensive-but-only-slightly-better one; <b>Pop Efficient</b> ignores cost and ranks raw
         per-unit strength instead, since every standard unit costs the same 1 population slot regardless
-        of price. Switch the other pill to "Matchup" to see the individual matchup numbers as columns
-        instead of the usual stat columns.
+        of price. Switch the other pill to "Matchup" to see Defense/Offense/Speed as columns instead of
+        the usual stat columns; <b>Expand</b> breaks those down into the individual matchups behind them.
         <b>DPS v. Shock Inf.</b> and <b>Dmg Taken v. &lt;tier&gt;</b> account for the real Shock Infantry
         bonus-damage class (Eagle-line, Fire Lancer, Jian Swordsman, Temple Guard, Varangian Guard); only
         Dmg Taken feeds into Rank.
@@ -407,6 +409,7 @@ select:focus{outline:none;border-color:var(--amber);}
         <button data-mode="stats" class="on">Stats</button>
         <button data-mode="matchup">Matchup</button>
       </div>
+      <button class="toggle-btn infantry-matchup-expand-btn">▸ Expand</button>
       <div class="col-mode-pill infantry-rank-mode-pill">
         <button data-rank="cost" class="on">Cost Efficient</button>
         <button data-rank="pop">Pop Efficient</button>
@@ -424,7 +427,7 @@ select:focus{outline:none;border-color:var(--amber);}
   </details>
 
   <details class="section">
-    <summary>⚔️🐪🐘 All Maxed Cavalry Civs <span class="summary-hint">every civ's real Paladin-line, one sorted list</span></summary>
+    <summary>⚔️🐪🐘 All Maxed Cavalry Civs <span class="summary-hint">every civ's real Knight-line, one sorted list</span></summary>
     <div class="card">
       <h2>⚔️🐪🐘 All Maxed Cavalry Civs</h2>
       <p class="desc">
@@ -440,8 +443,9 @@ select:focus{outline:none;border-color:var(--amber);}
         target class) plus Speed. <b>Cost Efficient</b>
         (default) divides each matchup outcome by cost first; <b>Pop Efficient</b> ignores cost and ranks
         raw per-unit strength, since every standard unit costs the same 1 population slot regardless of
-        price. Switch the other pill to "Matchup" to see the individual matchup numbers as columns, named
-        for the reference unit's own real tier at the current age.
+        price. Switch the other pill to "Matchup" to see Defense/Offense/Speed as columns; <b>Expand</b>
+        breaks those down into the individual matchups behind them, named for the reference unit's own
+        real tier at the current age.
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
         <button class="cavalry-age-toggle-btn toggle-btn" data-age="feudal">Feudal</button>
@@ -460,6 +464,7 @@ select:focus{outline:none;border-color:var(--amber);}
         <button data-mode="stats" class="on">Stats</button>
         <button data-mode="matchup">Matchup</button>
       </div>
+      <button class="toggle-btn cavalry-matchup-expand-btn">▸ Expand</button>
       <div class="col-mode-pill cavalry-rank-mode-pill">
         <button data-rank="cost" class="on">Cost Efficient</button>
         <button data-rank="pop">Pop Efficient</button>
@@ -661,7 +666,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.08</div>
+    <div class="version">v1.09</div>
   </div>
 </div>
 
@@ -1844,6 +1849,9 @@ let allMaxedSort = { key: 'rankWtd', dir: 1 };
 let caColMode = 'stats';
 let caAgeKey = 'imperial';
 let caRankMode = 'cost';
+// Matchup mode starts collapsed — see makeMeleeTableRenderer's own
+// matchupExpanded comment for the full design story.
+let caMatchupExpanded = false;
 const UNIQUE_LINES = ['XR', 'BOL', 'EBOL', 'MAN', 'CAM', 'ECAM', 'GEN', 'EGEN', 'KIP', 'RAT', 'WW'];
 // Factored out of renderAllMaxedTable so the ranking system below (and any
 // future consumer) can get the full, unfiltered 63-row set without
@@ -2019,7 +2027,9 @@ function renderAllMaxedTable() {
   // v0.97): Rank stays right after Civ in both modes, Matchup mode drops
   // the raw stat columns entirely rather than adding to them.
   const showStats = caColMode !== 'matchup';
-  const allExtraCols = showStats ? [] : buildCAMatchupCols(matchupRefs);
+  const activeCACategories = caRankMode === 'pop' ? CA_MATCHUP_WEIGHTED_CATEGORIES_POP : CA_MATCHUP_WEIGHTED_CATEGORIES;
+  const caSummaryCols = activeCACategories.map(([key, label]) => [key, label, true]);
+  const allExtraCols = showStats ? [] : (caMatchupExpanded ? buildCAMatchupCols(matchupRefs) : caSummaryCols);
   const cols = [...CA_BASE_COLS, CA_RANK_COL, ...(showStats ? CA_STAT_COLS : allExtraCols)];
   const thead = `<thead><tr>${cols.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
   const tbody = rows.map((r, i) => `<tr>
@@ -2065,6 +2075,11 @@ document.querySelectorAll('.ca-rank-mode-pill button').forEach(btn => btn.addEve
   document.querySelectorAll('.ca-rank-mode-pill button').forEach(b => b.classList.toggle('on', b === btn));
   // Re-sort by Rank, #1 first (site owner: "reorganize rank from 1").
   allMaxedSort = { key: 'rankWtd', dir: 1 };
+  renderAllMaxedTable();
+}));
+document.querySelectorAll('.ca-matchup-expand-btn').forEach(btn => btn.addEventListener('click', () => {
+  caMatchupExpanded = !caMatchupExpanded;
+  btn.textContent = caMatchupExpanded ? '▾ Collapse' : '▸ Expand';
   renderAllMaxedTable();
 }));
 // Deferred to the bottom of the file (see the call right after the
@@ -3874,8 +3889,8 @@ function buildCAMatchupCols(refs) {
 // etc.").
 function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, emptyMsg, typeToggleSelector, opts = {}) {
   const { extraCols = [], weightedCategories = MELEE_WEIGHTED_CATEGORIES, weightedCategoriesPop = null, dmgTakenVsMilitia = false,
-    infantryMatchupRanking = false, cavalryMatchupRanking = false, matchupColsFn = null, colModeSelector = null, rankModeSelector = null, rowIcon = () => '',
-    survKeys = [], killKeys = [] } = opts;
+    infantryMatchupRanking = false, cavalryMatchupRanking = false, matchupColsFn = null, colModeSelector = null, rankModeSelector = null,
+    matchupExpandSelector = null, rowIcon = () => '', survKeys = [], killKeys = [] } = opts;
   // Default sort: Rank #1 first, Cost Efficient (the default rankMode) —
   // site owner: "lets default sort by rank cost efficient starting at 1".
   let sort = { key: 'rankWtd', dir: 1 };
@@ -3891,6 +3906,16 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
   // resource price, so "per population" and "raw per-unit strength" are
   // the same thing.
   let rankMode = 'cost';
+  // Matchup mode starts COLLAPSED (2026-09-21, site owner: "collapse the
+  // kill/survive and instead put in offensive and defensive overall ranks
+  // as well as both/100 res and speed. basically what we actually use for
+  // the rankings. then just a button that says 'expand'") — the collapsed
+  // view shows exactly the active weightedCategories/weightedCategoriesPop
+  // list (Defense, Offense, Speed) rather than every individual Surv/Kill
+  // sub-category, so it can never drift out of sync with what Rank
+  // actually computes. Expand reveals the full per-matchup breakdown
+  // (unchanged from before this change).
+  let matchupExpanded = false;
   function render() {
     const tableEl = document.getElementById(tableId);
     const ageLabel = MELEE_AGE_LABEL[ageKey];
@@ -3972,7 +3997,11 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
     // HP-Attack etc. all the way up to and including dps/100 res and just
     // show the matchup data") — #/Unit/Civ/Rank stay either way.
     const showStats = colMode !== 'matchup';
-    const allExtraCols = showStats ? [] : [...extraCols, ...militiaActiveCols, ...(matchupColsFn ? matchupColsFn(matchupRefs) : [])];
+    const activeCategories = rankMode === 'pop' ? weightedCategoriesPop : weightedCategories;
+    const summaryCols = (activeCategories || []).map(([key, label]) => [key, label, true]);
+    const allExtraCols = showStats ? [] : (matchupExpanded
+      ? [...extraCols, ...militiaActiveCols, ...(matchupColsFn ? matchupColsFn(matchupRefs) : [])]
+      : summaryCols);
     // Rank stays in the same spot (right after Civ) in both modes, not
     // pushed to the far right in Stats mode — site owner: "keep 'rank' on
     // the left where it is for 'matchup' for stats as well."
@@ -4030,6 +4059,13 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       render();
     }));
   }
+  if (matchupExpandSelector) {
+    document.querySelectorAll(matchupExpandSelector).forEach(btn => btn.addEventListener('click', () => {
+      matchupExpanded = !matchupExpanded;
+      btn.textContent = matchupExpanded ? '▾ Collapse' : '▸ Expand';
+      render();
+    }));
+  }
   return render;
 }
 makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', [
@@ -4047,6 +4083,7 @@ makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', [
   matchupColsFn: buildInfantryMatchupCols,
   colModeSelector: '.infantry-col-mode-pill',
   rankModeSelector: '.infantry-rank-mode-pill',
+  matchupExpandSelector: '.infantry-matchup-expand-btn',
   rowIcon: () => '🛡',
 })();
 makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [
@@ -4066,6 +4103,7 @@ makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [
   matchupColsFn: buildCavalryMatchupCols,
   colModeSelector: '.cavalry-col-mode-pill',
   rankModeSelector: '.cavalry-rank-mode-pill',
+  matchupExpandSelector: '.cavalry-matchup-expand-btn',
   rowIcon: r => r.targetClass === 'camel' ? '🐪' : r.targetClass === 'elephant' ? '🐘' : '⚔️',
 })();
 // Deferred from its natural spot near buildAllMaxedRows (way above) —
