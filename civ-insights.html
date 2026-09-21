@@ -337,11 +337,16 @@ select:focus{outline:none;border-color:var(--amber);}
         <button class="unit-type-toggle toggle-btn on" data-type="ea">🎯 Elephant Archer (EA)</button>
         <button class="unit-type-toggle toggle-btn on" data-type="unique">🎯 Unique Units (XR/BOL/MAN/CAM/GEN/KIP/RAT/WW)</button>
       </div>
+      <div class="col-mode-pill ca-col-mode-pill">
+        <button data-mode="stats" class="on">Stats</button>
+        <button data-mode="matchup">Matchup</button>
+      </div>
       <p class="desc" style="color:var(--text3)">
         Cost is flat per unit type (40w/60g Cavalry Archer, 40w/65g Mounted Crossbowman), except Franks'
         discounted Mounted Crossbowman. Sort by DPS/100 res for an equal-resources comparison.
-        <b>Rank</b> is a weighted composite (DPS weighted highest, plus HP/armor/speed/DPS-per-cost) — a
-        judgment call, not a definitive tier list.
+        <b>Rank</b> is based on real matchup outcomes (Seconds to Survive/Kill vs. reference Archer/
+        Skirmisher/Camel/Knight-line units — Skirmishers, not Spearmen, are the real counter to mounted
+        archers) — switch the pill above to "Matchup" to see those numbers as columns.
       </p>
       <div class="overflow-x">
         <table id="all-maxed-table"></table>
@@ -624,7 +629,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.99</div>
+    <div class="version">v1.00</div>
   </div>
 </div>
 
@@ -1724,16 +1729,22 @@ const EXTRA_UNIQUE_UNITS = [
   })(),
 ];
 
-const ALL_MAXED_COLS = [
+// Split into base/stat/rank groups (same pattern as MELEE_BASE_COLS/
+// MELEE_STAT_COLS/MELEE_RANK_COL below) for this table's own Stats/Matchup
+// pill — see CA_MATCHUP_WEIGHTED_CATEGORIES.
+const CA_BASE_COLS = [
   ['rank', '#', false], ['line', 'Line', false], ['civ', 'Civ', false],
+];
+const CA_STAT_COLS = [
   ['hp', 'HP', true], ['attack', 'Attack', true], ['armorTotal', 'Armor', true],
   ['range', 'Range', true], ['speed', 'Speed', true], ['reload', 'Reload', true],
   ['dps', 'DPS', true], ['dpsVsInfantry', 'DPS v.<br>Infantry', true],
   ['dpsVsRanged', 'DPS v.<br>Ranged', true], ['accuracy', 'Accuracy', true],
   ['cost', 'Cost', true], ['dpsPer100', 'DPS / 100 res', true],
-  ['rankWtd', 'Rank', true],
 ];
+const CA_RANK_COL = ['rankWtd', 'Rank', true];
 let allMaxedSort = { key: 'dps', dir: -1 };
+let caColMode = 'stats';
 const UNIQUE_LINES = ['XR', 'BOL', 'EBOL', 'MAN', 'CAM', 'ECAM', 'GEN', 'EGEN', 'KIP', 'RAT', 'WW'];
 // Factored out of renderAllMaxedTable so the ranking system below (and any
 // future consumer) can get the full, unfiltered 63-row set without
@@ -1746,34 +1757,16 @@ function buildAllMaxedRows() {
     ...EXTRA_UNIQUE_UNITS,
   ];
 }
-// ── "Behind the scenes" weighted power ranking (2026-09-19, site owner
-// request), folded directly into the main comparison table's own "Rank"
-// column rather than kept as a separate standalone table — site owner:
-// "just put both in the main comp and put both weighted and raw rankings",
-// then later "lets get rid of pts ranking, just keep the weighted one"
-// (an earlier points-based composite — every stat column ranked 1st-63rd
-// with ties handled via standard competition ranking, summed into a Total
-// Points value — was tried first, shown alongside this one, then removed
-// entirely once compared; ONLY the weighted/normalized version survives).
-// Computed over the FULL unfiltered 63-row set (independent of the CA/MCB/
-// EA/Unique type-toggle filter below), then merged onto each row before
-// the existing filter/sort logic runs, so ranks stay stable regardless of
-// what's currently toggled on/off in the table.
-//
-// Real design, per the site owner's own exploratory question ("what kind
-// of weighting or different ratio based way of ranking would be better?")
-// and follow-up ("yeah try it"): each stat is min-max NORMALIZED to 0-1
-// across all 63 rows (0 = worst observed, 1 = best observed) — preserves
-// real magnitude of the gap between civs, unlike pure rank-position points
-// where a civ 1 HP behind the leader loses the same amount as one 50 HP
-// behind. Attack/Reload are dropped as their own categories (DPS already
-// reflects both, avoiding double-counting), and each remaining category
-// gets a WEIGHT reflecting how much it should matter in real play — DPS
-// raised from 1.5 to 3.0 per direct request ("lets weight dps more than
-// other cats then"), now clearly the dominant factor (~2x HP's weight,
-// ~10x the matchup-bonus/Accuracy categories). Weights are a judgment
-// call, not derived from anything. Since Reload/Cost are dropped, every
-// remaining category is bigger-is-better — no inversion logic needed.
+// ── "Behind the scenes" weighted power ranking, folded directly into the
+// main comparison table's own "Rank" column rather than kept as a separate
+// standalone table. Originally a raw-stat composite (HP/Armor/DPS/etc,
+// each min-max normalized then weighted — see [[project_civ_insights_power_ranking]]
+// for that history); replaced 2026-09-20 by the same real-matchup
+// philosophy already shipped for the Infantry/Cavalry tables (site owner:
+// "do same for ca, but replace pikes with skirms") — see
+// CA_MATCHUP_WEIGHTED_CATEGORIES below (defined near the Cavalry table's
+// own matchup code, since it reuses the same GENERIC_*_CFG reference
+// units) for the current category list.
 function competitionRank(rows, valueFn, higherIsBetter) {
   const n = rows.length;
   const order = rows.map((r, i) => ({ i, v: valueFn(r) }))
@@ -1786,17 +1779,6 @@ function competitionRank(rows, valueFn, higherIsBetter) {
   });
   return out;
 }
-// weightedScore = weighted average of normalized values, scaled to 0-100
-// (100 would require being #1 in literally every category at once).
-const CA_WEIGHTED_CATEGORIES = [
-  ['hp', 'HP', 1.0],
-  ['meleeArmor', 'Melee Armor', 0.6], ['pierceArmor', 'Pierce Armor', 0.6],
-  ['range', 'Range', 0.4], ['speed', 'Speed', 0.4],
-  ['dps', 'DPS', 3.0],
-  ['dpsVsInfantry', 'DPS v. Infantry', 0.3], ['dpsVsRanged', 'DPS v. Ranged', 0.3],
-  ['accuracy', 'Accuracy', 0.3],
-  ['dpsPer100', 'DPS / 100 res', 0.8],
-];
 // `higherIsBetter` (4th category element, defaults true) lets a category
 // invert the normalization — added for "Dmg Taken v. Champion" (lower is
 // better), the first category in this system that isn't naturally
@@ -1828,8 +1810,18 @@ function computeWeightedRanking(rows, categories) {
 function renderAllMaxedTable() {
   const tableEl = document.getElementById('all-maxed-table');
   const enabledTypes = new Set([...document.querySelectorAll('.unit-type-toggle.on')].map(cb => cb.dataset.type));
-  const fullRows = buildAllMaxedRows();
-  const rankedWtd = computeWeightedRanking(fullRows, CA_WEIGHTED_CATEGORIES);
+  let fullRows = buildAllMaxedRows();
+  // Matchup-based ranking (2026-09-20, site owner: "do same for ca, but
+  // replace pikes with skirms") — computeCAMatchupRefs/Fields/
+  // CA_MATCHUP_WEIGHTED_CATEGORIES/buildCAMatchupCols are defined near the
+  // Cavalry table's own matchup code (they reuse its GENERIC_*_CFG
+  // reference units), but as function/const declarations their bodies
+  // aren't evaluated until THIS function actually runs — safe as long as
+  // this call happens after the rest of the script has initialized (see
+  // the deferred `renderAllMaxedTable();` call at the bottom of the file).
+  const matchupRefs = computeCAMatchupRefs();
+  fullRows = fullRows.map(r => ({ ...r, ...computeCAMatchupFields(r, matchupRefs) }));
+  const rankedWtd = computeWeightedRanking(fullRows, CA_MATCHUP_WEIGHTED_CATEGORIES);
   const rows = fullRows
     .map((r, i) => ({ ...r, rankWtd: rankedWtd[i].weightedRank }))
     .filter(r => {
@@ -1843,11 +1835,19 @@ function renderAllMaxedTable() {
     if (key === 'civ' || key === 'line') return a[key].localeCompare(b[key]) * dir || a.civ.localeCompare(b.civ);
     return (a[key] - b[key]) * dir || a.civ.localeCompare(b.civ);
   });
-  const thead = `<thead><tr>${ALL_MAXED_COLS.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
+  // Same Stats/Matchup pill split as the Infantry/Cavalry tables (v0.94-
+  // v0.97): Rank stays right after Civ in both modes, Matchup mode drops
+  // the raw stat columns entirely rather than adding to them.
+  const showStats = caColMode !== 'matchup';
+  const allExtraCols = showStats ? [] : buildCAMatchupCols(matchupRefs);
+  const cols = [...CA_BASE_COLS, CA_RANK_COL, ...(showStats ? CA_STAT_COLS : allExtraCols)];
+  const thead = `<thead><tr>${cols.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
   const tbody = rows.map((r, i) => `<tr>
     <td class="num">${i + 1}</td>
     <td>🎯 <span class="res-pill ${['CA', 'HCA', 'EA', 'XR', 'MAN', 'CAM', 'ECAM', 'RAT', 'ERAT'].includes(r.line) ? 'gold' : 'wood'}">${r.line}</span></td>
     <td>${r.civ}</td>
+    <td class="num" style="font-weight:${key === 'rankWtd' ? 700 : 400};">${r.rankWtd}</td>
+    ${showStats ? `
     <td class="num">${r.hp}</td><td class="num">${r.attack}</td>
     <td class="num">${r.meleeArmor}/${r.pierceArmor}</td>
     <td class="num">${r.range}</td><td class="num">${r.speed}</td>
@@ -1857,8 +1857,8 @@ function renderAllMaxedTable() {
     <td class="num">${r.dpsVsRanged}</td>
     <td class="num">${r.accuracy}%</td>
     <td class="num">${r.cost}</td>
-    <td class="num" style="font-weight:${key === 'dpsPer100' ? 700 : 400};">${r.dpsPer100}</td>
-    <td class="num" style="font-weight:${key === 'rankWtd' ? 700 : 400};">${r.rankWtd}</td>
+    <td class="num" style="font-weight:${key === 'dpsPer100' ? 700 : 400};">${r.dpsPer100}</td>` : ''}
+    ${allExtraCols.map(([k]) => `<td class="num" style="font-weight:${key === k ? 700 : 400};">${r[k] ?? '—'}</td>`).join('')}
   </tr>`).join('');
   tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
   tableEl.querySelectorAll('th.sortable').forEach(th => {
@@ -1870,7 +1870,18 @@ function renderAllMaxedTable() {
   });
 }
 document.querySelectorAll('.unit-type-toggle').forEach(btn => btn.addEventListener('click', () => { btn.classList.toggle('on'); renderAllMaxedTable(); }));
-renderAllMaxedTable();
+document.querySelectorAll('.ca-col-mode-pill button').forEach(btn => btn.addEventListener('click', () => {
+  caColMode = btn.dataset.mode;
+  document.querySelectorAll('.ca-col-mode-pill button').forEach(b => b.classList.toggle('on', b === btn));
+  renderAllMaxedTable();
+}));
+// Deferred to the bottom of the file (see the call right after the
+// Cavalry table's own makeMeleeTableRenderer() call) — renderAllMaxedTable
+// now depends on GENERIC_MILITIA_CFG/GENERIC_KNIGHT_CFG/GENERIC_CAMEL_CFG/
+// archerLineRef/skirmisherLineRef, all defined much later in this script
+// (they're shared with the Cavalry table's own matchup code); calling it
+// here would hit those consts before their declarations run (temporal
+// dead zone).
 
 // ── Infantry (Militia-line) / Cavalry (Knight-line) maxed table ───────────
 // Base stats pulled from build-order.html's own UNIT_STATS (its hand-written
@@ -3454,6 +3465,60 @@ function buildCavalryMatchupCols(refs) {
     ['killMilitia', `Kill<br>${refs.militia.tierName}`, true],
   ];
 }
+// ── Same matchup-based ranking for the CA/MCB table (2026-09-20, site
+// owner: "do same for ca, but replace pikes with skirms") — Spearman-line
+// is a real anti-CAVALRY specialist (its bonus targets the Cavalry/Mounted
+// armor class), not a dedicated counter to mounted ARCHERS the way it is
+// for the Knight/Scout/Steppe/Camel/Elephant lines on the Cavalry table —
+// Skirmisher-line (high pierce armor, the definitive real anti-archer
+// unit) takes over as the primary defensive reference instead, no
+// Spearman category at all here. This table has no age toggle (it's
+// always fully maxed, matching its own existing convention), so refs are
+// computed once at a fixed 'imperial' ageKey rather than per-render.
+function computeCAMatchupRefs() {
+  return {
+    militia: infantryMaxStats('Generic', GENERIC_MILITIA_CFG, 'Imperial'),
+    knight: cavalryMaxStats('Generic', GENERIC_KNIGHT_CFG, 'Imperial'),
+    camel: camelMaxStats('Generic', GENERIC_CAMEL_CFG, 'Imperial'),
+    archer: archerLineRef('imperial'),
+    skirmisher: skirmisherLineRef('imperial'),
+  };
+}
+function computeCAMatchupFields(row, refs) {
+  const survive = (ref, armorKey) => ref ? d2(row.hp * ref.reload / Math.max(1, ref.attack - row[armorKey])) : undefined;
+  // CA/MCB deals PIERCE damage (a ranged unit), unlike the Infantry/
+  // Cavalry tables' melee attackers — so "Seconds to Kill" here subtracts
+  // the reference's PIERCE armor, not melee armor.
+  const kill = (ref) => ref ? d2(ref.hp * row.reload / Math.max(1, row.attack - ref.pierceArmor)) : undefined;
+  return {
+    survArcher: survive(refs.archer, 'pierceArmor'),
+    survSkirmisher: survive(refs.skirmisher, 'pierceArmor'),
+    survCamel: survive(refs.camel, 'meleeArmor'),
+    survKnight: survive(refs.knight, 'meleeArmor'),
+    killMilitia: kill(refs.militia),
+    killKnight: kill(refs.knight),
+  };
+}
+const CA_MATCHUP_WEIGHTED_CATEGORIES = [
+  ['survArcher', 'Seconds to Survive v. Archer-line', 1.0],
+  ['survSkirmisher', 'Seconds to Survive v. Skirmisher-line', 1.0],
+  ['survCamel', 'Seconds to Survive v. Camel-line', 0.8],
+  ['survKnight', 'Seconds to Survive v. Knight-line', 0.8],
+  ['killMilitia', 'Seconds to Kill Militia-line', 1.0, false],
+  ['killKnight', 'Seconds to Kill Knight-line', 0.8, false],
+  ['dpsPer100', 'DPS / 100 res', 0.5],
+  ['speed', 'Speed', 0.4],
+];
+function buildCAMatchupCols(refs) {
+  return [
+    ['survArcher', `Surv v.<br>${refs.archer.tierName}`, true],
+    ['survSkirmisher', `Surv v.<br>${refs.skirmisher.tierName}`, true],
+    ['survCamel', `Surv v.<br>${refs.camel.tierName}`, true],
+    ['survKnight', `Surv v.<br>${refs.knight.tierName}`, true],
+    ['killKnight', `Kill<br>${refs.knight.tierName}`, true],
+    ['killMilitia', `Kill<br>${refs.militia.tierName}`, true],
+  ];
+}
 // `sources` tuples take an optional 5th element, `targetClass` ('cavalry'
 // [default], 'camel', or 'elephant') — picks which of the Spearman-line's 3
 // real, different bonus-vs-class values applies to that source's rows in
@@ -3611,6 +3676,12 @@ makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [
   colModeSelector: '.cavalry-col-mode-pill',
   rowIcon: r => r.targetClass === 'camel' ? '🐪' : r.targetClass === 'elephant' ? '🐘' : '⚔️',
 })();
+// Deferred from its natural spot near buildAllMaxedRows (way above) —
+// renderAllMaxedTable() now calls computeCAMatchupRefs(), which reads
+// GENERIC_MILITIA_CFG/GENERIC_KNIGHT_CFG/GENERIC_CAMEL_CFG and calls
+// archerLineRef/skirmisherLineRef, all defined between here and there.
+// Calling it any earlier would hit those consts before initialization.
+renderAllMaxedTable();
 
 // Unit Stats toggle (2026-09-17, site owner request) — Base/Castle techs/
 // Imperial techs, applying every tech available by that age to a generic
