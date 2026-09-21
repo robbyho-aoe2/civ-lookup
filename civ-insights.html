@@ -629,7 +629,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.01</div>
+    <div class="version">v1.02</div>
   </div>
 </div>
 
@@ -3301,8 +3301,13 @@ function militiaLineMaxedAttack(ageKey) {
 // to BOTH lines identically — these 4 techs are universal/tech-availability
 // non-civ-specific for a "generic maxed" reference, same treatment as the
 // Spearman-line/Militia-line references above.
-const ARCHER_LINE_BASE = { archer: { hp: 30, attack: 4, reload: 2 }, crossbowman: { hp: 35, attack: 5, reload: 2 }, arbalest: { hp: 40, attack: 6, reload: 2 } };
-const SKIRMISHER_LINE_BASE = { skirmisher: { hp: 30, attack: 2, reload: 3 }, eliteSkirmisher: { hp: 35, attack: 3, reload: 3 } };
+// pierceArmor: real intrinsic base per build-order.html's own trusted
+// UNIT_STATS (Archer-line 0 at every tier; Skirmisher-line 3 base/4 Elite —
+// a real tier-upgrade bonus, separate from the generic archer-armor-tech
+// bonus below). meleeArmor is never tracked for these 2 lines — real,
+// confirmed fact: foot archers never gain melee armor from any tech.
+const ARCHER_LINE_BASE = { archer: { hp: 30, attack: 4, reload: 2, pierceArmor: 0 }, crossbowman: { hp: 35, attack: 5, reload: 2, pierceArmor: 0 }, arbalest: { hp: 40, attack: 6, reload: 2, pierceArmor: 0 } };
+const SKIRMISHER_LINE_BASE = { skirmisher: { hp: 30, attack: 2, reload: 3, pierceArmor: 3 }, eliteSkirmisher: { hp: 35, attack: 3, reload: 3, pierceArmor: 4 } };
 const ARCHER_TIER_BY_AGE = { feudal: 'archer', castle: 'crossbowman', imperial: 'arbalest' };
 const SKIRMISHER_TIER_BY_AGE = { feudal: 'skirmisher', castle: 'eliteSkirmisher', imperial: 'eliteSkirmisher' };
 const ARCHER_TIER_NAME = { archer: 'Archer', crossbowman: 'Crossbowman', arbalest: 'Arbalest' };
@@ -3312,15 +3317,27 @@ function archerLineTechBonus(ageKey) {
   const rank = AGE_RANK[MELEE_AGE_LABEL[ageKey]];
   return ARCHER_ATK_TECH_AGES.filter(a => AGE_RANK[a] <= rank).length; // +1 each, all 4 real deltas are +1
 }
+// Generic archer-armor-tech pierce bonus (2026-09-20, needed for the CA/MCB
+// table's new "Seconds to Kill Archer/Skirmisher-line" columns — the
+// target's own pierce armor matters there). Real per-tech deltas: Padded
+// Archer Armor +1 (Feudal), Leather Archer Armor +1 (Castle), Ring Archer
+// Armor +2 (Imperial) — same real values already used for the CA/MCB
+// table's own pierceArmor formula (`2 + (ring?2:0)`), just re-expressed
+// per-age here instead of as a flat "fully teched" total.
+const ARCHER_ARMOR_TECH_DELTAS = [['Feudal', 1], ['Castle', 1], ['Imperial', 2]];
+function archerLineArmorBonus(ageKey) {
+  const rank = AGE_RANK[MELEE_AGE_LABEL[ageKey]];
+  return ARCHER_ARMOR_TECH_DELTAS.filter(([age]) => AGE_RANK[age] <= rank).reduce((sum, [, v]) => sum + v, 0);
+}
 function archerLineRef(ageKey) {
   const tier = ARCHER_TIER_BY_AGE[ageKey];
   const base = ARCHER_LINE_BASE[tier];
-  return { hp: base.hp, attack: base.attack + archerLineTechBonus(ageKey), reload: base.reload, tierName: ARCHER_TIER_NAME[tier] };
+  return { hp: base.hp, attack: base.attack + archerLineTechBonus(ageKey), reload: base.reload, pierceArmor: base.pierceArmor + archerLineArmorBonus(ageKey), tierName: ARCHER_TIER_NAME[tier] };
 }
 function skirmisherLineRef(ageKey) {
   const tier = SKIRMISHER_TIER_BY_AGE[ageKey];
   const base = SKIRMISHER_LINE_BASE[tier];
-  return { hp: base.hp, attack: base.attack + archerLineTechBonus(ageKey), reload: base.reload, tierName: SKIRMISHER_TIER_NAME[tier] };
+  return { hp: base.hp, attack: base.attack + archerLineTechBonus(ageKey), reload: base.reload, pierceArmor: base.pierceArmor + archerLineArmorBonus(ageKey), tierName: SKIRMISHER_TIER_NAME[tier] };
 }
 // Generic, no-civ-bonus, full-tech reference civs — reused via this file's
 // own already-trusted formulas rather than re-derived.
@@ -3528,28 +3545,37 @@ function computeCAMatchupFields(row, refs) {
     survKnight: survive(refs.knight, 'meleeArmor'),
     killSpearman: kill(refs.spearman, r => r.attackVsSpearman ?? r.attack),
     killMilitia: kill(refs.militia),
+    killArcher: kill(refs.archer),
+    killSkirmisher: kill(refs.skirmisher),
+    killCamel: kill(refs.camel),
     killKnight: kill(refs.knight),
   };
 }
 const CA_MATCHUP_WEIGHTED_CATEGORIES = [
   ['survArcher', 'Seconds to Survive v. Archer-line', 1.0],
+  ['killArcher', 'Seconds to Kill Archer-line', 1.0, false],
   ['survSkirmisher', 'Seconds to Survive v. Skirmisher-line', 1.0],
+  ['killSkirmisher', 'Seconds to Kill Skirmisher-line', 1.0, false],
   ['survCamel', 'Seconds to Survive v. Camel-line', 0.8],
+  ['killCamel', 'Seconds to Kill Camel-line', 0.8, false],
   ['survKnight', 'Seconds to Survive v. Knight-line', 0.8],
+  ['killKnight', 'Seconds to Kill Knight-line', 0.8, false],
   ['killSpearman', 'Seconds to Kill Spearman-line', 1.0, false],
   ['killMilitia', 'Seconds to Kill Militia-line', 1.0, false],
-  ['killKnight', 'Seconds to Kill Knight-line', 0.8, false],
   ['dpsPer100', 'DPS / 100 res', 0.5],
   ['speed', 'Speed', 0.4],
 ];
 function buildCAMatchupCols(refs) {
   return [
     ['survArcher', `Surv v.<br>${refs.archer.tierName}`, true],
+    ['killArcher', `Kill<br>${refs.archer.tierName}`, true],
     ['survSkirmisher', `Surv v.<br>${refs.skirmisher.tierName}`, true],
+    ['killSkirmisher', `Kill<br>${refs.skirmisher.tierName}`, true],
     ['survCamel', `Surv v.<br>${refs.camel.tierName}`, true],
+    ['killCamel', `Kill<br>${refs.camel.tierName}`, true],
     ['survKnight', `Surv v.<br>${refs.knight.tierName}`, true],
-    ['killSpearman', `Kill<br>${refs.spearman.tierName}`, true],
     ['killKnight', `Kill<br>${refs.knight.tierName}`, true],
+    ['killSpearman', `Kill<br>${refs.spearman.tierName}`, true],
     ['killMilitia', `Kill<br>${refs.militia.tierName}`, true],
   ];
 }
