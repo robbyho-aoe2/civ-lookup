@@ -629,7 +629,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.00</div>
+    <div class="version">v1.01</div>
   </div>
 </div>
 
@@ -1399,6 +1399,14 @@ function maxedStatsFor(cfg, isMcb) {
   // Japanese's own "+2 attack vs. Ranged Soldiers except Skirmishers") —
   // checked every civ in this table for one, only Japanese has it.
   const dpsVsRanged = +((attack + (cfg.vsRangedBonus || 0)) / reload).toFixed(2);
+  // vs. Spearman-line specifically (2026-09-20, site owner: "and some get
+  // bonus" — re: the new "Seconds to Kill Spearman-line" matchup column):
+  // real Parthian Tactics' own tooltip is "+1 melee/+2 pierce armor, +2
+  // attack vs. Spearman-line" (index.html's own TECH_DESCRIPTIONS[436],
+  // already the source for this civ's armor bonus above) — Cranequins,
+  // the civ-exclusive substitute for Parthian Tactics, does NOT carry this
+  // clause (same `!cranequins && parthian` gate already used for armor).
+  const attackVsSpearman = attack + (!cranequins && parthian ? 2 : 0);
   // Franks' Bloodlines is starred (real civ bonus, not the literal tech) —
   // "Mounted Units +20% HP", a MULTIPLIER, not the flat +20 real Bloodlines
   // gives (site owner correction, 2026-09-16 — was wrongly treated as the
@@ -1426,7 +1434,7 @@ function maxedStatsFor(cfg, isMcb) {
   // site owner-confirmed, matches index.html's TECH_DESCRIPTIONS[437]).
   const baseAccuracy = isMcb ? 80 : (cfg.heavy ? 80 : 50);
   const accuracy = cfg.thumbRing ? 100 : baseAccuracy;
-  return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry, dpsVsRanged, accuracy };
+  return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry, dpsVsRanged, accuracy, attackVsSpearman };
 }
 // Flat, line-wide cost (NOT per-civ) — every civ pays the same 40w/60g for
 // Cavalry Archer or 40w/65g for Mounted Crossbowman on this site; per-civ
@@ -1500,7 +1508,13 @@ function maxedStatsForEA(civ, cfg) {
   // as lower-confidence rather than treated as settled. Thumb Ring still
   // overrides to 100% (that part IS site owner-confirmed).
   const accuracy = thumbRing ? 100 : 70;
-  return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100), accuracy };
+  // vs. Spearman-line (2026-09-20, site owner: "and some get bonus") — real
+  // Parthian Tactics tooltip includes "+2 attack vs. Spearman-line" (see
+  // maxedStatsFor's own attackVsSpearman comment for the source); no
+  // Cranequins exclusion needed here since none of the 3 real EA civs
+  // (Bengalis/Dravidians/Gurjaras) use the Cranequins substitute.
+  const attackVsSpearman = attack + (parthian ? 2 : 0);
+  return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100), accuracy, attackVsSpearman };
 }
 
 // 7 more real archer-cavalry unique/regional units added 2026-09-16 (site
@@ -3475,6 +3489,19 @@ function buildCavalryMatchupCols(refs) {
 // Spearman category at all here. This table has no age toggle (it's
 // always fully maxed, matching its own existing convention), so refs are
 // computed once at a fixed 'imperial' ageKey rather than per-render.
+// Spearman-line has NO survive-side reference on this table (see the big
+// comment above — it isn't a real anti-archer threat), but CA/MCB can very
+// much shoot one down from range, so it keeps an offensive "Seconds to
+// Kill" slot. Only HP + pierce armor matter for that formula (not attack —
+// this is CA/MCB's own damage OUTPUT against a Spearman-line target, not
+// the Spearman's), so this doesn't need the full SPEARMAN_LINE_BASE/
+// spearmanMaxedAttack machinery (that's for the unit's own attack, used
+// elsewhere). Real, ground-truth: Spearman-line has 0 melee/0 pierce armor
+// at EVERY tier (confirmed via build-order.html's own trusted
+// UNIT_STATS['spearman-line'] — the line never gains armor from any real
+// tech), so a maxed Halberdier (this table's fixed Imperial-equivalent
+// tier) still has 0 pierce armor.
+const SPEARMAN_IMPERIAL_DEFENSE = { hp: SPEARMAN_LINE_BASE.halberdier.hp, pierceArmor: 0, tierName: SPEARMAN_TIER_NAME.halberdier };
 function computeCAMatchupRefs() {
   return {
     militia: infantryMaxStats('Generic', GENERIC_MILITIA_CFG, 'Imperial'),
@@ -3482,19 +3509,24 @@ function computeCAMatchupRefs() {
     camel: camelMaxStats('Generic', GENERIC_CAMEL_CFG, 'Imperial'),
     archer: archerLineRef('imperial'),
     skirmisher: skirmisherLineRef('imperial'),
+    spearman: SPEARMAN_IMPERIAL_DEFENSE,
   };
 }
 function computeCAMatchupFields(row, refs) {
   const survive = (ref, armorKey) => ref ? d2(row.hp * ref.reload / Math.max(1, ref.attack - row[armorKey])) : undefined;
   // CA/MCB deals PIERCE damage (a ranged unit), unlike the Infantry/
   // Cavalry tables' melee attackers — so "Seconds to Kill" here subtracts
-  // the reference's PIERCE armor, not melee armor.
-  const kill = (ref) => ref ? d2(ref.hp * row.reload / Math.max(1, row.attack - ref.pierceArmor)) : undefined;
+  // the reference's PIERCE armor, not melee armor. `attackFn` lets
+  // killSpearman use the row's real bonus-vs-Spearman-line attack (some
+  // civs get +2 from real Parthian Tactics — see attackVsSpearman above)
+  // instead of plain attack.
+  const kill = (ref, attackFn = r => r.attack) => ref ? d2(ref.hp * row.reload / Math.max(1, attackFn(row) - ref.pierceArmor)) : undefined;
   return {
     survArcher: survive(refs.archer, 'pierceArmor'),
     survSkirmisher: survive(refs.skirmisher, 'pierceArmor'),
     survCamel: survive(refs.camel, 'meleeArmor'),
     survKnight: survive(refs.knight, 'meleeArmor'),
+    killSpearman: kill(refs.spearman, r => r.attackVsSpearman ?? r.attack),
     killMilitia: kill(refs.militia),
     killKnight: kill(refs.knight),
   };
@@ -3504,6 +3536,7 @@ const CA_MATCHUP_WEIGHTED_CATEGORIES = [
   ['survSkirmisher', 'Seconds to Survive v. Skirmisher-line', 1.0],
   ['survCamel', 'Seconds to Survive v. Camel-line', 0.8],
   ['survKnight', 'Seconds to Survive v. Knight-line', 0.8],
+  ['killSpearman', 'Seconds to Kill Spearman-line', 1.0, false],
   ['killMilitia', 'Seconds to Kill Militia-line', 1.0, false],
   ['killKnight', 'Seconds to Kill Knight-line', 0.8, false],
   ['dpsPer100', 'DPS / 100 res', 0.5],
@@ -3515,6 +3548,7 @@ function buildCAMatchupCols(refs) {
     ['survSkirmisher', `Surv v.<br>${refs.skirmisher.tierName}`, true],
     ['survCamel', `Surv v.<br>${refs.camel.tierName}`, true],
     ['survKnight', `Surv v.<br>${refs.knight.tierName}`, true],
+    ['killSpearman', `Kill<br>${refs.spearman.tierName}`, true],
     ['killKnight', `Kill<br>${refs.knight.tierName}`, true],
     ['killMilitia', `Kill<br>${refs.militia.tierName}`, true],
   ];
