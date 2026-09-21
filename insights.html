@@ -1403,6 +1403,7 @@ function renderWeeklyReport(report) {
   const headline = `
     <div class="weekly-section">
       <div class="stat-row">
+        ${report.activePlayers != null ? `<div class="stat-tile"><div class="label">Active Players This Week</div><div class="value">${report.activePlayers.toLocaleString()}</div></div>` : ''}
         <div class="stat-tile"><div class="label">All-Time 1v1</div><div class="value">${g.allTime1v1.toLocaleString()}</div></div>
         <div class="stat-tile"><div class="label">All-Time Team</div><div class="value">${g.allTimeTeam.toLocaleString()}</div></div>
         <div class="stat-tile"><div class="label">All-Time Combined</div><div class="value">${g.allTimeCombined.toLocaleString()}</div></div>
