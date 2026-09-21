@@ -328,9 +328,15 @@ select:focus{outline:none;border-color:var(--amber);}
       <p class="desc">
         Every civ with real Cavalry Archer or Mounted Crossbowman access, the 3 Elephant Archer civs, and
         8 archer-cavalry unique units (Xianbei Raider, Bolas Rider, Mangudai, Camel Archer, Genitour,
-        Kipchak, Ratha, War Wagon), each maxed out on its own real tech access. Click a column header to
-        sort.
+        Kipchak, Ratha, War Wagon), each maxed out on its own real tech access. No civ has any of these
+        before Castle Age. The 8 unique units are only modeled at Imperial for now — their own per-age
+        tech breakdowns aren't tracked yet. Click a column header to sort.
       </p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
+        <button class="ca-age-toggle-btn toggle-btn" data-age="feudal">Feudal</button>
+        <button class="ca-age-toggle-btn toggle-btn" data-age="castle">Castle</button>
+        <button class="ca-age-toggle-btn toggle-btn on" data-age="imperial">Imperial</button>
+      </div>
       <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 0;font-size:0.9em;">
         <button class="unit-type-toggle toggle-btn on" data-type="ca">🎯 Cavalry Archer (CA/HCA)</button>
         <button class="unit-type-toggle toggle-btn on" data-type="mcb">🎯 Mounted Crossbowman (MCB/HMCB)</button>
@@ -629,7 +635,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.02</div>
+    <div class="version">v1.03</div>
   </div>
 </div>
 
@@ -1359,13 +1365,42 @@ const CA_CIVS = {
 // own base/Heavy tiers, only attack/HP/melee differ). `cfg.cranequins`
 // only exists on MCB entries; CA rows never have it (Parthian Tactics has
 // no MCB-style substitute for Cavalry Archer).
-function maxedStatsFor(cfg, isMcb) {
-  const bracer = caMcbHas(cfg, 'Bracer'), ring = caMcbHas(cfg, 'Ring Archer Armor');
-  const parthian = caMcbHas(cfg, 'Parthian Tactics'), bloodlines = caMcbHas(cfg, 'Bloodlines');
-  const husbandry = caMcbHas(cfg, 'Husbandry'), cranequins = !!cfg.cranequins;
-  const baseAttack = isMcb ? (cfg.heavy ? 8 : 7) : (cfg.heavy ? 7 : 6);
-  const baseMelee = isMcb ? 2 : (cfg.heavy ? 1 : 0);
-  const baseHP = isMcb ? 45 : (cfg.heavy ? 60 : 50);
+// `ageLabel` (2026-09-20, site owner: "lets add age toggles to ca") —
+// real per-tech ages, cross-checked against index.html's own
+// ITEM_AGES.tech (id -> age rank): Fletching(199)/Padded Archer Armor(211)/
+// Bloodlines(435) = Feudal; Bodkin Arrow(200)/Leather Archer Armor(212)/
+// Husbandry(39)/Thumb Ring(437) = Castle; Bracer(201)/Ring Archer
+// Armor(219)/Parthian Tactics(436)/Chemistry(47) = Imperial. Cranequins
+// (Mounted Crossbowman's own Imperial upgrade, per index.html's own
+// documented comment on CRANEQUINS_SENTINEL_ID) is Imperial too. Real,
+// ground-truth unit ages (index.html's TECH_TREE_CATEGORIES): base
+// Cavalry Archer/Mounted Crossbowman/Elephant Archer = Castle Age (no
+// Feudal tier exists at all for this whole table); Heavy/Elite = Imperial.
+// Civ BONUSES (not researched techs — civHpMult/civAtkSpeedMult/
+// vsRangedBonus/isStarredBloodlines) stay always-active regardless of age,
+// same as a passive civ trait always would be. cfg.uniqueTechAtk/Range/
+// Melee/Pierce/Hp (real per-civ unique TECHS) are a known, flagged
+// simplification — kept always-active rather than gated, since their own
+// individual real ages weren't re-verified for this pass.
+function maxedStatsFor(cfg, isMcb, ageLabel) {
+  const rank = AGE_RANK[ageLabel];
+  if (rank < AGE_RANK.Castle) return null; // real: no CA/MCB access before Castle Age
+  const isHeavyNow = cfg.heavy && rank >= AGE_RANK.Imperial;
+  const bracer = caMcbHas(cfg, 'Bracer') && rank >= AGE_RANK.Imperial;
+  const ring = caMcbHas(cfg, 'Ring Archer Armor') && rank >= AGE_RANK.Imperial;
+  const parthian = caMcbHas(cfg, 'Parthian Tactics') && rank >= AGE_RANK.Imperial;
+  const bloodlines = caMcbHas(cfg, 'Bloodlines'); // Feudal — always true once Castle+ is reached
+  const husbandry = caMcbHas(cfg, 'Husbandry') && rank >= AGE_RANK.Castle; // always true (Castle is this table's own floor)
+  const cranequins = !!cfg.cranequins && rank >= AGE_RANK.Imperial;
+  const thumbRing = cfg.thumbRing && rank >= AGE_RANK.Castle; // always true at Castle+
+  const fletchingBonus = 1; // Feudal, always true at Castle+
+  const bodkinBonus = rank >= AGE_RANK.Castle ? 1 : 0; // always true (Castle floor)
+  const chemistryBonus = rank >= AGE_RANK.Imperial ? 1 : 0;
+  const paddedBonus = 1; // Feudal, always true at Castle+
+  const leatherBonus = rank >= AGE_RANK.Castle ? 1 : 0; // always true (Castle floor)
+  const baseAttack = isMcb ? (isHeavyNow ? 8 : 7) : (isHeavyNow ? 7 : 6);
+  const baseMelee = isMcb ? 2 : (isHeavyNow ? 1 : 0);
+  const baseHP = isMcb ? 45 : (isHeavyNow ? 60 : 50);
   const baseSpeed = isMcb ? 1.25 : 1.4;
   const baseReload = isMcb ? 2.5 : 2;
   // cfg.uniqueTechAtk/uniqueTechRange: a real civ-EXCLUSIVE unique tech
@@ -1373,14 +1408,14 @@ function maxedStatsFor(cfg, isMcb) {
   // (Mounted Archers +1 attack, +1 range; already documented in
   // index.html's own UNIQUE_TECH_DESCRIPTIONS but never applied here until
   // the 2026-09-17 site owner correction).
-  const attack = baseAttack + 2 + 1 /* Chemistry */ + (bracer ? 1 : 0) + (cfg.uniqueTechAtk || 0);
-  const range = 4 + 2 + (bracer ? 1 : 0) + (cranequins ? 1 : 0) + (cfg.uniqueTechRange || 0);
+  const attack = baseAttack + fletchingBonus + bodkinBonus + chemistryBonus + (bracer ? 1 : 0) + (cfg.uniqueTechAtk || 0);
+  const range = 4 + fletchingBonus + bodkinBonus + (bracer ? 1 : 0) + (cranequins ? 1 : 0) + (cfg.uniqueTechRange || 0);
   // cfg.uniqueTechMelee/uniqueTechPierce: same pattern as uniqueTechAtk —
   // Tatars' "Silk Armor" ("Scout Cavalry-line, Steppe Lancers and Cavalry
   // Archers +1 melee/+1 pierce armor", already documented in index.html's
   // UNIQUE_TECH_DESCRIPTIONS, 2026-09-17 site owner correction).
-  const meleeArmor = baseMelee + 2 + (ring ? 1 : 0) + (!cranequins && parthian ? 1 : 0) + (cfg.uniqueTechMelee || 0);
-  const pierceArmor = 2 + (ring ? 2 : 0) + (!cranequins && parthian ? 2 : 0) + (cfg.uniqueTechPierce || 0);
+  const meleeArmor = baseMelee + paddedBonus + leatherBonus + (ring ? 1 : 0) + (!cranequins && parthian ? 1 : 0) + (cfg.uniqueTechMelee || 0);
+  const pierceArmor = paddedBonus + leatherBonus + (ring ? 2 : 0) + (!cranequins && parthian ? 2 : 0) + (cfg.uniqueTechPierce || 0);
   const speed = +(baseSpeed * (husbandry ? 1.15 : 1)).toFixed(2);
   // cfg.civAtkSpeedMult: a real CIV BONUS (not a tech) that directly boosts
   // attack speed — e.g. Mongols' "Cavalry Archers attack +25% faster"
@@ -1388,7 +1423,7 @@ function maxedStatsFor(cfg, isMcb) {
   // bonus?" — a real gap, this formula only tracked TECHS before). Uses the
   // same convention as Thumb Ring's own reload-multiplier math: a stated
   // "+25% attack faster" solves to a 0.8 reload multiplier (1/0.8 = 1.25).
-  const reload = +(baseReload * (cfg.thumbRing ? THUMB_RING_RELOAD_MULT : 1) * (cfg.civAtkSpeedMult || 1)).toFixed(2);
+  const reload = +(baseReload * (thumbRing ? THUMB_RING_RELOAD_MULT : 1) * (cfg.civAtkSpeedMult || 1)).toFixed(2);
   const dps = +(attack / reload).toFixed(2);
   // vs. Infantry: ONLY Cranequins' own "+2 attack vs. Infantry" applies here
   // — Parthian Tactics' situational bonus is vs. the Spearman-line
@@ -1432,9 +1467,9 @@ function maxedStatsFor(cfg, isMcb) {
   // for Mounted Crossbowman (both tiers — Heavy CA is 80% too, a real
   // per-tier jump unlike MCB); Thumb Ring sets it to a flat 100% (also
   // site owner-confirmed, matches index.html's TECH_DESCRIPTIONS[437]).
-  const baseAccuracy = isMcb ? 80 : (cfg.heavy ? 80 : 50);
-  const accuracy = cfg.thumbRing ? 100 : baseAccuracy;
-  return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry, dpsVsRanged, accuracy, attackVsSpearman };
+  const baseAccuracy = isMcb ? 80 : (isHeavyNow ? 80 : 50);
+  const accuracy = thumbRing ? 100 : baseAccuracy;
+  return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry, dpsVsRanged, accuracy, attackVsSpearman, isHeavyNow };
 }
 // Flat, line-wide cost (NOT per-civ) — every civ pays the same 40w/60g for
 // Cavalry Archer or 40w/65g for Mounted Crossbowman on this site; per-civ
@@ -1451,9 +1486,10 @@ const CA_COST = 100, MCB_COST = 105;
 const MCB_COST_OVERRIDES = { Franks: 40 + 65 * 0.6 };
 // Huns' real civ bonus "Cavalry Archers cost -10/20% in Castle/Imperial
 // Age" (2026-09-17 site owner, confirmed against index.html's own CB
-// data) — no resource specified, applies to total cost. Imperial/-20%
-// tier used here, matching every other "maxed" number on this page.
-const CA_COST_OVERRIDES = { Huns: CA_COST * 0.8 };
+// data) — no resource specified, applies to total cost. Genuinely
+// age-graduated (2026-09-20, now that this table has real age toggles),
+// unlike a flat civ bonus.
+const CA_COST_OVERRIDES_BY_AGE = { Huns: { Castle: CA_COST * 0.9, Imperial: CA_COST * 0.8 } };
 function d2(n) { return +n.toFixed(2); }
 
 // Elephant Archer (2026-09-16) — a real generic/regional line (Bengalis/
@@ -1481,40 +1517,59 @@ const EA_CIVS = {
   // Guards" (Camel Riders and Elephant Archers +4 melee armor,
   // uniqueTechMelee), real civ bonus "Mounted Units deal +20/30/40% bonus
   // damage in Feudal/Castle/Imperial Age" (Elephant Archer counts as
-  // Mounted — civDamageMult, Imperial/+40% tier used here), and unique
-  // tech "Kshatriyas" (Military Units cost -25% food — costFoodMult, the
-  // one real per-civ cost discount modeled for Elephant Archer).
-  Gurjaras:   { heavy: true, missing: ['Ring Archer Armor', 'Parthian Tactics'], uniqueTechMelee: 4, civDamageMult: 1.4, costFoodMult: 0.75 },
+  // Mounted — civDamageMultByAge, genuinely age-graduated, not a flat
+  // multiplier: only Castle/Imperial matter here since EA itself has no
+  // Feudal tier), and unique tech "Kshatriyas" (Military Units cost -25%
+  // food — costFoodMult, the one real per-civ cost discount modeled for
+  // Elephant Archer).
+  Gurjaras:   { heavy: true, missing: ['Ring Archer Armor', 'Parthian Tactics'], uniqueTechMelee: 4, civDamageMultByAge: { Castle: 1.3, Imperial: 1.4 }, costFoodMult: 0.75 },
 };
 const EA_THUMB_RING = { Bengalis: false, Dravidians: true, Gurjaras: true };
 const EA_COST = 140; // 60f/80g
-function maxedStatsForEA(civ, cfg) {
-  const bracer = caMcbHas(cfg, 'Bracer'), ring = caMcbHas(cfg, 'Ring Archer Armor');
-  const parthian = caMcbHas(cfg, 'Parthian Tactics'), bloodlines = caMcbHas(cfg, 'Bloodlines');
-  const husbandry = caMcbHas(cfg, 'Husbandry'), thumbRing = EA_THUMB_RING[civ];
-  const flatAttack = 7 + 2 + 1 + (bracer ? 1 : 0);
-  const attack = cfg.civDamageMult ? Math.round(flatAttack * cfg.civDamageMult) : flatAttack;
-  const range = 4 + 2 + (bracer ? 1 : 0);
-  const meleeArmor = 0 + 2 + (ring ? 1 : 0) + (parthian ? 1 : 0) + (cfg.uniqueTechMelee || 0);
-  const pierceArmor = 2 + 2 + (ring ? 2 : 0) + (parthian ? 2 : 0);
+// `ageLabel` (2026-09-20, "lets add age toggles to ca") — same real tech
+// ages as maxedStatsFor above. Elephant Archer's own real base/Elite tiers
+// (site owner-sourced): base (Castle) 250hp/6atk/0melee/2pierce/4range/
+// 0.9spd/2s reload; Elite (Imperial) 280hp/7atk, rest of the intrinsic
+// stats unchanged — no Feudal tier, same as CA/MCB.
+function maxedStatsForEA(civ, cfg, ageLabel) {
+  const rank = AGE_RANK[ageLabel];
+  if (rank < AGE_RANK.Castle) return null; // real: no Elephant Archer access before Castle Age
+  const isEliteNow = rank >= AGE_RANK.Imperial;
+  const bracer = caMcbHas(cfg, 'Bracer') && rank >= AGE_RANK.Imperial;
+  const ring = caMcbHas(cfg, 'Ring Archer Armor') && rank >= AGE_RANK.Imperial;
+  const parthian = caMcbHas(cfg, 'Parthian Tactics') && rank >= AGE_RANK.Imperial;
+  const bloodlines = caMcbHas(cfg, 'Bloodlines'); // Feudal — always true once Castle+ is reached
+  const husbandry = caMcbHas(cfg, 'Husbandry') && rank >= AGE_RANK.Castle; // always true (Castle floor)
+  const thumbRing = EA_THUMB_RING[civ] && rank >= AGE_RANK.Castle; // always true (Castle floor)
+  const fletchingBonus = 1, bodkinBonus = 1; // both Feudal/Castle — always true at Castle+
+  const chemistryBonus = rank >= AGE_RANK.Imperial ? 1 : 0;
+  const paddedBonus = 1, leatherBonus = 1; // both Feudal/Castle — always true at Castle+
+  const baseAttack = isEliteNow ? 7 : 6;
+  const flatAttack = baseAttack + fletchingBonus + bodkinBonus + chemistryBonus + (bracer ? 1 : 0);
+  const civDamageMult = cfg.civDamageMultByAge?.[ageLabel];
+  const attack = civDamageMult ? Math.round(flatAttack * civDamageMult) : flatAttack;
+  const range = 4 + fletchingBonus + bodkinBonus + (bracer ? 1 : 0);
+  const meleeArmor = 0 + paddedBonus + leatherBonus + (ring ? 1 : 0) + (parthian ? 1 : 0) + (cfg.uniqueTechMelee || 0);
+  const pierceArmor = 2 + paddedBonus + leatherBonus + (ring ? 2 : 0) + (parthian ? 2 : 0);
   const speed = d2(0.9 * (husbandry ? 1.15 : 1));
   const reload = d2(2 * (thumbRing ? THUMB_RING_RELOAD_MULT : 1) * (cfg.civAtkSpeedMult || 1));
   const dps = d2(attack / reload);
-  const hp = 280 + (bloodlines ? 20 : 0);
+  const baseHP = isEliteNow ? 280 : 250;
+  const hp = baseHP + (bloodlines ? 20 : 0);
   const cost = cfg.costFoodMult ? Math.round(60 * cfg.costFoodMult) + 80 : EA_COST;
   // Accuracy: base 70%/85% Elite is from the earlier compact multi-unit
   // table (the SAME source that gave wrong values for Mangudai/Genitour/
   // Ratha elsewhere on this page) — NOT independently confirmed, flagged
   // as lower-confidence rather than treated as settled. Thumb Ring still
   // overrides to 100% (that part IS site owner-confirmed).
-  const accuracy = thumbRing ? 100 : 70;
+  const accuracy = thumbRing ? 100 : (isEliteNow ? 85 : 70);
   // vs. Spearman-line (2026-09-20, site owner: "and some get bonus") — real
   // Parthian Tactics tooltip includes "+2 attack vs. Spearman-line" (see
   // maxedStatsFor's own attackVsSpearman comment for the source); no
   // Cranequins exclusion needed here since none of the 3 real EA civs
   // (Bengalis/Dravidians/Gurjaras) use the Cranequins substitute.
   const attackVsSpearman = attack + (parthian ? 2 : 0);
-  return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100), accuracy, attackVsSpearman };
+  return { hp, attack, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsInfantry: dps, dpsVsRanged: dps, cost, dpsPer100: d2(dps / cost * 100), accuracy, attackVsSpearman, isHeavyNow: isEliteNow };
 }
 
 // 7 more real archer-cavalry unique/regional units added 2026-09-16 (site
@@ -1759,16 +1814,28 @@ const CA_STAT_COLS = [
 const CA_RANK_COL = ['rankWtd', 'Rank', true];
 let allMaxedSort = { key: 'dps', dir: -1 };
 let caColMode = 'stats';
+let caAgeKey = 'imperial';
 const UNIQUE_LINES = ['XR', 'BOL', 'EBOL', 'MAN', 'CAM', 'ECAM', 'GEN', 'EGEN', 'KIP', 'RAT', 'WW'];
 // Factored out of renderAllMaxedTable so the ranking system below (and any
 // future consumer) can get the full, unfiltered 63-row set without
 // duplicating the maxedStatsFor/maxedStatsForEA wiring.
-function buildAllMaxedRows() {
+// `ageLabel` (2026-09-20, "lets add age toggles to ca") — maxedStatsFor/
+// maxedStatsForEA return null before Castle Age (real: no CA/MCB/EA access
+// at all before Castle), filtered out below. Line label now follows the
+// CURRENT tier (`s.isHeavyNow`) rather than "will this civ ever reach
+// Heavy" — a Castle-age row shows as CA/MCB even for a civ that reaches
+// Heavy later, matching every other toggled table's own tier-by-age
+// convention. EXTRA_UNIQUE_UNITS (11 hand-written rows) are a known,
+// flagged limitation — they're only ever shown at Imperial, since their
+// own per-age tech breakdowns were never modeled (unlike the formula-
+// driven CA/MCB/EA rows above); real Castle-age access exists for all of
+// them too, just not represented here yet.
+function buildAllMaxedRows(ageLabel) {
   return [
-    ...Object.entries(CA_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, false); const cost = CA_COST_OVERRIDES[civ] || CA_COST; return { line: cfg.heavy ? 'HCA' : 'CA', civ, ...s, cost, dpsPer100: d2(s.dps / cost * 100) }; }),
-    ...Object.entries(CA_MCB_CIVS).map(([civ, cfg]) => { const s = maxedStatsFor(cfg, true); const cost = MCB_COST_OVERRIDES[civ] || MCB_COST; return { line: cfg.heavy ? 'HMCB' : 'MCB', civ, ...s, cost, dpsPer100: d2(s.dps / cost * 100) }; }),
-    ...Object.entries(EA_CIVS).map(([civ, cfg]) => ({ line: 'EA', civ, ...maxedStatsForEA(civ, cfg) })),
-    ...EXTRA_UNIQUE_UNITS,
+    ...Object.entries(CA_CIVS).flatMap(([civ, cfg]) => { const s = maxedStatsFor(cfg, false, ageLabel); if (!s) return []; const cost = CA_COST_OVERRIDES_BY_AGE[civ]?.[ageLabel] || CA_COST; return [{ line: s.isHeavyNow ? 'HCA' : 'CA', civ, ...s, cost, dpsPer100: d2(s.dps / cost * 100) }]; }),
+    ...Object.entries(CA_MCB_CIVS).flatMap(([civ, cfg]) => { const s = maxedStatsFor(cfg, true, ageLabel); if (!s) return []; const cost = MCB_COST_OVERRIDES[civ] || MCB_COST; return [{ line: s.isHeavyNow ? 'HMCB' : 'MCB', civ, ...s, cost, dpsPer100: d2(s.dps / cost * 100) }]; }),
+    ...Object.entries(EA_CIVS).flatMap(([civ, cfg]) => { const s = maxedStatsForEA(civ, cfg, ageLabel); return s ? [{ line: 'EA', civ, ...s }] : []; }),
+    ...(ageLabel === 'Imperial' ? EXTRA_UNIQUE_UNITS : []),
   ];
 }
 // ── "Behind the scenes" weighted power ranking, folded directly into the
@@ -1824,7 +1891,8 @@ function computeWeightedRanking(rows, categories) {
 function renderAllMaxedTable() {
   const tableEl = document.getElementById('all-maxed-table');
   const enabledTypes = new Set([...document.querySelectorAll('.unit-type-toggle.on')].map(cb => cb.dataset.type));
-  let fullRows = buildAllMaxedRows();
+  const ageLabel = MELEE_AGE_LABEL[caAgeKey];
+  let fullRows = buildAllMaxedRows(ageLabel);
   // Matchup-based ranking (2026-09-20, site owner: "do same for ca, but
   // replace pikes with skirms") — computeCAMatchupRefs/Fields/
   // CA_MATCHUP_WEIGHTED_CATEGORIES/buildCAMatchupCols are defined near the
@@ -1833,7 +1901,7 @@ function renderAllMaxedTable() {
   // aren't evaluated until THIS function actually runs — safe as long as
   // this call happens after the rest of the script has initialized (see
   // the deferred `renderAllMaxedTable();` call at the bottom of the file).
-  const matchupRefs = computeCAMatchupRefs();
+  const matchupRefs = computeCAMatchupRefs(caAgeKey);
   fullRows = fullRows.map(r => ({ ...r, ...computeCAMatchupFields(r, matchupRefs) }));
   const rankedWtd = computeWeightedRanking(fullRows, CA_MATCHUP_WEIGHTED_CATEGORIES);
   const rows = fullRows
@@ -1844,6 +1912,13 @@ function renderAllMaxedTable() {
       if (r.line === 'EA') return enabledTypes.has('ea');
       return enabledTypes.has('unique');
     });
+  if (!rows.length) {
+    // Real: no civ trains a Cavalry Archer/Mounted Crossbowman/Elephant
+    // Archer-line unit before Castle Age — this table has no Feudal tier
+    // at all, unlike Infantry/Cavalry.
+    tableEl.innerHTML = `<tbody><tr><td style="padding:14px;color:var(--text3);">No civ trains a Cavalry Archer/Mounted Crossbowman/Elephant Archer-line unit before Castle Age.</td></tr></tbody>`;
+    return;
+  }
   const { key, dir } = allMaxedSort;
   rows.sort((a, b) => {
     if (key === 'civ' || key === 'line') return a[key].localeCompare(b[key]) * dir || a.civ.localeCompare(b.civ);
@@ -1884,6 +1959,11 @@ function renderAllMaxedTable() {
   });
 }
 document.querySelectorAll('.unit-type-toggle').forEach(btn => btn.addEventListener('click', () => { btn.classList.toggle('on'); renderAllMaxedTable(); }));
+document.querySelectorAll('.ca-age-toggle-btn').forEach(btn => btn.addEventListener('click', () => {
+  caAgeKey = btn.dataset.age;
+  document.querySelectorAll('.ca-age-toggle-btn').forEach(b => b.classList.toggle('on', b === btn));
+  renderAllMaxedTable();
+}));
 document.querySelectorAll('.ca-col-mode-pill button').forEach(btn => btn.addEventListener('click', () => {
   caColMode = btn.dataset.mode;
   document.querySelectorAll('.ca-col-mode-pill button').forEach(b => b.classList.toggle('on', b === btn));
@@ -3516,17 +3596,24 @@ function buildCavalryMatchupCols(refs) {
 // elsewhere). Real, ground-truth: Spearman-line has 0 melee/0 pierce armor
 // at EVERY tier (confirmed via build-order.html's own trusted
 // UNIT_STATS['spearman-line'] — the line never gains armor from any real
-// tech), so a maxed Halberdier (this table's fixed Imperial-equivalent
-// tier) still has 0 pierce armor.
-const SPEARMAN_IMPERIAL_DEFENSE = { hp: SPEARMAN_LINE_BASE.halberdier.hp, pierceArmor: 0, tierName: SPEARMAN_TIER_NAME.halberdier };
-function computeCAMatchupRefs() {
+// tech), so this stays 0 pierce armor at every age too.
+function spearmanDefenseAt(ageKey) {
+  const tier = SPEARMAN_TIER_BY_AGE[ageKey];
+  return { hp: SPEARMAN_LINE_BASE[tier].hp, pierceArmor: 0, tierName: SPEARMAN_TIER_NAME[tier] };
+}
+// `ageKey` (2026-09-20, "lets add age toggles to ca") — this table now
+// toggles Castle/Imperial like the other 2 (no real Feudal tier exists for
+// CA/MCB/EA at all), so its own reference units need to follow the same
+// age instead of being pinned to Imperial.
+function computeCAMatchupRefs(ageKey) {
+  const ageLabel = MELEE_AGE_LABEL[ageKey];
   return {
-    militia: infantryMaxStats('Generic', GENERIC_MILITIA_CFG, 'Imperial'),
-    knight: cavalryMaxStats('Generic', GENERIC_KNIGHT_CFG, 'Imperial'),
-    camel: camelMaxStats('Generic', GENERIC_CAMEL_CFG, 'Imperial'),
-    archer: archerLineRef('imperial'),
-    skirmisher: skirmisherLineRef('imperial'),
-    spearman: SPEARMAN_IMPERIAL_DEFENSE,
+    militia: infantryMaxStats('Generic', GENERIC_MILITIA_CFG, ageLabel),
+    knight: cavalryMaxStats('Generic', GENERIC_KNIGHT_CFG, ageLabel),
+    camel: camelMaxStats('Generic', GENERIC_CAMEL_CFG, ageLabel),
+    archer: archerLineRef(ageKey),
+    skirmisher: skirmisherLineRef(ageKey),
+    spearman: spearmanDefenseAt(ageKey),
   };
 }
 function computeCAMatchupFields(row, refs) {
