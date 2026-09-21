@@ -658,7 +658,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.06</div>
+    <div class="version">v1.07</div>
   </div>
 </div>
 
@@ -1835,7 +1835,9 @@ const CA_STAT_COLS = [
   ['cost', 'Cost', true], ['dpsPer100', 'DPS / 100 res', true],
 ];
 const CA_RANK_COL = ['rankWtd', 'Rank', true];
-let allMaxedSort = { key: 'dps', dir: -1 };
+// Default sort: Rank #1 first, Cost Efficient (the default rankMode) —
+// site owner: "lets default sort by rank cost efficient starting at 1".
+let allMaxedSort = { key: 'rankWtd', dir: 1 };
 let caColMode = 'stats';
 let caAgeKey = 'imperial';
 let caRankMode = 'cost';
@@ -3795,7 +3797,9 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
   const { extraCols = [], weightedCategories = MELEE_WEIGHTED_CATEGORIES, weightedCategoriesPop = null, dmgTakenVsMilitia = false,
     infantryMatchupRanking = false, cavalryMatchupRanking = false, matchupColsFn = null, colModeSelector = null, rankModeSelector = null, rowIcon = () => '',
     survKeys = [], killKeys = [] } = opts;
-  let sort = { key: 'dps', dir: -1 };
+  // Default sort: Rank #1 first, Cost Efficient (the default rankMode) —
+  // site owner: "lets default sort by rank cost efficient starting at 1".
+  let sort = { key: 'rankWtd', dir: 1 };
   let ageKey = 'imperial';
   // Stats vs. Matchup columns are mutually exclusive (a pill, not an
   // add-on toggle) to keep the table from getting too wide.
