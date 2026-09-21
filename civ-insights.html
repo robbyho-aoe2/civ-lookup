@@ -658,7 +658,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.05</div>
+    <div class="version">v1.06</div>
   </div>
 </div>
 
@@ -2058,6 +2058,8 @@ document.querySelectorAll('.ca-col-mode-pill button').forEach(btn => btn.addEven
 document.querySelectorAll('.ca-rank-mode-pill button').forEach(btn => btn.addEventListener('click', () => {
   caRankMode = btn.dataset.rank;
   document.querySelectorAll('.ca-rank-mode-pill button').forEach(b => b.classList.toggle('on', b === btn));
+  // Re-sort by Rank, #1 first (site owner: "reorganize rank from 1").
+  allMaxedSort = { key: 'rankWtd', dir: 1 };
   renderAllMaxedTable();
 }));
 // Deferred to the bottom of the file (see the call right after the
@@ -3938,6 +3940,10 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
     document.querySelectorAll(`${rankModeSelector} button`).forEach(btn => btn.addEventListener('click', () => {
       rankMode = btn.dataset.rank;
       document.querySelectorAll(`${rankModeSelector} button`).forEach(b => b.classList.toggle('on', b === btn));
+      // Re-sort by Rank, #1 first (site owner: "reorganize rank from 1")
+      // — otherwise the table stays on whatever column was last sorted
+      // and the new Rank values just scatter around unsorted.
+      sort = { key: 'rankWtd', dir: 1 };
       render();
     }));
   }
