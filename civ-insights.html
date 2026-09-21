@@ -350,9 +350,10 @@ select:focus{outline:none;border-color:var(--amber);}
       <p class="desc" style="color:var(--text3)">
         Cost is flat per unit type (40w/60g Cavalry Archer, 40w/65g Mounted Crossbowman), except Franks'
         discounted Mounted Crossbowman. Sort by DPS/100 res for an equal-resources comparison.
-        <b>Rank</b> is based on real matchup outcomes (Seconds to Survive/Kill vs. reference Archer/
-        Skirmisher/Camel/Knight-line units — Skirmishers, not Spearmen, are the real counter to mounted
-        archers) — switch the pill above to "Matchup" to see those numbers as columns.
+        <b>Rank</b> is Defense + Offense (each an average of several real matchup outcomes vs. reference
+        Archer/Skirmisher/Camel/Knight-line units — Skirmishers, not Spearmen, are the real counter to
+        mounted archers) plus DPS/100 res and Speed — switch the pill above to "Matchup" to see the
+        individual matchup numbers as columns.
       </p>
       <div class="overflow-x">
         <table id="all-maxed-table"></table>
@@ -371,9 +372,10 @@ select:focus{outline:none;border-color:var(--amber);}
       </p>
       <p class="desc" style="color:var(--text3)">
         Cost is flat per civ (50f/20g). Sort by DPS/100 res for an equal-resources comparison.
-        <b>Rank</b> is based on real matchup outcomes (Seconds to Survive/Kill vs. reference Militia/
-        Archer/Skirmisher/Scout/Knight-line units) rather than raw HP/Armor/DPS — switch the pill below
-        to "Matchup" to see those numbers as columns instead of the usual stat columns.
+        <b>Rank</b> is Defense + Offense (each an average of real matchup outcomes vs. reference Militia/
+        Archer/Skirmisher/Scout/Knight-line units) plus DPS/100 res and Speed, rather than raw HP/Armor/
+        DPS — switch the pill below to "Matchup" to see the individual matchup numbers as columns instead
+        of the usual stat columns.
         <b>DPS v. Shock Inf.</b> and <b>Dmg Taken v. &lt;tier&gt;</b> account for the real Shock Infantry
         bonus-damage class (Eagle-line, Fire Lancer, Jian Swordsman, Temple Guard, Varangian Guard); only
         Dmg Taken feeds into Rank.
@@ -416,10 +418,11 @@ select:focus{outline:none;border-color:var(--amber);}
       </p>
       <p class="desc" style="color:var(--text3)">
         Cost is flat per civ (60f/75g), except Poles' discounted Knight-line. Sort by DPS/100 res for an
-        equal-resources comparison. <b>Rank</b> is based on real matchup outcomes (Seconds to Survive/Kill
-        vs. reference Spearman/Archer/Skirmisher/Camel/Knight-line units, its real anti-Cavalry/Camel/
-        Elephant bonus differing by target class) — switch the pill below to "Matchup" to see those
-        numbers as columns, named for the reference unit's own real tier at the current age.
+        equal-resources comparison. <b>Rank</b> is Defense + Offense (each an average of real matchup
+        outcomes vs. reference Spearman/Archer/Skirmisher/Camel/Knight-line units, the Spearman-line's
+        real anti-Cavalry/Camel/Elephant bonus differing by target class) plus DPS/100 res and Speed —
+        switch the pill below to "Matchup" to see the individual matchup numbers as columns, named for
+        the reference unit's own real tier at the current age.
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
         <button class="cavalry-age-toggle-btn toggle-btn" data-age="feudal">Feudal</button>
@@ -635,7 +638,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.03</div>
+    <div class="version">v1.04</div>
   </div>
 </div>
 
@@ -1878,6 +1881,31 @@ function minMaxNormalize(rows, key, higherIsBetter = true) {
     return higherIsBetter ? norm : 1 - norm;
   });
 }
+// Averages several categories' own normalized [0,1] scores into ONE
+// composite value per row (2026-09-20, site owner: "all defensive surv
+// time should be summed and averaged then, all offensive kill time should
+// be averaged, and those two should be weighted 1 each" — replacing the
+// old scheme of weighting 5-6 individual Surv/Kill categories directly,
+// which silently gave more total pull to whichever side happened to have
+// more categories, e.g. Infantry's 5 Surv vs. 3 Kill categories skewed the
+// old Rank toward HP/armor over attack/reload). Normalizes each key
+// FIRST (same min-max step every other category already gets), THEN
+// averages the normalized scores — never the raw seconds-values directly,
+// which would let whichever matchup naturally produces bigger raw numbers
+// (e.g. "v. Archer-line" commonly 100+) dominate the average over one that
+// naturally runs small (e.g. "v. Knight-line" often 10-30), the exact
+// scale-inconsistency problem already ruled out for the ranking system
+// once before (see the "ratio of sums" pushback in
+// [[project_civ_insights_matchup_ranking]]). `higherIsBetter` applies
+// uniformly to every key in the group — true for Survive (bigger=better),
+// false for Kill (smaller=better, inverted during THIS normalization step
+// so the resulting average is already oriented bigger-is-better, hence
+// the composite itself always uses higherIsBetter=true downstream).
+function avgNormalized(rows, keys, higherIsBetter = true) {
+  if (!keys.length) return rows.map(() => 0);
+  const normalized = keys.map(k => minMaxNormalize(rows, k, higherIsBetter));
+  return rows.map((r, i) => d2(normalized.reduce((sum, arr) => sum + arr[i], 0) / keys.length));
+}
 function computeWeightedRanking(rows, categories) {
   const normalized = categories.map(([key, , , higherIsBetter = true]) => minMaxNormalize(rows, key, higherIsBetter));
   const totalWeight = categories.reduce((sum, [, , w]) => sum + w, 0);
@@ -1903,6 +1931,11 @@ function renderAllMaxedTable() {
   // the deferred `renderAllMaxedTable();` call at the bottom of the file).
   const matchupRefs = computeCAMatchupRefs(caAgeKey);
   fullRows = fullRows.map(r => ({ ...r, ...computeCAMatchupFields(r, matchupRefs) }));
+  // Defense/Offense composites (2026-09-20) — same restructuring as
+  // Infantry/Cavalry, see avgNormalized()'s own comment for the design.
+  const avgSurv = avgNormalized(fullRows, CA_SURV_KEYS, true);
+  const avgKill = avgNormalized(fullRows, CA_KILL_KEYS, false);
+  fullRows = fullRows.map((r, i) => ({ ...r, avgSurv: avgSurv[i], avgKill: avgKill[i] }));
   const rankedWtd = computeWeightedRanking(fullRows, CA_MATCHUP_WEIGHTED_CATEGORIES);
   const rows = fullRows
     .map((r, i) => ({ ...r, rankWtd: rankedWtd[i].weightedRank }))
@@ -3463,15 +3496,18 @@ function computeInfantryMatchupFields(row, refs) {
     killKnight: kill(refs.knight),
   };
 }
+// 2026-09-20 (site owner: "all defensive surv time should be summed and
+// averaged then, all offensive kill time should be averaged, and those
+// two should be weighted 1 each... dps/100 res 0.5, speed 0.4") — replaced
+// the old 8 individually-weighted Surv/Kill categories (which silently
+// gave Infantry's 5 Surv categories more total pull than its 3 Kill ones)
+// with 2 equal-weight composites, built via avgNormalized() above. See
+// INFANTRY_SURV_KEYS/INFANTRY_KILL_KEYS below for the category lists.
+const INFANTRY_SURV_KEYS = ['survMilitia', 'survArcher', 'survSkirmisher', 'survScout', 'survKnight'];
+const INFANTRY_KILL_KEYS = ['killMilitia', 'killScout', 'killKnight'];
 const INFANTRY_WEIGHTED_CATEGORIES = [
-  ['survMilitia', 'Seconds to Survive v. Militia-line', 1.0],
-  ['survArcher', 'Seconds to Survive v. Archer-line', 1.0],
-  ['survSkirmisher', 'Seconds to Survive v. Skirmisher-line', 0.6],
-  ['survScout', 'Seconds to Survive v. Scout-line', 0.8],
-  ['survKnight', 'Seconds to Survive v. Knight-line', 0.8],
-  ['killMilitia', 'Seconds to Kill Militia-line', 1.0, false],
-  ['killScout', 'Seconds to Kill Scout-line', 0.8, false],
-  ['killKnight', 'Seconds to Kill Knight-line', 0.8, false],
+  ['avgSurv', 'Defense (avg Seconds to Survive)', 1.0],
+  ['avgKill', 'Offense (avg Seconds to Kill)', 1.0],
   ['dpsPer100', 'DPS / 100 res', 0.5],
   ['speed', 'Speed', 0.4],
 ];
@@ -3529,14 +3565,14 @@ function computeCavalryMatchupFields(row, refs) {
     killKnight: kill(refs.knight),
   };
 }
+// Same Defense/Offense composite restructuring as Infantry above (2026-
+// 09-20) — see INFANTRY_WEIGHTED_CATEGORIES' own comment for the full
+// design story.
+const CAVALRY_SURV_KEYS = ['survSpearman', 'survArcher', 'survSkirmisher', 'survCamel', 'survKnight'];
+const CAVALRY_KILL_KEYS = ['killMilitia', 'killKnight'];
 const CAVALRY_WEIGHTED_CATEGORIES = [
-  ['survSpearman', 'Seconds to Survive v. Spearman-line', 1.0],
-  ['survArcher', 'Seconds to Survive v. Archer-line', 1.0],
-  ['survSkirmisher', 'Seconds to Survive v. Skirmisher-line', 0.6],
-  ['survCamel', 'Seconds to Survive v. Camel-line', 0.8],
-  ['survKnight', 'Seconds to Survive v. Knight-line', 0.8],
-  ['killMilitia', 'Seconds to Kill Militia-line', 1.0, false],
-  ['killKnight', 'Seconds to Kill Knight-line', 0.8, false],
+  ['avgSurv', 'Defense (avg Seconds to Survive)', 1.0],
+  ['avgKill', 'Offense (avg Seconds to Kill)', 1.0],
   ['dpsPer100', 'DPS / 100 res', 0.5],
   ['speed', 'Speed', 0.4],
 ];
@@ -3638,17 +3674,17 @@ function computeCAMatchupFields(row, refs) {
     killKnight: kill(refs.knight),
   };
 }
+// Same Defense/Offense composite restructuring as Infantry/Cavalry above
+// (2026-09-20) — see INFANTRY_WEIGHTED_CATEGORIES' own comment for the
+// full design story. CA/MCB is the one table where Kill actually had MORE
+// categories than Surv before this change (6 vs. 4, offense-skewed rather
+// than defense-skewed) — the averaging fixes that direction too, not just
+// Infantry/Cavalry's defense-skew.
+const CA_SURV_KEYS = ['survArcher', 'survSkirmisher', 'survCamel', 'survKnight'];
+const CA_KILL_KEYS = ['killArcher', 'killSkirmisher', 'killCamel', 'killKnight', 'killSpearman', 'killMilitia'];
 const CA_MATCHUP_WEIGHTED_CATEGORIES = [
-  ['survArcher', 'Seconds to Survive v. Archer-line', 1.0],
-  ['killArcher', 'Seconds to Kill Archer-line', 1.0, false],
-  ['survSkirmisher', 'Seconds to Survive v. Skirmisher-line', 1.0],
-  ['killSkirmisher', 'Seconds to Kill Skirmisher-line', 1.0, false],
-  ['survCamel', 'Seconds to Survive v. Camel-line', 0.8],
-  ['killCamel', 'Seconds to Kill Camel-line', 0.8, false],
-  ['survKnight', 'Seconds to Survive v. Knight-line', 0.8],
-  ['killKnight', 'Seconds to Kill Knight-line', 0.8, false],
-  ['killSpearman', 'Seconds to Kill Spearman-line', 1.0, false],
-  ['killMilitia', 'Seconds to Kill Militia-line', 1.0, false],
+  ['avgSurv', 'Defense (avg Seconds to Survive)', 1.0],
+  ['avgKill', 'Offense (avg Seconds to Kill)', 1.0],
   ['dpsPer100', 'DPS / 100 res', 0.5],
   ['speed', 'Speed', 0.4],
 ];
@@ -3674,7 +3710,8 @@ function buildCAMatchupCols(refs) {
 // etc.").
 function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, emptyMsg, typeToggleSelector, opts = {}) {
   const { extraCols = [], weightedCategories = MELEE_WEIGHTED_CATEGORIES, dmgTakenVsMilitia = false,
-    infantryMatchupRanking = false, cavalryMatchupRanking = false, matchupColsFn = null, colModeSelector = null, rowIcon = () => '' } = opts;
+    infantryMatchupRanking = false, cavalryMatchupRanking = false, matchupColsFn = null, colModeSelector = null, rowIcon = () => '',
+    survKeys = [], killKeys = [] } = opts;
   let sort = { key: 'dps', dir: -1 };
   let ageKey = 'imperial';
   // Stats vs. Matchup columns are mutually exclusive (a pill, not an
@@ -3711,6 +3748,15 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
     if (cavalryMatchupRanking) {
       matchupRefs = computeCavalryMatchupRefs(ageKey);
       fullRows = fullRows.map(r => ({ ...r, ...computeCavalryMatchupFields(r, matchupRefs) }));
+    }
+    // Defense/Offense composites (2026-09-20, site owner: "all defensive
+    // surv time should be summed and averaged... offensive kill time
+    // should be averaged... weighted 1 each") — see avgNormalized()'s own
+    // comment for why this normalizes each category before averaging.
+    if (survKeys.length || killKeys.length) {
+      const avgSurv = avgNormalized(fullRows, survKeys, true);
+      const avgKill = avgNormalized(fullRows, killKeys, false);
+      fullRows = fullRows.map((r, i) => ({ ...r, avgSurv: avgSurv[i], avgKill: avgKill[i] }));
     }
     // Ranked over the full set at this age, BEFORE the type-toggle filter,
     // same pattern as the CA/MCB table — rank stays stable regardless of
@@ -3802,6 +3848,8 @@ makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', [
 ], 'wood', '—', '.infantry-type-toggle', {
   extraCols: [['dpsVsShockInfantry', 'DPS v.<br>Shock Inf.', true]],
   weightedCategories: INFANTRY_WEIGHTED_CATEGORIES,
+  survKeys: INFANTRY_SURV_KEYS,
+  killKeys: INFANTRY_KILL_KEYS,
   dmgTakenVsMilitia: true,
   infantryMatchupRanking: true,
   matchupColsFn: buildInfantryMatchupCols,
@@ -3818,6 +3866,8 @@ makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [
   [ELEPHANT_UNIQUE_CIVS, uniqueElephantMaxStats, null, 'unique', 'elephant'],
 ], 'gold', 'No civ trains a Knight/Scout/Steppe Lancer/Camel/Elephant-line unit before Feudal Age.', '.cavalry-type-toggle', {
   weightedCategories: CAVALRY_WEIGHTED_CATEGORIES,
+  survKeys: CAVALRY_SURV_KEYS,
+  killKeys: CAVALRY_KILL_KEYS,
   cavalryMatchupRanking: true,
   matchupColsFn: buildCavalryMatchupCols,
   colModeSelector: '.cavalry-col-mode-pill',
