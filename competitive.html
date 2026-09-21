@@ -25,6 +25,21 @@ header .subtitle{font-size:12px;color:var(--text3);margin-top:2px;}
 .card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
 .card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
 .card .desc{font-size:12px;color:var(--text2);margin:0 0 16px;line-height:1.6;}
+details.section{margin-bottom:22px;}
+details.section .card{margin-bottom:0;border-radius:0;border-top:none;}
+details.section .card:first-of-type{border-top:1px solid var(--border);}
+details.section .card:last-of-type{border-radius:0 0 12px 12px;}
+details.section summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px 22px;color:var(--amberL);font-size:15px;font-weight:600;}
+details.section summary::-webkit-details-marker{display:none;}
+details.section summary::before{content:'▸';color:var(--text3);font-size:12px;transition:transform .15s;}
+details.section[open] summary{border-radius:12px 12px 0 0;}
+details.section[open] summary::before{transform:rotate(90deg);}
+details.section summary .summary-hint{color:var(--text3);font-weight:400;font-size:12px;margin-left:auto;}
+.card .sub-heading{font-size:13px;font-weight:700;margin:20px 0 4px;padding-top:16px;border-top:1px solid var(--border);color:var(--text);}
+.card .sub-heading:first-of-type{padding-top:0;border-top:none;margin-top:4px;}
+.rules-list{margin:0 0 4px;padding-left:20px;font-size:12.5px;line-height:1.8;color:var(--text2);}
+.rules-list ul{margin:2px 0 8px 0;padding-left:18px;font-size:12px;line-height:1.7;}
+.rules-list b{color:var(--text);}
 .tourney-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-bottom:10px;}
 .tourney-head h2{font-size:19px;margin:0;color:var(--text);}
 .pill-row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px;}
@@ -96,10 +111,119 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
       <span class="pill prize">Prize Pool: $200</span>
       <span class="pill format">Round Robin · 1v1 / 2v2 / 3v3 / 4v4</span>
       <span class="pill">8 Teams</span>
-      <span class="pill date">Tentative Start: Monday, Sept 28</span>
+      <span class="pill date">Start: October 10th</span>
       <span class="pill org">Organized by <a href="player.html?id=12637242" style="color:inherit;">Worst Underwear</a></span>
     </div>
   </div>
+
+  <details class="section">
+    <summary>📜 Official Rules <span class="summary-hint">start Oct 10 &middot; full rulebook, uploaded by the site owner</span></summary>
+    <div class="card">
+      <h2>AOE2 Nations Cup — Official Rules</h2>
+      <p class="desc">
+        <b>Start Date:</b> October 10th &nbsp;&middot;&nbsp; <b>Duration:</b> 2-3 weeks<br><br>
+        This tournament is focused on the top players from each nation to see which nation reigns
+        supreme. Each nation will play each other in a round robin style — a play-all format with a
+        1v1, a 2v2, a 3v3, and a 4v4. Each team will have between 4 and 6 players; players can be used
+        more than once per round. There will be a civ draft and a map draft — civs and maps cannot be
+        repeated during each round. A 1v1 is worth 1 point, 2v2 worth 2, 3v3 worth 3, and 4v4 worth 4.
+        The two nations with the highest scores after the round robin phase face each other in the
+        finals; 3rd and 4th place face each other for a 3rd place match.
+      </p>
+
+      <h3 class="sub-heading">1) Eligibility &amp; Platform Rules</h3>
+      <ul class="rules-list">
+        <li>Controller only — keyboard and mouse gameplay is not allowed.</li>
+        <li>Players may not be in a party with anyone other than their teammates during official games.</li>
+        <li>Players must appear online while playing tournament matches (must be verifiable).</li>
+        <li>Discord nickname must closely match Gamertag for scheduling clarity.</li>
+        <li>At least 1 person per team must be in the Discord.</li>
+      </ul>
+
+      <h3 class="sub-heading">2) Conduct &amp; Fair Play</h3>
+      <ul class="rules-list">
+        <li>All participants must maintain respectful and cooperative behavior.</li>
+        <li>Griefing is not allowed (hiding units, excessive pausing, intentional AFK, artificial delays).</li>
+        <li>Coaching from third parties during games is not allowed.</li>
+        <li>Admins reserve the right to disqualify players for cheating or unsportsmanlike conduct.</li>
+        <li><b>Sling</b> — in order to sling, both the slinger and the recipient must be in Imperial Age.</li>
+      </ul>
+
+      <h3 class="sub-heading">3) Sign-ups</h3>
+      <ul class="rules-list">
+        <li>Participants sign up individually. If more than 6 players sign up for a nation, that nation's
+          own players decide who makes the final cut.</li>
+        <li>Teams may use any number of players multiple times per round, to facilitate swift games and
+          scheduling.</li>
+        <li>Player timezone, average play time, and prior tournament participation are taken into
+          consideration. A player who stops actively participating can be replaced.</li>
+        <li>Substitutes are allowed if judged of equal or less skill than the player they're replacing —
+          judged by the admins, who have full control of what's chosen.</li>
+      </ul>
+
+      <h3 class="sub-heading">4) Format</h3>
+      <ul class="rules-list">
+        <li>Round Robin. Games are played on weekends starting the weekend of October 10th, 2026 —
+          can be played during the week if both teams are willing and able.</li>
+        <li>Tournament should run for a total of 2-3 weeks.</li>
+        <li>Teams that don't make a concerted effort to play their games will be disqualified pending
+          admin review.</li>
+      </ul>
+
+      <h3 class="sub-heading">5) Scheduling</h3>
+      <ul class="rules-list">
+        <li>Starting schedules are released by admins once signups are complete.</li>
+        <li>It's up to the teams to schedule the specific date and time of their set.</li>
+        <li>Teams must be available during the day at least 2 weekends during the tournament period,
+          with 1 week identified at the beginning — to allow scheduling with overseas players.</li>
+        <li>Cancellations within 24 hours must be rescheduled within 7 days.</li>
+        <li>Cancellation notice must be given 8h prior to playtime to avoid forfeiting (unless the other
+          team agrees to reschedule) — exceptions at admin discretion.</li>
+        <li>If rescheduled into a new week, two sets need to be played that week.</li>
+        <li>Admins may award full points to a team if the opposing team doesn't show scheduling effort.</li>
+      </ul>
+
+      <h3 class="sub-heading">6) Maps &amp; Civilizations</h3>
+      <ul class="rules-list">
+        <li>Map pool: Arabia, Arena, African Clearing, Pilgrims, Frontline, Migration, Glade, Black Forest.</li>
+        <li>A map draft and civ draft are held by a chosen representative from each team — maps and
+          civs cannot be repeated during a set.</li>
+        <li>Game 1: Admin map. Game 2: chosen by Game 1's loser. Game 3: chosen by Game 2's loser.</li>
+      </ul>
+
+      <h3 class="sub-heading">7) Prize Pool</h3>
+      <ul class="rules-list">
+        <li>Starts at $200. Donations are encouraged and sent out by Old Peenuts to the winning team —
+          reach out to Old Peenuts directly to donate.</li>
+      </ul>
+
+      <h3 class="sub-heading">8) Disconnects &amp; Restarts</h3>
+      <ul class="rules-list">
+        <li>Teammates must pause immediately on disconnect.</li>
+        <li>Before minute 5 &rarr; full restart. After minute 5 &rarr; restore from save.</li>
+        <li>Maximum pause: 5 minutes (can be longer if both teams agree).</li>
+        <li>Two disconnects by the same team = game loss.</li>
+        <li>Restored games require at least one POV stream per team.</li>
+      </ul>
+
+      <h3 class="sub-heading">9) Game Settings</h3>
+      <ul class="rules-list">
+        <li>Game mode: Random Map. Settings standard with ranked online play. Civilizations hidden in
+          lobby setup.</li>
+      </ul>
+
+      <h3 class="sub-heading">10) Spectator Settings</h3>
+      <ul class="rules-list">
+        <li>Games must be public, spectators enabled, exactly 2-minute spectator delay required.</li>
+        <li>If not public/visible when detected by an admin &rarr; immediate restart.</li>
+      </ul>
+
+      <h3 class="sub-heading">11) Admin Authority</h3>
+      <ul class="rules-list">
+        <li>Admins have final say in disputes. All decisions prioritize fairness and simplicity.</li>
+      </ul>
+    </div>
+  </details>
 
   <div class="card">
     <h2>Teams</h2>
@@ -125,7 +249,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.21</div>
+    <div class="version">v0.22</div>
   </div>
 </div>
 
