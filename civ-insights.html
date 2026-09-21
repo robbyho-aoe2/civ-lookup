@@ -672,7 +672,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.11</div>
+    <div class="version">v1.12</div>
   </div>
 </div>
 
@@ -3105,7 +3105,7 @@ const CAMEL_CIVS = {
   Byzantines: { tier: 'heavyCamelRider', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: false, husbandry: true },
   Cumans: { tier: 'camelRider', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false },
   Ethiopians: { tier: 'heavyCamelRider', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
-  Gurjaras: { tier: 'heavyCamelRider', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  Gurjaras: { tier: 'heavyCamelRider', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true, camelScoutFeudal: true },
   // eliteOverride/eliteNameOverride — Hindustanis' real "Imperial Camel
   // Rider" (140 HP/8 attack, same 0/0 armor/speed/reload as generic
   // Heavy Camel Rider) replaces the standard Heavy Camel Rider entirely.
@@ -3119,7 +3119,20 @@ const CAMEL_CIVS = {
   Tatars: { tier: 'heavyCamelRider', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Turks: { tier: 'heavyCamelRider', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
 };
+// Gurjaras real exception (2026-09-21, site owner: "there are feudal age
+// camels as some civs start with a camel scout"): "Camel Scout" (id 1755)
+// is a genuine Feudal-age camel-line unit, NOT the standard "no Camel-line
+// before Castle" every other camel civ follows — real ground truth via
+// the cached data.json: hp70/atk2 (melee)/meleeArmor0/pierceArmor0/
+// speed1.2/reload2.0s, real Armours-array Class 30 confirms it IS real
+// Camel-class (so the Spearman-line's real anti-Camel bonus correctly
+// applies to it, same as every other camel row). Its real cost (55f/60g =
+// 115) happens to exactly match CAMEL_COST already used for the rest of
+// this table, so no per-tier cost override is needed — very low attack
+// is real too (a scouting unit, not a combat one), not a modeling bug.
+const CAMEL_SCOUT_STATS = { tierName: 'Camel Scout', hp: 70, attack: 2, meleeArmor: 0, pierceArmor: 0, armorTotal: 0, speed: 1.2, reload: 2, dps: 1 };
 function camelMaxStats(civ, cfg, age) {
+  if (cfg.camelScoutFeudal && age === 'Feudal') return CAMEL_SCOUT_STATS;
   const tier = effectiveTier(cfg.tier, CAMEL_TIER_ORDER, CAMEL_TIER_AGE, age);
   if (!tier) return null;
   const rank = AGE_RANK[age];
