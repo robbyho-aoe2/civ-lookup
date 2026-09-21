@@ -347,12 +347,19 @@ select:focus{outline:none;border-color:var(--amber);}
         <button data-mode="stats" class="on">Stats</button>
         <button data-mode="matchup">Matchup</button>
       </div>
+      <div class="col-mode-pill ca-rank-mode-pill">
+        <button data-rank="cost" class="on">Cost Efficient</button>
+        <button data-rank="pop">Pop Efficient</button>
+      </div>
       <p class="desc" style="color:var(--text3)">
         Cost is flat per unit type (40w/60g Cavalry Archer, 40w/65g Mounted Crossbowman), except Franks'
         discounted Mounted Crossbowman. Sort by DPS/100 res for an equal-resources comparison.
-        <b>Rank</b> is Defense + Offense (each an average of several real matchup outcomes vs. reference
-        Archer/Skirmisher/Camel/Knight-line units — Skirmishers, not Spearmen, are the real counter to
-        mounted archers) plus DPS/100 res and Speed — switch the pill above to "Matchup" to see the
+        <b>Rank</b> is Defense + Offense (each an average of real matchup outcomes vs. reference Archer/
+        Skirmisher/Camel/Knight-line units — Skirmishers, not Spearmen, are the real counter to mounted
+        archers) plus Speed. <b>Cost Efficient</b> (default) divides each matchup outcome by cost first,
+        so a cheap unit that's merely good beats an expensive one that's only slightly better; <b>Pop
+        Efficient</b> ignores cost and ranks raw per-unit strength, since every standard unit costs the
+        same 1 population slot regardless of price. Switch the other pill to "Matchup" to see the
         individual matchup numbers as columns.
       </p>
       <div class="overflow-x">
@@ -373,9 +380,12 @@ select:focus{outline:none;border-color:var(--amber);}
       <p class="desc" style="color:var(--text3)">
         Cost is flat per civ (50f/20g). Sort by DPS/100 res for an equal-resources comparison.
         <b>Rank</b> is Defense + Offense (each an average of real matchup outcomes vs. reference Militia/
-        Archer/Skirmisher/Scout/Knight-line units) plus DPS/100 res and Speed, rather than raw HP/Armor/
-        DPS — switch the pill below to "Matchup" to see the individual matchup numbers as columns instead
-        of the usual stat columns.
+        Archer/Skirmisher/Scout/Knight-line units) plus Speed, rather than raw HP/Armor/DPS. <b>Cost
+        Efficient</b> (default) divides each matchup outcome by cost first, so a cheap-but-solid unit can
+        outrank an expensive-but-only-slightly-better one; <b>Pop Efficient</b> ignores cost and ranks raw
+        per-unit strength instead, since every standard unit costs the same 1 population slot regardless
+        of price. Switch the other pill to "Matchup" to see the individual matchup numbers as columns
+        instead of the usual stat columns.
         <b>DPS v. Shock Inf.</b> and <b>Dmg Taken v. &lt;tier&gt;</b> account for the real Shock Infantry
         bonus-damage class (Eagle-line, Fire Lancer, Jian Swordsman, Temple Guard, Varangian Guard); only
         Dmg Taken feeds into Rank.
@@ -394,6 +404,10 @@ select:focus{outline:none;border-color:var(--amber);}
       <div class="col-mode-pill infantry-col-mode-pill">
         <button data-mode="stats" class="on">Stats</button>
         <button data-mode="matchup">Matchup</button>
+      </div>
+      <div class="col-mode-pill infantry-rank-mode-pill">
+        <button data-rank="cost" class="on">Cost Efficient</button>
+        <button data-rank="pop">Pop Efficient</button>
       </div>
       <p class="desc" style="color:var(--text3)">
         <b>Non-Castle unique units</b> — Fire Lancer, Temple Guard, Varangian Guard, Champi Warrior,
@@ -420,9 +434,11 @@ select:focus{outline:none;border-color:var(--amber);}
         Cost is flat per civ (60f/75g), except Poles' discounted Knight-line. Sort by DPS/100 res for an
         equal-resources comparison. <b>Rank</b> is Defense + Offense (each an average of real matchup
         outcomes vs. reference Spearman/Archer/Skirmisher/Camel/Knight-line units, the Spearman-line's
-        real anti-Cavalry/Camel/Elephant bonus differing by target class) plus DPS/100 res and Speed —
-        switch the pill below to "Matchup" to see the individual matchup numbers as columns, named for
-        the reference unit's own real tier at the current age.
+        real anti-Cavalry/Camel/Elephant bonus differing by target class) plus Speed. <b>Cost Efficient</b>
+        (default) divides each matchup outcome by cost first; <b>Pop Efficient</b> ignores cost and ranks
+        raw per-unit strength, since every standard unit costs the same 1 population slot regardless of
+        price. Switch the other pill to "Matchup" to see the individual matchup numbers as columns, named
+        for the reference unit's own real tier at the current age.
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
         <button class="cavalry-age-toggle-btn toggle-btn" data-age="feudal">Feudal</button>
@@ -440,6 +456,10 @@ select:focus{outline:none;border-color:var(--amber);}
       <div class="col-mode-pill cavalry-col-mode-pill">
         <button data-mode="stats" class="on">Stats</button>
         <button data-mode="matchup">Matchup</button>
+      </div>
+      <div class="col-mode-pill cavalry-rank-mode-pill">
+        <button data-rank="cost" class="on">Cost Efficient</button>
+        <button data-rank="pop">Pop Efficient</button>
       </div>
       <p class="desc" style="color:var(--text3)">
         <b>Steppe Lancers</b> — 5 real civs. <b>Camels</b> — 13 real civs. <b>Elephants</b> — Battle
@@ -638,7 +658,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.04</div>
+    <div class="version">v1.05</div>
   </div>
 </div>
 
@@ -1818,6 +1838,7 @@ const CA_RANK_COL = ['rankWtd', 'Rank', true];
 let allMaxedSort = { key: 'dps', dir: -1 };
 let caColMode = 'stats';
 let caAgeKey = 'imperial';
+let caRankMode = 'cost';
 const UNIQUE_LINES = ['XR', 'BOL', 'EBOL', 'MAN', 'CAM', 'ECAM', 'GEN', 'EGEN', 'KIP', 'RAT', 'WW'];
 // Factored out of renderAllMaxedTable so the ranking system below (and any
 // future consumer) can get the full, unfiltered 63-row set without
@@ -1906,6 +1927,33 @@ function avgNormalized(rows, keys, higherIsBetter = true) {
   const normalized = keys.map(k => minMaxNormalize(rows, k, higherIsBetter));
   return rows.map((r, i) => d2(normalized.reduce((sum, arr) => sum + arr[i], 0) / keys.length));
 }
+// Cost-adjusted matchup categories (2026-09-20, site owner: "you can make
+// 2 champions for 140 res but only 1 varangian guard for 110... using dps
+// as the anchor for cost probably doesnt work as well than if we used
+// another metric, like xx offense and xx defense per 100 res" — followed
+// by "it should reflect how effect one unit is vs another on a cost
+// basis"). Real gap this closes: `dpsPer100` was already cost-linear
+// (buying 2 Champions for double the cost gives the same DPS/100res rate
+// as 1), but the NEW Defense/Offense composites (avgSurv/avgKill) never
+// factored cost in at all — a unit could out-rank a cheaper, more
+// resource-efficient one purely on raw single-unit toughness.
+//
+// Seconds to Survive is already a "bigger=better" raw quantity, so its
+// cost-adjusted form is just value/cost*100 — the exact same shape
+// dpsPer100 always used. Seconds to Kill is a raw TIME (smaller=better),
+// which has no clean "per resource" reading on its own — converted to a
+// KILL RATE first (1/time, kills-per-second against that reference,
+// mirroring how DPS is itself a rate) before dividing by cost, so both
+// transformed categories end up naturally bigger-is-better, same as
+// dpsPer100, with no inversion needed downstream.
+function attachPer100Fields(rows, survKeys, killKeys) {
+  return rows.map(r => {
+    const extra = {};
+    survKeys.forEach(k => { extra[k + 'Per100'] = r[k] != null ? d2(r[k] / r.cost * 100) : undefined; });
+    killKeys.forEach(k => { extra[k + 'Per100'] = r[k] != null ? d2((1 / r[k]) / r.cost * 100) : undefined; });
+    return { ...r, ...extra };
+  });
+}
 function computeWeightedRanking(rows, categories) {
   const normalized = categories.map(([key, , , higherIsBetter = true]) => minMaxNormalize(rows, key, higherIsBetter));
   const totalWeight = categories.reduce((sum, [, , w]) => sum + w, 0);
@@ -1931,12 +1979,17 @@ function renderAllMaxedTable() {
   // the deferred `renderAllMaxedTable();` call at the bottom of the file).
   const matchupRefs = computeCAMatchupRefs(caAgeKey);
   fullRows = fullRows.map(r => ({ ...r, ...computeCAMatchupFields(r, matchupRefs) }));
-  // Defense/Offense composites (2026-09-20) — same restructuring as
-  // Infantry/Cavalry, see avgNormalized()'s own comment for the design.
+  // Defense/Offense composites, BOTH flavors (2026-09-20) — same
+  // restructuring as Infantry/Cavalry, see attachPer100Fields()'s own
+  // comment for the design. caRankMode picks which pair drives Rank.
   const avgSurv = avgNormalized(fullRows, CA_SURV_KEYS, true);
   const avgKill = avgNormalized(fullRows, CA_KILL_KEYS, false);
   fullRows = fullRows.map((r, i) => ({ ...r, avgSurv: avgSurv[i], avgKill: avgKill[i] }));
-  const rankedWtd = computeWeightedRanking(fullRows, CA_MATCHUP_WEIGHTED_CATEGORIES);
+  fullRows = attachPer100Fields(fullRows, CA_SURV_KEYS, CA_KILL_KEYS);
+  const avgDefPer100 = avgNormalized(fullRows, CA_SURV_KEYS.map(k => k + 'Per100'), true);
+  const avgOffPer100 = avgNormalized(fullRows, CA_KILL_KEYS.map(k => k + 'Per100'), true);
+  fullRows = fullRows.map((r, i) => ({ ...r, avgDefPer100: avgDefPer100[i], avgOffPer100: avgOffPer100[i] }));
+  const rankedWtd = computeWeightedRanking(fullRows, caRankMode === 'pop' ? CA_MATCHUP_WEIGHTED_CATEGORIES_POP : CA_MATCHUP_WEIGHTED_CATEGORIES);
   const rows = fullRows
     .map((r, i) => ({ ...r, rankWtd: rankedWtd[i].weightedRank }))
     .filter(r => {
@@ -2000,6 +2053,11 @@ document.querySelectorAll('.ca-age-toggle-btn').forEach(btn => btn.addEventListe
 document.querySelectorAll('.ca-col-mode-pill button').forEach(btn => btn.addEventListener('click', () => {
   caColMode = btn.dataset.mode;
   document.querySelectorAll('.ca-col-mode-pill button').forEach(b => b.classList.toggle('on', b === btn));
+  renderAllMaxedTable();
+}));
+document.querySelectorAll('.ca-rank-mode-pill button').forEach(btn => btn.addEventListener('click', () => {
+  caRankMode = btn.dataset.rank;
+  document.querySelectorAll('.ca-rank-mode-pill button').forEach(b => b.classList.toggle('on', b === btn));
   renderAllMaxedTable();
 }));
 // Deferred to the bottom of the file (see the call right after the
@@ -3498,17 +3556,28 @@ function computeInfantryMatchupFields(row, refs) {
 }
 // 2026-09-20 (site owner: "all defensive surv time should be summed and
 // averaged then, all offensive kill time should be averaged, and those
-// two should be weighted 1 each... dps/100 res 0.5, speed 0.4") — replaced
-// the old 8 individually-weighted Surv/Kill categories (which silently
-// gave Infantry's 5 Surv categories more total pull than its 3 Kill ones)
-// with 2 equal-weight composites, built via avgNormalized() above. See
-// INFANTRY_SURV_KEYS/INFANTRY_KILL_KEYS below for the category lists.
+// two should be weighted 1 each") then, same day, made cost-aware (site
+// owner: "using dps as the anchor for cost probably doesnt work as well
+// than if we used another metric, like xx offense and xx defense per 100
+// res... it should reflect how effect one unit is vs another on a cost
+// basis") — see attachPer100Fields()'s own comment for the full design.
+// Rank is now Defense/100res + Offense/100res + Speed; `dpsPer100` and the
+// raw (non-cost) avgSurv/avgKill no longer feed Rank at all (superseded).
 const INFANTRY_SURV_KEYS = ['survMilitia', 'survArcher', 'survSkirmisher', 'survScout', 'survKnight'];
 const INFANTRY_KILL_KEYS = ['killMilitia', 'killScout', 'killKnight'];
 const INFANTRY_WEIGHTED_CATEGORIES = [
-  ['avgSurv', 'Defense (avg Seconds to Survive)', 1.0],
-  ['avgKill', 'Offense (avg Seconds to Kill)', 1.0],
-  ['dpsPer100', 'DPS / 100 res', 0.5],
+  ['avgDefPer100', 'Defense / 100 res', 1.0],
+  ['avgOffPer100', 'Offense / 100 res', 1.0],
+  ['speed', 'Speed', 0.4],
+];
+// "Pop Efficient" mode (2026-09-20, site owner: "pop efficient ignores
+// cost altogether") — the raw, non-cost-divided Defense/Offense
+// composites, i.e. Rank as it was for one commit before cost-awareness
+// was added: which unit is objectively strongest per population slot,
+// since every standard unit costs exactly 1 pop regardless of price.
+const INFANTRY_WEIGHTED_CATEGORIES_POP = [
+  ['avgSurv', 'Defense (raw)', 1.0],
+  ['avgKill', 'Offense (raw)', 1.0],
   ['speed', 'Speed', 0.4],
 ];
 // ── Same matchup-based ranking for the Cavalry table (2026-09-20, site
@@ -3571,9 +3640,15 @@ function computeCavalryMatchupFields(row, refs) {
 const CAVALRY_SURV_KEYS = ['survSpearman', 'survArcher', 'survSkirmisher', 'survCamel', 'survKnight'];
 const CAVALRY_KILL_KEYS = ['killMilitia', 'killKnight'];
 const CAVALRY_WEIGHTED_CATEGORIES = [
-  ['avgSurv', 'Defense (avg Seconds to Survive)', 1.0],
-  ['avgKill', 'Offense (avg Seconds to Kill)', 1.0],
-  ['dpsPer100', 'DPS / 100 res', 0.5],
+  ['avgDefPer100', 'Defense / 100 res', 1.0],
+  ['avgOffPer100', 'Offense / 100 res', 1.0],
+  ['speed', 'Speed', 0.4],
+];
+// "Pop Efficient" mode — see INFANTRY_WEIGHTED_CATEGORIES_POP's own
+// comment for the design story.
+const CAVALRY_WEIGHTED_CATEGORIES_POP = [
+  ['avgSurv', 'Defense (raw)', 1.0],
+  ['avgKill', 'Offense (raw)', 1.0],
   ['speed', 'Speed', 0.4],
 ];
 // Displayable versions of the matchup fields (site owner: "make new
@@ -3683,9 +3758,15 @@ function computeCAMatchupFields(row, refs) {
 const CA_SURV_KEYS = ['survArcher', 'survSkirmisher', 'survCamel', 'survKnight'];
 const CA_KILL_KEYS = ['killArcher', 'killSkirmisher', 'killCamel', 'killKnight', 'killSpearman', 'killMilitia'];
 const CA_MATCHUP_WEIGHTED_CATEGORIES = [
-  ['avgSurv', 'Defense (avg Seconds to Survive)', 1.0],
-  ['avgKill', 'Offense (avg Seconds to Kill)', 1.0],
-  ['dpsPer100', 'DPS / 100 res', 0.5],
+  ['avgDefPer100', 'Defense / 100 res', 1.0],
+  ['avgOffPer100', 'Offense / 100 res', 1.0],
+  ['speed', 'Speed', 0.4],
+];
+// "Pop Efficient" mode — see INFANTRY_WEIGHTED_CATEGORIES_POP's own
+// comment for the design story.
+const CA_MATCHUP_WEIGHTED_CATEGORIES_POP = [
+  ['avgSurv', 'Defense (raw)', 1.0],
+  ['avgKill', 'Offense (raw)', 1.0],
   ['speed', 'Speed', 0.4],
 ];
 function buildCAMatchupCols(refs) {
@@ -3709,14 +3790,22 @@ function buildCAMatchupCols(refs) {
 // owner: "remember spear line does bonus damage, different for cav, ele,
 // etc.").
 function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, emptyMsg, typeToggleSelector, opts = {}) {
-  const { extraCols = [], weightedCategories = MELEE_WEIGHTED_CATEGORIES, dmgTakenVsMilitia = false,
-    infantryMatchupRanking = false, cavalryMatchupRanking = false, matchupColsFn = null, colModeSelector = null, rowIcon = () => '',
+  const { extraCols = [], weightedCategories = MELEE_WEIGHTED_CATEGORIES, weightedCategoriesPop = null, dmgTakenVsMilitia = false,
+    infantryMatchupRanking = false, cavalryMatchupRanking = false, matchupColsFn = null, colModeSelector = null, rankModeSelector = null, rowIcon = () => '',
     survKeys = [], killKeys = [] } = opts;
   let sort = { key: 'dps', dir: -1 };
   let ageKey = 'imperial';
   // Stats vs. Matchup columns are mutually exclusive (a pill, not an
   // add-on toggle) to keep the table from getting too wide.
   let colMode = 'stats';
+  // Cost Efficient (default) vs. Pop Efficient (site owner, 2026-09-20:
+  // "we should also have a toggle that is 'cost efficient vs population
+  // efficient' and pop efficient ignores cost altogether") — Pop Efficient
+  // uses the raw (non-cost-divided) avgSurv/avgKill composites, since
+  // every standard unit costs exactly 1 population slot regardless of
+  // resource price, so "per population" and "raw per-unit strength" are
+  // the same thing.
+  let rankMode = 'cost';
   function render() {
     const tableEl = document.getElementById(tableId);
     const ageLabel = MELEE_AGE_LABEL[ageKey];
@@ -3749,19 +3838,25 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       matchupRefs = computeCavalryMatchupRefs(ageKey);
       fullRows = fullRows.map(r => ({ ...r, ...computeCavalryMatchupFields(r, matchupRefs) }));
     }
-    // Defense/Offense composites (2026-09-20, site owner: "all defensive
-    // surv time should be summed and averaged... offensive kill time
-    // should be averaged... weighted 1 each") — see avgNormalized()'s own
-    // comment for why this normalizes each category before averaging.
+    // Defense/Offense composites, BOTH flavors (2026-09-20) — raw (ignores
+    // cost entirely, "Pop Efficient": which unit is objectively strongest
+    // per population slot) and cost-adjusted (Cost Efficient — see
+    // attachPer100Fields()'s own comment). The rankMode pill below picks
+    // which pair actually drives Rank; both are always computed so
+    // switching modes doesn't need a re-render from scratch.
     if (survKeys.length || killKeys.length) {
       const avgSurv = avgNormalized(fullRows, survKeys, true);
       const avgKill = avgNormalized(fullRows, killKeys, false);
       fullRows = fullRows.map((r, i) => ({ ...r, avgSurv: avgSurv[i], avgKill: avgKill[i] }));
+      fullRows = attachPer100Fields(fullRows, survKeys, killKeys);
+      const avgDefPer100 = avgNormalized(fullRows, survKeys.map(k => k + 'Per100'), true);
+      const avgOffPer100 = avgNormalized(fullRows, killKeys.map(k => k + 'Per100'), true);
+      fullRows = fullRows.map((r, i) => ({ ...r, avgDefPer100: avgDefPer100[i], avgOffPer100: avgOffPer100[i] }));
     }
     // Ranked over the full set at this age, BEFORE the type-toggle filter,
     // same pattern as the CA/MCB table — rank stays stable regardless of
     // what's currently toggled on/off, only the age selection changes it.
-    const rankedWtd = computeWeightedRanking(fullRows, weightedCategories);
+    const rankedWtd = computeWeightedRanking(fullRows, rankMode === 'pop' ? weightedCategoriesPop : weightedCategories);
     let rows = fullRows.map((r, i) => ({ ...r, rankWtd: rankedWtd[i].weightedRank }));
     // "Dmg Taken v. <age-appropriate Militia-line tier>" (Infantry table
     // only) — see militiaLineMaxedAttack's own comment above for the full
@@ -3839,6 +3934,13 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
       render();
     }));
   }
+  if (rankModeSelector) {
+    document.querySelectorAll(`${rankModeSelector} button`).forEach(btn => btn.addEventListener('click', () => {
+      rankMode = btn.dataset.rank;
+      document.querySelectorAll(`${rankModeSelector} button`).forEach(b => b.classList.toggle('on', b === btn));
+      render();
+    }));
+  }
   return render;
 }
 makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', [
@@ -3848,12 +3950,14 @@ makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', [
 ], 'wood', '—', '.infantry-type-toggle', {
   extraCols: [['dpsVsShockInfantry', 'DPS v.<br>Shock Inf.', true]],
   weightedCategories: INFANTRY_WEIGHTED_CATEGORIES,
+  weightedCategoriesPop: INFANTRY_WEIGHTED_CATEGORIES_POP,
   survKeys: INFANTRY_SURV_KEYS,
   killKeys: INFANTRY_KILL_KEYS,
   dmgTakenVsMilitia: true,
   infantryMatchupRanking: true,
   matchupColsFn: buildInfantryMatchupCols,
   colModeSelector: '.infantry-col-mode-pill',
+  rankModeSelector: '.infantry-rank-mode-pill',
   rowIcon: () => '🛡',
 })();
 makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [
@@ -3866,11 +3970,13 @@ makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [
   [ELEPHANT_UNIQUE_CIVS, uniqueElephantMaxStats, null, 'unique', 'elephant'],
 ], 'gold', 'No civ trains a Knight/Scout/Steppe Lancer/Camel/Elephant-line unit before Feudal Age.', '.cavalry-type-toggle', {
   weightedCategories: CAVALRY_WEIGHTED_CATEGORIES,
+  weightedCategoriesPop: CAVALRY_WEIGHTED_CATEGORIES_POP,
   survKeys: CAVALRY_SURV_KEYS,
   killKeys: CAVALRY_KILL_KEYS,
   cavalryMatchupRanking: true,
   matchupColsFn: buildCavalryMatchupCols,
   colModeSelector: '.cavalry-col-mode-pill',
+  rankModeSelector: '.cavalry-rank-mode-pill',
   rowIcon: r => r.targetClass === 'camel' ? '🐪' : r.targetClass === 'elephant' ? '🐘' : '⚔️',
 })();
 // Deferred from its natural spot near buildAllMaxedRows (way above) —
