@@ -624,7 +624,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v0.98</div>
+    <div class="version">v0.99</div>
   </div>
 </div>
 
@@ -3287,20 +3287,15 @@ function archerLineTechBonus(ageKey) {
   const rank = AGE_RANK[MELEE_AGE_LABEL[ageKey]];
   return ARCHER_ATK_TECH_AGES.filter(a => AGE_RANK[a] <= rank).length; // +1 each, all 4 real deltas are +1
 }
-// meleeArmor: 0 always — real, confirmed fact: foot archers never gain
-// melee armor from any tech (Padded/Leather/Ring Archer Armor give them
-// PIERCE armor only, unlike the Cavalry Archer versions of those same-
-// named techs) — needed for the Cavalry table's offensive "Seconds to
-// Kill Archer-line" category (Cavalry deals melee damage).
 function archerLineRef(ageKey) {
   const tier = ARCHER_TIER_BY_AGE[ageKey];
   const base = ARCHER_LINE_BASE[tier];
-  return { hp: base.hp, attack: base.attack + archerLineTechBonus(ageKey), reload: base.reload, meleeArmor: 0, tierName: ARCHER_TIER_NAME[tier] };
+  return { hp: base.hp, attack: base.attack + archerLineTechBonus(ageKey), reload: base.reload, tierName: ARCHER_TIER_NAME[tier] };
 }
 function skirmisherLineRef(ageKey) {
   const tier = SKIRMISHER_TIER_BY_AGE[ageKey];
   const base = SKIRMISHER_LINE_BASE[tier];
-  return { hp: base.hp, attack: base.attack + archerLineTechBonus(ageKey), reload: base.reload, meleeArmor: 0, tierName: SKIRMISHER_TIER_NAME[tier] };
+  return { hp: base.hp, attack: base.attack + archerLineTechBonus(ageKey), reload: base.reload, tierName: SKIRMISHER_TIER_NAME[tier] };
 }
 // Generic, no-civ-bonus, full-tech reference civs — reused via this file's
 // own already-trusted formulas rather than re-derived.
@@ -3371,9 +3366,11 @@ const INFANTRY_WEIGHTED_CATEGORIES = [
 // class, confirmed via data.json's own Attacks-array the same way the
 // Spearman-line bonuses were, NOT modeled anywhere else on this page
 // until now), Knight-line (the Cavalry mirror-match). Offensive (Seconds
-// to Kill): Militia-line, Archer-line (REAL here, unlike Infantry's own
-// exclusion — Cavalry has the speed to actually catch Archers, the
-// opposite situation from slow Infantry), Knight-line (mirror-match).
+// to Kill): Militia-line, Knight-line (mirror-match). No "Seconds to Kill
+// Archer-line" here either (2026-09-20, site owner: "kill archer line...
+// is not useful because you cant really fight them" — Archers kite even
+// Cavalry in real play, same reasoning as Infantry's own exclusion above,
+// so this table doesn't get one either despite Cavalry's speed edge).
 const GENERIC_CAMEL_CFG = { tier: 'heavyCamelRider', meleeAtk: [true, true, true], cavArmor: [true, true, true], bloodlines: true, husbandry: true };
 const CAMEL_VS_CAVALRY_BONUS_BY_AGE = { feudal: 0, castle: 9, imperial: 18 }; // real, intrinsic per-tier bonus, not a tech (Camel-line has no Feudal tier anyway)
 function camelLineRefVsCavalry(ageKey) {
@@ -3407,7 +3404,6 @@ function computeCavalryMatchupFields(row, refs) {
     survCamel: survive(refs.camel, 'meleeArmor'),
     survKnight: survive(refs.knight, 'meleeArmor'),
     killMilitia: kill(refs.militia),
-    killArcher: kill(refs.archer),
     killKnight: kill(refs.knight),
   };
 }
@@ -3418,7 +3414,6 @@ const CAVALRY_WEIGHTED_CATEGORIES = [
   ['survCamel', 'Seconds to Survive v. Camel-line', 0.8],
   ['survKnight', 'Seconds to Survive v. Knight-line', 0.8],
   ['killMilitia', 'Seconds to Kill Militia-line', 1.0, false],
-  ['killArcher', 'Seconds to Kill Archer-line', 0.8, false],
   ['killKnight', 'Seconds to Kill Knight-line', 0.8, false],
   ['dpsPer100', 'DPS / 100 res', 0.5],
   ['speed', 'Speed', 0.4],
@@ -3452,7 +3447,6 @@ function buildCavalryMatchupCols(refs) {
   return [
     ['survSpearman', `Surv v.<br>${refs.spearman.tierName}`, true],
     ['survArcher', `Surv v.<br>${refs.archer.tierName}`, true],
-    ['killArcher', `Kill<br>${refs.archer.tierName}`, true],
     ['survSkirmisher', `Surv v.<br>${refs.skirmisher.tierName}`, true],
     ['survCamel', refs.camel ? `Surv v.<br>${refs.camel.tierName}` : 'Surv v.<br>Camel-line', true],
     ['survKnight', refs.knight ? `Surv v.<br>${refs.knight.tierName}` : 'Surv v.<br>Knight-line', true],
