@@ -1420,6 +1420,13 @@ function renderWeeklyReport(report) {
 
   const eloVal = v => v == null ? '—' : v.toLocaleString();
   const eloChange = v => v == null ? '—' : `${v > 0 ? '+' : ''}${v.toLocaleString()}`;
+  const playerSearch = report.playerIndex ? `
+    <div class="weekly-section">
+      <h3>Find a Player</h3>
+      <p class="sub-desc">This week's stats for any tracked console player, not just the top 10.</p>
+      <input type="text" class="civ-search" id="player-search-input" placeholder="Search player…" autocomplete="off" style="width:220px">
+      <div id="player-search-result" style="margin-top:8px"></div>
+    </div>` : '';
   const mostGames = `
     <div class="weekly-section">
       <h3>Players With the Most Games This Week</h3>
@@ -1518,7 +1525,29 @@ function renderWeeklyReport(report) {
   // the 2026-09-07 report can show real gainers/losers — bring this section
   // back then instead of showing undated "current standings" in the meantime.
 
-  return headline + mostGames + rivalries + upsets + newPlayers + civPopularity + movers + squads;
+  return headline + playerSearch + mostGames + rivalries + upsets + newPlayers + civPopularity + movers + squads;
+}
+
+function renderPlayerSearchMatches(report, query) {
+  const resultEl = document.getElementById('player-search-result');
+  if (!resultEl) return;
+  const q = query.trim().toLowerCase();
+  if (!q) { resultEl.innerHTML = ''; return; }
+  const pi = report.playerIndex || {};
+  const matches = Object.entries(pi)
+    .filter(([id, row]) => (row.name || '').toLowerCase().includes(q))
+    .sort((a, b) => b[1].games - a[1].games)
+    .slice(0, 20);
+  if (!matches.length) {
+    resultEl.innerHTML = '<p class="weekly-empty">No player matched that name.</p>';
+    return;
+  }
+  const eloVal = v => v == null ? '—' : v.toLocaleString();
+  const eloChange = v => v == null ? '—' : `${v > 0 ? '+' : ''}${v.toLocaleString()}`;
+  resultEl.innerHTML = weeklyTable(
+    [{ label: 'Player' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }, { label: '1v1 Elo', num: true }, { label: '1v1 Δ', num: true }, { label: 'Team Elo', num: true }, { label: 'Team Δ', num: true }],
+    matches.map(([id, row]) => [wLink(row.name, Number(id)), row.games.toLocaleString(), row.winRate == null ? '—' : weeklyPct(row.winRate), eloVal(row.elo1v1), eloChange(row.elo1v1Change), eloVal(row.eloTeam), eloChange(row.eloTeamChange)])
+  );
 }
 
 async function loadAndRenderWeekly() {
@@ -1545,6 +1574,10 @@ async function loadAndRenderWeekly() {
         const report = await res.json();
         descEl.textContent = `What happened in the console scene, ${report.windowStart} → ${report.windowEnd}.`;
         contentEl.innerHTML = renderWeeklyReport(report);
+        const searchInput = document.getElementById('player-search-input');
+        if (searchInput) {
+          searchInput.addEventListener('input', () => renderPlayerSearchMatches(report, searchInput.value));
+        }
       } catch (e) {
         contentEl.innerHTML = `<div class="error">Could not load this week's recap: ${e.message}</div>`;
       }
