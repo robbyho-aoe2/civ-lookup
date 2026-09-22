@@ -275,11 +275,20 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.35</div>
+    <div class="version">v2.36</div>
   </div>
 </div>
 <div id="tooltip"></div>
 <script>
+// Player display names come straight from the game's own API (any player
+// can set theirs to arbitrary text) and get interpolated into innerHTML
+// all over this page — escape before rendering so a name like "<s>" or
+// "<img onerror=...>" can't inject real markup. Never render p.label/
+// p.name raw.
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+}
+
 /* ================================================================
    ALL 53 CIVS
    ================================================================ */
@@ -3959,7 +3968,7 @@ function renderSelectorPillsHtml() {
       const rank = idx + 1;
       const rankAttr = hasSearch ? ` data-rank="${rank}"` : '';
       const rankSpan = hasSearch ? `<span class="rank-num">#${rank}</span>` : '';
-      return `<button class="arch-btn${on}" data-kind="player" data-i="${i}" data-name="${p.label.toLowerCase()}" data-group="${groupKey}"${rankAttr}>${rankSpan}${p.emoji} ${p.label}${ratingTag}</button>`;
+      return `<button class="arch-btn${on}" data-kind="player" data-i="${i}" data-name="${escapeHtml(p.label.toLowerCase())}" data-group="${groupKey}"${rankAttr}>${rankSpan}${p.emoji} ${escapeHtml(p.label)}${ratingTag}</button>`;
     }).join('');
     const expanded = playerGroupsExpanded[groupKey];
     const rowH = expanded ? '152px' : '40px';
@@ -3979,14 +3988,14 @@ function renderSelectorPillsHtml() {
         const spRating = playerDisplayRating(sp);
         const spRatingTag = spRating != null ? ` <span style="opacity:.65">(${spRating})</span>` : '';
         searchRow += `<span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Selected</span>`;
-        searchRow += `<button class="arch-btn on" data-kind="player" data-i="${activePlayer}" style="font-size:11px">${sp.emoji} ${sp.label}${spRatingTag}</button>`;
+        searchRow += `<button class="arch-btn on" data-kind="player" data-i="${activePlayer}" style="font-size:11px">${sp.emoji} ${escapeHtml(sp.label)}${spRatingTag}</button>`;
       }
       const groupHistory = playerViewHistory.filter(idx => PLAYER_LIST[idx]?.group === groupKey);
       if (groupHistory.length) {
         searchRow += `<span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-left:4px">Recent</span>`;
         groupHistory.forEach(idx => {
           const rp = PLAYER_LIST[idx];
-          searchRow += `<button class="arch-btn" data-kind="player" data-i="${idx}" style="font-size:11px;opacity:.8">${rp.emoji} ${rp.label}</button>`;
+          searchRow += `<button class="arch-btn" data-kind="player" data-i="${idx}" style="font-size:11px;opacity:.8">${rp.emoji} ${escapeHtml(rp.label)}</button>`;
         });
       }
       searchRow += `<span id="${groupKey}-player-request-pill"></span>`;
@@ -4638,9 +4647,9 @@ function renderPlayerGrid() {
       gradeOf: () => null,
       valueOf: () => 0,
       valueLabel: () => '',
-      headerHtml: `${p.emoji} ${p.label} — loading match history…`,
+      headerHtml: `${p.emoji} ${escapeHtml(p.label)} — loading match history…`,
       subHeaderHtml: `Fetching this player's data from the community pipeline. This only happens once per session — it'll be instant next time.`,
-      clearLabel: `${p.emoji} ${p.label} tier list`,
+      clearLabel: `${p.emoji} ${escapeHtml(p.label)} tier list`,
     });
     return;
   }
@@ -4718,9 +4727,9 @@ function renderPlayerGrid() {
     gradeOf: c => grades[c] || null,
     valueOf: c => stats[c]?.wr || 0,
     valueLabel: c => `${stats[c].wr}% win rate (${stats[c].games} game${stats[c].games !== 1 ? 's' : ''})`,
-    headerHtml: `${p.emoji} ${p.label} — real personal civ win rates${ladderNote}${filterNote}${currentPatchNote}${recentFormNote} <a href="player.html?id=${p.profileId}" style="font-weight:400;text-transform:none;letter-spacing:normal;color:var(--amberL);text-decoration:none;font-size:11px">🔎 Full Spotlight →</a>`,
+    headerHtml: `${p.emoji} ${escapeHtml(p.label)} — real personal civ win rates${ladderNote}${filterNote}${currentPatchNote}${recentFormNote} <a href="player.html?id=${p.profileId}" style="font-weight:400;text-transform:none;letter-spacing:normal;color:var(--amberL);text-decoration:none;font-size:11px">🔎 Full Spotlight →</a>`,
     subHeaderHtml: `<b style="color:var(--amberL)">${gamesLabel}</b> · Snapshot from ${meta.source}, pulled ${meta.pulledDate || 'recently'} — not live. Showing civs with ${activeMinGames > 0 ? activeMinGames + '+' : 'any number of'} games.${activeRecencyMode === 'form' ? ' Win rates below are recency-weighted, not flat averages.' : ''}${missingData.length ? ` No qualifying data for: ${missingData.slice(0,15).join(', ')}${missingData.length>15?'…':''}.` : ''}${mapPillsHtml}`,
-    clearLabel: `${p.emoji} ${p.label} tier list`,
+    clearLabel: `${p.emoji} ${escapeHtml(p.label)} tier list`,
   });
 }
 

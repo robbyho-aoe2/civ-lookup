@@ -158,11 +158,18 @@ const svgNS = 'http://www.w3.org/2000/svg';
 const params = new URLSearchParams(location.search);
 const profileId = params.get('id'); // null -> landing page instead of a specific player
 let ALL_TRACKED = []; // meta.players, kept around for search + similar-players + the landing page
+// Player display names come straight from the game's own API (any player
+// can set theirs to arbitrary text) and get interpolated into innerHTML
+// all over this page — escape before rendering so a name like "<s>" or
+// "<img onerror=...>" can't inject real markup. Never render a raw name.
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+}
 // Every opponent/teammate with a profileId gets linked now — player.html
 // handles untracked players via a live lookup (see fetchLivePlayer below),
 // so this no longer needs to gate on TRACKED_IDS to avoid a dead link.
 function playerLinkOrName(name, id) {
-  const label = name || (id != null ? `#${id}` : 'Unknown');
+  const label = escapeHtml(name || (id != null ? `#${id}` : 'Unknown'));
   if (id == null) return label;
   return `<a href="player.html?id=${id}">${label}</a>`;
 }
@@ -354,7 +361,7 @@ function renderSearchResults(local, live) {
   const row = (p, isLive) => `
     <div class="search-result">
       <a class="sr-link" href="player.html?id=${p.profileId}">
-        <span class="sr-name">${p.name}</span>${p.games != null ? `<span class="sr-meta">${Number(p.games).toLocaleString()} games</span>` : ''}
+        <span class="sr-name">${escapeHtml(p.name)}</span>${p.games != null ? `<span class="sr-meta">${Number(p.games).toLocaleString()} games</span>` : ''}
       </a>
       <span class="sr-actions">
         ${isLive ? `<a class="sr-request" href="${requestTrackingUrl(p.name, p.profileId)}" target="_blank" rel="noopener">request tracking</a>` : ''}
@@ -497,7 +504,7 @@ function renderLandingPage(content) {
   const topPc = topByRating('pc', '1v1 PC', 20);
 
   const cards = (list, subtitleFn) => list.length
-    ? list.map(p => `<a href="player.html?id=${p.profileId}"><b>${p.name}</b><span>${subtitleFn(p)}</span></a>`).join('')
+    ? list.map(p => `<a href="player.html?id=${p.profileId}"><b>${escapeHtml(p.name)}</b><span>${subtitleFn(p)}</span></a>`).join('')
     : '<p style="font-size:12px;color:var(--text3)">None tracked yet.</p>';
   const section = (title, desc, html) => `
     <div class="card">
@@ -519,7 +526,7 @@ function render(content, entry, player) {
     .map(([name]) => name);
 
   if (!ladders.length) {
-    content.innerHTML = `<div class="error">${entry.name} has no match history pulled yet.</div>`;
+    content.innerHTML = `<div class="error">${escapeHtml(entry.name)} has no match history pulled yet.</div>`;
     return;
   }
 
@@ -527,24 +534,24 @@ function render(content, entry, player) {
   const altsCardHtml = altGroup ? `
     <div class="card" id="alts-card">
       <h2>Known Alts</h2>
-      <p class="desc">${entry.name} is confirmed to also play under ${altGroup.length > 2 ? 'these accounts' : 'this account'}.</p>
+      <p class="desc">${escapeHtml(entry.name)} is confirmed to also play under ${altGroup.length > 2 ? 'these accounts' : 'this account'}.</p>
       <div class="similar-players" id="alts-players"></div>
     </div>` : '';
 
   const imposterEntry = findImposterEntry(entry.profileId);
   const imposterReal = imposterEntry ? ALL_TRACKED.find(p => p.profileId === imposterEntry.impersonating) : null;
   const imposterHintHtml = imposterEntry
-    ? `<div class="imposter-hint">⚠ Flagged as a possible impersonator of <a href="player.html?id=${imposterEntry.impersonating}">${imposterReal ? imposterReal.name : '#' + imposterEntry.impersonating}</a> — not confirmed to be the same real person. ${imposterEntry.note}</div>`
+    ? `<div class="imposter-hint">⚠ Flagged as a possible impersonator of <a href="player.html?id=${imposterEntry.impersonating}">${escapeHtml(imposterReal ? imposterReal.name : '#' + imposterEntry.impersonating)}</a> — not confirmed to be the same real person. ${escapeHtml(imposterEntry.note)}</div>`
     : '';
 
   const impersonators = findImpersonators(entry.profileId);
   const impersonatorLinks = impersonators.map(e => {
     const p = ALL_TRACKED.find(x => x.profileId === e.id);
     const name = p ? p.name : `#${e.id}`;
-    return `<a href="player.html?id=${e.id}">${name}</a>`;
+    return `<a href="player.html?id=${e.id}">${escapeHtml(name)}</a>`;
   }).join(', ');
   const impersonatorsHintHtml = impersonators.length
-    ? `<div class="imposter-hint">⚠ ${impersonatorLinks} ${impersonators.length > 1 ? 'are NOT' : 'is NOT'} ${entry.name} — just a near-identical name. Flagged as a possible impersonator, not confirmed to be the same real person.</div>`
+    ? `<div class="imposter-hint">⚠ ${impersonatorLinks} ${impersonators.length > 1 ? 'are NOT' : 'is NOT'} ${escapeHtml(entry.name)} — just a near-identical name. Flagged as a possible impersonator, not confirmed to be the same real person.</div>`
     : '';
 
   const lastUpdated = !entry.live ? latestPulledDate(player) : null;
@@ -556,12 +563,12 @@ function render(content, entry, player) {
     <div class="card">
       <div class="player-hero">
         <div>
-          <div class="player-name">${entry.countryIcon ? `<span class="country-flag" data-country="${entry.countryName || ''}">${entry.countryIcon}</span> ` : ''}${entry.name}</div>
+          <div class="player-name">${entry.countryIcon ? `<span class="country-flag" data-country="${escapeHtml(entry.countryName || '')}">${entry.countryIcon}</span> ` : ''}${escapeHtml(entry.name)}</div>
           <div class="player-badges" id="player-badges"></div>
         </div>
         ${updatedNoteHtml}
       </div>
-      ${entry.live ? `<div class="tracker-hint">Not part of the permanent AoE Auto Scout roster — this page was fetched live from AoE2Companion and won't be saved or refreshed automatically. <a href="${requestTrackingUrl(entry.name, entry.profileId)}" target="_blank" rel="noopener">Request ${entry.name} be tracked permanently</a> (form pre-filled), or ask in the <a href="https://discord.gg/2uRZG6qSyy" target="_blank" rel="noopener">Discord</a> or a <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank" rel="noopener">Fast Castle and Chill</a> video comment.</div>` : ''}
+      ${entry.live ? `<div class="tracker-hint">Not part of the permanent AoE Auto Scout roster — this page was fetched live from AoE2Companion and won't be saved or refreshed automatically. <a href="${requestTrackingUrl(entry.name, entry.profileId)}" target="_blank" rel="noopener">Request ${escapeHtml(entry.name)} be tracked permanently</a> (form pre-filled), or ask in the <a href="https://discord.gg/2uRZG6qSyy" target="_blank" rel="noopener">Discord</a> or a <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank" rel="noopener">Fast Castle and Chill</a> video comment.</div>` : ''}
       ${imposterHintHtml}
       ${impersonatorsHintHtml}
     </div>
@@ -589,7 +596,7 @@ function render(content, entry, player) {
 
     <div class="card">
       <h2>Civ Pool</h2>
-      <p class="desc" id="civ-desc">${entry.name}'s most-played civs on this ladder — click a column to re-sort.</p>
+      <p class="desc" id="civ-desc">${escapeHtml(entry.name)}'s most-played civs on this ladder — click a column to re-sort.</p>
       <div class="table-scroll"><table id="civ-table"></table></div>
     </div>
 
@@ -665,7 +672,7 @@ function render(content, entry, player) {
         const sub = p && p.ratings && Object.keys(p.ratings).length
           ? Object.entries(p.ratings).map(([l, r]) => `${l}: ${r}`).join(' · ')
           : (p ? p.group : 'not tracked');
-        return `<a href="player.html?id=${id}"><b>${name}</b><span>${sub}</span></a>`;
+        return `<a href="player.html?id=${id}"><b>${escapeHtml(name)}</b><span>${escapeHtml(sub)}</span></a>`;
       }).join('');
   }
 
@@ -739,7 +746,7 @@ function render(content, entry, player) {
       .slice(0, 8);
     descEl.textContent = `Tracked players closest to ${entry.name}'s ${ladderName} rating (${myRating}).`;
     if (!pool.length) { listEl.innerHTML = '<p class="weekly-empty" style="font-size:12px;color:var(--text3)">No other tracked players on this ladder yet.</p>'; return; }
-    listEl.innerHTML = pool.map(p => `<a href="player.html?id=${p.profileId}"><b>${p.name}</b><span>${p.rating} rating</span></a>`).join('');
+    listEl.innerHTML = pool.map(p => `<a href="player.html?id=${p.profileId}"><b>${escapeHtml(p.name)}</b><span>${p.rating} rating</span></a>`).join('');
   }
 
   function renderOpponentsTable(matches) {

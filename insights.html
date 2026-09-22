@@ -234,6 +234,13 @@ const weeklyReportUrl = date => `${PLAYER_DATA_BASE}/weekly-reports/console-${da
 const SNL_INDEX_URL = `${PLAYER_DATA_BASE}/snl-reports/index.json`;
 const snlReportUrl = date => `${PLAYER_DATA_BASE}/snl-reports/snl-${date}.json`;
 const svgNS = 'http://www.w3.org/2000/svg';
+// Player display names come straight from the game's own API (any player
+// can set theirs to arbitrary text) and get interpolated into innerHTML
+// all over this page — escape before rendering so a name like "<s>" or
+// "<img onerror=...>" can't inject real markup. Never render a raw name.
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+}
 
 const brackets = [
   { key: 'low',   name: 'Low',    range: '0–899',     lo: 0,    hi: 899,   cls: 'bar-low',   ghostCls: 'ghost-low' },
@@ -1088,7 +1095,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     const row = document.createElement('div');
     row.className = 'peak-row';
     row.innerHTML = `
-      <div class="peak-name"><span class="peak-rank">#${i + 1}</span><a href="${cpPlayerLink(r)}">${r.name}</a></div>
+      <div class="peak-name"><span class="peak-rank">#${i + 1}</span><a href="${cpPlayerLink(r)}">${escapeHtml(r.name)}</a></div>
       <div class="peak-track">
         <div class="peak-fill-ceiling" style="width:${ceilingPct}%"></div>
         <div class="peak-fill-current" style="width:${currentPct}%"></div>
@@ -1102,7 +1109,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     `View all ${cpTracked.toLocaleString()} as a table`;
   const cpTableEl = document.getElementById('crossplay-table');
   cpTableEl.innerHTML = '<thead><tr><th class="num">#</th><th>Player</th><th class="num">Peak</th><th class="num">Current</th></tr></thead>' +
-    '<tbody>' + crossplayRows.map((r, i) => `<tr><td class="num">${i + 1}</td><td><a href="${cpPlayerLink(r)}">${r.name}</a></td><td class="num">${r.peak.toLocaleString()}</td><td class="num">${r.current.toLocaleString()}</td></tr>`).join('') + '</tbody>';
+    '<tbody>' + crossplayRows.map((r, i) => `<tr><td class="num">${i + 1}</td><td><a href="${cpPlayerLink(r)}">${escapeHtml(r.name)}</a></td><td class="num">${r.peak.toLocaleString()}</td><td class="num">${r.current.toLocaleString()}</td></tr>`).join('') + '</tbody>';
 
   // ---- alts / smurfs ----
   // Highlight whichever member the Crossplay Ceiling dedupe above kept
@@ -1122,7 +1129,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       const name = p ? p.name : `Unknown (${id})`;
       const cls = id === winner ? 'alt-group-member kept' : 'alt-group-member';
       const sep = i > 0 ? '<span class="alt-group-sep">↔</span>' : '';
-      return `${sep}<a class="${cls}" href="player.html?id=${id}">${name}</a>`;
+      return `${sep}<a class="${cls}" href="player.html?id=${id}">${escapeHtml(name)}</a>`;
     }).join('') + `<span class="alt-group-hint">${group.length} profiles</span>`;
     altGroupsEl.appendChild(row);
   });
@@ -1136,10 +1143,10 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     const realName = real ? real.name : `Unknown (${entry.impersonating})`;
     const row = document.createElement('div');
     row.className = 'alt-group';
-    row.innerHTML = `<a class="alt-group-member" href="player.html?id=${entry.id}">${impName}</a>` +
+    row.innerHTML = `<a class="alt-group-member" href="player.html?id=${entry.id}">${escapeHtml(impName)}</a>` +
       `<span class="alt-group-sep">⚠ impersonating</span>` +
-      `<a class="alt-group-member kept" href="player.html?id=${entry.impersonating}">${realName}</a>` +
-      `<div style="flex-basis:100%;font-size:11px;color:var(--text3);margin-top:4px;">${entry.note}</div>`;
+      `<a class="alt-group-member kept" href="player.html?id=${entry.impersonating}">${escapeHtml(realName)}</a>` +
+      `<div style="flex-basis:100%;font-size:11px;color:var(--text3);margin-top:4px;">${escapeHtml(entry.note)}</div>`;
     imposterRowsEl.appendChild(row);
   });
 
@@ -1226,7 +1233,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     }).join('') + '</tr></thead>';
 
     const tbody = '<tbody>' + shownRows.map(r => {
-      const playerCells = r.displayNames.slice(0, playerCount).map(p => `<td><a href="player.html?id=${p.profileId}">${p.name}</a></td>`).join('');
+      const playerCells = r.displayNames.slice(0, playerCount).map(p => `<td><a href="player.html?id=${p.profileId}">${escapeHtml(p.name)}</a></td>`).join('');
       const wrPct = (r.winRate * 100).toFixed(1);
       const wrCls = r.winRate >= 0.52 ? 'wr-good' : r.winRate <= 0.48 ? 'wr-bad' : '';
       return `<tr>${playerCells}<td class="num">${r.games.toLocaleString()}</td><td class="num"><span class="${wrCls}">${wrPct}%</span></td></tr>`;
@@ -1356,8 +1363,8 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     const thead = '<thead><tr><th>#</th><th>Player</th><th>Country</th><th class="num">Rating</th><th>Ladder</th></tr></thead>';
     const tbody = '<tbody>' + shownRows.map((p, i) => `<tr>
         <td class="num">${i + 1}</td>
-        <td><a href="player.html?id=${p.profileId}">${p.name}</a></td>
-        <td>${p.countryIcon || ''} ${p.countryName || ''}</td>
+        <td><a href="player.html?id=${p.profileId}">${escapeHtml(p.name)}</a></td>
+        <td>${p.countryIcon || ''} ${escapeHtml(p.countryName || '')}</td>
         <td class="num">${p.best.rating.toLocaleString()}</td>
         <td>${p.best.ladder}</td>
       </tr>`).join('') + '</tbody>';
@@ -1396,7 +1403,8 @@ function weeklyTable(headers, rows) {
 }
 
 function wLink(name, id) {
-  return id != null ? `<a href="player.html?id=${id}">${name}</a>` : name;
+  const safe = escapeHtml(name);
+  return id != null ? `<a href="player.html?id=${id}">${safe}</a>` : safe;
 }
 
 function renderWeeklyReport(report) {
