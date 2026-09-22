@@ -275,7 +275,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.36</div>
+    <div class="version">v2.37</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2933,7 +2933,12 @@ const VARANGIANS_INCLUDE_NAMES = { units: ['Fast Fire Ship'], techs: ['Blast Fur
    yet — kept for correctness/future-proofing once it IS wired up. */
 const DANES_EXTRA_EXCLUDE_NAMES = {
   units: ['Carrack', 'Arbalester', 'Hussar'],
-  techs: ['Two-Man Saw', 'Keep', 'Architecture', 'Guilds'],
+  // Cavalier: confirmed directly by the site owner (2026-09-22) — Danes cap
+  // out at Knight, no Stable upgrade past it. Consistent with their
+  // Infantry-and-Siege archetype tag and the fact they already lack Hussar
+  // above; Saxons' own screenshotted tech tree DOES have Cavalier, so this
+  // stays Danes-specific rather than moving into the shared base list.
+  techs: ['Two-Man Saw', 'Keep', 'Architecture', 'Guilds', 'Cavalier'],
 };
 // Blast Furnace and Fervor: present for Danes despite being in the shared
 // base's own exclude list, same divergence Varangians already has.

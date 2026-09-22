@@ -665,7 +665,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.14</div>
+    <div class="version">v1.15</div>
   </div>
 </div>
 
@@ -2260,7 +2260,11 @@ const CAVALRY_CIVS = {
   Celts: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
   Chinese: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Cumans: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: false },
-  Danes: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  // tier:'knight' — Danes do NOT get Cavalier (site owner, 2026-09-22): they
+  // cap out at plain Knight, no Stable upgrade past it. Matches their
+  // Infantry-and-Siege archetype and the fact index.html's own civData
+  // already excludes them from Hussar too (same Stable-upgrade gap shape).
+  Danes: { tier: 'knight', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Ethiopians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: true },
   Franks: { tier: 'paladin', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: false, husbandry: true, hpMult: 1.20 },
   Georgians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
