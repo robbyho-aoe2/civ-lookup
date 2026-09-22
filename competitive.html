@@ -271,7 +271,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 // data file exists for that profileId at all (e.g. a very low-volume/new
 // profile) -- shown as "ELO N/A" rather than guessed.
 const TEAMS = [
-  { id: 'usa',       name: 'USA',        accent: 'var(--blue)',   players: [
+  { id: 'usa',       name: 'USA',        accent: 'var(--nc-red)',   players: [
     { name: 'big Conigz', profileId: 10785893, elo: 1930 },
     { name: 'Faith2Adventure', profileId: 12527010, elo: 2291 },
     { name: 'PrEyOnU1', profileId: 13467931, elo: 1968 },
@@ -281,33 +281,33 @@ const TEAMS = [
     { name: 'Zotico3', profileId: 12462155, elo: 2044 },
     { name: 'slytiger4815', profileId: 22409057, elo: 1827 },
   ] },
-  { id: 'mexico',    name: 'Mexico',     accent: 'var(--teal)',   players: [
+  { id: 'mexico',    name: 'Mexico',     accent: 'var(--nc-blue)',   players: [
     { name: 'MORIS0202', profileId: 12868111, elo: 2138 },
     { name: 'kobyrobys', profileId: 13106080, elo: 1816 },
     { name: 'UxLiho', profileId: 12459914, elo: 2222 },
     { name: 'UxDora', profileId: 25013161, elo: 2279 },
   ] },
-  { id: 'uk',        name: 'UK',         accent: 'var(--purple)', players: [
+  { id: 'uk',        name: 'UK',         accent: 'var(--nc-green)', players: [
     { name: 'ALPO4769', profileId: 13623295, elo: 2075 },
     { name: 'Huskarls4', profileId: 11828362, elo: 1942 },
     { name: 'Fiz 98', profileId: 12710758, elo: 1899 },
     { name: 'D4NI3L J0N35', profileId: 13410632, elo: 2098 },
     { name: 'DarK Slaayer', profileId: 13107937, elo: 2185 },
   ] },
-  { id: 'latam',     name: 'LATAM',      accent: 'var(--pink)',   players: [
+  { id: 'latam',     name: 'LATAM',      accent: 'var(--nc-gold)',   players: [
     { name: 'not A theist', profileId: 14602117, elo: 1618 },
     { name: 'JANGEL4107', profileId: 12460348, elo: 1645 },
   ] },
-  { id: 'france',    name: 'France',     accent: 'var(--cyan)',   players: [] },
+  { id: 'france',    name: 'France',     accent: 'var(--nc-red)',   players: [] },
   // Not a nation like the others -- a dedicated team for PS5 players
   // specifically, replacing the (empty) Arabia and Europe regions.
-  { id: 'ps5',       name: 'PS5',        accent: 'var(--amberL)', players: [
+  { id: 'ps5',       name: 'PS5',        accent: 'var(--nc-blue)', players: [
     { name: 'esgedda', profileId: 22831188, elo: 1706 },
     { name: 'BillieDown', profileId: 22759370, elo: 2001 },
     { name: 'ItsGutsAoE', profileId: 23477132, elo: 2068 },
     { name: 'CrustyPotato313', profileId: 23147426, elo: 2034 },
   ] },
-  { id: 'europe',    name: 'Europe',     accent: 'var(--yellow)', players: [
+  { id: 'europe',    name: 'Europe',     accent: 'var(--nc-green)', players: [
     { name: 'KFC DIRECTOR', profileId: 15717181, elo: 1744 },
   ] },
   // Added along with the USA/Mexico/Europe drop above -- not one of the
@@ -315,7 +315,7 @@ const TEAMS = [
   // it's exactly 6 players (this format's own team-size cap), so treating
   // it as its own region rather than folding into USA. Flag to the user if
   // that reading is wrong.
-  { id: 'canada',    name: 'Canada',     accent: 'var(--red)',    players: [
+  { id: 'canada',    name: 'Canada',     accent: 'var(--nc-gold)',    players: [
     { name: 'volcanloup', profileId: 12893749, elo: 2306 },
     { name: 'GOAT Gobz', profileId: 8154765, elo: 1843 },
     { name: 'Im2Good4YoMoma', profileId: 12591985, elo: 1991 },
