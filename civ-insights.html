@@ -416,7 +416,7 @@ select:focus{outline:none;border-color:var(--amber);}
       <p class="desc" style="color:var(--text3)">
         <b>Non-Castle unique units</b> — Fire Lancer, Temple Guard, Varangian Guard, Champi Warrior,
         Condottiero, Serjeant. <b>Castle unique units</b> — every other real Infantry-archetype UU
-        (Huskarl, Samurai, Teutonic Knight, etc.). Berserk (Vikings) and Hearth Troop (Saxons) aren't in
+        (Huskarl, Samurai, Teutonic Knight, Jomsviking, Hearth Troop, etc.). Berserk (Vikings) isn't in
         yet — real stats still needed.
       </p>
       <button class="toggle-btn infantry-matchup-expand-btn" style="margin:10px 0;">▸ Expand</button>
@@ -665,7 +665,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.17</div>
+    <div class="version">v1.18</div>
   </div>
 </div>
 
@@ -2687,13 +2687,29 @@ const UNIQUE_INFANTRY_CIVS = {
   // stats from the cached aoe2techtree data.json, each civ's own real
   // Blacksmith Infantry tech flags copied directly from its INFANTRY_CIVS
   // entry above (same civ-wide flags, not re-derived). Berserk (Vikings)
-  // and Hearth Troop (Saxons) are real Infantry-archetype UUs NOT included
-  // yet — Hearth Troop has no real id in this site's civData at all yet
-  // (too new, same as Varangian Guard/Jarl — see index.html's own comment
-  // on MANUAL_NEW_CIV_DATA), and Berserk hit the same id-space mismatch
-  // trap flagged elsewhere this session (this site's id 250 for Berserk
-  // isn't Berserk in the cached data.json). Both need real stats supplied
-  // directly, same as Varangian Guard was.
+  // is a real Infantry-archetype UU NOT included yet — it hit the id-space
+  // mismatch trap flagged elsewhere this session (this site's id 250 for
+  // Berserk isn't Berserk in the cached data.json) and needs real stats
+  // supplied directly. Jomsviking (Danes) and Hearth Troop (Saxons) added
+  // 2026-09-24 straight from the live SiegeEngineers data (ids 2711/2712
+  // and 2705/2706 — stats, cost, train time all read from the fetched JSON).
+  // Jomsviking: 65f/15g. Its data also carries extra bonus-attack classes
+  // (not modeled — no matching column here). Danes' Blacksmith flags copied
+  // from Danes_VarangianGuard above.
+  Danes_Jomsviking: { civ: 'Danes', unit: 'Jomsviking', kind: 'unique', cost: 80,
+    base: { hp: 70, attack: 8, melee: 2, pierce: 2, speed: 0.96, reload: 1.8 },
+    elite: { hp: 75, attack: 9, melee: 2, pierce: 2, speed: 0.96, reload: 1.8 },
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: true, squires: true },
+  // Hearth Troop: 80w/35g (115), Saxons' "Foot Soldiers cost -5% per Town
+  // Center/Castle (max -20%)" applied at its max exactly like Saxons'
+  // Varangian Guard above (115 * 0.8 = 92) — ASSUMES the bonus covers this
+  // unique unit too; flag if it doesn't. Its real charge ability (recharging
+  // ~15s burst, per the data's ChargeEvent/Recharge fields) and +1/+2 attack
+  // classes aren't modeled. Note 1 melee/4 pierce armor (pierce-heavy).
+  Saxons_HearthTroop: { civ: 'Saxons', unit: 'Hearth Troop', kind: 'unique', cost: 92,
+    base: { hp: 75, attack: 9, melee: 1, pierce: 4, speed: 0.9, reload: 2 },
+    elite: { hp: 85, attack: 12, melee: 1, pierce: 4, speed: 0.9, reload: 2 },
+    meleeAtk: [true,true,false], infArmor: [true,true,true], gambesons: true, squires: true },
   Goths_Huskarl: { civ: 'Goths', unit: 'Huskarl', kind: 'unique', cost: 110,
     base: { hp: 60, attack: 10, melee: 0, pierce: 6, speed: 1.05, reload: 2 },
     elite: { hp: 70, attack: 12, melee: 0, pierce: 8, speed: 1.05, reload: 2 },
