@@ -665,7 +665,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.15</div>
+    <div class="version">v1.16</div>
   </div>
 </div>
 
@@ -2304,13 +2304,16 @@ const CAVALRY_CIVS = {
   Poles: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: true, husbandry: true, cost: 90 },
   Portuguese: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Romans: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
-  // tier:'cavalier' corrected 2026-09-18 (was wrongly 'knight') — a data-
-  // gathering inconsistency, not a real civ fact: this whole table's data
-  // was meant to be pulled under the Sept 22 patch toggle (matching
-  // CA_CIVS' own established convention above), but this specific value
-  // was captured with the toggle at its default 'current' state instead,
-  // where Saracens really does lack Cavalier. Under Sept 22 they gain it.
-  Saracens: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  // tier:'knight' — reverted back from 'cavalier' (2026-09-22): that value
+  // assumed Saracens would gain Cavalier once the Sept 22 patch went live,
+  // but now that it actually has (Viking Sagas launch day), the real
+  // SiegeEngineers data says otherwise — Saracens still lack Cavalier
+  // (unit id 283) entirely, only Knight. The original 2026-09-18 assumption
+  // about what the patch would do was wrong; this is the real outcome.
+  Saracens: { tier: 'knight', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
+  // Saxons DO get Cavalier (confirmed against live SiegeEngineers data,
+  // 2026-09-22 — Cavalier is unit id 283, not a tech); only Danes and
+  // Saracens cap at Knight.
   Saxons: { tier: 'cavalier', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Sicilians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true, uniqueTechMelee: 1, uniqueTechPierce: 2 },
   Slavs: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
@@ -2322,6 +2325,7 @@ const CAVALRY_CIVS = {
   // effects +50%" (Bloodlines' own +20 HP becomes +30) -- found via a
   // re-audit of the team-bonus/civ-bonus text after the Cavalier-age fix,
   // 2026-09-18. Nobody else amplifies Bloodlines this way.
+  // Varangians DO get Cavalier (confirmed live 2026-09-22, unit id 283).
   Varangians: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [true,true,true], bloodlines: true, husbandry: true, bloodlinesHp: 30 },
   Vietnamese: { tier: 'cavalier', meleeAtk: [true,true,false], cavArmor: [true,true,true], bloodlines: true, husbandry: true },
   Vikings: { tier: 'cavalier', meleeAtk: [true,true,true], cavArmor: [false,true,true], bloodlines: false, husbandry: false },

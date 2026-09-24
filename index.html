@@ -73,9 +73,6 @@ header{
 .itype.tech{background:var(--purpleBg);color:var(--purple);}
 .mode-toggle{display:flex;background:var(--surf);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;flex-shrink:0;}
 .mode-btn{height:44px;padding:0 16px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:13px;font-weight:700;}
-.patch-toggle{display:flex;width:fit-content;background:var(--surf);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin:0 0 22px;}
-.patch-toggle button{padding:7px 14px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;}
-.patch-toggle button.on{background:var(--amberBg);color:var(--amberL);}
 .mode-btn.active{background:var(--amber);color:#1a0a00;}
 /* Archetypes */
 .arch-group-label{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
@@ -244,10 +241,6 @@ header{
     <a href="civ-insights.html">🧮 Civ Insights</a>
     <a href="build-order.html">🛠️ Build Order</a>
   </nav>
-  <div class="patch-toggle" id="patch-toggle" title="Preview the Sept 22, 2026 balance patch + The Viking Sagas DLC before it's live — SiegeEngineers/aoe2techtree won't have real data for it until release.">
-    <button type="button" data-patch="current" class="on">Current Patch</button>
-    <button type="button" data-patch="sept22">Sept 22 Patch (Preview)</button>
-  </div>
   <div id="error-msg"></div>
   <div id="player-load-progress"></div>
   <div class="search-row">
@@ -275,7 +268,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.37</div>
+    <div class="version">v2.38</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -290,14 +283,11 @@ function escapeHtml(str) {
 }
 
 /* ================================================================
-   ALL 53 CIVS
+   ALL 56 CIVS
    ================================================================ */
-// Danes, Saxons, and Varangians (The Viking Sagas DLC, launching 2026-09-22)
-// added ahead of release — SiegeEngineers/aoe2techtree doesn't have their
-// tech-tree data yet, so civData for all three is hand-built below (see
-// MANUAL_NEW_CIV_DATA) from the in-game civ cards/tech trees directly,
-// rather than the live fetch. Delete MANUAL_NEW_CIV_DATA and just leave the
-// names here once SiegeEngineers' data.json catches up.
+// Includes Danes, Saxons, and Varangians (The Viking Sagas DLC) — as of the
+// 2026-09-22 launch, SiegeEngineers/aoe2techtree's live fetch has real
+// civData for all three like every other civ, no manual scaffolding needed.
 const ALL_CIVS = [
   "Armenians","Aztecs","Bengalis","Berbers","Bohemians","Britons","Bulgarians","Burgundians",
   "Burmese","Byzantines","Celts","Chinese","Cumans","Danes","Dravidians","Ethiopians","Franks",
@@ -314,16 +304,11 @@ const ALL_CIVS = [
    except Maya (file is "mayans.png" — the only mismatch across all 53). */
 const CIV_ICON_BASE = 'https://raw.githubusercontent.com/SiegeEngineers/aoe2techtree/master/img/Civs';
 const CIV_ICON_FILE_OVERRIDES = { Maya: 'mayans' };
-/* Viking Sagas civs (The Viking Sagas, 2026-09-22) aren't in that repo yet —
-   raw.githubusercontent.com/.../danes.png (and presumably saxons.png/
-   varangians.png) 404 as of this writing. Hosted locally instead, cropped
-   from the real in-game tech-tree shield icons the site owner screenshotted
-   and pasted directly (transparent-background PNGs, same visual role as the
-   repo's own icons). Swap an entry back to the remote path once
-   SiegeEngineers adds the real asset for that civ. */
-const CIV_ICON_LOCAL_OVERRIDES = { Danes: 'img/civs/danes.png', Saxons: 'img/civs/saxons.png', Varangians: 'img/civs/varangians.png' };
+// Danes/Saxons/Varangians used to 404 on this remote repo and were hosted
+// locally instead (img/civs/*.png, now-unused dead assets left on disk) —
+// confirmed live 2026-09-22 that SiegeEngineers has added real icons for
+// all three, so this just uses the same remote path as every other civ now.
 function civIconUrl(civName) {
-  if (CIV_ICON_LOCAL_OVERRIDES[civName]) return CIV_ICON_LOCAL_OVERRIDES[civName];
   const file = CIV_ICON_FILE_OVERRIDES[civName] || civName.toLowerCase();
   return `${CIV_ICON_BASE}/${file}.png`;
 }
@@ -525,7 +510,10 @@ const UNIQUE_TECHS = {
   Danes:["Hamask","Northmen's Fury"],
   Dravidians:["Medical Corps","Wootz Steel"],
   Ethiopians:["Royal Heirs","Torsion Engines"],
-  Franks:["Bearded Axe","Chivalry"],
+  // Bearded Axe -> Ordonnance Companies as of the Sept 22, 2026 patch
+  // (Mounted Crossbowman -40% gold) — confirmed live, Franks' fetched
+  // civData now has real id 1496 for it.
+  Franks:["Ordonnance Companies","Chivalry"],
   Georgians:["Svan Towers","Aznauri Cavalry"],
   Goths:["Anarchy","Perfusion"],
   Gurjaras:["Kshatriyas","Frontier Guards"],
@@ -1085,13 +1073,11 @@ const CHAMPI_IDS = [2552, 2554];       // Champi Warrior + Elite Champi Warrior
    ID once SiegeEngineers assigns one. */
 const LONGSHIP_SENTINEL_ID = 900001;
 
-/* Mounted Crossbowman — Danes/Saxons(/Varangians)' shared Archery Range
-   regional unit (The Viking Sagas, 2026-09-22). Same placeholder-sentinel
-   situation as Longship above (no real ID yet) — but per the user, this
-   one is ALSO being added to a number of EXISTING civs on release day,
-   not just the three new ones, unlike Longship/Varangian Guard which stay
-   Viking-Sagas-exclusive. Real per-civ list now confirmed and wired up
-   under the Sept 22 patch toggle — see SEPT22_MOUNTED_CROSSBOWMAN_CIVS.
+/* Mounted Crossbowman — Danes/Saxons/Varangians' shared Archery Range
+   regional unit (The Viking Sagas, 2026-09-22), also real for a dozen
+   existing civs (Bohemians, Britons, Burgundians, Celts, Franks, Italians,
+   Poles, Portuguese, Sicilians, Spanish, Teutons, Vikings — confirmed live
+   in each civ's fetched civData) as their Cavalry Archer replacement.
    Real combat stats, confirmed directly by the site owner (2026-09-15):
    base — 7 attack, 2 melee/0 pierce armor, 4 range, 2.5s attack speed
    (reload), 1.25 movement speed. Heavy — 8 attack, same 2/0 armor, same
@@ -1121,63 +1107,47 @@ const LONGSHIP_SENTINEL_ID = 900001;
    (cost/research time to promote to Heavy Mounted Crossbowman) is a
    separate still-unknown field too, needed before a build-order.html
    uniqueUnit entry (which needs cost+trainTime+age+building at minimum,
-   plus upgradeCost/upgradeResearchTime for the Heavy tier) is complete. */
-const MOUNTED_CROSSBOWMAN_SENTINEL_ID = 900002;
-// MOUNTED_CROSSBOWMAN_EXTRA_CIVS itself is now derived from real data once
-// CIV_ARCHETYPES exists (see syncCavalryArcherArchetypeForPatch below) —
-// this used to be a hand-maintained placeholder that was never filled in.
+   plus upgradeCost/upgradeResearchTime for the Heavy tier) is complete.
+   Real ID confirmed 2026-09-22 (Viking Sagas launch, live aoe2techtree
+   fetch): base 2700, Heavy 2701. Kept these constant NAMES (no longer
+   literal sentinels) so the dozens of existing reference sites don't all
+   need touching. */
+const MOUNTED_CROSSBOWMAN_SENTINEL_ID = 2700;
+const HEAVY_MOUNTED_CROSSBOWMAN_SENTINEL_ID = 2701;
 
-/* Cranequins — Mounted Crossbowman's own Imperial-age upgrade tech (per the
-   site owner, 2026-09-08), same "real ID not published yet" situation as
-   Mounted Crossbowman itself — no match anywhere in the cached aoe2techtree
-   data.json (which predates The Viking Sagas entirely, confirmed: 53 civs,
-   no Varangians). Placeholder sentinel, added to civData alongside
-   MOUNTED_CROSSBOWMAN_SENTINEL_ID for the same civs.
-   900006, NOT 900003 — that value collides with JARL_SENTINEL_ID further
-   below (a real bug caught while adding the next two sentinels; harmless
-   in practice since Jarl lives in a `.units` Set and Cranequins in a
-   `.techs` Set, but fragile and confusing to leave, so renumbered). */
-const CRANEQUINS_SENTINEL_ID = 900006;
+/* Cranequins — Mounted Crossbowman's own Imperial-age upgrade tech. Real ID
+   confirmed 2026-09-22: 1452. */
+const CRANEQUINS_SENTINEL_ID = 1452;
 
 /* Varangian Guard — Danes/Saxons/Varangians' shared Barracks regional unit
    (The Viking Sagas, 2026-09-22), named for all three, not Varangians-
    exclusive despite the name (both Danes' AND Varangians' own CB text
-   reference "Varangian Guards" — see CB above). Same placeholder-sentinel
-   situation as Longship/Mounted Crossbowman above (no real ID yet). Two
-   tiers tracked like every other two-tier unit line (both added to civData,
-   only the TOP tier referenced as the archetype item — same "track the top
-   tier only" convention Heavy Cavalry Archer/Champion/etc. already use).
-   Under the Sept 22 patch, also granted to Byzantines and Vikings — see
-   SEPT22_GAIN_VARANGIAN_GUARD_CIVS below.
+   reference "Varangian Guards" — see CB above). Two tiers tracked like
+   every other two-tier unit line (both added to civData, only the TOP tier
+   referenced as the archetype item — same "track the top tier only"
+   convention Heavy Cavalry Archer/Champion/etc. already use). Also real for
+   Byzantines and Vikings as of the same patch (confirmed directly against
+   live civData — both civs' fetched access sets already include it).
    Real combat stats, confirmed directly by the site owner (2026-09-15):
    base — 70 HP, 13 attack, 2 melee/1 pierce armor, 2/sec attack speed,
    1.05 movement speed. Elite — 70 HP, 17 attack, 2/2 armor, same speeds.
-   Shock Infantry class. Cost (also confirmed, via two independent early-
-   access preview videos cross-checked against the site owner's own
-   numbers): 65 Food / 45 Gold. Generates ~40 gold/min in combat when
-   attacking units (not buildings) per one preview video, independent of
-   civ — Danes/Varangians/Byzantines get no attack-speed bonus on this
-   unit, so their own faster-attack bonuses (where they have one) don't
-   change that base rate. Age confirmed directly by the site owner
-   (2026-09-16): base tier trains in Castle Age, Elite in Imperial —
-   same pattern as Mounted Crossbowman above. trainTime confirmed 30s
-   (also benefits from Gambesons). Every field now known for the base
-   tier — added as a real build-order.html uniqueUnit for Byzantines/
-   Vikings under the Sept 22 toggle (building=Barracks); Danes/Saxons/
-   Varangians still can't get it there since those civs aren't built out
-   in that file at all. Elite tier not modeled (matches that file's
-   existing no-Elite-for-uniques convention). */
-const VARANGIAN_GUARD_SENTINEL_ID = 900004;
-const HEAVY_VARANGIAN_GUARD_SENTINEL_ID = 900005;
+   Shock Infantry class. Cost 65 Food / 45 Gold. Age: base Castle, Elite
+   Imperial. trainTime 30s. Real ID confirmed 2026-09-22: base 2703, Elite
+   2704. Danes/Saxons/Varangians still can't get it in build-order.html
+   since those civs aren't built out in that file at all (separate, static
+   dataset — see project_viking_sagas_dlc memory). */
+const VARANGIAN_GUARD_SENTINEL_ID = 2703;
+const HEAVY_VARANGIAN_GUARD_SENTINEL_ID = 2704;
 
 /* Jarl — Varangians' own unique unit (Cavalry), NOT shared with Danes/
-   Saxons like Longship/Mounted Crossbowman above are. Same placeholder-
-   sentinel situation (no real ID yet), but added ONLY to
-   civData['Varangians'].units, and referenced as its own standalone
-   Cavalry-archetype item — same pattern as Longship's own Naval item,
-   per the site owner's request. Replace with the real ID once
-   SiegeEngineers assigns one. */
-const JARL_SENTINEL_ID = 900003;
+   Saxons like Longship/Mounted Crossbowman above are. Referenced as its own
+   standalone Cavalry-archetype item — same pattern as Longship's own Naval
+   item. Real IDs confirmed 2026-09-22: base 2708, Elite 2709 — a real Elite
+   tier the old single-sentinel design never modeled (civData now correctly
+   distinguishes them; EXTRA_UU_BONUS.Cavalry's Jarl entry credits on either
+   ID so both tiers still just grant the one flat bonus point). */
+const JARL_SENTINEL_ID = 2708;
+const ELITE_JARL_SENTINEL_ID = 2709;
 
 /* Treadmill Crane and Siphons — real, EXISTING AoE2:DE techs that
    SiegeEngineers/aoe2techtree's live feed simply doesn't track at all yet
@@ -1198,7 +1168,10 @@ const JARL_SENTINEL_ID = 900003;
    description) — a Naval item. Treadmill Crane: an Eco item per the site
    owner. */
 const TREADMILL_CRANE_SENTINEL_ID = 900007;
-const TREADMILL_CRANE_EXCLUDE_CIVS = ['Armenians','Bulgarians','Chinese','Cumans','Dravidians','Ethiopians','Franks','Goths','Hindustanis','Huns','Khitans','Khmer','Mongols','Persians','Romans','Shu','Sicilians','Slavs','Spanish','Teutons'];
+// Armenians/Franks/Goths/Shu removed and Bengalis/Bohemians/Celts/Saracens
+// added per the Sept 22, 2026 patch (folded in permanently now that the
+// patch is live — this used to be a toggle-gated delta, see git history).
+const TREADMILL_CRANE_EXCLUDE_CIVS = ['Bengalis','Bohemians','Bulgarians','Celts','Chinese','Cumans','Dravidians','Ethiopians','Hindustanis','Huns','Khitans','Khmer','Mongols','Persians','Romans','Saracens','Sicilians','Slavs','Spanish','Teutons'];
 const SIPHONS_SENTINEL_ID = 900008;
 const SIPHONS_EXCLUDE_CIVS = ['Aztecs','Bulgarians','Burmese','Celts','Cumans','Ethiopians','Georgians','Gurjaras','Hindustanis','Huns','Incas','Japanese','Lithuanians','Magyars','Malians','Maya','Muisca','Poles','Romans','Slavs','Tatars','Tupi','Vietnamese','Wei'];
 /* Incendiaries — a THIRD gap in the same "SiegeEngineers hasn't caught up"
@@ -1210,148 +1183,29 @@ const SIPHONS_EXCLUDE_CIVS = ['Aztecs','Bulgarians','Burmese','Celts','Cumans','
 const INCENDIARIES_SENTINEL_ID = 900009;
 const INCENDIARIES_INCLUDE_CIVS = ['Armenians','Bohemians','Burgundians','Dravidians','Goths','Italians','Jurchens','Khitans','Koreans','Persians','Saracens','Turks'];
 
-/* ================================================================
-   SEPT 22, 2026 PATCH PREVIEW — The Viking Sagas DLC launch balance
-   patch, given directly by the site owner well ahead of release (real
-   patch notes, not a guess) since SiegeEngineers/aoe2techtree won't have
-   this data until the patch is actually live. Gated entirely behind the
-   Current/Sept 22 toggle (PATCH_VERSION, below) so the CURRENT site
-   stays accurate right up until the real patch date — none of this
-   applies unless the user explicitly switches the toggle.
-   ================================================================ */
+// The Sept 22, 2026 balance patch (The Viking Sagas DLC launch) used to be
+// a toggle-gated preview here (PATCH_VERSION/applySept22PatchDeltas — see
+// git history) since SiegeEngineers/aoe2techtree didn't have it yet. As of
+// launch day the live fetch already reflects it for every civ (verified:
+// Britons/Chinese/Portuguese/Koreans/Vietnamese/Byzantines all match real
+// patch notes exactly) — real IDs now exist for Mounted Crossbowman/Heavy/
+// Cranequins/Varangian Guard/Jarl (see each constant's own comment further
+// up), so the only deltas that needed permanently folding in by hand were
+// the ones touching sentinel-only content the live data still can't carry
+// (Treadmill Crane, folded into TREADMILL_CRANE_EXCLUDE_CIVS above) and
+// display-only text (UNIQUE_TECHS.Franks, below).
 
-// Two more Viking-Sagas-era sentinels, same "no real ID yet" situation as
-// the ones above (LONGSHIP_SENTINEL_ID etc.) — Heavy Mounted Crossbowman
-// is a real second tier (several civs explicitly gain "(Heavy) Mounted
-// Crossbowmen", others only the base tier — see SEPT22_MOUNTED_CROSSBOWMAN_CIVS
-// below). Ordonnance Companies is a brand-new Franks-exclusive Castle tech
-// (Mounted Crossbowmen -40% gold cost), confirmed by the site owner.
-const HEAVY_MOUNTED_CROSSBOWMAN_SENTINEL_ID = 900010;
-const ORDONNANCE_COMPANIES_SENTINEL_ID = 900011;
-
-// Cranequins (Mounted Crossbowman's own Imperial upgrade tech): confirmed
-// by the site owner — Imperial Age, cost 300 Food/200 Gold, effect "+1
-// range, +2 attack vs. Infantry" on Mounted Crossbowman. Not yet surfaced
-// as tooltip text anywhere (the DLC sentinels intentionally carry no real
-// stats block, same as Longship/Varangian Guard above), but recorded here
-// for whichever page eventually needs it.
-
-// Which civs gain Mounted Crossbowman access under the Sept 22 patch, and
-// whether they get the Heavy tier + Cranequins too — fills in the
-// MOUNTED_CROSSBOWMAN_EXTRA_CIVS TODO above, now that the site owner has
-// confirmed the real list. Danes/Saxons/Varangians already have this from
-// applyManualNewCivData() regardless of patch toggle.
-const SEPT22_MOUNTED_CROSSBOWMAN_CIVS = {
-  Bohemians: { heavy: false, cranequins: false },
-  Britons: { heavy: true, cranequins: true },
-  Burgundians: { heavy: false, cranequins: false },
-  Celts: { heavy: true, cranequins: false },
-  Franks: { heavy: true, cranequins: true },
-  Italians: { heavy: false, cranequins: false },
-  Poles: { heavy: true, cranequins: false },
-  Portuguese: { heavy: false, cranequins: false },
-  Sicilians: { heavy: true, cranequins: true },
-  Spanish: { heavy: true, cranequins: false },
-  Teutons: { heavy: true, cranequins: false },
-  Vikings: { heavy: false, cranequins: false },
-};
-// All of the above also lose Cavalry Archer access (base + Heavy tier,
-// whichever they had) in the same patch — losing the old regional
-// crossbow-cavalry unit as Mounted Crossbowman replaces it. Confirmed
-// per-civ list from the site owner; Chinese is a special case (loses only
-// the Heavy Cavalry Archer UPGRADE, keeps base Cavalry Archer) handled
-// separately below, not folded into this list.
-const SEPT22_LOSE_CAVALRY_ARCHER_CIVS = [
-  'Britons', 'Burgundians', 'Celts', 'Franks', 'Italians', 'Poles',
-  'Portuguese', 'Sicilians', 'Spanish', 'Teutons', 'Vikings',
-];
-
-// Byzantines and Vikings both gain (Elite) Varangian Guards — the same
-// shared regional unit Danes/Saxons/Varangians already have.
-const SEPT22_GAIN_VARANGIAN_GUARD_CIVS = ['Byzantines', 'Vikings'];
-
-// Treadmill Crane gain/loss deltas — applied ON TOP of the current
-// TREADMILL_CRANE_EXCLUDE_CIVS list (§ applyBroadTechGaps above).
-const SEPT22_TREADMILL_CRANE_GAIN_CIVS = ['Armenians', 'Franks', 'Goths', 'Shu']; // currently excluded, gains it
-const SEPT22_TREADMILL_CRANE_LOSE_CIVS = ['Bengalis', 'Bohemians', 'Celts', 'Saracens']; // currently has it, loses it
-
-// Single-tech/unit gain/loss deltas that don't fit the broader lists
-// above — each a real, already-tracked item (see UNIT_IDS/TECH_IDS), just
-// added to or removed from one civ's access set.
-const SEPT22_SINGLE_DELTAS = [
-  { civ: 'Portuguese', type: 'tech', name: 'Redemption', op: 'lose' },
-  { civ: 'Koreans', type: 'tech', name: 'Gambesons', op: 'lose' },
-  { civ: 'Vikings', type: 'tech', name: 'Gambesons', op: 'lose' },
-  { civ: 'Vietnamese', type: 'tech', name: 'Masonry', op: 'gain' },
-  // Chinese: loses only the Heavy Cavalry Archer UPGRADE — keeps base
-  // Cavalry Archer, unlike the full-line losses in
-  // SEPT22_LOSE_CAVALRY_ARCHER_CIVS above.
-  { civ: 'Chinese', type: 'unit', name: 'Heavy Cavalry Archer', op: 'lose' },
-];
-
-let PATCH_VERSION = localStorage.getItem('aoe2-patch') === 'sept22' ? 'sept22' : 'current';
-
-function applySept22PatchDeltas() {
-  Object.entries(SEPT22_MOUNTED_CROSSBOWMAN_CIVS).forEach(([civ, { heavy, cranequins }]) => {
-    if (!civData[civ]) return;
-    civData[civ].units.add(MOUNTED_CROSSBOWMAN_SENTINEL_ID);
-    if (heavy) civData[civ].units.add(HEAVY_MOUNTED_CROSSBOWMAN_SENTINEL_ID);
-    if (cranequins) civData[civ].techs.add(CRANEQUINS_SENTINEL_ID);
-  });
-  SEPT22_LOSE_CAVALRY_ARCHER_CIVS.forEach(civ => {
-    if (!civData[civ]) return;
-    civData[civ].units.delete(UNIT_IDS['Cavalry Archer']);
-    civData[civ].units.delete(UNIT_IDS['Heavy Cavalry Archer']);
-  });
-  SEPT22_GAIN_VARANGIAN_GUARD_CIVS.forEach(civ => {
-    if (!civData[civ]) return;
-    civData[civ].units.add(VARANGIAN_GUARD_SENTINEL_ID);
-    civData[civ].units.add(HEAVY_VARANGIAN_GUARD_SENTINEL_ID);
-  });
-  SEPT22_TREADMILL_CRANE_GAIN_CIVS.forEach(civ => { if (civData[civ]) civData[civ].techs.add(TREADMILL_CRANE_SENTINEL_ID); });
-  SEPT22_TREADMILL_CRANE_LOSE_CIVS.forEach(civ => { if (civData[civ]) civData[civ].techs.delete(TREADMILL_CRANE_SENTINEL_ID); });
-  if (civData['Franks']) civData['Franks'].techs.add(ORDONNANCE_COMPANIES_SENTINEL_ID);
-  SEPT22_SINGLE_DELTAS.forEach(({ civ, type, name, op }) => {
-    if (!civData[civ]) return;
-    const id = type === 'unit' ? UNIT_IDS[name] : TECH_IDS[name];
-    if (id == null) return;
-    civData[civ][type === 'unit' ? 'units' : 'techs'][op === 'gain' ? 'add' : 'delete'](id);
-  });
-}
-
-// Franks' real "unique techs" pair changes under Sept22 — lose Bearded Axe,
-// gain Ordonnance Companies (their new Castle-age tech, see
-// ORDONNANCE_COMPANIES_SENTINEL_ID above) alongside keeping Chivalry.
-// UNIQUE_TECHS itself feeds both the civ info card AND the bonus-archetype
-// grading (classifyBonusCategories), neither of which goes through the
-// civData access-set model SEPT22_SINGLE_DELTAS uses — so this is its own
-// small override map + a lookup wrapper, called wherever UNIQUE_TECHS[civ]
-// used to be read directly.
-const SEPT22_UNIQUE_TECH_OVERRIDES = {
-  Franks: ['Ordonnance Companies', 'Chivalry'],
-};
-function getUniqueTechs(civName) {
-  if (PATCH_VERSION === 'sept22' && SEPT22_UNIQUE_TECH_OVERRIDES[civName]) return SEPT22_UNIQUE_TECH_OVERRIDES[civName];
-  return UNIQUE_TECHS[civName] || [];
-}
-
-// Re-runs the full civData build pipeline from the cached raw fetch —
-// cheap (all in-memory), needed both at initial load and whenever the
-// patch toggle changes, since applySept22PatchDeltas mutates civData in
-// place and isn't safe to apply twice without a fresh parseRaw() first.
+// Re-runs the full civData build pipeline from the cached raw fetch — cheap
+// (all in-memory), only needed if RAW_DATA is ever reprocessed.
 let RAW_DATA = null;
 function rebuildCivData() {
   if (!RAW_DATA) return;
   parseRaw(RAW_DATA);
-  applyManualNewCivData();
   applyBroadTechGaps();
-  if (PATCH_VERSION === 'sept22') applySept22PatchDeltas();
-  syncCavalryArcherArchetypeForPatch();
   invalidateGradeCaches();
 }
 function applyBroadTechGaps() {
   Object.keys(civData).forEach(civ => {
-    if (civ === 'Danes' || civ === 'Saxons' || civ === 'Varangians') return;
     if (!TREADMILL_CRANE_EXCLUDE_CIVS.includes(civ)) civData[civ].techs.add(TREADMILL_CRANE_SENTINEL_ID);
     if (!SIPHONS_EXCLUDE_CIVS.includes(civ)) civData[civ].techs.add(SIPHONS_SENTINEL_ID);
     if (INCENDIARIES_INCLUDE_CIVS.includes(civ)) civData[civ].techs.add(INCENDIARIES_SENTINEL_ID);
@@ -1819,7 +1673,7 @@ const CIV_ARCHETYPES = [
     {t:'tech',id:437},{t:'tech',id:201},{t:'tech',id:200},{t:'tech',id:199},{t:'tech',id:47},
     {t:'tech',id:211},{t:'tech',id:212},{t:'tech',id:219},
   ]},
-  {emoji:'🎯',icon:'cavalry_archer',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras'],items:[
+  {emoji:'🎯',icon:'cavalry_archer',label:'Cavalry Archer',bonusKey:'Cavalry Archer',restrictTo:['Armenians','Berbers','Bohemians','Britons','Bulgarians','Burgundians','Burmese','Byzantines','Celts','Chinese','Cumans','Danes','Ethiopians','Franks','Georgians','Goths','Hindustanis','Huns','Italians','Japanese','Jurchens','Khitans','Khmer','Koreans','Lithuanians','Magyars','Malay','Malians','Mapuche','Mongols','Persians','Poles','Portuguese','Romans','Saracens','Saxons','Shu','Sicilians','Slavs','Spanish','Tatars','Teutons','Turks','Varangians','Vietnamese','Vikings','Wei','Wu','Bengalis','Dravidians','Gurjaras'],items:[
     // Mounted Crossbowman folded in here (not EXTRA_UU_BONUS) because it's a
     // genuine tier-REPLACEMENT for Danes/Saxons/Varangians, who have no real
     // Cavalry Archer at all — same treatment as Xianbei Raider/Elephant
@@ -1926,37 +1780,11 @@ const CIV_ARCHETYPES = [
   ]},
 ];
 
-// Sept22: every civ that gains Mounted Crossbowman access should be
-// Cavalry-Archer-archetype eligible too — it's a full replacement/
-// equivalent of Cavalry Archer for that civ, not an additive side-grade
-// (site owner: "civs with mounted crossbowmen should be treated in the
-// same category as CA ... they're not regional units entirely, rather
-// replacements as equivalents to CA"). Most of the 11 Sept22 Mounted-
-// Crossbowman civs already have real Cavalry Archer access today (already
-// in the archetype's own restrictTo list above) — Bohemians is the one
-// exception, gaining a real cavalry-archer-type unit for the first time
-// only via this patch. Computed here (whichever of the 11 ISN'T already in
-// the archetype's base restrictTo) rather than hardcoding "Bohemians"
-// directly, so this stays correct automatically if the confirmed civ list
-// ever changes; Danes/Saxons/Varangians need no entry here since they
-// already have Mounted Crossbowman unconditionally and are already in the
-// base list from earlier Viking Sagas DLC work.
+// Bohemians added directly to the restrictTo list above (2026-09-22) — the
+// Sept 22 patch gives them Mounted Crossbowman, a real Cavalry-Archer-
+// archetype equivalent, permanently now (used to be a toggle-gated
+// addition here; see git history).
 const CAVALRY_ARCHER_ARCHETYPE = CIV_ARCHETYPES.find(a => a.label === 'Cavalry Archer');
-const MOUNTED_CROSSBOWMAN_EXTRA_CIVS = Object.keys(SEPT22_MOUNTED_CROSSBOWMAN_CIVS)
-  .filter(civ => !CAVALRY_ARCHER_ARCHETYPE.restrictTo.includes(civ));
-// Mutates CAVALRY_ARCHER_ARCHETYPE.restrictTo IN PLACE (not a new array) so
-// every existing read of it (grade computation, civ-picker filtering, the
-// archetype's own subheader count) stays in sync without needing its own
-// patch-toggle awareness. Called from rebuildCivData() alongside
-// applySept22PatchDeltas() below.
-function syncCavalryArcherArchetypeForPatch() {
-  const restrictTo = CAVALRY_ARCHER_ARCHETYPE.restrictTo;
-  MOUNTED_CROSSBOWMAN_EXTRA_CIVS.forEach(civ => {
-    const idx = restrictTo.indexOf(civ);
-    if (PATCH_VERSION === 'sept22') { if (idx === -1) restrictTo.push(civ); }
-    else if (idx !== -1) { restrictTo.splice(idx, 1); }
-  });
-}
 
 /* ================================================================
    TECH TREE FLOWCHART (civ info panel) — real AoE2 unit-tier chains,
@@ -2402,7 +2230,7 @@ const EXTRA_UU_BONUS = {
     { ids:[755], civs:['Huns'], note:'Tarkan — anti-building raider' },
     { ids:[869], civs:['Magyars'], note:'Magyar Huszar — fast raiding cavalry' },
     { ids:[876], civs:['Slavs'], note:'Boyar — durable heavy cavalry' },
-    { ids:[JARL_SENTINEL_ID], civs:['Varangians'], note:'Jarl — Varangians\' own Castle-trained unique unit' },
+    { ids:[JARL_SENTINEL_ID, ELITE_JARL_SENTINEL_ID], civs:['Varangians'], note:'Jarl — Varangians\' own Castle-trained unique unit' },
     // Steppe Lancer, additive half only — Cumans/Tatars/Mongols have a real
     // Knight-line too (verified against civData directly). Jurchens/Khitans
     // have NO Knight-line at all, so for them it's a true replacement
@@ -2843,181 +2671,17 @@ function parseRaw(raw) {
 }
 
 /* ================================================================
-   MANUAL CIV DATA — The Viking Sagas (Danes, Saxons, Varangians; launches
-   2026-09-22)
-   ================================================================
-   SiegeEngineers/aoe2techtree (DATA_URL above) doesn't have these civs'
-   tech trees yet, so civData for them can't come from the live fetch like
-   every other civ. Built here instead, straight from the in-game civ
-   cards/tech trees, as a "real IDs only" set: start from the UNION of every
-   ID any already-fetched civ has access to (i.e. every standard, non-civ-
-   specific unit/tech that exists in the game), then subtract this civ's own
-   specific exclusions. Their brand-new content (Jomsviking, Hearth Troop,
-   Jarl, Varangian Guard, Mounted Crossbowman, the new Longship) has no real
-   ID yet either — it's simply absent from both the union and civData, same
-   as it would be from a real fetch that hasn't caught up yet.
-
-   All three share the DLC's exclusion list — the official announcement
-   explicitly describes the three new civs as having "their own unique
-   units, technologies, and SHARED architecture," and Saxons' own tech tree
-   (verified directly against screenshots of every page — Barracks/
-   Archery/Stable, Blacksmith/Siege/Dock, University, Castle/Monastery,
-   Economy) confirmed exactly this exclusion set. Danes' and Varangians'
-   trees weren't legible in enough detail to re-derive independently, so
-   both are inferred from the shared-architecture statement rather than
-   re-verified pixel-by-pixel — flag it if something looks wrong once real
-   data lands, especially for Varangians: its "Cavalry and Naval" focus is
-   quite different from Danes'/Saxons' own Infantry-leaning bonuses, so its
-   real tech tree may turn out to diverge from this shared list more than
-   theirs did.
-
-   DELETE this whole block (and the 3 names in ALL_CIVS' comment) once
-   SiegeEngineers/aoe2techtree adds real Danes/Saxons/Varangians entries —
-   parseRaw will then populate civData for them for free, like every other
-   civ, and this manual version would just be silently stale in the way.
-*/
-// Names, not raw IDs — resolved through UNIT_IDS/TECH_IDS below so nothing
-// here depends on hand-copied numbers staying in sync with those dicts.
-const VIKING_SAGAS_EXCLUDE_NAMES = {
-  // Confirmed absent from Saxons' own tech tree (Archery Range/Barracks/
-  // Stable, Blacksmith/Siege Workshop/Dock, University, Castle/Monastery —
-  // every page screenshotted and checked directly), and inferred for Danes
-  // via the DLC's stated shared architecture (see block comment above).
-  // NOT re-verified for Varangians — see VARANGIANS_EXTRA_EXCLUDE_NAMES/
-  // VARANGIANS_INCLUDE_NAMES below, which is where its real, now-confirmed
-  // divergence from this shared base gets layered on.
-  units: [
-    'Cavalry Archer', 'Heavy Cavalry Archer', 'Hand Cannoneer', 'Bombard Cannon',
-    'Demolition Ship', 'Heavy Demolition Ship', 'Fast Fire Ship',
-    'Cannon Galleon', 'Elite Cannon Galleon', 'Paladin',
-    // No Stable row for these at all — not just missing an upgrade tier.
-    'Steppe Lancer', 'Elite Steppe Lancer',
-    'Camel Rider', 'Heavy Camel Rider', 'Imperial Camel Rider',
-    'Battle Elephant', 'Elite Battle Elephant', 'Armored Elephant', 'Elite Armored Elephant',
-    'Elephant Archer', 'Elite Elephant Archer',
-    'Eagle Scout', 'Eagle Warrior', 'Elite Eagle Warrior', 'Slinger',
-  ],
-  techs: ['Parthian Tactics', 'Blast Furnace', 'Carvel Hull', 'Bombard Tower', 'Fervor'],
-};
-/* Varangians-specific corrections, confirmed directly by the site owner
-   playing/checking the real tech tree (2026-09-05) — layered ON TOP of the
-   shared base above, not a replacement for it (the base's Camel/Elephant/
-   Eagle/Steppe-Lancer exclusions etc. are still assumed to hold for
-   Varangians too, just not independently re-verified). Deliberately NOT
-   extended to Danes/Saxons — these were checked for Varangians specifically
-   and the base list's own header already flags that Varangians' Cavalry-
-   and-Naval focus was expected to diverge more than Danes'/Saxons' did. */
-const VARANGIANS_EXTRA_EXCLUDE_NAMES = {
-  // Rocket Cart/Heavy Rocket Cart: real gap found 2026-09-08 — neither name
-  // was ever in the shared base list NOR here, so the unfiltered
-  // all-other-civs union silently granted them to Varangians (nothing in
-  // UU_CIV_MAP claims those IDs as some other civ's OWN unique unit either).
-  // Confirmed directly by the site owner: Varangians do NOT have these.
-  // This also fixes a knock-on bug: Siege Onager's own archetype item
-  // (`{t:'unit',id:588,extra:[1907]}`) was scoring Varangians as "has Siege
-  // Onager" via that same Heavy Rocket Cart id (1907) in its `extra`
-  // equivalence, even though Siege Onager is separately, correctly
-  // excluded below.
-  units: ['Arbalester', 'Champion', 'Siege Onager', 'Rocket Cart', 'Heavy Rocket Cart'],
-  techs: ['Thumb Ring', 'Block Printing', 'Redemption', 'Heresy', 'Sanctity', 'Keep', 'Arrowslits', 'Sappers', 'Hoardings'],
-};
-// Present for Varangians despite being in the shared base's own exclude
-// list. Fast Fire Ship and Fervor confirmed directly by the site owner
-// (2026-09-08) — Varangians DO get both.
-const VARANGIANS_INCLUDE_NAMES = { units: ['Fast Fire Ship'], techs: ['Blast Furnace', 'Fervor'] };
-/* Danes-specific corrections, confirmed directly by the site owner
-   (2026-09-08) — same "layered on top of the shared base" shape as
-   Varangians' own block above. Guilds has a real TECH_IDS entry (15) but
-   isn't wired into any CIV_ARCHETYPES item yet (not scored anywhere
-   regardless of civ), so excluding it here doesn't change anything visible
-   yet — kept for correctness/future-proofing once it IS wired up. */
-const DANES_EXTRA_EXCLUDE_NAMES = {
-  units: ['Carrack', 'Arbalester', 'Hussar'],
-  // Cavalier: confirmed directly by the site owner (2026-09-22) — Danes cap
-  // out at Knight, no Stable upgrade past it. Consistent with their
-  // Infantry-and-Siege archetype tag and the fact they already lack Hussar
-  // above; Saxons' own screenshotted tech tree DOES have Cavalier, so this
-  // stays Danes-specific rather than moving into the shared base list.
-  techs: ['Two-Man Saw', 'Keep', 'Architecture', 'Guilds', 'Cavalier'],
-};
-// Blast Furnace and Fervor: present for Danes despite being in the shared
-// base's own exclude list, same divergence Varangians already has.
-const DANES_INCLUDE_NAMES = { techs: ['Blast Furnace', 'Fervor'] };
-function resolveIds(names, idMap) {
-  const out = [];
-  names.forEach(name => {
-    const id = idMap[name];
-    if (id == null) return; // not tracked at all — nothing to exclude
-    (Array.isArray(id) ? id : [id]).forEach(x => out.push(x));
-  });
-  return out;
-}
-const VIKING_SAGAS_EXCLUDE = {
-  units: resolveIds(VIKING_SAGAS_EXCLUDE_NAMES.units, UNIT_IDS),
-  techs: resolveIds(VIKING_SAGAS_EXCLUDE_NAMES.techs, TECH_IDS),
-};
-const VARANGIANS_EXCLUDE = {
-  units: [...VIKING_SAGAS_EXCLUDE.units, ...resolveIds(VARANGIANS_EXTRA_EXCLUDE_NAMES.units, UNIT_IDS)]
-    .filter(id => !resolveIds(VARANGIANS_INCLUDE_NAMES.units, UNIT_IDS).includes(id)),
-  techs: [...VIKING_SAGAS_EXCLUDE.techs, ...resolveIds(VARANGIANS_EXTRA_EXCLUDE_NAMES.techs, TECH_IDS)]
-    .filter(id => !resolveIds(VARANGIANS_INCLUDE_NAMES.techs, TECH_IDS).includes(id)),
-};
-const DANES_EXCLUDE = {
-  units: [...VIKING_SAGAS_EXCLUDE.units, ...resolveIds(DANES_EXTRA_EXCLUDE_NAMES.units, UNIT_IDS)],
-  techs: [...VIKING_SAGAS_EXCLUDE.techs, ...resolveIds(DANES_EXTRA_EXCLUDE_NAMES.techs, TECH_IDS)]
-    .filter(id => !resolveIds(DANES_INCLUDE_NAMES.techs, TECH_IDS).includes(id)),
-};
-function applyManualNewCivData() {
-  const realCivs = Object.keys(civData).filter(c => c !== 'Danes' && c !== 'Saxons' && c !== 'Varangians');
-  if (!realCivs.length) return; // fetch failed/empty — nothing to build a union from
-  const allUnits = new Set(), allTechs = new Set();
-  realCivs.forEach(c => {
-    civData[c].units.forEach(id => allUnits.add(id));
-    civData[c].techs.forEach(id => allTechs.add(id));
-  });
-  // civData[c].units is a per-civ ACCESS set, not an ownership set — every
-  // civ's own unique unit(s) are IN that set (that's the whole point of the
-  // fetched data), so naively unioning across all 53 civs would hand Danes/
-  // Saxons/Varangians every OTHER civ's unique unit too (Samurai, Huskarl,
-  // ...), which is exactly backwards. Filtered out here using UU_CIV_MAP — the existing,
-  // already-complete unit-name → owning-civ map — rather than guessing from
-  // UNIT_IDS' object layout (its "standard" and "unique" sections aren't
-  // actually cleanly separated; several unique units like Ballista Elephant
-  // are interspersed early, and Elite-tier unique units have no separate
-  // UU_CIV_MAP entry of their own). unitsById supplies each ID's OWN name
-  // so an Elite-tier or civ-family-replacement unit (Elite Longbowman, Elite
-  // Ballista Elephant, Champi Warrior, Hei Guang Cavalry, Traction
-  // Trebuchet, Xianbei Raider, ...) can be caught even without its exact
-  // name hardcoded — it's excluded whenever ITS OWN base id or name traces
-  // back to a name UU_CIV_MAP recognizes as somebody's unique unit.
-  const uniqueUnitIds = new Set();
-  Object.entries(UNIT_IDS).forEach(([name, id]) => {
-    const base = name.replace(/^Elite /, ''); // catches Elite-tier UUs UU_CIV_MAP only keys by base name
-    if (UU_CIV_MAP[name] || UU_CIV_MAP[base]) (Array.isArray(id) ? id : [id]).forEach(x => uniqueUnitIds.add(x));
-  });
-  ['Traction Trebuchet', 'Xianbei Raider', 'Champi Warrior', 'Elite Champi Warrior', 'Fire Lancer', 'Elite Fire Lancer', 'Hei Guang Cavalry', 'Heavy Hei Guang Cavalry']
-    .forEach(name => { const id = UNIT_IDS[name]; if (id != null) (Array.isArray(id) ? id : [id]).forEach(x => uniqueUnitIds.add(x)); });
-  ['Danes', 'Saxons', 'Varangians'].forEach(civ => {
-    const exclude = civ === 'Varangians' ? VARANGIANS_EXCLUDE : civ === 'Danes' ? DANES_EXCLUDE : VIKING_SAGAS_EXCLUDE;
-    civData[civ] = {
-      units: new Set([...allUnits].filter(id => !uniqueUnitIds.has(id) && !exclude.units.includes(id))),
-      techs: new Set([...allTechs].filter(id => !exclude.techs.includes(id))),
-    };
-    // Real units/techs, no real IDs yet — see each sentinel's own comment above.
-    civData[civ].units.add(LONGSHIP_SENTINEL_ID);
-    civData[civ].units.add(MOUNTED_CROSSBOWMAN_SENTINEL_ID);
-    // Danes/Saxons/Varangians all get the Heavy tier too (site owner,
-    // 2026-09-16) — previously only Cranequins (the Heavy tier's own
-    // Imperial upgrade tech) was granted, leaving these 3 with the tech but
-    // no real unit to apply it to. Real gap, not intentional.
-    civData[civ].units.add(HEAVY_MOUNTED_CROSSBOWMAN_SENTINEL_ID);
-    civData[civ].techs.add(CRANEQUINS_SENTINEL_ID);
-    civData[civ].units.add(VARANGIAN_GUARD_SENTINEL_ID);
-    civData[civ].units.add(HEAVY_VARANGIAN_GUARD_SENTINEL_ID);
-  });
-  // Jarl is Varangians-exclusive, unlike the two shared sentinels above.
-  civData['Varangians'].units.add(JARL_SENTINEL_ID);
-}
+   Danes/Saxons/Varangians civData used to be hand-built here (see git
+   history, commit 93787a0 and earlier) because SiegeEngineers/aoe2techtree
+   didn't have their tech trees yet. As of 2026-09-22 (Viking Sagas launch)
+   the live fetch has real entries for all three — parseRaw() now populates
+   civData for them for free, exactly like every other civ, so the whole
+   manual union/exclude-list machinery was deleted. Cross-checked several
+   dozen facts the manual version got wrong (Danes missing Fast Fire Ship,
+   wrongly excluded from Keep/Carvel Hull; Saxons missing Parthian Tactics/
+   Bombard Tower; Varangians wrongly excluded from Champion) — all fixed
+   automatically by trusting the live data instead.
+   ================================================================ */
 
 /* ================================================================
    SCORING & FILTERING
@@ -3589,7 +3253,7 @@ function bonusScoreCiv(civName, arch) {
     if (cats.includes(label)) { pts += 2; notes.push(`Team bonus: ${team}`); }
   }
 
-  const uts = getUniqueTechs(civName);
+  const uts = UNIQUE_TECHS[civName] || [];
   uts.forEach((techName) => {
     const desc = UNIQUE_TECH_DESCRIPTIONS[techName] || '';
     let cats = classifyBonusCategories(techName + ' ' + desc);
@@ -5886,7 +5550,7 @@ function civInfoHtml(civName, compact) {
   const bonuses = CB[civName] || [];
   const focus = CIV_FOCUS[civName] || '';
   const uu = UNIQUE_UNITS[civName] || '';
-  const ut = getUniqueTechs(civName);
+  const ut = UNIQUE_TECHS[civName] || [];
   const ecoBuilding = ECO_BUILDING_NAME[civName];
 
   const oEntry = compact ? null : civCardOverallGrade(civName, activeCivCardLadder);
@@ -6433,18 +6097,6 @@ function renderSuggestions() {
    EVENTS
    ================================================================ */
 function initEvents() {
-  document.querySelectorAll('#patch-toggle button').forEach(btn => {
-    btn.classList.toggle('on', btn.dataset.patch === PATCH_VERSION);
-    btn.addEventListener('click', () => {
-      const version = btn.dataset.patch;
-      if (version === PATCH_VERSION) return;
-      PATCH_VERSION = version;
-      localStorage.setItem('aoe2-patch', version);
-      document.querySelectorAll('#patch-toggle button').forEach(b => b.classList.toggle('on', b.dataset.patch === version));
-      if (dataLoaded) { rebuildCivData(); render(); }
-    });
-  });
-
   isMobile = !window.matchMedia('(hover:hover) and (pointer:fine)').matches;
   let rankBadgeResizeTimer = null;
   window.addEventListener('resize', () => {
