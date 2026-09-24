@@ -665,7 +665,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.16</div>
+    <div class="version">v1.17</div>
   </div>
 </div>
 
@@ -1198,7 +1198,7 @@ document.getElementById('camp-food-bonus').addEventListener('change', recompute)
 // Column order matches the sort priority below (Bracer 2nd, Bloodlines
 // 3rd, Parthian Tactics/Cranequins 4th, Ring Archer Armor 5th, Husbandry
 // 6th) so the table reads left-to-right in the same order it's sorted by.
-const CA_MCB_TECH_COLS = ['Bracer', 'Bloodlines', 'Parthian Tactics', 'Ring Archer Armor', 'Husbandry'];
+const CA_MCB_TECH_COLS = ['Bracer', 'Thumb Ring', 'Bloodlines', 'Parthian Tactics', 'Ring Archer Armor', 'Husbandry'];
 const CA_MCB_CIVS = {
   // Parthian Tactics is Cavalry-Archer-exclusive — no Mounted Crossbowman
   // civ gets it, Bohemians included (site owner correction, 2026-09-16:
@@ -1305,12 +1305,15 @@ function caMcbMaxStats(cfg) {
     if (aRing !== bRing) return aRing ? -1 : 1;
     const aHus = caMcbHas(a, 'Husbandry'), bHus = caMcbHas(b, 'Husbandry');
     if (aHus !== bHus) return aHus ? -1 : 1;
+    if (!!a.thumbRing !== !!b.thumbRing) return a.thumbRing ? -1 : 1;
     return civA.localeCompare(civB);
   });
   const tbody = sorted.map(([civ, cfg]) => {
     const cells = CA_MCB_TECH_COLS.map(tech => {
       if (tech === 'Parthian Tactics' && cfg.cranequins) return `<td class="num" style="color:var(--farm)">Cranequins</td>`;
-      const missing = cfg.missing.includes(tech);
+      // Thumb Ring is a separate boolean flag (feeds the reload/Atk-s math),
+      // not part of the `missing` array.
+      const missing = tech === 'Thumb Ring' ? !cfg.thumbRing : cfg.missing.includes(tech);
       const starred = (cfg.starred || []).includes(tech);
       return `<td class="num" style="color:${missing ? 'var(--text3)' : 'var(--farm)'}" title="${starred ? 'Lacks the real tech, but Franks\' own civ bonus (Mounted Units +20% HP, Feudal Age) already covers it' : ''}">${missing ? '✕' : starred ? '✓*' : '✓'}</td>`;
     }).join('');
