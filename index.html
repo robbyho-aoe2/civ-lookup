@@ -268,7 +268,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.39</div>
+    <div class="version">v2.40</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2669,9 +2669,42 @@ function parseRaw(raw) {
       return { id: ids[0], ids, name, itemType: 'unit', data: unitsById[ids[0]] || null };
     }),
     ...Object.entries(TECH_IDS).map(([name, id]) => ({ id, ids: [id], name, itemType: 'tech', data: techsById[id] || null })),
-  ].sort((a, b) => a.name.localeCompare(b.name));
+  ];
+  // Everything else in the live data that at least one civ can actually
+  // access (so campaign-only/dead ids stay out), added so search isn't
+  // limited to the hand-curated UNIT_IDS/TECH_IDS lists (e.g. Cranequins).
+  // The data only carries an internal_name, so abbreviations like "ECARAV"
+  // are skipped unless they're in SEARCH_UNIT_NAME_FIXES below; legacy
+  // "<Civ> UT" placeholder techs are skipped too.
+  const haveIds = { unit: new Set(), tech: new Set() };
+  const haveNames = new Set();
+  list.forEach(i => { i.ids.forEach(x => haveIds[i.itemType].add(x)); haveNames.add(i.name.toLowerCase()); });
+  const reachable = { unit: new Set(), tech: new Set() };
+  Object.values(civData).forEach(cd => { cd.units.forEach(x => reachable.unit.add(x)); cd.techs.forEach(x => reachable.tech.add(x)); });
+  const addExtras = (itemType, byId) => {
+    [...reachable[itemType]].sort((a, b) => a - b).forEach(id => {
+      if (haveIds[itemType].has(id) || id >= 900000) return;
+      const rec = byId[id];
+      if (!rec || !rec.internal_name) return;
+      let name = String(rec.internal_name).trim();
+      if (itemType === 'unit' && SEARCH_UNIT_NAME_FIXES[name]) name = SEARCH_UNIT_NAME_FIXES[name];
+      if (itemType === 'unit' && !/[a-z]/.test(name)) return;
+      if (itemType === 'tech' && /\bUT\d?$/.test(name)) return;
+      if (haveNames.has(name.toLowerCase())) return;
+      haveNames.add(name.toLowerCase());
+      list.push({ id, ids: [id], name, itemType, data: rec });
+    });
+  };
+  addExtras('unit', unitsById);
+  addExtras('tech', techsById);
+  list.sort((a, b) => a.name.localeCompare(b.name));
   searchIdx = list;
 }
+const SEARCH_UNIT_NAME_FIXES = {
+  FSHSP: 'Fishing Ship', GALLY: 'Galley', PETARD: 'Petard', TCART: 'Trade Cart',
+  LEGIONARY: 'Legionary', GRNADR: 'Grenadier', CONDO: 'Condottiero', KONNIK: 'Konnik',
+  TARKAN: 'Tarkan', DROMON: 'Dromon', LOUCHUAN: 'Lou Chuan', SIEGTWR: 'Siege Tower',
+};
 
 /* ================================================================
    Danes/Saxons/Varangians civData used to be hand-built here (see git
