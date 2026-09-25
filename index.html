@@ -268,7 +268,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.42</div>
+    <div class="version">v2.43</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1593,6 +1593,7 @@ const CAT_COLORS = {
   // from the quick-filter category names above, same practical colors)
   Naval:'var(--cyan)', Monk:'var(--purple)', Eco:'var(--green)', Defensive:'var(--yellow)',
   Camel:'#d97706', Elephant:'#7c3aed', Gunpowder:'var(--pink)',
+  'Unique Units':'#f0abfc', 'Unique Techs':'#fde68a', Other:'var(--text2)',
 };
 
 /* ── Quick filter categories ──
@@ -1653,6 +1654,61 @@ const QUICK_CATEGORIES = [
     'Keep','Bombard Tower','Guard Tower','Fortified Wall','Arrowslits',
   ]},
 ];
+
+/* Everything in the live data that the hand-curated lists above don't cover
+   (base units, regional units, unique units, unique techs, misc techs) gets
+   added to the Browse panel too. Standard units/techs the lists left out are
+   assigned to a category by name here; whatever is still unassigned after
+   that is bucketed automatically at render time — Unique Units (in
+   UU_CIV_MAP, their Elite tiers, and a few known variants), Unique Techs
+   (named in UNIQUE_TECHS), otherwise Other. */
+const BROWSE_EXTRA_CATEGORY = {
+  Archers: ['Archer', 'Crossbowman', 'Skirmisher', 'Slinger'],
+  'Cavalry Archer': ['Mounted Crossbowman', 'Heavy Mounted Crossbowman', 'Cranequins'],
+  Cavalry: ['Scout Cavalry', 'Light Cavalry', 'Knight', 'Camel Rider', 'Scale Barding Armor'],
+  Infantry: ['Long Swordsman', 'Spearman', 'Eagle Scout', 'Champi Runner', 'Champi Scout', 'Varangian Guard', 'Elite Varangian Guard', 'Scale Mail Armor'],
+  Siege: ['Mangonel', 'Scorpion', 'Siege Tower', 'Petard', 'Double Crossbows'],
+  Navy: ['Catapult Galleon', 'Demolition Raft', 'Demolition Ship', 'Dromon', 'Fire Galley', 'Fire Ship', 'Hulk', 'Lou Chuan', 'War Hulk', 'Transport Ship', 'Siphons', 'Incendiaries', 'Clinker Construction'],
+  Economy: ['Villager', 'Trade Cart', 'Trade Cog', 'Fishing Ship', 'Gold Mining', 'Stone Mining', 'Horse Collar', 'Heavy Plow', 'Gillnets', 'Fishing Lines', 'Enclosures', 'Grazing Grasslands', 'Livestock Husbandry', 'Treadmill Crane', 'Guilds'],
+  Fortifications: ['Town Watch', 'Town Patrol', 'Heated Shot'],
+  Other: ['Feudal Age', 'Castle Age', 'Imperial Age', 'Spies/Treason', 'Cao Cao', 'Liu Bei', 'Sun Jian'],
+};
+const BROWSE_UNIQUE_UNIT_EXTRAS = ['Elite Blackwood Archers', 'Elite Ratha (Ranged)', 'War Chariot (Focus Fire)'];
+let _browseCache = null;
+// name -> { itemType, ids } for anything searchable, curated names first.
+function browseLookup(name) {
+  if (!Array.isArray(searchIdx)) return null;
+  if (!_browseCache || _browseCache.src !== searchIdx) {
+    _browseCache = { src: searchIdx, map: new Map(searchIdx.map(i => [i.name, i])) };
+  }
+  return _browseCache.map.get(name) || null;
+}
+function browseCategories() {
+  const cats = QUICK_CATEGORIES.map(c => ({ ...c, items: [...c.items] }));
+  const byLabel = Object.fromEntries(cats.map(c => [c.label, c]));
+  const ensure = (label) => {
+    if (!byLabel[label]) { byLabel[label] = { label, color: CAT_COLORS[label] || 'var(--text2)', items: [] }; cats.push(byLabel[label]); }
+    return byLabel[label];
+  };
+  ensure('Unique Units'); ensure('Unique Techs');
+  if (!Array.isArray(searchIdx) || !searchIdx.length) return cats;
+  const assigned = new Set(cats.flatMap(c => c.items));
+  const addTo = (label, name) => { if (!assigned.has(name) && browseLookup(name)) { ensure(label).items.push(name); assigned.add(name); } };
+  Object.entries(BROWSE_EXTRA_CATEGORY).forEach(([label, names]) => names.forEach(n => addTo(label, n)));
+  const utNames = new Set(Object.values(UNIQUE_TECHS).flat());
+  searchIdx.forEach(i => {
+    if (assigned.has(i.name)) return;
+    if (i.itemType === 'unit') {
+      const base = i.name.replace(/^Elite /, '');
+      addTo(UU_CIV_MAP[i.name] || UU_CIV_MAP[base] || BROWSE_UNIQUE_UNIT_EXTRAS.includes(i.name) ? 'Unique Units' : 'Other', i.name);
+    } else {
+      addTo(utNames.has(i.name) ? 'Unique Techs' : 'Other', i.name);
+    }
+  });
+  const order = cats.filter(c => c.items.length);
+  // Keep "Other" last.
+  return [...order.filter(c => c.label !== 'Other'), ...order.filter(c => c.label === 'Other')];
+}
 
 /* ── Civ archetypes ──
    `restrictTo`: if set, only these civs are considered/shown for this archetype
@@ -6098,13 +6154,18 @@ function closeDropdown() { dropItems = []; document.getElementById('dropdown').s
 /* ================================================================
    SUGGESTIONS (quick filter buttons)
    ================================================================ */
-function getItemCivCount(name) {
-  if (!dataLoaded) return null;
+function browseItemInfo(name) {
   const uid = UNIT_IDS[name], tid = TECH_IDS[name];
   const raw = uid ?? tid;
-  if (raw === undefined) return null;
-  const itemType = uid !== undefined ? 'unit' : 'tech';
-  const ids = Array.isArray(raw) ? raw : [raw];
+  if (raw !== undefined) return { itemType: uid !== undefined ? 'unit' : 'tech', ids: Array.isArray(raw) ? raw : [raw] };
+  const it = browseLookup(name);
+  return it ? { itemType: it.itemType, ids: it.ids || [it.id] } : null;
+}
+function getItemCivCount(name) {
+  if (!dataLoaded) return null;
+  const info = browseItemInfo(name);
+  if (!info) return null;
+  const { itemType, ids } = info;
   return ALL_CIVS.filter(civ => {
     const cd = civData[civ];
     if (!cd) return false;
@@ -6113,11 +6174,9 @@ function getItemCivCount(name) {
 }
 
 function buildTempItem(name) {
-  const uid = UNIT_IDS[name], tid = TECH_IDS[name];
-  if (uid === undefined && tid === undefined) return null;
-  const raw = uid ?? tid;
-  const itemType = uid !== undefined ? 'unit' : 'tech';
-  const ids = Array.isArray(raw) ? raw : [raw];
+  const info = browseItemInfo(name);
+  if (!info) return null;
+  const { itemType, ids } = info;
   const id = ids[0];
   const d = itemType === 'unit' ? unitsById[id] : techsById[id];
   const civsWith = new Set(ALL_CIVS.filter(civ => {
@@ -6157,11 +6216,11 @@ function renderSuggestions() {
   const total = ALL_CIVS.length;
 
   const sortItems = (items) => {
-    const units = items.filter(q => UNIT_IDS[q] !== undefined);
-    const techs = items.filter(q => TECH_IDS[q] !== undefined);
+    const units = items.filter(q => browseItemInfo(q)?.itemType === 'unit');
+    const techs = items.filter(q => browseItemInfo(q)?.itemType === 'tech');
     const sortGroup = (arr) => {
       const withCount = arr.map(q => ({ q, n: getItemCivCount(q) }));
-      const notAll = withCount.filter(x => x.n === null || x.n < total).sort((a, b) => (a.n||999) - (b.n||999));
+      const notAll = withCount.filter(x => x.n === null || x.n < total).sort((a, b) => (a.n||999) - (b.n||999) || a.q.localeCompare(b.q));
       const all = withCount.filter(x => x.n === total);
       return [...notAll, ...all].map(x => x.q);
     };
@@ -6169,7 +6228,7 @@ function renderSuggestions() {
   };
 
   const el = document.getElementById('suggestions');
-  el.innerHTML = QUICK_CATEGORIES.map(cat => {
+  el.innerHTML = browseCategories().map(cat => {
     const sorted = sortItems(cat.items);
     const btns = sorted.map(q => {
       const n = getItemCivCount(q);
@@ -6179,7 +6238,7 @@ function renderSuggestions() {
       let style = '';
       if (isSel) style = `style="background:${cat.color};border-color:${cat.color};color:#100E0C"`;
       const cls = `sug-btn${isAll ? ' sug-all' : ''}${isSel ? ' sel' : ''}`;
-      return `<button class="${cls}" ${style} data-q="${q}">${q}${badge}</button>`;
+      return `<button class="${cls}" ${style} data-q="${escapeHtml(q)}">${escapeHtml(q)}${badge}</button>`;
     }).join('');
     return `<div class="cat-section"><span class="cat-label" style="color:${cat.color}">${cat.label}</span><div class="cat-btns">${btns}</div></div>`;
   }).join('');
