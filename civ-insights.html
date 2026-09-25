@@ -83,6 +83,8 @@ td.divider,th.divider{border-left:1px solid var(--border2);}
 .tech-row label{font-size:12px;color:var(--text2);white-space:nowrap;}
 select{background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-size:13px;padding:7px 9px;font-family:inherit;}
 select:focus{outline:none;border-color:var(--amber);}
+.x-link{color:inherit;text-decoration:underline dotted var(--text3);text-underline-offset:2px;}
+.x-link:hover{color:var(--amberL);text-decoration-color:var(--amberL);}
 </style>
 </head>
 <body>
@@ -665,7 +667,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.18</div>
+    <div class="version">v1.19</div>
   </div>
 </div>
 
@@ -4390,6 +4392,78 @@ function renderAgeTable(key) {
 document.getElementById('feudal-table-status').textContent = 'Temporarily disabled while debugging a page-freeze report.';
 document.getElementById('castle-table-status').textContent = 'Temporarily disabled while debugging a page-freeze report.';
 // document.getElementById('engine-frame').addEventListener('load', () => { setTimeout(() => { computeAgeTable('feudal'); computeAgeTable('castle'); }, 50); });
+</script>
+<script>
+/* Cross-page links back to the main Auto Scout (index.html). Every civ name
+   becomes a link to that civ's card (?civ=), every known unit/tech name a
+   link that selects it (?item=). Runs over the rendered page and re-runs on
+   anything the tables re-render later. The item list is a static copy of
+   Auto Scout's own search names (names come from SiegeEngineers' locale
+   strings) — refresh it if new units/techs are added. */
+(function () {
+  const CIVS = ["Armenians", "Aztecs", "Bengalis", "Berbers", "Bohemians", "Britons", "Bulgarians", "Burgundians", "Burmese", "Byzantines", "Celts", "Chinese", "Cumans", "Danes", "Dravidians", "Ethiopians", "Franks", "Georgians", "Goths", "Gurjaras", "Hindustanis", "Huns", "Incas", "Italians", "Japanese", "Jurchens", "Khitans", "Khmer", "Koreans", "Lithuanians", "Malay", "Malians", "Magyars", "Mapuche", "Maya", "Mongols", "Muisca", "Persians", "Poles", "Portuguese", "Romans", "Saracens", "Saxons", "Shu", "Sicilians", "Slavs", "Spanish", "Tatars", "Teutons", "Tupi", "Turks", "Varangians", "Vietnamese", "Vikings", "Wei", "Wu"];
+  const ITEMS = ["Anarchy", "Andean Sling", "Arambai", "Arbalester", "Archer", "Architecture", "Armored Elephant", "Arquebus", "Arrowslits", "Arson", "Artillery", "Atheism", "Atlatl", "Atonement", "Aznauri Cavalry", "Bagains", "Ballista Elephant", "Ballistas", "Ballistics", "Banking", "Battle Elephant", "Berserk", "Bimaristan", "Blackwood Archer", "Blast Furnace", "Block Printing", "Bloodlines", "Bodkin Arrow", "Bogsveigar", "Bolas Rider", "Bolt Magazine", "Bombard Cannon", "Bombard Tower", "Bow Saw", "Boyar", "Bracer", "Burgundian Vineyards", "Butalmapu", "Caciques", "Camel Archer", "Camel Rider", "Camel Scout", "Cannon Galleon", "Cao Cao", "Capped Ram", "Caravan", "Caravel", "Careening", "Carrack", "Carvel Hull", "Cataphract", "Catapult Galleon", "Cavalier", "Cavalry Archer", "Centurion", "Chain Barding Armor", "Chain Mail Armor", "Chakram Thrower", "Champi Runner", "Champi Scout", "Champi Warrior", "Champion", "Chatras", "Chemistry", "Chieftains", "Chivalry", "Chu Ko Nu", "Cilician Fleet", "Circumnavigation", "Citadels", "Clerical Recruitment", "Clinker Construction", "Coiled Serpent Array", "Coinage", "Comitatenses", "Composite Bowman", "Condottiero", "Conquistador", "Conscription", "Corvinian Army", "Counterweights", "Coustillier", "Cranequins", "Crenellations", "Crop Rotation", "Crossbowman", "Cuman Mercenaries", "Curare", "Demolition Raft", "Demolition Ship", "Detinets", "Devotion", "Double Bit Axe", "Double Crossbows", "Dragon Ship", "Drill", "Dromon", "Druzhina", "Dry Dock", "Eagle Scout", "Eagle Warrior", "Elephant Archer", "Elite Arambai", "Elite Armored Elephant", "Elite Ballista Elephant", "Elite Battle Elephant", "Elite Berserk", "Elite Blackwood Archers", "Elite Bolas Rider", "Elite Boyar", "Elite Cannon Galleon", "Elite Caravel", "Elite Cataphract", "Elite Chakram Thrower", "Elite Champi Warrior", "Elite Chu Ko Nu", "Elite Composite Bowman", "Elite Conquistador", "Elite Eagle Warrior", "Elite Elephant Archer", "Elite Fire Lancer", "Elite Gbeto", "Elite Genitour", "Elite Ghulam", "Elite Guecha Warrior", "Elite Hearth Troop", "Elite Huskarl", "Elite Ibirapema Warrior", "Elite Jaguar Warrior", "Elite Janissary", "Elite Jarl", "Elite Jomsviking", "Elite Kamayuk", "Elite Karambit Warrior", "Elite Kipchak", "Elite Kona", "Elite Konnik", "Elite Longbowman", "Elite Magyar Huszar", "Elite Mameluke", "Elite Mangudai", "Elite Monaspa", "Elite Obuch", "Elite Plumed Archer", "Elite Ratha (Ranged)", "Elite Rattan Archer", "Elite Samurai", "Elite Serjeant", "Elite Shotel Warrior", "Elite Shrivamsha Rider", "Elite Skirmisher", "Elite Steppe Lancer", "Elite Tarkan", "Elite Temple Guard", "Elite Teutonic Knight", "Elite Throwing Axeman", "Elite Tiger Cavalry", "Elite Turtle Ship", "Elite Varangian Guard", "Elite Woad Raider", "Enclosures", "Eupseong", "Fabric Shields", "Faith", "Farimba", "Fast Fire Ship", "Fereters", "Fervor", "Fire Archer", "Fire Galley", "Fire Lancer", "Fire Ship", "First Crusade", "Fishing Lines", "Fishing Ship", "Flaming Camel", "Flemish Militia", "Flemish Revolution", "Fletching", "Forced Levy", "Forging", "Fortified Bastions", "Fortified Wall", "Frontier Guards", "Furor Celtica", "Galleon", "Gambesons", "Garland Wars", "Gbeto", "Genitour", "Genoese Crossbowman", "Ghulam", "Gillnets", "Gold Mining", "Gold Shaft Mining", "Gothikon", "Grand Trunk Road", "Grazing Grasslands", "Great Wall", "Greek Fire", "Grenadier", "Guard Tower", "Guecha Warrior", "Guilds", "Halberdier", "Hamask", "Hand Cannoneer", "Hand Cart", "Hauberk", "Hearth Troop", "Heated Shot", "Heavy Camel Rider", "Heavy Cavalry Archer", "Heavy Demolition Ship", "Heavy Hei Guang Cavalry", "Heavy Mounted Crossbowman", "Heavy Plow", "Heavy Rocket Cart", "Heavy Scorpion", "Hei Guang Cavalry", "Herbal Medicine", "Herbalism", "Heresy", "Hill Forts", "Hoardings", "Holcans", "Horse Collar", "Houfnice", "Howdah", "Huaracas", "Hul'che Javelineers", "Hulk", "Husbandry", "Huskarl", "Hussar", "Hussite Reforms", "Hussite Wagon", "Ibirapema Warrior", "Illumination", "Imperial Camel Rider", "Imperial Skirmisher", "Incendiaries", "Inquisition", "Iron Casting", "Iron Pagoda", "Ironclad", "Jaguar Warrior", "Janissary", "Jarl", "Jian Swordsman", "Jomsviking", "Kamandaran", "Kamayuk", "Karambit Warrior", "Kasbah", "Kataparuto", "Keep", "Keshik", "Kipchak", "Knight", "Kona", "Konnik", "Kshatriyas", "Lamellar Armor", "Leather Archer Armor", "Lechitic Legacy", "Legionary", "Leitis", "Liao Dao", "Light Cavalry", "Liu Bei", "Livestock Husbandry", "Logistica", "Long Swordsman", "Longboat", "Longbowman", "Loom", "Lou Chuan", "Maghrebi Camels", "Magyar Huszar", "Mahayana", "Malon", "Mameluke", "Mangonel", "Mangudai", "Manipur Cavalry", "Marauders", "Masonry", "Medical Corps", "Ming Guang Armor", "Missionary", "Monaspa", "Monk", "Mounted Crossbowman", "Mounted Trebuchet", "Murder Holes", "Nomads", "Northmen's Fury", "Obuch", "Onager", "Ordo Cavalry", "Ordonnance Companies", "Organ Gun", "Padded Archer Armor", "Paiks", "Paladin", "Paper Money", "Parthian Tactics", "Perfusion", "Petard", "Pikeman", "Pirotechnia", "Plate Barding Armor", "Plate Mail Armor", "Plumed Archer", "Ratha (Mounted Archer)", "Rattan Archer", "Recurve Bow", "Red Cliffs Tactics", "Redemption", "Ring Archer Armor", "Rocket Cart", "Rocketry", "Royal Heirs", "Samurai", "Sanctity", "Sappers", "Savar", "Scale Barding Armor", "Scale Mail Armor", "Scorpion", "Scout Cavalry", "Serjeant", "Shatagni", "Shield Wall", "Shinkichon", "Shipwright", "Shotel Warrior", "Shrivamsha Rider", "Siege Engineers", "Siege Onager", "Siege Ram", "Siege Tower", "Silk Armor", "Silk Road", "Sipahi", "Siphons", "Sitting Tiger", "Skirmisher", "Slinger", "Spearman", "Spies/Treason", "Squires", "Steppe Husbandry", "Steppe Lancer", "Stirrups", "Stone Mining", "Stone Shaft Mining", "Stronghold", "Sun Jian", "Supremacy", "Svan Towers", "Szlachta Privileges", "Tarkan", "Temple Guard", "Teutonic Knight", "Thalassocracy", "Theocracy", "Thirisadai", "Throwing Axeman", "Thumb Ring", "Thunderclap Bombs", "Tiger Cavalry", "Tigui", "Timurid Siegecraft", "Torsion Engines", "Tower Shields", "Town Patrol", "Town Watch", "Traction Trebuchet", "Trade Cart", "Trade Cog", "Transport Ship", "Treadmill Crane", "Trebuchet", "Tuntian", "Turtle Ship", "Tusk Swords", "Two-Handed Swordsman", "Two-Man Saw", "Urumi Swordsman", "Varangian Guard", "Vendel Legacy", "Villager", "Wagenburg Tactics", "War Chariot", "War Chariot (Focus Fire)", "War Elephant", "War Galley", "War Hulk", "War Wagon", "Warrior Priest", "Warwolf", "Wheelbarrow", "White Feather Guard", "Winged Hussar", "Woad Raider", "Wootz Steel", "Xianbei Raider", "Yasama", "Yeomen"];
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Longest names first so "Elite Jomsviking" wins over "Jomsviking".
+  const all = [...CIVS.map(n => [n, 'civ']), ...ITEMS.map(n => [n, 'item'])]
+    .sort((a, b) => b[0].length - a[0].length);
+  const kind = new Map(all.map(([n, k]) => [n, k]));
+  const re = new RegExp('(?<![\\w-])(' + all.map(([n]) => esc(n)).join('|') + ')(?![\\w])', 'g');
+  const SKIP = new Set(['A', 'BUTTON', 'SUMMARY', 'SCRIPT', 'STYLE', 'INPUT', 'SELECT', 'OPTION', 'TEXTAREA', 'IFRAME', 'SVG', 'CODE']);
+  let busy = false;
+  function linkify(root) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        if (!node.nodeValue || node.nodeValue.length < 4) return NodeFilter.FILTER_REJECT;
+        for (let p = node.parentElement; p && p !== document.body; p = p.parentElement) {
+          if (SKIP.has(p.tagName.toUpperCase()) || p.matches('th[data-key], label, .toggle-btn, .pr-toggle, [role=button]')) return NodeFilter.FILTER_REJECT;
+        }
+        re.lastIndex = 0;
+        return re.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      },
+    });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(node => {
+      const text = node.nodeValue;
+      const frag = document.createDocumentFragment();
+      let last = 0, m;
+      re.lastIndex = 0;
+      while ((m = re.exec(text))) {
+        if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+        const a = document.createElement('a');
+        a.className = 'x-link';
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.href = 'index.html?' + (kind.get(m[1]) === 'civ' ? 'civ=' : 'item=') + encodeURIComponent(m[1]);
+        a.title = 'Open in Auto Scout';
+        a.textContent = m[1];
+        frag.appendChild(a);
+        last = m.index + m[1].length;
+      }
+      if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+      node.parentNode.replaceChild(frag, node);
+    });
+  }
+  const pending = new Set();
+  let timer = null;
+  let obs = null;
+  function run(root) {
+    if (busy) return;
+    busy = true;
+    try { linkify(root); } finally { busy = false; }
+    if (obs) obs.takeRecords();
+  }
+  obs = new MutationObserver(records => {
+    if (busy) return;
+    records.forEach(r => r.addedNodes.forEach(n => { if (n.nodeType === 1 && !(n.classList && n.classList.contains('x-link'))) pending.add(n); }));
+    if (!pending.size) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => { const list = [...pending]; pending.clear(); list.forEach(n => { if (n.isConnected) run(n); }); }, 60);
+  });
+  run(document.body);
+  obs.observe(document.body, { childList: true, subtree: true });
+})();
 </script>
 </body>
 </html>

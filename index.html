@@ -268,7 +268,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.41</div>
+    <div class="version">v2.42</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2470,6 +2470,26 @@ let pendingQ = null;
 /* ================================================================
    DATA LOADING
    ================================================================ */
+// Deep links from the other pages (civ-insights etc.): ?civ=Danes opens that
+// civ's card, ?item=Cranequins selects that unit/tech (exact name first, then
+// a contains match, same as the search box). Runs once, after data loads.
+let deepLinkApplied = false;
+function applyDeepLink() {
+  if (deepLinkApplied) return;
+  deepLinkApplied = true;
+  const params = new URLSearchParams(location.search);
+  const civQ = params.get('civ');
+  const itemQ = params.get('item');
+  if (civQ) {
+    const civ = ALL_CIVS.find(c => c.toLowerCase() === civQ.toLowerCase());
+    if (civ) showCivInfo(civ);
+  } else if (itemQ) {
+    const lq = itemQ.toLowerCase();
+    const item = searchIdx.find(i => i.name.toLowerCase() === lq) || searchIdx.find(i => i.name.toLowerCase().includes(lq));
+    if (item) selectItem(item);
+  }
+}
+
 async function loadData() {
   try {
     const [res, localeRes] = await Promise.all([
@@ -2483,6 +2503,7 @@ async function loadData() {
     dataLoaded = true;
     render();
     renderSuggestions();
+    applyDeepLink();
     const el = document.getElementById('error-msg');
     el.style.color = 'var(--green)';
     el.style.background = 'var(--greenBg)';
