@@ -268,7 +268,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.44</div>
+    <div class="version">v2.46</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -4179,7 +4179,7 @@ function renderArchetypeGrid() {
     valueOf: c => totalScoreCiv(c, arch).total,
     valueLabel: c => scoreLabel(totalScoreCiv(c, arch), max),
     headerHtml: `${archIconHtml(arch, 24)} ${arch.label} — ranked by tech tree + civ bonuses (${max} tech items, +2 pts per qualifying bonus)`,
-    subHeaderHtml: arch.restrictTo ? `Only civs with access to this archetype's core units are shown (${pool.length} of 53)` : null,
+    subHeaderHtml: arch.restrictTo ? `Only civs with access to this archetype's core units are shown (${pool.length} of ${ALL_CIVS.length})` : null,
     clearLabel: `${archIconHtml(arch)} ${arch.label} ranking`,
   });
 }
@@ -5124,7 +5124,7 @@ function renderStatus() {
   const el = document.getElementById('status-bar');
   if (!selected.length) { el.textContent = ''; return; }
   const n = ALL_CIVS.filter(c => civStatus(c) === 'has').length;
-  el.textContent = `${n} of 53 civs have ${selected.map(s => s.name).join(' + ')}`;
+  el.textContent = `${n} of ${ALL_CIVS.length} civs have ${selected.map(s => s.name).join(' + ')}`;
 }
 
 function renderChips() {
@@ -5976,6 +5976,12 @@ function civInfoHtml(civName, compact) {
 function itemInfoHtml(item) {
   if (!item) return '';
   const d = item.data || {};
+  // Tooltip/quick-filter items are built without the locale description, so
+  // fall back to the search index entry for the same unit/tech.
+  if (item.localeDesc === undefined && Array.isArray(searchIdx)) {
+    const si = searchIdx.find(x => x.itemType === item.itemType && x.id === item.id);
+    item = { ...item, localeDesc: si ? si.localeDesc : null };
+  }
   const itemAge = (ITEM_AGES[item.itemType] || {})[item.id];
   const ageStr = itemAge != null ? AGE_LABELS[Math.max(0, itemAge - 1)] : '';
   let h = `<div class="info-hdr-row">
@@ -5983,6 +5989,20 @@ function itemInfoHtml(item) {
     <span class="info-name">${item.name}</span>
     ${ageStr ? `<span style="font-size:10px;color:${AGE_COLORS[Math.max(0,itemAge-1)]};margin-left:6px;font-weight:500">${ageStr}</span>` : ''}
   </div>`;
+  // Unique units/techs: say which civ(s) they belong to.
+  {
+    let owners = [];
+    if (item.itemType === 'unit') {
+      const base = item.name.replace(/^Elite /, '').replace(/ \(.*\)$/, '');
+      const o = UU_CIV_MAP[item.name] || UU_CIV_MAP[base];
+      if (o) owners = Array.isArray(o) ? o : [o];
+    } else {
+      owners = Object.entries(UNIQUE_TECHS).filter(([, techs]) => techs.includes(item.name)).map(([civ]) => civ);
+    }
+    if (owners.length) {
+      h += `<div style="font-size:11px;color:var(--text3);margin:2px 0 8px">${item.itemType === 'unit' ? 'Unique unit' : 'Unique tech'} of <b style="color:var(--amberL)">${owners.map(escapeHtml).join(', ')}</b></div>`;
+    }
+  }
 
   if (item.itemType === 'unit') {
     const desc = UNIT_DESCRIPTIONS[item.id] || (item.localeDesc ? escapeHtml(item.localeDesc) : '');
@@ -6020,7 +6040,7 @@ function itemInfoHtml(item) {
 
   const n = item.civsWith?.size || 0;
   if (n > 3) {
-    h += `<div class="info-sl" style="margin-top:12px">Available to ${n} of 53 civs</div>`;
+    h += `<div class="info-sl" style="margin-top:12px">Available to ${n} of ${ALL_CIVS.length} civs</div>`;
     h += `<div class="chip-row">${[...(item.civsWith||[])].sort().map(c => `<span class="civ-pill">${c}</span>`).join('')}</div>`;
   }
   return h;
