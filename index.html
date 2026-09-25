@@ -268,7 +268,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.40</div>
+    <div class="version">v2.41</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -2385,6 +2385,34 @@ function manualAdjustment(civName, archLabel) {
    STATE
    ================================================================ */
 const DATA_URL = 'https://raw.githubusercontent.com/SiegeEngineers/aoe2techtree/master/data/data.json';
+// English names/descriptions for every unit and tech, keyed by the numeric
+// LanguageNameId each record carries. Best-effort — if this fetch fails the
+// site just falls back to its own curated names.
+const LOCALE_URL = 'https://raw.githubusercontent.com/SiegeEngineers/aoe2techtree/master/data/locales/en/strings.json';
+let LOCALE_STRINGS = null;
+// Some records have a direct name string, many only have their "Create
+// <b>Name</b> (cost)..." / "Research <b>Name</b> ..." help text, which lives
+// at LanguageNameId + 21000 — the name is recovered from that bold span.
+function localeName(rec) {
+  if (!LOCALE_STRINGS || !rec || rec.LanguageNameId == null) return null;
+  const direct = LOCALE_STRINGS[String(rec.LanguageNameId)];
+  if (direct && direct.trim()) return direct.trim();
+  const help = LOCALE_STRINGS[String(rec.LanguageNameId + 21000)];
+  const m = help && help.match(/<b>(.*?)<\/b>/);
+  return m ? m[1].trim() : null;
+}
+function localeDesc(rec) {
+  if (!LOCALE_STRINGS || !rec || rec.LanguageNameId == null) return null;
+  let t = LOCALE_STRINGS[String(rec.LanguageNameId + 21000)];
+  if (!t) return null;
+  t = t.split('‹DEFAULT›')[0]
+    .replace(/^\s*[A-Za-z ]*<b>.*?<\/b>\s*\(‹[^›]*›\)\s*(<br>)?/, '')
+    .replace(/<br>/g, ' ')
+    .replace(/<[^>]*>/g, '')
+    .replace(/‹[^›]*›/g, '')
+    .replace(/\s+/g, ' ').trim();
+  return t || null;
+}
 const PLAYER_DATA_BASE = 'https://raw.githubusercontent.com/robbyho-aoe2/player-data/main/data';
 /* aggregate.json got split into one file per group (plus a small meta
    file) once it crossed GitHub's 50MB soft file-size limit — pc alone
@@ -2444,9 +2472,13 @@ let pendingQ = null;
    ================================================================ */
 async function loadData() {
   try {
-    const res = await fetch(DATA_URL);
+    const [res, localeRes] = await Promise.all([
+      fetch(DATA_URL),
+      fetch(LOCALE_URL).catch(() => null),
+    ]);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     RAW_DATA = await res.json();
+    try { if (localeRes && localeRes.ok) LOCALE_STRINGS = await localeRes.json(); } catch (e) { LOCALE_STRINGS = null; }
     rebuildCivData();
     dataLoaded = true;
     render();
@@ -2681,22 +2713,38 @@ function parseRaw(raw) {
   list.forEach(i => { i.ids.forEach(x => haveIds[i.itemType].add(x)); haveNames.add(i.name.toLowerCase()); });
   const reachable = { unit: new Set(), tech: new Set() };
   Object.values(civData).forEach(cd => { cd.units.forEach(x => reachable.unit.add(x)); cd.techs.forEach(x => reachable.tech.add(x)); });
+  const extraByName = {};
   const addExtras = (itemType, byId) => {
     [...reachable[itemType]].sort((a, b) => a - b).forEach(id => {
       if (haveIds[itemType].has(id) || id >= 900000) return;
       const rec = byId[id];
-      if (!rec || !rec.internal_name) return;
-      let name = String(rec.internal_name).trim();
-      if (itemType === 'unit' && SEARCH_UNIT_NAME_FIXES[name]) name = SEARCH_UNIT_NAME_FIXES[name];
-      if (itemType === 'unit' && !/[a-z]/.test(name)) return;
-      if (itemType === 'tech' && /\bUT\d?$/.test(name)) return;
+      if (!rec) return;
+      // Real English name from the locale strings when available; otherwise
+      // fall back to the data's own internal_name (skipping unreadable
+      // all-caps abbreviations and legacy "<Civ> UT" placeholder techs).
+      let name = localeName(rec);
+      if (!name) {
+        if (!rec.internal_name) return;
+        name = String(rec.internal_name).trim();
+        if (itemType === 'unit' && SEARCH_UNIT_NAME_FIXES[name]) name = SEARCH_UNIT_NAME_FIXES[name];
+        if (itemType === 'unit' && !/[a-z]/.test(name)) return;
+        if (itemType === 'tech' && /\bUT\d?$/.test(name)) return;
+      }
+      const key = itemType + ':' + name.toLowerCase();
+      // Same name already added under another id (duplicate/legacy record):
+      // fold the id into that entry so either one counts as "has it".
+      if (extraByName[key]) { extraByName[key].ids.push(id); return; }
       if (haveNames.has(name.toLowerCase())) return;
       haveNames.add(name.toLowerCase());
-      list.push({ id, ids: [id], name, itemType, data: rec });
+      const item = { id, ids: [id], name, itemType, data: rec };
+      extraByName[key] = item;
+      list.push(item);
     });
   };
   addExtras('unit', unitsById);
   addExtras('tech', techsById);
+  // Description fallback (used by itemInfoHtml when the site has no curated one).
+  list.forEach(i => { i.localeDesc = localeDesc(i.data); });
   list.sort((a, b) => a.name.localeCompare(b.name));
   searchIdx = list;
 }
@@ -5832,7 +5880,7 @@ function itemInfoHtml(item) {
   </div>`;
 
   if (item.itemType === 'unit') {
-    const desc = UNIT_DESCRIPTIONS[item.id];
+    const desc = UNIT_DESCRIPTIONS[item.id] || (item.localeDesc ? escapeHtml(item.localeDesc) : '');
     if (desc) h += `<p style="font-size:13px;color:var(--text);margin-bottom:10px;line-height:1.5;font-weight:500">${desc}</p>`;
     const pairs = [
       ['HP',d.HP],['Attack',d.Attack],
@@ -5854,7 +5902,7 @@ function itemInfoHtml(item) {
   }
 
   if (item.itemType === 'tech') {
-    const desc = TECH_DESCRIPTIONS[item.id];
+    const desc = TECH_DESCRIPTIONS[item.id] || (item.localeDesc ? escapeHtml(item.localeDesc) : '');
     if (desc) h += `<p style="font-size:13px;color:var(--text);margin-top:10px;line-height:1.6;font-weight:500">${desc}</p>`;
     if (d.ResearchTime) h += `<div style="font-size:11px;color:var(--text3);margin-top:6px">Research time: ${d.ResearchTime}s</div>`;
   }
