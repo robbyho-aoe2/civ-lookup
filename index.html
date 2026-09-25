@@ -268,7 +268,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.43</div>
+    <div class="version">v2.44</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -1593,7 +1593,7 @@ const CAT_COLORS = {
   // from the quick-filter category names above, same practical colors)
   Naval:'var(--cyan)', Monk:'var(--purple)', Eco:'var(--green)', Defensive:'var(--yellow)',
   Camel:'#d97706', Elephant:'#7c3aed', Gunpowder:'var(--pink)',
-  'Unique Units':'#f0abfc', 'Unique Techs':'#fde68a', Other:'var(--text2)',
+  'Unique Techs':'#fde68a', Other:'var(--text2)',
 };
 
 /* ── Quick filter categories ──
@@ -1674,6 +1674,25 @@ const BROWSE_EXTRA_CATEGORY = {
   Other: ['Feudal Age', 'Castle Age', 'Imperial Age', 'Spies/Treason', 'Cao Cao', 'Liu Bei', 'Sun Jian'],
 };
 const BROWSE_UNIQUE_UNIT_EXTRAS = ['Elite Blackwood Archers', 'Elite Ratha (Ranged)', 'War Chariot (Focus Fire)'];
+// Unique units are split by type in the Browse panel, using UNIQUE_UNIT_CATEGORY's
+// first (primary) category per unit; a few units it leaves empty or lists in
+// a different primary order get an explicit type here.
+const BROWSE_UU_LABELS = {
+  Infantry: 'Unique Infantry', Archer: 'Unique Archers', Cavalry: 'Unique Cavalry',
+  'Cavalry Archer': 'Unique Cavalry Archers', Camel: 'Unique Camels', Elephant: 'Unique Elephants',
+  Gunpowder: 'Unique Gunpowder', Siege: 'Unique Siege', Naval: 'Unique Ships', Monk: 'Unique Monks',
+  Defensive: 'Unique Infantry',
+};
+const BROWSE_UU_TYPE_FIX = {
+  Condottiero: 'Infantry', 'Imperial Skirmisher': 'Archer', Mameluke: 'Camel',
+  'Blackwood Archers': 'Archer', 'Ratha': 'Cavalry Archer',
+};
+function browseUUType(name) {
+  const base = name.replace(/^Elite /, '').replace(/ \(.*\)$/, '');
+  const key = BROWSE_UU_TYPE_FIX[base] ? base : (UNIQUE_UNIT_CATEGORY[name] ? name : base);
+  const type = BROWSE_UU_TYPE_FIX[key] || (UNIQUE_UNIT_CATEGORY[key] || [])[0];
+  return BROWSE_UU_LABELS[type] || 'Unique Infantry';
+}
 let _browseCache = null;
 // name -> { itemType, ids } for anything searchable, curated names first.
 function browseLookup(name) {
@@ -1690,7 +1709,7 @@ function browseCategories() {
     if (!byLabel[label]) { byLabel[label] = { label, color: CAT_COLORS[label] || 'var(--text2)', items: [] }; cats.push(byLabel[label]); }
     return byLabel[label];
   };
-  ensure('Unique Units'); ensure('Unique Techs');
+  ensure('Unique Techs').unique = true;
   if (!Array.isArray(searchIdx) || !searchIdx.length) return cats;
   const assigned = new Set(cats.flatMap(c => c.items));
   const addTo = (label, name) => { if (!assigned.has(name) && browseLookup(name)) { ensure(label).items.push(name); assigned.add(name); } };
@@ -1700,14 +1719,22 @@ function browseCategories() {
     if (assigned.has(i.name)) return;
     if (i.itemType === 'unit') {
       const base = i.name.replace(/^Elite /, '');
-      addTo(UU_CIV_MAP[i.name] || UU_CIV_MAP[base] || BROWSE_UNIQUE_UNIT_EXTRAS.includes(i.name) ? 'Unique Units' : 'Other', i.name);
+      const isUU = UU_CIV_MAP[i.name] || UU_CIV_MAP[base] || BROWSE_UNIQUE_UNIT_EXTRAS.includes(i.name);
+      if (isUU && !assigned.has(i.name)) {
+        const label = browseUUType(i.name);
+        if (!byLabel[label]) { byLabel[label] = { label, color: '#f0abfc', unique: true, items: [] }; cats.push(byLabel[label]); }
+        addTo(label, i.name);
+      } else addTo('Other', i.name);
     } else {
       addTo(utNames.has(i.name) ? 'Unique Techs' : 'Other', i.name);
     }
   });
   const order = cats.filter(c => c.items.length);
-  // Keep "Other" last.
-  return [...order.filter(c => c.label !== 'Other'), ...order.filter(c => c.label === 'Other')];
+  const rank = c => c.label === 'Other' ? 3 : c.label === 'Unique Techs' ? 2 : c.unique ? 1 : 0;
+  // Standard categories first, then the unique-unit types, Unique Techs, Other.
+  const uuOrder = ['Infantry', 'Archer', 'Cavalry', 'Cavalry Archer', 'Camel', 'Elephant', 'Gunpowder', 'Siege', 'Naval', 'Monk'].map(t => BROWSE_UU_LABELS[t]);
+  const sub = c => c.unique && c.label !== 'Unique Techs' ? uuOrder.indexOf(c.label) : 0;
+  return order.map((c, i) => ({ c, i })).sort((a, b) => rank(a.c) - rank(b.c) || sub(a.c) - sub(b.c) || a.i - b.i).map(x => x.c);
 }
 
 /* ── Civ archetypes ──
@@ -5923,20 +5950,21 @@ function civInfoHtml(civName, compact) {
     const cd = civData[civName];
     if (cd) {
       h += `<div class="info-sl">Full tech tree by category</div>`;
-      QUICK_CATEGORIES.forEach(cat => {
+      browseCategories().forEach(cat => {
+        // Standard categories list every item (✗ = this civ lacks it); the
+        // unique unit/tech sections would be almost all ✗ for any one civ, so
+        // they show only what this civ actually has.
         const rows = cat.items.map(name => {
-          const uid = UNIT_IDS[name], tid = TECH_IDS[name];
-          const raw = uid ?? tid;
-          if (raw === undefined) return null;
-          const ids = Array.isArray(raw) ? raw : [raw];
-          const type = uid !== undefined ? 'unit' : 'tech';
+          const info = browseItemInfo(name);
+          if (!info) return null;
+          const { itemType: type, ids } = info;
           const has = type === 'unit' ? ids.some(id => cd.units.has(id)) : ids.some(id => cd.techs.has(id));
           return { name, has, type };
-        }).filter(Boolean);
+        }).filter(r => r && (r.has || !cat.unique));
         if (!rows.length) return;
         h += `<div class="avail-section">
           <div class="avail-section-label" style="color:${cat.color}">${cat.label}</div>
-          <div class="avail-items">${rows.map(r => `<span class="avail-item ${r.has ? 'yes' : 'no'}" data-item-name="${r.name}" data-item-type="${r.type}" style="cursor:pointer">${r.name}</span>`).join('')}</div>
+          <div class="avail-items">${rows.map(r => `<span class="avail-item ${r.has ? 'yes' : 'no'}" data-item-name="${escapeHtml(r.name)}" data-item-type="${r.type}" style="cursor:pointer">${escapeHtml(r.name)}</span>`).join('')}</div>
         </div>`;
       });
     }
