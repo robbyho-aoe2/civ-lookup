@@ -80,6 +80,27 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 .footer a{color:var(--text2);text-decoration:none;}
 .footer a:hover{color:var(--amberL);}
 .version{font-size:10px;color:var(--text3);margin-top:6px;}
+.tab-row{display:flex;gap:8px;margin:0 0 22px;}
+.tab-row button{background:var(--surf2);border:1px solid var(--border2);color:var(--text2);font:inherit;font-size:13px;font-weight:700;padding:8px 16px;border-radius:20px;cursor:pointer;}
+.tab-row button:hover{color:var(--text);}
+.tab-row button.on{background:var(--amberBg);color:var(--amberL);border-color:rgba(95,184,140,.4);}
+.scout-power{margin:6px 0 0;padding-left:22px;font-size:13px;line-height:1.9;color:var(--text2);}
+.scout-power b{color:var(--text);}
+.scout-team{border-left:4px solid var(--accent,var(--border2));}
+.scout-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:6px;}
+.scout-head h2{font-size:19px;margin:0;color:var(--text);}
+.scout-rank{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--accent,var(--border2));color:#fff;font-size:13px;font-weight:800;}
+.scout-tag{font-size:12px;color:var(--text3);font-style:italic;}
+.scout-lede{font-size:13px;color:var(--text);margin:10px 0 12px;line-height:1.6;}
+.scout-rows{display:grid;gap:8px;}
+.scout-rows>div{display:grid;grid-template-columns:110px 1fr;gap:12px;font-size:12.5px;line-height:1.6;color:var(--text2);}
+.scout-rows>div>b{color:var(--amberL);font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding-top:2px;}
+.scout-verdict{margin:14px 0 0;padding:10px 14px;background:var(--surf2);border-left:3px solid var(--accent,var(--border2));border-radius:6px;font-size:13px;color:var(--text);line-height:1.6;}
+.scout-verdict b{color:var(--amberL);}
+.scout-lineup td:first-child{font-weight:700;color:var(--amberL);width:60px;}
+.x-plink{color:inherit;text-decoration:underline dotted var(--text3);text-underline-offset:2px;}
+.x-plink:hover{color:var(--amberL);}
+@media(max-width:600px){.scout-rows>div{grid-template-columns:1fr;gap:2px;}}
 </style>
 </head>
 <body>
@@ -99,6 +120,12 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="build-order.html">🛠️ Build Order</a>
   </nav>
 
+  <div class="tab-row" role="tablist">
+    <button type="button" class="on" data-tab="tournament" role="tab">Tournament</button>
+    <button type="button" data-tab="scouting" role="tab">Scouting Report</button>
+  </div>
+
+  <div id="tab-tournament">
   <div class="card">
     <div class="tourney-head">
       <h2>Nations Cup</h2>
@@ -246,11 +273,166 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     </div>
   </div>
 
+  </div>
+
+  <div id="tab-scouting" hidden>
+    <div class="card">
+      <div class="tourney-head"><h2>Nations Cup Scouting Report</h2></div>
+      <p class="desc">
+        Six teams, four sets each. Built from every player's ranked Console games (1v1 and Team) over the last 12 months,
+        snapshot of Sept 26, 2026. <b>WOE</b> ("wins above expectation") is how many more games per 100 a player or
+        team wins than their rating gap to the opponents predicts, so a 1700 winning 65% and a 2000 winning 50% both
+        land near zero. Treat it as a comparison between teams, not an absolute score. Rosters can be any size and only
+        four play at a time, the rest are subs; players can play as many sets as they want.
+      </p>
+      <h3 class="sub-heading">Power rankings (projection)</h3>
+      <ol class="scout-power">
+        <li><b>Mexico</b> — deepest roster, most games together, proven duo</li>
+        <li><b>USA</b> — highest ceiling, least tested</li>
+        <li><b>France</b> — the tightest team, with no depth</li>
+        <li><b>Canada</b> — the dark horse</li>
+        <li><b>UK</b> — excellent on closed maps, shaky on open ones</li>
+        <li><b>PS5</b> — great in 1v1, but the team sets are where they fall behind</li>
+      </ol>
+    </div>
+
+    <div class="card scout-team" style="--accent:var(--nc-blue)">
+      <div class="scout-head"><span class="scout-rank">1</span><h2>Mexico</h2><span class="scout-tag">The deepest team in the field</span></div>
+      <div class="pill-row">
+        <span class="pill">683 games together (12 mo)</span>
+        <span class="pill">Open maps 69% · WOE +6.1</span>
+        <span class="pill">Closed maps 69% · WOE +3.0</span>
+      </div>
+      <p class="scout-lede">Four players are rated 1880+ in 1v1, and no team has played more games together in the last year.</p>
+      <div class="scout-rows">
+        <div><b>Star</b><span>UxDora (2213, 88% in 1v1, WOE +5). UxLiho (2207) sits right behind.</span></div>
+        <div><b>Best weapon</b><span>UxLiho + UxDora in 2v2: 37 games at 89%, WOE +14.5, the best proven duo of any team.</span></div>
+        <div><b>3v3</b><span>RKs Raggz + MORIS0202 + moramora48: 23 games at 70%, WOE +18.</span></div>
+        <div><b>Strengths</b><span>African Clearing (+10.7), Glade and Hideout.</span></div>
+        <div><b>Weakness</b><span>Arena is their most-played map (991 games) and their weakest (+2.3).</span></div>
+        <div><b>X-factor</b><span>The 4v4. Every 4-stack has only 3–7 games together, so their biggest edge sits in the set with the least evidence.</span></div>
+      </div>
+      <p class="scout-verdict"><b>Verdict:</b> the safest bet in the field, but only if the 4v4 holds.</p>
+    </div>
+
+    <div class="card scout-team" style="--accent:var(--nc-red)">
+      <div class="scout-head"><span class="scout-rank">2</span><h2>USA</h2><span class="scout-tag">Highest talent on paper, least chemistry</span></div>
+      <div class="pill-row">
+        <span class="pill">214 games together (12 mo)</span>
+        <span class="pill">Open maps 67% · WOE +6.1</span>
+        <span class="pill">Closed maps 73% · WOE +4.6</span>
+      </div>
+      <p class="scout-lede">Nine on the roster, four play, and the best player rarely does.</p>
+      <div class="scout-rows">
+        <div><b>Ace</b><span>Faith2Adventure (2280), the 1v1 leader. He has played almost no ranked games this year.</span></div>
+        <div><b>Workhorses</b><span>Donald2O16Trump (2179 in 1v1) and old peenuts (1064 Team games), with Darth masala (828) as the first sub.</span></div>
+        <div><b>Best weapon</b><span>Donald2O16Trump + old peenuts in 2v2: 47 games at 77%, WOE +14.</span></div>
+        <div><b>Warning sign</b><span>Darth masala + old peenuts is 46% over 56 games. Keep that pair apart.</span></div>
+        <div><b>Strengths</b><span>African Clearing (+7.5), plus Oasis and Land Nomad.</span></div>
+        <div><b>Weakness</b><span>Hideout (-5), and almost no open-map data on the stars.</span></div>
+        <div><b>The big question</b><span>Nobody has played a real 3v3 or 4v4 together.</span></div>
+        <div><b>Wildcard</b><span>If sologhost returns, he and Donald2O16Trump are 155 games at 95% all-time.</span></div>
+      </div>
+      <h3 class="sub-heading">Projected lineup</h3>
+      <div class="overflow-x">
+        <table class="scout-lineup">
+          <thead><tr><th>Set</th><th>Lineup</th></tr></thead>
+          <tbody>
+            <tr><td>1v1</td><td>Faith2Adventure</td></tr>
+            <tr><td>2v2</td><td>Donald2O16Trump + old peenuts</td></tr>
+            <tr><td>3v3</td><td>PrEyOnU1 + Donald2O16Trump + slytiger4815</td></tr>
+            <tr><td>4v4</td><td>Faith2Adventure + PrEyOnU1 + slytiger4815 + Donald2O16Trump</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="scout-verdict"><b>Verdict:</b> a very high ceiling with a very low floor, and it all comes down to Faith2Adventure showing up. Backup plan: PrEyOnU1 takes the 4v4 slot and Donald2O16Trump the 1v1.</p>
+    </div>
+
+    <div class="card scout-team" style="--accent:var(--nc-red)">
+      <div class="scout-head"><span class="scout-rank">3</span><h2>France</h2><span class="scout-tag">The only team that really plays together</span></div>
+      <div class="pill-row">
+        <span class="pill">548 games together (12 mo)</span>
+        <span class="pill">Open maps 78% · WOE -0.1</span>
+        <span class="pill">Closed maps 76% · WOE -4.0</span>
+      </div>
+      <p class="scout-lede">548 games together with only four players.</p>
+      <div class="scout-rows">
+        <div><b>Star</b><span>x FalKo i (1996, 455 games in 1v1).</span></div>
+        <div><b>Core</b><span>Saymyname3451 is the hub, paired with supercharlie12 (101 2v2s, 82%) and vN eRaaz (80, 81%).</span></div>
+        <div><b>4v4</b><span>Their only four: 9 games at 89%, WOE +5.</span></div>
+        <div><b>Strengths</b><span>Nomad, Four Lakes and Arabia (78%).</span></div>
+        <div><b>Weakness</b><span>Glade (-11.8), and closed maps in general (-4).</span></div>
+        <div><b>Reality check</b><span>They win 77%, but adjusted for rating it's about even: they win roughly what their rating says.</span></div>
+        <div><b>Risk</b><span>Four players and no bench.</span></div>
+      </div>
+      <p class="scout-verdict"><b>Verdict:</b> the most cohesive team and the biggest injury risk.</p>
+    </div>
+
+    <div class="card scout-team" style="--accent:var(--nc-gold)">
+      <div class="scout-head"><span class="scout-rank">4</span><h2>Canada</h2><span class="scout-tag">The dark horse</span></div>
+      <div class="pill-row">
+        <span class="pill">92 games together (12 mo)</span>
+        <span class="pill">Open maps 81% · WOE +19.4</span>
+        <span class="pill">Closed maps 82% · WOE +12.1</span>
+      </div>
+      <p class="scout-lede">The best adjusted numbers in the field, from a small sample.</p>
+      <div class="scout-rows">
+        <div><b>Star</b><span>volcanloup (2306), but his last 1v1 in the data is April. Im2Good4YoMoma (1981) is the active choice.</span></div>
+        <div><b>Best weapon</b><span>GOAT Gobz + Im2Good4YoMoma in 2v2: 35 games at 83%, WOE +10, and 384 all-time at 81%.</span></div>
+        <div><b>Strengths</b><span>Everywhere. Arabia (+20.6), African Clearing (+17) and Arena (+12).</span></div>
+        <div><b>Weakness</b><span>None real, only the sample size (about 800 games in 12 months, against Mexico's 3,800).</span></div>
+        <div><b>Caveat</b><span>Their ratings have dropped from earlier peaks (volcanloup's Team rating fell from 1957 to 1552), so they may be undervalued, not just lucky.</span></div>
+      </div>
+      <p class="scout-verdict"><b>Verdict:</b> rated lowest, plays highest. The team most likely to beat its seed.</p>
+    </div>
+
+    <div class="card scout-team" style="--accent:var(--nc-green)">
+      <div class="scout-head"><span class="scout-rank">5</span><h2>UK</h2><span class="scout-tag">Better on closed maps than open ones</span></div>
+      <div class="pill-row">
+        <span class="pill">139 games together (12 mo)</span>
+        <span class="pill">Open maps 65% · WOE +0.7</span>
+        <span class="pill">Closed maps 75% · WOE +7.6</span>
+      </div>
+      <p class="scout-lede">Seven on the roster, and a rating that undersells the core.</p>
+      <div class="scout-rows">
+        <div><b>Ace</b><span>DarK Slaayer (2167, 93% in 42 games).</span></div>
+        <div><b>Backbone</b><span>ALPO4769 (1401 Team games) and Huskarls4: 60 2v2s at 62% (WOE +12), or 370 at 86% all-time. Their ratings (1537–1560) sit well below their old peaks, but they keep winning more than that predicts (WOE +9.5 and +14).</span></div>
+        <div><b>Strengths</b><span>Arena (+8), Black Forest (+5), Oasis and MegaRandom.</span></div>
+        <div><b>Weakness</b><span>Arabia (-0.7 over 1,460 games) and African Clearing (57%). If they get a map veto, use it there.</span></div>
+        <div><b>Depth</b><span>Seven players, but the 3v3 and 4v4 lineups have almost no history.</span></div>
+      </div>
+      <p class="scout-verdict"><b>Verdict:</b> dangerous if the map favors them.</p>
+    </div>
+
+    <div class="card scout-team" style="--accent:var(--nc-blue)">
+      <div class="scout-head"><span class="scout-rank">6</span><h2>PS5</h2><span class="scout-tag">A 1v1 team in a four-set series</span></div>
+      <div class="pill-row">
+        <span class="pill">49 games together (12 mo)</span>
+        <span class="pill">Open maps 65% · WOE -13.8</span>
+        <span class="pill">Closed maps 75% · WOE +1.1</span>
+      </div>
+      <p class="scout-lede">Their 1v1 average is about 2000, but their Team ratings average about 1580, the lowest of any team.</p>
+      <div class="scout-rows">
+        <div><b>Ace</b><span>ItsGutsAoE (2033, 85%). CrustyPotato313 has the same rating but wins 64% (WOE -23), so ItsGutsAoE is the better pick.</span></div>
+        <div><b>Best weapon</b><span>ItsGutsAoE + CrustyPotato313 in 2v2, but only 8 games at that size.</span></div>
+        <div><b>Strengths</b><span>Black Forest (+7.3) and Arena (0.0).</span></div>
+        <div><b>Weakness</b><span>Open maps. Arabia is -14.8 over 1,316 games, the largest map deficit in the field.</span></div>
+        <div><b>Cohesion</b><span>49 games together in 12 months, and none at 3v3 or 4v4.</span></div>
+      </div>
+      <p class="scout-verdict"><b>Verdict:</b> they take the 1v1 and struggle to win three more sets.</p>
+    </div>
+
+    <p class="standings-note" style="margin:0 0 6px">
+      The strongest calls are the ones with hundreds of games behind them: Mexico's depth, France's cohesion, the UK's
+      closed-map lean and PS5's Arabia problem. The 3v3 and 4v4 picks for USA, UK, PS5 and Canada rest on very little data.
+    </p>
+  </div>
+
   <div class="footer">
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.30</div>
+    <div class="version">v0.31</div>
   </div>
 </div>
 
@@ -439,6 +621,53 @@ document.getElementById('standings-table').innerHTML = `
     `).join('')}
   </tbody>
 `;
+
+// ---- Tabs: Tournament / Scouting Report (URL hash keeps the choice) ----
+(function () {
+  const tabs = { tournament: document.getElementById('tab-tournament'), scouting: document.getElementById('tab-scouting') };
+  const btns = document.querySelectorAll('.tab-row button');
+  function show(name) {
+    if (!tabs[name]) name = 'tournament';
+    Object.entries(tabs).forEach(([k, el]) => { el.hidden = k !== name; });
+    btns.forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+    history.replaceState(null, '', name === 'tournament' ? location.pathname + location.search : '#' + name);
+  }
+  btns.forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
+  show(location.hash.slice(1));
+})();
+
+// ---- Link roster names in the scouting report to their player pages ----
+(function () {
+  const root = document.getElementById('tab-scouting');
+  const byName = new Map();
+  TEAMS.forEach(t => t.players.forEach(p => byName.set(p.name, p.profileId)));
+  const names = [...byName.keys()].sort((a, b) => b.length - a.length);
+  if (!names.length) return;
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp('(?<![\\w-])(' + names.map(esc).join('|') + ')(?![\\w])', 'g');
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) { if (!walker.currentNode.parentElement.closest('a, th')) nodes.push(walker.currentNode); }
+  nodes.forEach(node => {
+    const text = node.nodeValue;
+    re.lastIndex = 0;
+    if (!re.test(text)) return;
+    re.lastIndex = 0;
+    const frag = document.createDocumentFragment();
+    let last = 0, m;
+    while ((m = re.exec(text))) {
+      if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+      const a = document.createElement('a');
+      a.className = 'x-plink';
+      a.href = 'player.html?id=' + byName.get(m[1]);
+      a.textContent = m[1];
+      frag.appendChild(a);
+      last = m.index + m[1].length;
+    }
+    if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+    node.parentNode.replaceChild(frag, node);
+  });
+})();
 </script>
 </body>
 </html>
