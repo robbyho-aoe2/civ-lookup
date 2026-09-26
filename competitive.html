@@ -97,7 +97,9 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 .scout-rows>div>b{color:var(--amberL);font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding-top:2px;}
 .scout-verdict{margin:14px 0 0;padding:10px 14px;background:var(--surf2);border-left:3px solid var(--accent,var(--border2));border-radius:6px;font-size:13px;color:var(--text);line-height:1.6;}
 .scout-verdict b{color:var(--amberL);}
-.scout-lineup td:first-child{font-weight:700;color:var(--amberL);width:60px;}
+.scout-elo{margin:12px 0 4px;}
+.scout-elo td:first-child{color:var(--text2);}
+.scout-n{color:var(--text3);font-size:10px;}
 .x-plink{color:inherit;text-decoration:underline dotted var(--text3);text-underline-offset:2px;}
 .x-plink:hover{color:var(--amberL);}
 @media(max-width:600px){.scout-rows>div{grid-template-columns:1fr;gap:2px;}}
@@ -285,6 +287,9 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
         land near zero. Treat it as a comparison between teams, not an absolute score. Rosters can be any size and only
         four play at a time, the rest are subs; players can play as many sets as they want.
       </p>
+      <h3 class="sub-heading">Average current rating, top 4 players</h3>
+      <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Team</th><th class="num">1v1 Console</th><th class="num">1v1 PC</th><th class="num">Team Console</th><th class="num">Team PC</th></tr></thead><tbody><tr><td>Mexico</td><td class="num">2,087</td><td class="num">1,393</td><td class="num">1,736</td><td class="num">1,423</td></tr><tr><td>USA</td><td class="num">2,132</td><td class="num">1,548</td><td class="num">1,827</td><td class="num">1,466</td></tr><tr><td>France</td><td class="num">1,858</td><td class="num">1,284</td><td class="num">1,784</td><td class="num">1,384</td></tr><tr><td>Canada</td><td class="num">2,044</td><td class="num">1,442</td><td class="num">1,670</td><td class="num">1,422</td></tr><tr><td>UK</td><td class="num">1,958</td><td class="num">1,446</td><td class="num">1,718</td><td class="num">1,491</td></tr><tr><td>PS5</td><td class="num">2,000</td><td class="num">1,320</td><td class="num">1,576</td><td class="num">1,260</td></tr></tbody></table></div>
+      <p class="standings-note" style="margin:8px 0 0">Current ratings, not peaks. "Top 4" is each ladder's four highest-rated players on the roster, "Bench" is everyone else who has a rating on that ladder (player count in brackets). The PC ratings are the same players' rating on the PC ladders, and ratings include inactive players' last known rating.</p>
       <h3 class="sub-heading">Power rankings (projection)</h3>
       <ol class="scout-power">
         <li><b>Mexico</b> — deepest roster, most games together, proven duo</li>
@@ -303,6 +308,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
         <span class="pill">Open maps 69% · WOE +6.1</span>
         <span class="pill">Closed maps 69% · WOE +3.0</span>
       </div>
+      <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Average current rating</th><th class="num">Top 4</th><th class="num">Bench</th></tr></thead><tbody><tr><td>1v1 Console</td><td class="num">2,087</td><td class="num">1,760 <span class="scout-n">(2)</span></td></tr><tr><td>1v1 PC</td><td class="num">1,393</td><td class="num">949 <span class="scout-n">(2)</span></td></tr><tr><td>Team Console</td><td class="num">1,736</td><td class="num">1,566 <span class="scout-n">(2)</span></td></tr><tr><td>Team PC</td><td class="num">1,423</td><td class="num">1,258 <span class="scout-n">(2)</span></td></tr></tbody></table></div>
       <p class="scout-lede">Four players are rated 1880+ in 1v1, and no team has played more games together in the last year.</p>
       <div class="scout-rows">
         <div><b>Star</b><span>UxDora (2213, 88% in 1v1, WOE +5). UxLiho (2207) sits right behind.</span></div>
@@ -322,6 +328,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
         <span class="pill">Open maps 67% · WOE +6.1</span>
         <span class="pill">Closed maps 73% · WOE +4.6</span>
       </div>
+      <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Average current rating</th><th class="num">Top 4</th><th class="num">Bench</th></tr></thead><tbody><tr><td>1v1 Console</td><td class="num">2,132</td><td class="num">1,818 <span class="scout-n">(5)</span></td></tr><tr><td>1v1 PC</td><td class="num">1,548</td><td class="num">1,300 <span class="scout-n">(4)</span></td></tr><tr><td>Team Console</td><td class="num">1,827</td><td class="num">1,604 <span class="scout-n">(5)</span></td></tr><tr><td>Team PC</td><td class="num">1,466</td><td class="num">1,271 <span class="scout-n">(5)</span></td></tr></tbody></table></div>
       <p class="scout-lede">Nine on the roster, four play, and the best player rarely does.</p>
       <div class="scout-rows">
         <div><b>Ace</b><span>Faith2Adventure (2280), the 1v1 leader. He has played almost no ranked games this year.</span></div>
@@ -333,19 +340,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
         <div><b>The big question</b><span>Nobody has played a real 3v3 or 4v4 together.</span></div>
         <div><b>Wildcard</b><span>If sologhost returns, he and Donald2O16Trump are 155 games at 95% all-time.</span></div>
       </div>
-      <h3 class="sub-heading">Projected lineup</h3>
-      <div class="overflow-x">
-        <table class="scout-lineup">
-          <thead><tr><th>Set</th><th>Lineup</th></tr></thead>
-          <tbody>
-            <tr><td>1v1</td><td>Faith2Adventure</td></tr>
-            <tr><td>2v2</td><td>Donald2O16Trump + old peenuts</td></tr>
-            <tr><td>3v3</td><td>PrEyOnU1 + Donald2O16Trump + slytiger4815</td></tr>
-            <tr><td>4v4</td><td>Faith2Adventure + PrEyOnU1 + slytiger4815 + Donald2O16Trump</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="scout-verdict"><b>Verdict:</b> a very high ceiling with a very low floor, and it all comes down to Faith2Adventure showing up. Backup plan: PrEyOnU1 takes the 4v4 slot and Donald2O16Trump the 1v1.</p>
+      <p class="scout-verdict"><b>Verdict:</b> a very high ceiling with a very low floor, and it all comes down to Faith2Adventure showing up. If he can't play, Donald2O16Trump takes the 1v1 and PrEyOnU1 fills the fourth spot in the team sets.</p>
     </div>
 
     <div class="card scout-team" style="--accent:var(--nc-red)">
@@ -355,6 +350,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
         <span class="pill">Open maps 78% · WOE -0.1</span>
         <span class="pill">Closed maps 76% · WOE -4.0</span>
       </div>
+      <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Average current rating</th><th class="num">Top 4</th><th class="num">Bench</th></tr></thead><tbody><tr><td>1v1 Console</td><td class="num">1,858</td><td class="num">—</td></tr><tr><td>1v1 PC</td><td class="num">1,284</td><td class="num">—</td></tr><tr><td>Team Console</td><td class="num">1,784</td><td class="num">—</td></tr><tr><td>Team PC</td><td class="num">1,384</td><td class="num">—</td></tr></tbody></table></div>
       <p class="scout-lede">548 games together with only four players.</p>
       <div class="scout-rows">
         <div><b>Star</b><span>x FalKo i (1996, 455 games in 1v1).</span></div>
@@ -375,6 +371,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
         <span class="pill">Open maps 81% · WOE +19.4</span>
         <span class="pill">Closed maps 82% · WOE +12.1</span>
       </div>
+      <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Average current rating</th><th class="num">Top 4</th><th class="num">Bench</th></tr></thead><tbody><tr><td>1v1 Console</td><td class="num">2,044</td><td class="num">1,671 <span class="scout-n">(1)</span></td></tr><tr><td>1v1 PC</td><td class="num">1,442</td><td class="num">1,284 <span class="scout-n">(1)</span></td></tr><tr><td>Team Console</td><td class="num">1,670</td><td class="num">1,552 <span class="scout-n">(1)</span></td></tr><tr><td>Team PC</td><td class="num">1,422</td><td class="num">1,364 <span class="scout-n">(1)</span></td></tr></tbody></table></div>
       <p class="scout-lede">The best adjusted numbers in the field, from a small sample.</p>
       <div class="scout-rows">
         <div><b>Star</b><span>volcanloup (2306), but his last 1v1 in the data is April. Im2Good4YoMoma (1981) is the active choice.</span></div>
@@ -393,6 +390,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
         <span class="pill">Open maps 65% · WOE +0.7</span>
         <span class="pill">Closed maps 75% · WOE +7.6</span>
       </div>
+      <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Average current rating</th><th class="num">Top 4</th><th class="num">Bench</th></tr></thead><tbody><tr><td>1v1 Console</td><td class="num">1,958</td><td class="num">1,642 <span class="scout-n">(2)</span></td></tr><tr><td>1v1 PC</td><td class="num">1,446</td><td class="num">1,155 <span class="scout-n">(2)</span></td></tr><tr><td>Team Console</td><td class="num">1,718</td><td class="num">1,560 <span class="scout-n">(3)</span></td></tr><tr><td>Team PC</td><td class="num">1,491</td><td class="num">1,315 <span class="scout-n">(3)</span></td></tr></tbody></table></div>
       <p class="scout-lede">Seven on the roster, and a rating that undersells the core.</p>
       <div class="scout-rows">
         <div><b>Ace</b><span>DarK Slaayer (2167, 93% in 42 games).</span></div>
@@ -411,6 +409,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
         <span class="pill">Open maps 65% · WOE -13.8</span>
         <span class="pill">Closed maps 75% · WOE +1.1</span>
       </div>
+      <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Average current rating</th><th class="num">Top 4</th><th class="num">Bench</th></tr></thead><tbody><tr><td>1v1 Console</td><td class="num">2,000</td><td class="num">1,660 <span class="scout-n">(1)</span></td></tr><tr><td>1v1 PC</td><td class="num">1,320</td><td class="num">—</td></tr><tr><td>Team Console</td><td class="num">1,576</td><td class="num">1,484 <span class="scout-n">(1)</span></td></tr><tr><td>Team PC</td><td class="num">1,260</td><td class="num">1,146 <span class="scout-n">(1)</span></td></tr></tbody></table></div>
       <p class="scout-lede">Their 1v1 average is about 2000, but their Team ratings average about 1580, the lowest of any team.</p>
       <div class="scout-rows">
         <div><b>Ace</b><span>ItsGutsAoE (2033, 85%). CrustyPotato313 has the same rating but wins 64% (WOE -23), so ItsGutsAoE is the better pick.</span></div>
@@ -432,7 +431,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.31</div>
+    <div class="version">v0.32</div>
   </div>
 </div>
 
