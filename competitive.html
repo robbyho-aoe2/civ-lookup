@@ -97,6 +97,14 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 .scout-rows>div>b{color:var(--amberL);font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding-top:2px;}
 .scout-verdict{margin:14px 0 0;padding:10px 14px;background:var(--surf2);border-left:3px solid var(--accent,var(--border2));border-radius:6px;font-size:13px;color:var(--text);line-height:1.6;}
 .scout-verdict b{color:var(--amberL);}
+.scout-odds td:last-child{color:var(--text2);}
+.scout-grid th,.scout-grid td{text-align:center;}
+.scout-grid td:first-child{text-align:left;}
+.scout-hi{color:var(--nc-green);font-weight:700;}
+.scout-lo{color:var(--red);}
+.scout-diag{color:var(--text3);}
+.scout-sets{color:var(--text3);font-size:11px;}
+.scout-take{margin:6px 0 0;padding-left:20px;font-size:12.5px;line-height:1.8;color:var(--text2);}
 .scout-elo{margin:12px 0 4px;}
 .scout-elo td:first-child{color:var(--text2);}
 .scout-n{color:var(--text3);font-size:10px;}
@@ -281,157 +289,99 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <div class="card">
       <div class="tourney-head"><h2>Nations Cup Scouting Report</h2></div>
       <p class="desc">
-        Six teams, four sets each. Built from every player's ranked Console games (1v1 and Team) over the last 12 months,
-        snapshot of Sept 26, 2026. <b>WOE</b> ("wins above expectation") is how many more games per 100 a player or
-        team wins than their rating gap to the opponents predicts, so a 1700 winning 65% and a 2000 winning 50% both
-        land near zero. Treat it as a comparison between teams, not an absolute score. Rosters can be any size and only
-        four play at a time, the rest are subs; players can play as many sets as they want.
+        Six teams. A series is four sets worth 1, 2, 3 and 4 points (10 in all), and teams are ranked by total points.
+        Built from ranked Console games over the last 12 months (snapshot Sept 26, 2026). <b>WOE</b> is wins above what the
+        rating gap predicts, per 100 games, so a 1700 winning 65% and a 2000 winning 50% both land near zero.
+        Rosters can be any size, four play at a time, and players can play every set.
       </p>
+      <h3 class="sub-heading">Title odds</h3>
+      <div class="overflow-x"><table class="scout-odds"><thead><tr><th class="num">#</th><th>Team</th><th class="num">Title odds</th><th class="num">Avg finish</th><th>Read</th></tr></thead><tbody><tr><td class="num">1</td><td><b>USA</b></td><td class="num">50%</td><td class="num">1.9</td><td>Faith2Adventure, sologhost and Donald2O16Trump carry the team sets</td></tr><tr><td class="num">2</td><td><b>Canada</b></td><td class="num">18%</td><td class="num">3.0</td><td>volcanloup, the second-best player in the field, plays every set</td></tr><tr><td class="num">3</td><td><b>Mexico</b></td><td class="num">13%</td><td class="num">3.3</td><td>Deepest roster and a proven duo, but no star edge</td></tr><tr><td class="num">4</td><td><b>France</b></td><td class="num">13%</td><td class="num">3.3</td><td>Best chemistry, weak 1v1 (worth 1 point of 10)</td></tr><tr><td class="num">5</td><td><b>UK</b></td><td class="num">7%</td><td class="num">3.9</td><td>A closed-map team with an Arabia problem</td></tr><tr><td class="num">6</td><td><b>PS5</b></td><td class="num"><1%</td><td class="num">5.6</td><td>Strong in 1v1, rated well behind in the team sets</td></tr></tbody></table></div>
+      <p class="standings-note" style="margin:8px 0 0">
+        From 40,000 simulated tournaments using current ratings, recent form against rating, games together, and a light map
+        ban/pick effect. It assumes Faith2Adventure, sologhost and volcanloup play, and treats Faith2Adventure, sologhost and
+        Donald2O16Trump (USA) and volcanloup (Canada) as the top players. Treat it as a projection, not a forecast.
+      </p>
+      <h3 class="sub-heading">Series win chances</h3>
+      <div class="overflow-x"><table class="scout-grid"><thead><tr><th></th><th class="num">USA</th><th class="num">Canada</th><th class="num">Mexico</th><th class="num">France</th><th class="num">UK</th><th class="num">PS5</th></tr></thead><tbody><tr><td><b>USA</b></td><td class="num scout-diag">—</td><td class="num scout-hi">58%</td><td class="num scout-hi">61%</td><td class="num scout-hi">61%</td><td class="num scout-hi">67%</td><td class="num scout-hi">86%</td></tr><tr><td><b>Canada</b></td><td class="num scout-lo">30%</td><td class="num scout-diag">—</td><td class="num ">47%</td><td class="num ">47%</td><td class="num ">54%</td><td class="num scout-hi">78%</td></tr><tr><td><b>Mexico</b></td><td class="num scout-lo">28%</td><td class="num ">40%</td><td class="num scout-diag">—</td><td class="num ">43%</td><td class="num ">50%</td><td class="num scout-hi">76%</td></tr><tr><td><b>France</b></td><td class="num scout-lo">28%</td><td class="num ">41%</td><td class="num ">44%</td><td class="num scout-diag">—</td><td class="num ">50%</td><td class="num scout-hi">74%</td></tr><tr><td><b>UK</b></td><td class="num scout-lo">23%</td><td class="num scout-lo">35%</td><td class="num ">37%</td><td class="num ">37%</td><td class="num scout-diag">—</td><td class="num scout-hi">70%</td></tr><tr><td><b>PS5</b></td><td class="num scout-lo">8%</td><td class="num scout-lo">15%</td><td class="num scout-lo">16%</td><td class="num scout-lo">16%</td><td class="num scout-lo">20%</td><td class="num scout-diag">—</td></tr></tbody></table></div>
+      <p class="standings-note" style="margin:8px 0 0">Chance the row team beats the column team. About 12% of series end 5–5 and are left out.</p>
+      <h3 class="sub-heading">Key takeaways</h3>
+      <ul class="scout-take">
+        <li>The 3v3 and 4v4 are worth 7 of the 10 points, and the 1v1 only 1. The team-set lineups decide the tournament.</li>
+        <li>USA's odds swing the most. If the stars play, they are strong favorites; if not, the field is wide open.</li>
+        <li>France, Mexico and UK sit within a few points of each other in most matchups. Small edges decide them.</li>
+        <li>Maps are a minor factor. The exceptions: PS5 and UK should avoid Arabia, Mexico wants African Clearing, France Black Forest, Canada Arabia.</li>
+        <li>PS5's strength is 1v1 and its weakness is the team sets that pay the most, so it is a long shot.</li>
+      </ul>
       <h3 class="sub-heading">Average current rating, top 4 players</h3>
-      <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Team</th><th class="num">1v1 Console</th><th class="num">1v1 PC</th><th class="num">Team Console</th><th class="num">Team PC</th></tr></thead><tbody><tr><td>Mexico</td><td class="num">2,087</td><td class="num">1,393</td><td class="num">1,736</td><td class="num">1,423</td></tr><tr><td>USA</td><td class="num">2,132</td><td class="num">1,548</td><td class="num">1,827</td><td class="num">1,466</td></tr><tr><td>France</td><td class="num">1,858</td><td class="num">1,284</td><td class="num">1,784</td><td class="num">1,384</td></tr><tr><td>Canada</td><td class="num">2,044</td><td class="num">1,442</td><td class="num">1,670</td><td class="num">1,422</td></tr><tr><td>UK</td><td class="num">1,958</td><td class="num">1,446</td><td class="num">1,718</td><td class="num">1,491</td></tr><tr><td>PS5</td><td class="num">2,000</td><td class="num">1,320</td><td class="num">1,576</td><td class="num">1,260</td></tr></tbody></table></div>
-      <p class="standings-note" style="margin:8px 0 0">Current ratings, not peaks. "Top 4" is each ladder's four highest-rated players on the roster, "Bench" is everyone else who has a rating on that ladder (player count in brackets). The PC ratings are the same players' rating on the PC ladders, and ratings include inactive players' last known rating.</p>
-      <h3 class="sub-heading">Power rankings (projection)</h3>
-      <ol class="scout-power">
-        <li><b>Mexico</b> — deepest roster, most games together, proven duo</li>
-        <li><b>USA</b> — highest ceiling, least tested</li>
-        <li><b>France</b> — the tightest team, with no depth</li>
-        <li><b>Canada</b> — the dark horse</li>
-        <li><b>UK</b> — excellent on closed maps, shaky on open ones</li>
-        <li><b>PS5</b> — great in 1v1, but the team sets are where they fall behind</li>
-      </ol>
+      <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Team</th><th class="num">1v1 Console</th><th class="num">1v1 PC</th><th class="num">Team Console</th><th class="num">Team PC</th></tr></thead><tbody><tr><td>USA</td><td class="num">2,132</td><td class="num">1,548</td><td class="num">1,827</td><td class="num">1,466</td></tr><tr><td>Canada</td><td class="num">2,044</td><td class="num">1,442</td><td class="num">1,670</td><td class="num">1,422</td></tr><tr><td>Mexico</td><td class="num">2,087</td><td class="num">1,393</td><td class="num">1,736</td><td class="num">1,423</td></tr><tr><td>France</td><td class="num">1,858</td><td class="num">1,284</td><td class="num">1,784</td><td class="num">1,384</td></tr><tr><td>UK</td><td class="num">1,958</td><td class="num">1,446</td><td class="num">1,718</td><td class="num">1,491</td></tr><tr><td>PS5</td><td class="num">2,000</td><td class="num">1,320</td><td class="num">1,576</td><td class="num">1,260</td></tr></tbody></table></div>
+      <p class="standings-note" style="margin:8px 0 0">Current ratings, not peaks. "Top 4" is each ladder's four highest-rated roster players, "Bench" is everyone else with a rating (count in brackets). Inactive players count at their last known rating.</p>
     </div>
 
-    <div class="card scout-team" style="--accent:var(--nc-blue)">
-      <div class="scout-head"><span class="scout-rank">1</span><h2>Mexico</h2><span class="scout-tag">The deepest team in the field</span></div>
-      <div class="pill-row">
-        <span class="pill">683 games together (12 mo)</span>
-        <span class="pill">Open maps 69% · WOE +6.1</span>
-        <span class="pill">Closed maps 69% · WOE +3.0</span>
+    <details class="section">
+      <summary>Mock results <span class="summary-hint">one plausible run, not a prediction</span></summary>
+      <div class="card">
+        <h3 class="sub-heading">Standings</h3>
+        <div class="overflow-x"><table class="scout-odds"><thead><tr><th class="num">#</th><th>Team</th><th class="num">W–T–L</th><th class="num">Points</th></tr></thead><tbody><tr><td class="num">1</td><td><b>USA</b></td><td class="num">4–1–0</td><td class="num">41</td></tr><tr><td class="num">2</td><td><b>Canada</b></td><td class="num">4–1–0</td><td class="num">35</td></tr><tr><td class="num">3</td><td><b>Mexico</b></td><td class="num">2–0–3</td><td class="num">25</td></tr><tr><td class="num">4</td><td><b>France</b></td><td class="num">2–0–3</td><td class="num">21</td></tr><tr><td class="num">5</td><td><b>UK</b></td><td class="num">1–1–3</td><td class="num">14</td></tr><tr><td class="num">6</td><td><b>PS5</b></td><td class="num">0–1–4</td><td class="num">14</td></tr></tbody></table></div>
+        <h3 class="sub-heading">Series</h3>
+        <div class="overflow-x"><table class="scout-odds"><thead><tr><th>Series</th><th>Result</th><th>Set winners (1v1, 2v2, 3v3, 4v4)</th></tr></thead><tbody><tr><td>Mexico v USA</td><td>USA 6–4</td><td class="scout-sets">USA, USA, USA, Mexico</td></tr><tr><td>Mexico v France</td><td>Mexico 7–3</td><td class="scout-sets">Mexico, Mexico, France, Mexico</td></tr><tr><td>Mexico v Canada</td><td>Canada 6–4</td><td class="scout-sets">Canada, Canada, Canada, Mexico</td></tr><tr><td>Mexico v UK</td><td>UK 6–4</td><td class="scout-sets">UK, UK, UK, Mexico</td></tr><tr><td>Mexico v PS5</td><td>Mexico 6–4</td><td class="scout-sets">Mexico, Mexico, Mexico, PS5</td></tr><tr><td>USA v France</td><td>USA 10–0</td><td class="scout-sets">USA, USA, USA, USA</td></tr><tr><td>USA v Canada</td><td>Tie 5–5</td><td class="scout-sets">Canada, USA, USA, Canada</td></tr><tr><td>USA v UK</td><td>USA 10–0</td><td class="scout-sets">USA, USA, USA, USA</td></tr><tr><td>USA v PS5</td><td>USA 10–0</td><td class="scout-sets">USA, USA, USA, USA</td></tr><tr><td>France v Canada</td><td>Canada 8–2</td><td class="scout-sets">Canada, France, Canada, Canada</td></tr><tr><td>France v UK</td><td>France 7–3</td><td class="scout-sets">UK, UK, France, France</td></tr><tr><td>France v PS5</td><td>France 9–1</td><td class="scout-sets">PS5, France, France, France</td></tr><tr><td>Canada v UK</td><td>Canada 10–0</td><td class="scout-sets">Canada, Canada, Canada, Canada</td></tr><tr><td>Canada v PS5</td><td>Canada 6–4</td><td class="scout-sets">Canada, Canada, Canada, PS5</td></tr><tr><td>UK v PS5</td><td>Tie 5–5</td><td class="scout-sets">PS5, UK, UK, PS5</td></tr></tbody></table></div>
       </div>
+    </details>
+
+    <div class="card scout-team" style="--accent:var(--nc-red)">
+      <div class="scout-head"><span class="scout-rank">1</span><h2>USA</h2><span class="scout-tag">The favorite, if the stars play</span></div>
+      <div class="pill-row"><span class="pill">Title odds 50%</span><span class="pill">214 games together (12 mo)</span><span class="pill">Open maps 67% · WOE +6.1</span><span class="pill">Closed maps 73% · WOE +4.6</span></div>
+      <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Average current rating</th><th class="num">Top 4</th><th class="num">Bench</th></tr></thead><tbody><tr><td>1v1 Console</td><td class="num">2,132</td><td class="num">1,818 <span class="scout-n">(5)</span></td></tr><tr><td>1v1 PC</td><td class="num">1,548</td><td class="num">1,300 <span class="scout-n">(4)</span></td></tr><tr><td>Team Console</td><td class="num">1,827</td><td class="num">1,604 <span class="scout-n">(5)</span></td></tr><tr><td>Team PC</td><td class="num">1,466</td><td class="num">1,271 <span class="scout-n">(5)</span></td></tr></tbody></table></div>
+      <p class="scout-lede">Faith2Adventure is the best player on the roster, sologhost is next, and Donald2O16Trump is just behind him.</p>
+      <div class="scout-rows"><div><b>Star</b><span>Faith2Adventure (2280), the 1v1 leader, in every set. He has played few ranked games this year, so his rating is the least certain in the field.</span></div><div><b>Core</b><span>sologhost (2111 in 1v1) and Donald2O16Trump (2179, 215 games in 12 months). Depth: PrEyOnU1, slytiger4815, old peenuts, Darth masala, big Conigz, Zotico3.</span></div><div><b>Best proven</b><span>Donald2O16Trump + old peenuts in 2v2: 47 games at 77%, WOE +14.</span></div><div><b>Strengths</b><span>African Clearing (+7.5), plus Oasis and Land Nomad.</span></div><div><b>Weakness</b><span>Hideout (-5), almost no open-map data on the stars, and nobody has played a 3v3 or 4v4 together.</span></div><div><b>Watch</b><span>sologhost has not played ranked since August 2024. If the top three are only slightly better than PrEyOnU1 and slytiger4815, USA drops from about 50% to about 30%.</span></div></div>
+      <p class="scout-verdict"><b>Verdict:</b> the favorite on paper, and the whole projection rests on three players who barely play ranked.</p>
+    </div>
+    <div class="card scout-team" style="--accent:var(--nc-gold)">
+      <div class="scout-head"><span class="scout-rank">2</span><h2>Canada</h2><span class="scout-tag">The dark horse, with the field's second-best player</span></div>
+      <div class="pill-row"><span class="pill">Title odds 18%</span><span class="pill">92 games together (12 mo)</span><span class="pill">Open maps 81% · WOE +19.4</span><span class="pill">Closed maps 82% · WOE +12.1</span></div>
+      <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Average current rating</th><th class="num">Top 4</th><th class="num">Bench</th></tr></thead><tbody><tr><td>1v1 Console</td><td class="num">2,044</td><td class="num">1,671 <span class="scout-n">(1)</span></td></tr><tr><td>1v1 PC</td><td class="num">1,442</td><td class="num">1,284 <span class="scout-n">(1)</span></td></tr><tr><td>Team Console</td><td class="num">1,670</td><td class="num">1,552 <span class="scout-n">(1)</span></td></tr><tr><td>Team PC</td><td class="num">1,422</td><td class="num">1,364 <span class="scout-n">(1)</span></td></tr></tbody></table></div>
+      <p class="scout-lede">volcanloup (2306) is second only to Faith2Adventure, and plays every set.</p>
+      <div class="scout-rows"><div><b>Star</b><span>volcanloup. His last ranked 1v1 in the data is April, so his availability is the swing factor.</span></div><div><b>Best weapon</b><span>GOAT Gobz + Im2Good4YoMoma in 2v2: 35 games at 83%, WOE +10 (384 all-time at 81%).</span></div><div><b>Strengths</b><span>Everywhere: Arabia (+20.6), African Clearing (+17) and Arena (+12).</span></div><div><b>Weakness</b><span>Thin team sets (top-4 Team rating 1670) and a small sample: about 800 games in 12 months, against Mexico's 3,800.</span></div><div><b>Watch</b><span>Their ratings have dropped from earlier peaks (volcanloup's Team rating fell from 1957 to 1552), so they are probably undervalued.</span></div></div>
+      <p class="scout-verdict"><b>Verdict:</b> a real threat to the favorite, and much smaller without volcanloup.</p>
+    </div>
+    <div class="card scout-team" style="--accent:var(--nc-blue)">
+      <div class="scout-head"><span class="scout-rank">3</span><h2>Mexico</h2><span class="scout-tag">The deepest roster in the field</span></div>
+      <div class="pill-row"><span class="pill">Title odds 13%</span><span class="pill">683 games together (12 mo)</span><span class="pill">Open maps 69% · WOE +6.1</span><span class="pill">Closed maps 69% · WOE +3.0</span></div>
       <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Average current rating</th><th class="num">Top 4</th><th class="num">Bench</th></tr></thead><tbody><tr><td>1v1 Console</td><td class="num">2,087</td><td class="num">1,760 <span class="scout-n">(2)</span></td></tr><tr><td>1v1 PC</td><td class="num">1,393</td><td class="num">949 <span class="scout-n">(2)</span></td></tr><tr><td>Team Console</td><td class="num">1,736</td><td class="num">1,566 <span class="scout-n">(2)</span></td></tr><tr><td>Team PC</td><td class="num">1,423</td><td class="num">1,258 <span class="scout-n">(2)</span></td></tr></tbody></table></div>
       <p class="scout-lede">Four players are rated 1880+ in 1v1, and no team has played more games together in the last year.</p>
-      <div class="scout-rows">
-        <div><b>Star</b><span>UxDora (2213, 88% in 1v1, WOE +5). UxLiho (2207) sits right behind.</span></div>
-        <div><b>Best weapon</b><span>UxLiho + UxDora in 2v2: 37 games at 89%, WOE +14.5, the best proven duo of any team.</span></div>
-        <div><b>3v3</b><span>RKs Raggz + MORIS0202 + moramora48: 23 games at 70%, WOE +18.</span></div>
-        <div><b>Strengths</b><span>African Clearing (+10.7), Glade and Hideout.</span></div>
-        <div><b>Weakness</b><span>Arena is their most-played map (991 games) and their weakest (+2.3).</span></div>
-        <div><b>X-factor</b><span>The 4v4. Every 4-stack has only 3–7 games together, so their biggest edge sits in the set with the least evidence.</span></div>
-      </div>
-      <p class="scout-verdict"><b>Verdict:</b> the safest bet in the field, but only if the 4v4 holds.</p>
+      <div class="scout-rows"><div><b>Star</b><span>UxDora (2213, 88% in 1v1). UxLiho (2207) sits right behind.</span></div><div><b>Best weapon</b><span>UxLiho + UxDora in 2v2: 37 games at 89%, WOE +14.5, the best proven duo of any team. 3v3: RKs Raggz + MORIS0202 + moramora48, 23 games at 70%.</span></div><div><b>Strengths</b><span>African Clearing (+10.7), Glade and Hideout.</span></div><div><b>Weakness</b><span>Arena is their most-played map (991 games) and their weakest (+2.3).</span></div><div><b>X-factor</b><span>The 4v4, worth 4 points. Every 4-stack has only 3–7 games together.</span></div></div>
+      <p class="scout-verdict"><b>Verdict:</b> the steadiest contender, without a standout star.</p>
     </div>
-
     <div class="card scout-team" style="--accent:var(--nc-red)">
-      <div class="scout-head"><span class="scout-rank">2</span><h2>USA</h2><span class="scout-tag">Highest talent on paper, least chemistry</span></div>
-      <div class="pill-row">
-        <span class="pill">214 games together (12 mo)</span>
-        <span class="pill">Open maps 67% · WOE +6.1</span>
-        <span class="pill">Closed maps 73% · WOE +4.6</span>
-      </div>
-      <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Average current rating</th><th class="num">Top 4</th><th class="num">Bench</th></tr></thead><tbody><tr><td>1v1 Console</td><td class="num">2,132</td><td class="num">1,818 <span class="scout-n">(5)</span></td></tr><tr><td>1v1 PC</td><td class="num">1,548</td><td class="num">1,300 <span class="scout-n">(4)</span></td></tr><tr><td>Team Console</td><td class="num">1,827</td><td class="num">1,604 <span class="scout-n">(5)</span></td></tr><tr><td>Team PC</td><td class="num">1,466</td><td class="num">1,271 <span class="scout-n">(5)</span></td></tr></tbody></table></div>
-      <p class="scout-lede">Nine on the roster, four play, and the best player rarely does.</p>
-      <div class="scout-rows">
-        <div><b>Ace</b><span>Faith2Adventure (2280), the 1v1 leader. He has played almost no ranked games this year.</span></div>
-        <div><b>Workhorses</b><span>Donald2O16Trump (2179 in 1v1) and old peenuts (1064 Team games), with Darth masala (828) as the first sub.</span></div>
-        <div><b>Best weapon</b><span>Donald2O16Trump + old peenuts in 2v2: 47 games at 77%, WOE +14.</span></div>
-        <div><b>Warning sign</b><span>Darth masala + old peenuts is 46% over 56 games. Keep that pair apart.</span></div>
-        <div><b>Strengths</b><span>African Clearing (+7.5), plus Oasis and Land Nomad.</span></div>
-        <div><b>Weakness</b><span>Hideout (-5), and almost no open-map data on the stars.</span></div>
-        <div><b>The big question</b><span>Nobody has played a real 3v3 or 4v4 together.</span></div>
-        <div><b>Wildcard</b><span>If sologhost returns, he and Donald2O16Trump are 155 games at 95% all-time.</span></div>
-      </div>
-      <p class="scout-verdict"><b>Verdict:</b> a very high ceiling with a very low floor, and it all comes down to Faith2Adventure showing up. If he can't play, Donald2O16Trump takes the 1v1 and PrEyOnU1 fills the fourth spot in the team sets.</p>
-    </div>
-
-    <div class="card scout-team" style="--accent:var(--nc-red)">
-      <div class="scout-head"><span class="scout-rank">3</span><h2>France</h2><span class="scout-tag">The only team that really plays together</span></div>
-      <div class="pill-row">
-        <span class="pill">548 games together (12 mo)</span>
-        <span class="pill">Open maps 78% · WOE -0.1</span>
-        <span class="pill">Closed maps 76% · WOE -4.0</span>
-      </div>
+      <div class="scout-head"><span class="scout-rank">4</span><h2>France</h2><span class="scout-tag">Best chemistry, weakest 1v1</span></div>
+      <div class="pill-row"><span class="pill">Title odds 13%</span><span class="pill">548 games together (12 mo)</span><span class="pill">Open maps 78% · WOE -0.1</span><span class="pill">Closed maps 76% · WOE -4.0</span></div>
       <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Average current rating</th><th class="num">Top 4</th><th class="num">Bench</th></tr></thead><tbody><tr><td>1v1 Console</td><td class="num">1,858</td><td class="num">—</td></tr><tr><td>1v1 PC</td><td class="num">1,284</td><td class="num">—</td></tr><tr><td>Team Console</td><td class="num">1,784</td><td class="num">—</td></tr><tr><td>Team PC</td><td class="num">1,384</td><td class="num">—</td></tr></tbody></table></div>
       <p class="scout-lede">548 games together with only four players.</p>
-      <div class="scout-rows">
-        <div><b>Star</b><span>x FalKo i (1996, 455 games in 1v1).</span></div>
-        <div><b>Core</b><span>Saymyname3451 is the hub, paired with supercharlie12 (101 2v2s, 82%) and vN eRaaz (80, 81%).</span></div>
-        <div><b>4v4</b><span>Their only four: 9 games at 89%, WOE +5.</span></div>
-        <div><b>Strengths</b><span>Nomad, Four Lakes and Arabia (78%).</span></div>
-        <div><b>Weakness</b><span>Glade (-11.8), and closed maps in general (-4).</span></div>
-        <div><b>Reality check</b><span>They win 77%, but adjusted for rating it's about even: they win roughly what their rating says.</span></div>
-        <div><b>Risk</b><span>Four players and no bench.</span></div>
-      </div>
-      <p class="scout-verdict"><b>Verdict:</b> the most cohesive team and the biggest injury risk.</p>
+      <div class="scout-rows"><div><b>Core</b><span>Saymyname3451 is the hub, paired with supercharlie12 (101 2v2s, 82%) and vN eRaaz (80, 81%). x FalKo i (1996) plays 1v1, worth 1 point.</span></div><div><b>4v4</b><span>Their only four: 9 games at 89%, WOE +5.</span></div><div><b>Strengths</b><span>Nomad, Four Lakes and Arabia (78%).</span></div><div><b>Weakness</b><span>Glade (-11.8) and closed maps in general (-4).</span></div><div><b>Reality check</b><span>They win 77%, but adjusted for rating it is about even. Four players and no bench.</span></div></div>
+      <p class="scout-verdict"><b>Verdict:</b> their cohesion keeps them level with Mexico, but one injury would hurt.</p>
     </div>
-
-    <div class="card scout-team" style="--accent:var(--nc-gold)">
-      <div class="scout-head"><span class="scout-rank">4</span><h2>Canada</h2><span class="scout-tag">The dark horse</span></div>
-      <div class="pill-row">
-        <span class="pill">92 games together (12 mo)</span>
-        <span class="pill">Open maps 81% · WOE +19.4</span>
-        <span class="pill">Closed maps 82% · WOE +12.1</span>
-      </div>
-      <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Average current rating</th><th class="num">Top 4</th><th class="num">Bench</th></tr></thead><tbody><tr><td>1v1 Console</td><td class="num">2,044</td><td class="num">1,671 <span class="scout-n">(1)</span></td></tr><tr><td>1v1 PC</td><td class="num">1,442</td><td class="num">1,284 <span class="scout-n">(1)</span></td></tr><tr><td>Team Console</td><td class="num">1,670</td><td class="num">1,552 <span class="scout-n">(1)</span></td></tr><tr><td>Team PC</td><td class="num">1,422</td><td class="num">1,364 <span class="scout-n">(1)</span></td></tr></tbody></table></div>
-      <p class="scout-lede">The best adjusted numbers in the field, from a small sample.</p>
-      <div class="scout-rows">
-        <div><b>Star</b><span>volcanloup (2306), but his last 1v1 in the data is April. Im2Good4YoMoma (1981) is the active choice.</span></div>
-        <div><b>Best weapon</b><span>GOAT Gobz + Im2Good4YoMoma in 2v2: 35 games at 83%, WOE +10, and 384 all-time at 81%.</span></div>
-        <div><b>Strengths</b><span>Everywhere. Arabia (+20.6), African Clearing (+17) and Arena (+12).</span></div>
-        <div><b>Weakness</b><span>None real, only the sample size (about 800 games in 12 months, against Mexico's 3,800).</span></div>
-        <div><b>Caveat</b><span>Their ratings have dropped from earlier peaks (volcanloup's Team rating fell from 1957 to 1552), so they may be undervalued, not just lucky.</span></div>
-      </div>
-      <p class="scout-verdict"><b>Verdict:</b> rated lowest, plays highest. The team most likely to beat its seed.</p>
-    </div>
-
     <div class="card scout-team" style="--accent:var(--nc-green)">
-      <div class="scout-head"><span class="scout-rank">5</span><h2>UK</h2><span class="scout-tag">Better on closed maps than open ones</span></div>
-      <div class="pill-row">
-        <span class="pill">139 games together (12 mo)</span>
-        <span class="pill">Open maps 65% · WOE +0.7</span>
-        <span class="pill">Closed maps 75% · WOE +7.6</span>
-      </div>
+      <div class="scout-head"><span class="scout-rank">5</span><h2>UK</h2><span class="scout-tag">A closed-map team that fades on Arabia</span></div>
+      <div class="pill-row"><span class="pill">Title odds 7%</span><span class="pill">139 games together (12 mo)</span><span class="pill">Open maps 65% · WOE +0.7</span><span class="pill">Closed maps 75% · WOE +7.6</span></div>
       <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Average current rating</th><th class="num">Top 4</th><th class="num">Bench</th></tr></thead><tbody><tr><td>1v1 Console</td><td class="num">1,958</td><td class="num">1,642 <span class="scout-n">(2)</span></td></tr><tr><td>1v1 PC</td><td class="num">1,446</td><td class="num">1,155 <span class="scout-n">(2)</span></td></tr><tr><td>Team Console</td><td class="num">1,718</td><td class="num">1,560 <span class="scout-n">(3)</span></td></tr><tr><td>Team PC</td><td class="num">1,491</td><td class="num">1,315 <span class="scout-n">(3)</span></td></tr></tbody></table></div>
       <p class="scout-lede">Seven on the roster, and a rating that undersells the core.</p>
-      <div class="scout-rows">
-        <div><b>Ace</b><span>DarK Slaayer (2167, 93% in 42 games).</span></div>
-        <div><b>Backbone</b><span>ALPO4769 (1401 Team games) and Huskarls4: 60 2v2s at 62% (WOE +12), or 370 at 86% all-time. Their ratings (1537–1560) sit well below their old peaks, but they keep winning more than that predicts (WOE +9.5 and +14).</span></div>
-        <div><b>Strengths</b><span>Arena (+8), Black Forest (+5), Oasis and MegaRandom.</span></div>
-        <div><b>Weakness</b><span>Arabia (-0.7 over 1,460 games) and African Clearing (57%). If they get a map veto, use it there.</span></div>
-        <div><b>Depth</b><span>Seven players, but the 3v3 and 4v4 lineups have almost no history.</span></div>
-      </div>
+      <div class="scout-rows"><div><b>Ace</b><span>DarK Slaayer (2167, 93% in 42 games).</span></div><div><b>Backbone</b><span>ALPO4769 (1,401 Team games) and Huskarls4: 60 2v2s at 62% (WOE +12), 370 at 86% all-time. Their ratings sit well below their old peaks, but they keep beating them.</span></div><div><b>Strengths</b><span>Arena (+8), Black Forest (+5), Oasis and MegaRandom.</span></div><div><b>Weakness</b><span>Arabia (-0.7 over 1,460 games) and African Clearing (57%). Expect opponents to pick Arabia.</span></div><div><b>Depth</b><span>The 3v3 and 4v4 lineups have almost no history together.</span></div></div>
       <p class="scout-verdict"><b>Verdict:</b> dangerous if the map favors them.</p>
     </div>
-
     <div class="card scout-team" style="--accent:var(--nc-blue)">
-      <div class="scout-head"><span class="scout-rank">6</span><h2>PS5</h2><span class="scout-tag">A 1v1 team in a four-set series</span></div>
-      <div class="pill-row">
-        <span class="pill">49 games together (12 mo)</span>
-        <span class="pill">Open maps 65% · WOE -13.8</span>
-        <span class="pill">Closed maps 75% · WOE +1.1</span>
-      </div>
+      <div class="scout-head"><span class="scout-rank">6</span><h2>PS5</h2><span class="scout-tag">A 1v1 team in a series paid mostly for team sets</span></div>
+      <div class="pill-row"><span class="pill">Title odds <1%</span><span class="pill">49 games together (12 mo)</span><span class="pill">Open maps 65% · WOE -13.8</span><span class="pill">Closed maps 74% · WOE +1.1</span></div>
       <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Average current rating</th><th class="num">Top 4</th><th class="num">Bench</th></tr></thead><tbody><tr><td>1v1 Console</td><td class="num">2,000</td><td class="num">1,660 <span class="scout-n">(1)</span></td></tr><tr><td>1v1 PC</td><td class="num">1,320</td><td class="num">—</td></tr><tr><td>Team Console</td><td class="num">1,576</td><td class="num">1,484 <span class="scout-n">(1)</span></td></tr><tr><td>Team PC</td><td class="num">1,260</td><td class="num">1,146 <span class="scout-n">(1)</span></td></tr></tbody></table></div>
-      <p class="scout-lede">Their 1v1 average is about 2000, but their Team ratings average about 1580, the lowest of any team.</p>
-      <div class="scout-rows">
-        <div><b>Ace</b><span>ItsGutsAoE (2033, 85%). CrustyPotato313 has the same rating but wins 64% (WOE -23), so ItsGutsAoE is the better pick.</span></div>
-        <div><b>Best weapon</b><span>ItsGutsAoE + CrustyPotato313 in 2v2, but only 8 games at that size.</span></div>
-        <div><b>Strengths</b><span>Black Forest (+7.3) and Arena (0.0).</span></div>
-        <div><b>Weakness</b><span>Open maps. Arabia is -14.8 over 1,316 games, the largest map deficit in the field.</span></div>
-        <div><b>Cohesion</b><span>49 games together in 12 months, and none at 3v3 or 4v4.</span></div>
-      </div>
-      <p class="scout-verdict"><b>Verdict:</b> they take the 1v1 and struggle to win three more sets.</p>
+      <p class="scout-lede">Their 1v1 average is about 2000, but their Team ratings are the lowest of any team, and the 1v1 is worth only 1 point.</p>
+      <div class="scout-rows"><div><b>Ace</b><span>ItsGutsAoE (2033, 85%). CrustyPotato313 has the same rating but wins 64% (WOE -23).</span></div><div><b>Best weapon</b><span>ItsGutsAoE + CrustyPotato313 in 2v2, but only 8 games at that size.</span></div><div><b>Strengths</b><span>Black Forest (+7.3) and Arena (0.0).</span></div><div><b>Weakness</b><span>Open maps. Arabia is -14.8 over 1,316 games, the largest map deficit in the field.</span></div><div><b>Cohesion</b><span>49 games together in 12 months, none at 3v3 or 4v4.</span></div></div>
+      <p class="scout-verdict"><b>Verdict:</b> an underdog in every set. Their best shot is a 4v4 on Black Forest or Arena.</p>
     </div>
-
-    <p class="standings-note" style="margin:0 0 6px">
-      The strongest calls are the ones with hundreds of games behind them: Mexico's depth, France's cohesion, the UK's
-      closed-map lean and PS5's Arabia problem. The 3v3 and 4v4 picks for USA, UK, PS5 and Canada rest on very little data.
-    </p>
   </div>
 
   <div class="footer">
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.32</div>
+    <div class="version">v0.33</div>
   </div>
 </div>
 
