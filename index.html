@@ -268,7 +268,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.46</div>
+    <div class="version">v2.47</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -4496,6 +4496,62 @@ function getPlayerPulledDate(playerKey) {
   return dates.reduce((max, d) => (d > max ? d : max), dates[0]);
 }
 
+/* Every ladder object ({meta, matches}) a player has, keyed by ladder label —
+   whichever source it lives in (cached remote JSON, or the compiled pro data). */
+function getPlayerLadderMap(playerKey) {
+  const e = PLAYER_LIST.find(p => p.key === playerKey);
+  if (!e) return {};
+  if (e.source === 'remote') return _remotePlayerCache[e.profileId]?.ladders || {};
+  if (e.source === 'match' && e.ladderKeys) {
+    const d = MATCH_DATA_SOURCES[e.matchDataSource];
+    const out = {};
+    Object.entries(e.ladderKeys).forEach(([label, k]) => { if (d?.[k]) out[label] = d[k]; });
+    return out;
+  }
+  return {};
+}
+
+/* Compact profile under the player header: current/peak rating per ladder in
+   scope, last game, and the most-played civs and maps (all games on the
+   selected ladder, not narrowed by the map filter or patch/recency mode). */
+function playerProfileStripHtml(playerKey, ladder) {
+  const ladders = getPlayerLadderMap(playerKey);
+  const inScope = label => ladder === 'All' || label === ladder || ((ladder === 'PC' || ladder === 'Console') && label.includes(ladder));
+  const dim = 'color:var(--text3)';
+  const chip = html => `<span style="display:inline-flex;gap:5px;align-items:baseline;font-size:11px;padding:3px 9px;background:var(--surf);border:1px solid var(--border);border-radius:20px;margin:2px 4px 2px 0">${html}</span>`;
+  const row = (label, inner) => inner ? `<div style="margin-top:6px"><span style="font-size:10px;${dim};text-transform:uppercase;letter-spacing:.06em;margin-right:6px">${label}</span>${inner}</div>` : '';
+  const pct = (w, g) => g ? Math.round(w / g * 100) + '%' : '—';
+
+  let ratingHtml = '';
+  ['1v1 PC', 'Team PC', '1v1 Console', 'Team Console'].forEach(label => {
+    const l = ladders[label];
+    if (!l || !inScope(label)) return;
+    const ms = (l.matches || []).filter(m => m.won != null);
+    const cur = l.meta?.latestRating, peak = l.meta?.peakRating;
+    if (!ms.length && cur == null) return;
+    const w = ms.filter(m => m.won).length;
+    ratingHtml += chip(`<b style="color:var(--amberL)">${label}</b> ${cur != null ? '<b>' + cur + '</b>' : '—'}` +
+      `<span style="${dim}">${peak != null ? 'peak ' + peak + ' · ' : ''}${w}-${ms.length - w} (${pct(w, ms.length)})</span>`);
+  });
+
+  const games = getPlayerMatches(playerKey, ladder).filter(m => m.won != null);
+  const tally = key => {
+    const agg = {};
+    games.forEach(m => {
+      const k = m[key];
+      if (!k || k === '[map.unknown]') return;
+      const a = agg[k] || (agg[k] = { g: 0, w: 0 });
+      a.g++; if (m.won) a.w++;
+    });
+    return Object.entries(agg).sort((a, b) => b[1].g - a[1].g).slice(0, 5)
+      .map(([name, a]) => chip(`<b style="color:var(--amberL)">${escapeHtml(name)}</b><span style="${dim}">${a.g}g · ${pct(a.w, a.g)}</span>`)).join('');
+  };
+  const last = games.reduce((mx, m) => (m.date && m.date > mx ? m.date : mx), '');
+
+  return `<div style="margin-top:8px">${row('Rating', ratingHtml)}${row('Top civs', tally('civ'))}${row('Top maps', tally('map'))}` +
+    `${last ? row('Last game', `<span style="font-size:11px">${escapeHtml(String(last).slice(0, 10))}</span>`) : ''}</div>`;
+}
+
 function renderPlayerGrid() {
   const p = PLAYER_LIST[activePlayer];
   if (p.source === 'remote' && !isPlayerDataReady(p.key)) {
@@ -4585,7 +4641,7 @@ function renderPlayerGrid() {
     valueOf: c => stats[c]?.wr || 0,
     valueLabel: c => `${stats[c].wr}% win rate (${stats[c].games} game${stats[c].games !== 1 ? 's' : ''})`,
     headerHtml: `${p.emoji} ${escapeHtml(p.label)} — real personal civ win rates${ladderNote}${filterNote}${currentPatchNote}${recentFormNote} <a href="player.html?id=${p.profileId}" style="font-weight:400;text-transform:none;letter-spacing:normal;color:var(--amberL);text-decoration:none;font-size:11px">🔎 Full Spotlight →</a>`,
-    subHeaderHtml: `<b style="color:var(--amberL)">${gamesLabel}</b> · Snapshot from ${meta.source}, pulled ${meta.pulledDate || 'recently'} — not live. Showing civs with ${activeMinGames > 0 ? activeMinGames + '+' : 'any number of'} games.${activeRecencyMode === 'form' ? ' Win rates below are recency-weighted, not flat averages.' : ''}${missingData.length ? ` No qualifying data for: ${missingData.slice(0,15).join(', ')}${missingData.length>15?'…':''}.` : ''}${mapPillsHtml}`,
+    subHeaderHtml: `<b style="color:var(--amberL)">${gamesLabel}</b> · Snapshot from ${meta.source}, pulled ${meta.pulledDate || 'recently'} — not live. Showing civs with ${activeMinGames > 0 ? activeMinGames + '+' : 'any number of'} games.${activeRecencyMode === 'form' ? ' Win rates below are recency-weighted, not flat averages.' : ''}${missingData.length ? ` No qualifying data for: ${missingData.slice(0,15).join(', ')}${missingData.length>15?'…':''}.` : ''}${isMatchSource ? playerProfileStripHtml(p.key, activeLadder) : ''}${mapPillsHtml}`,
     clearLabel: `${p.emoji} ${escapeHtml(p.label)} tier list`,
   });
 }
