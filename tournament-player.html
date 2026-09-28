@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Nations Cup Player Scout — AoE Auto Scout</title>
+<style>
+:root{
+  --bg:#100E0C;--surf:#17130F;--surf2:#1F1A15;--border:#241F1A;--border2:#362E24;
+  --amber:#3F9B72;--amberL:#5FB88C;--amberBg:rgba(63,155,114,.12);
+  --text:#EDE8DD;--text2:#8F8578;--text3:#5C544A;
+  --blue:#60a5fa;--purple:#a78bfa;--cyan:#22d3ee;--orange:#fb923c;--teal:#34d399;--pink:#f472b6;--yellow:#fbbf24;--red:#f87171;
+  --nc-red:#CA492C;--nc-blue:#2E2DAD;--nc-green:#3F8D42;--nc-gold:#AA812F;
+  --radius:9px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px;}
+header{display:flex;align-items:center;gap:14px;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+header h1{font-size:20px;margin:0;}
+header .subtitle{font-size:12px;color:var(--text3);margin-top:2px;}
+.page-tabs{display:flex;gap:6px;margin:0 0 22px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.page-tabs a{padding:10px 16px;font-size:13px;font-weight:600;color:var(--text2);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.page-tabs a:hover{color:var(--text);}
+.page-tabs a.on{color:var(--amberL);border-bottom-color:var(--amber);}
+.card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
+.card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
+.card .desc{font-size:12px;color:var(--text2);margin:0 0 16px;line-height:1.6;}
+details.section{margin-bottom:22px;}
+details.section .card{margin-bottom:0;border-radius:0;border-top:none;}
+details.section .card:first-of-type{border-top:1px solid var(--border);}
+details.section .card:last-of-type{border-radius:0 0 12px 12px;}
+details.section summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px 22px;color:var(--amberL);font-size:15px;font-weight:600;}
+details.section summary::-webkit-details-marker{display:none;}
+details.section summary::before{content:'▸';color:var(--text3);font-size:12px;transition:transform .15s;}
+details.section[open] summary{border-radius:12px 12px 0 0;}
+details.section[open] summary::before{transform:rotate(90deg);}
+details.section summary .summary-hint{color:var(--text3);font-weight:400;font-size:12px;margin-left:auto;}
+.card .sub-heading{font-size:13px;font-weight:700;margin:20px 0 4px;padding-top:16px;border-top:1px solid var(--border);color:var(--text);}
+.card .sub-heading:first-of-type{padding-top:0;border-top:none;margin-top:4px;}
+.rules-list{margin:0 0 4px;padding-left:20px;font-size:12.5px;line-height:1.8;color:var(--text2);}
+.rules-list ul{margin:2px 0 8px 0;padding-left:18px;font-size:12px;line-height:1.7;}
+.rules-list b{color:var(--text);}
+.tourney-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-bottom:10px;}
+.tourney-head h2{font-size:19px;margin:0;color:var(--text);}
+.pill-row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px;}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 10px;border-radius:20px;background:var(--surf2);border:1px solid var(--border2);color:var(--text2);white-space:nowrap;}
+.pill.prize{color:var(--yellow);border-color:rgba(251,191,36,.3);}
+.pill.format{color:var(--amberL);border-color:rgba(95,184,140,.3);}
+.pill.org{color:var(--pink);border-color:rgba(244,114,182,.3);}
+.pill.date{color:var(--blue);border-color:rgba(96,165,250,.3);}
+.teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
+.team-card{background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px 16px;border-left:3px solid var(--accent,var(--border2));}
+.team-card .team-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.team-card .team-name{font-size:14px;font-weight:700;color:var(--text);}
+.team-card .team-elo{font-size:10px;font-weight:700;color:var(--amberL);background:var(--amberBg);padding:2px 7px;border-radius:20px;white-space:nowrap;}
+.team-card .roster-count{font-size:10px;color:var(--text3);margin-left:auto;white-space:nowrap;}
+.team-card .roster{list-style:none;margin:0;padding:0;font-size:12px;}
+.team-card .roster li{padding:3px 0;color:var(--text2);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.team-card .roster a{color:var(--text2);text-decoration:none;border-bottom:1px solid var(--border2);}
+.team-card .roster a:hover{color:var(--amberL);border-color:var(--amberL);}
+.team-card .roster .tbd{color:var(--text3);font-style:italic;}
+.team-card .roster .p-elo{font-size:10px;color:var(--text3);white-space:nowrap;}
+.fixtures-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
+.fixture-card{background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 14px;}
+.fixture-vs{display:flex;align-items:center;justify-content:center;gap:10px;font-size:13px;font-weight:700;margin-bottom:10px;}
+.fixture-vs .fv-team{display:flex;align-items:center;gap:6px;}
+.fixture-vs .fv-sep{color:var(--text3);font-weight:400;font-size:11px;}
+.set-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;padding:4px 0;border-top:1px solid var(--border);}
+.set-row:first-of-type{border-top:none;}
+.set-row .set-label{color:var(--text2);font-weight:600;}
+.set-status{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--surf);border:1px solid var(--border2);color:var(--text3);text-transform:uppercase;letter-spacing:.03em;}
+.standings-note{font-size:12px;color:var(--text2);margin:0 0 14px;line-height:1.6;}
+table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
+th{color:var(--text3);font-weight:600;text-transform:uppercase;font-size:9px;letter-spacing:.03em;white-space:nowrap;}
+th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
+.overflow-x{overflow-x:auto;}
+.footer{font-size:11px;color:var(--text3);text-align:center;margin-top:30px;padding-top:16px;border-top:1px solid var(--border);}
+.footer a{color:var(--text2);text-decoration:none;}
+.footer a:hover{color:var(--amberL);}
+.version{font-size:10px;color:var(--text3);margin-top:6px;}
+.tab-row{display:flex;gap:8px;margin:0 0 22px;}
+.tab-row button{background:var(--surf2);border:1px solid var(--border2);color:var(--text2);font:inherit;font-size:13px;font-weight:700;padding:8px 16px;border-radius:20px;cursor:pointer;}
+.tab-row button:hover{color:var(--text);}
+.tab-row button.on{background:var(--amberBg);color:var(--amberL);border-color:rgba(95,184,140,.4);}
+.scout-power{margin:6px 0 0;padding-left:22px;font-size:13px;line-height:1.9;color:var(--text2);}
+.scout-power b{color:var(--text);}
+.scout-team{border-left:4px solid var(--accent,var(--border2));}
+.scout-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:6px;}
+.scout-head h2{font-size:19px;margin:0;color:var(--text);}
+.scout-rank{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--accent,var(--border2));color:#fff;font-size:13px;font-weight:800;}
+.scout-tag{font-size:12px;color:var(--text3);font-style:italic;}
+.scout-lede{font-size:13px;color:var(--text);margin:10px 0 12px;line-height:1.6;}
+.scout-rows{display:grid;gap:8px;}
+.scout-rows>div{display:grid;grid-template-columns:110px 1fr;gap:12px;font-size:12.5px;line-height:1.6;color:var(--text2);}
+.scout-rows>div>b{color:var(--amberL);font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding-top:2px;}
+.scout-verdict{margin:14px 0 0;padding:10px 14px;background:var(--surf2);border-left:3px solid var(--accent,var(--border2));border-radius:6px;font-size:13px;color:var(--text);line-height:1.6;}
+.scout-verdict b{color:var(--amberL);}
+.scout-odds td:last-child{color:var(--text2);}
+.scout-grid th,.scout-grid td{text-align:center;}
+.scout-grid td:first-child{text-align:left;}
+.scout-hi{color:var(--nc-green);font-weight:700;}
+.scout-lo{color:var(--red);}
+.scout-diag{color:var(--text3);}
+.scout-sets{color:var(--text3);font-size:11px;}
+.scout-take{margin:6px 0 0;padding-left:20px;font-size:12.5px;line-height:1.8;color:var(--text2);}
+.scout-sub{display:block;font-size:10.5px;color:var(--text3);font-weight:400;white-space:nowrap;}
+.scout-elo{margin:12px 0 4px;}
+.scout-elo td:first-child{color:var(--text2);}
+.scout-n{color:var(--text3);font-size:10px;}
+.x-plink{color:inherit;text-decoration:underline dotted var(--text3);text-underline-offset:2px;}
+.x-plink:hover{color:var(--amberL);}
+@media(max-width:600px){.scout-rows>div{grid-template-columns:1fr;gap:2px;}}
+
+.tp-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:14px 0 4px;}
+.tp-tile{background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;}
+.tp-tile .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);}
+.tp-tile .v{font-size:22px;font-weight:800;margin-top:2px;}
+.tp-tile .s{font-size:11px;color:var(--text2);margin-top:2px;}
+.tp-good{color:var(--nc-green);font-weight:700;}
+.tp-bad{color:var(--red);}
+.tp-slots{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+.tp-slot{padding:8px 14px;border-radius:9px;border:1px solid var(--border2);background:var(--surf2);font-size:12px;min-width:120px;}
+.tp-slot b{display:block;font-size:13px;color:var(--text);}
+.tp-slot span{color:var(--text3);font-size:11px;}
+.tp-slot.on{border-color:var(--amber);background:var(--amberBg);}
+.tp-slot.on b{color:var(--amberL);}
+.tp-btn{display:inline-block;margin:10px 8px 0 0;padding:8px 16px;border-radius:20px;border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);font-size:12px;font-weight:700;text-decoration:none;}
+.tp-btn:hover{background:var(--amber);color:var(--bg);}
+.tp-two{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+@media(max-width:800px){.tp-two{grid-template-columns:1fr;}}
+.tp-res-w{color:var(--nc-green);font-weight:700;}
+.tp-res-l{color:var(--red);font-weight:700;}
+.tp-msg{padding:40px 0;text-align:center;color:var(--text2);font-size:13px;}
+table td.num,table th.num{text-align:right;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Nations Cup Player Scout</h1>
+      <div class="subtitle">Tournament scouting for one player</div>
+    </div>
+  </header>
+
+  <nav class="page-tabs">
+    <a href="index.html">🏠 Auto Scout</a>
+    <a href="player.html">🔎 Player Spotlight</a>
+    <a href="competitive.html" class="on">Console Competitive</a>
+    <a href="insights.html">📊 Console Insights</a>
+    <a href="civ-insights.html">🧮 Civ Insights</a>
+    <a href="build-order.html">🛠️ Build Order</a>
+  </nav>
+
+  <div id="content"><div class="tp-msg">Loading…</div></div>
+
+  <div class="footer">
+    <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
+    <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
+    <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
+    <div class="version">v0.01</div>
+  </div>
+</div>
+
+<script>
+// Self-contained per this site's convention. Reads nc-players.json (generated from the
+// Nations Cup analysis: refreshed player data, alt accounts merged) and renders one player.
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+}
+const params = new URLSearchParams(location.search);
+const content = document.getElementById('content');
+const wc = (woe) => woe == null ? '' : woe >= 5 ? 'tp-good' : woe <= -5 ? 'tp-bad' : '';
+const sg = (x) => x == null ? '—' : (x >= 0 ? '+' : '') + x.toFixed(1);
+const pctTxt = (x) => x == null ? '—' : Math.round(x) + '%';
+function daysSince(iso) { const t = Date.parse(iso); return isNaN(t) ? null : Math.round((Date.now() - t) / 86400000); }
+
+async function main() {
+  let data;
+  try {
+    const res = await fetch('nc-players.json?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    data = await res.json();
+  } catch (e) { content.innerHTML = `<div class="tp-msg">Could not load tournament data (${escapeHtml(e.message)}).</div>`; return; }
+
+  let id = params.get('id');
+  const aliasOf = data.alias && data.alias[id];
+  if (aliasOf) { location.replace(`tournament-player.html?id=${aliasOf}&alt=${encodeURIComponent(id)}`); return; }
+  const p = data.players[id];
+  if (!p) {
+    content.innerHTML = `<div class="card"><div class="tp-msg">This player isn't on a Nations Cup roster we've scouted yet.<br><br><a class="tp-btn" href="competitive.html#scouting">Team scouting report</a>${id ? `<a class="tp-btn" href="player.html?id=${encodeURIComponent(id)}">Player Spotlight</a>` : ''}</div></div>`;
+    return;
+  }
+  document.title = `${p.name} — Nations Cup Scout`;
+  const altParam = params.get('alt');
+  const t = p.team;
+  const one = p.oneVone, tm = p.team_ladder;
+
+  // ---- lineup slots
+  const slots = ['1', '2', '3', '4'].map(k => {
+    const l = p.lineup[k];
+    return `<div class="tp-slot ${l.plays ? 'on' : ''}"><b>${k}v${k} · ${k} pt${k === '1' ? '' : 's'}</b><span>${l.plays ? (l.with.length ? 'with ' + l.with.map(escapeHtml).join(', ') : 'plays solo') : 'not in the projected lineup'}</span></div>`;
+  }).join('');
+  const playsCount = ['1', '2', '3', '4'].filter(k => p.lineup[k].plays).length;
+
+  // ---- tiles
+  const tile = (label, s) => {
+    if (!s) return `<div class="tp-tile"><div class="l">${label}</div><div class="v">—</div><div class="s">no ranked games</div></div>`;
+    return `<div class="tp-tile"><div class="l">${label}</div><div class="v">${s.latest ?? '—'}</div>` +
+      `<div class="s">peak ${s.peak ?? '—'} · ${s.games12 ? `${s.games12} games in 12 mo at ${pctTxt(s.wr12)}` : 'no games in the last 12 months'}</div>` +
+      `<div class="s">WOE <span class="${wc(s.woe100)}">${sg(s.woe100)}</span> per 100 games</div></div>`;
+  };
+
+  // ---- scouting read (rules from the numbers)
+  const read = [];
+  if (playsCount === 4) read.push(`<b>Plays every set.</b> ${p.isLeader ? 'The 1v1 leader and a fixture in every team set.' : 'In the projected 1v1, 2v2, 3v3 and 4v4.'}`);
+  else if (playsCount === 0) read.push(`<b>On the bench.</b> The projected lineup does not use ${escapeHtml(p.name)}; he is a sub if someone is unavailable.`);
+  else read.push(`<b>Plays ${['1', '2', '3', '4'].filter(k => p.lineup[k].plays).map(k => k + 'v' + k).join(', ')}.</b>`);
+  const tRate = tm && tm.games12 ? tm : null;
+  if (tRate && tRate.woe100 != null) read.push(`<b>Team form:</b> ${tRate.games12} Team games in the last year at ${pctTxt(tRate.wr12)}, <span class="${wc(tRate.woe100)}">${sg(tRate.woe100)}</span> wins per 100 above what the ratings predict.`);
+  if (one && one.games12 && one.woe100 != null) read.push(`<b>1v1 form:</b> ${one.games12} games at ${pctTxt(one.wr12)}, <span class="${wc(one.woe100)}">${sg(one.woe100)}</span> per 100 vs expectation.`);
+  const lastDates = [one && one.last, tm && tm.last].filter(Boolean).sort();
+  if (lastDates.length) {
+    const d = daysSince(lastDates[lastDates.length - 1]);
+    if (d != null && d > 45) read.push(`<b>Rust risk:</b> last ranked console game was ${d} days ago (${escapeHtml(lastDates[lastDates.length - 1])}).`);
+  }
+  const bigMaps = p.maps.filter(m => m.games >= 15 && m.woe != null);
+  if (bigMaps.length >= 2) {
+    const best = bigMaps.slice().sort((a, b) => b.woe - a.woe)[0], worst = bigMaps.slice().sort((a, b) => a.woe - b.woe)[0];
+    read.push(`<b>Best map:</b> ${escapeHtml(best.map)} (${best.games} games, ${best.wr}%, WOE <span class="${wc(best.woe)}">${sg(best.woe)}</span>). ${worst.woe >= 5 ? '<b>No weak big map:</b> the lowest is' : '<b>Weakest:</b>'} ${escapeHtml(worst.map)} (${worst.games} games, ${worst.wr}%, WOE <span class="${wc(worst.woe)}">${sg(worst.woe)}</span>).`);
+  }
+  if (p.civs.length) {
+    const top = p.civs[0], good = p.civs.filter(c => c[1] >= 6).sort((a, b) => b[2] - a[2])[0];
+    read.push(`<b>Civs:</b> most played ${escapeHtml(top[0])} (${top[1]} games, ${top[2]}%)${good && good[0] !== top[0] ? `; best win rate ${escapeHtml(good[0])} (${good[1]} games, ${good[2]}%)` : ''}.`);
+  }
+  const bestPartner = p.partners.filter(r => r[1] && r[1].games >= 5).sort((a, b) => b[1].woe - a[1].woe)[0];
+  if (bestPartner) read.push(`<b>Best partner:</b> ${escapeHtml(bestPartner[0])}, ${bestPartner[1].games} Team games together in the last year at ${bestPartner[1].wr}% (WOE <span class="${wc(bestPartner[1].woe)}">${sg(bestPartner[1].woe)}</span>).`);
+
+  // ---- tables
+  const mapRows = p.maps.filter(m => m.pool).concat(p.maps.filter(m => !m.pool && m.games >= 8).slice(0, 6));
+  const mapsHtml = mapRows.length ? `<table><thead><tr><th>Map</th><th class="num">Games</th><th class="num">Win %</th><th class="num">WOE</th></tr></thead><tbody>${mapRows.map(m =>
+    `<tr><td>${escapeHtml(m.map)}${m.pool ? '' : ' <span class="scout-n">(not in the tournament pool)</span>'}</td><td class="num">${m.games}</td><td class="num">${m.wr}%</td><td class="num ${wc(m.woe)}">${sg(m.woe)}</td></tr>`).join('')}</tbody></table>` : '<p class="desc">No map data in the last 12 months.</p>';
+  const civsHtml = p.civs.length ? `<table><thead><tr><th>Civ</th><th class="num">Games</th><th class="num">Win %</th></tr></thead><tbody>${p.civs.map(c =>
+    `<tr><td>${escapeHtml(c[0])}</td><td class="num">${c[1]}</td><td class="num">${c[2]}%</td></tr>`).join('')}</tbody></table>` : '<p class="desc">No civ data in the last 12 months.</p>';
+  const cbm = Object.entries(p.civsByMap || {}).map(([mp, rows]) => `<p class="desc" style="margin:10px 0 0"><b>${escapeHtml(mp)}:</b> ${rows.map(r => `${escapeHtml(r[0])} ${r[1]}g ${r[2]}%`).join(' · ')}</p>`).join('');
+  const cell = (v) => v ? `${v.games} · ${v.wr}% · <span class="${wc(v.woe)}">${sg(v.woe)}</span>` : '<span class="scout-n">—</span>';
+  const partnersHtml = p.partners.length ? `<table><thead><tr><th>Partner</th><th class="num">Last 12 mo (games · win % · WOE)</th><th class="num">All time</th></tr></thead><tbody>${p.partners.map(r =>
+    `<tr><td>${escapeHtml(r[0])}</td><td class="num">${cell(r[1])}</td><td class="num">${cell(r[2])}</td></tr>`).join('')}</tbody></table>` : '<p class="desc">No recorded Team games with roster teammates.</p>';
+  const h2hHtml = p.h2h && p.h2h.length ? `<div class="card"><h2>1v1 head-to-head</h2><p class="desc">Against the other teams' projected 1v1 leaders, ranked 1v1 Console games (alt accounts included). Small samples, so context only.</p><table><thead><tr><th>Opponent</th><th>Team</th><th class="num">Record</th></tr></thead><tbody>${p.h2h.map(h =>
+    `<tr><td>${escapeHtml(h.leader)}</td><td>${h.flag} ${escapeHtml(h.team)}</td><td class="num">${h.w + h.l ? `<span class="${h.w > h.l ? 'tp-res-w' : h.w < h.l ? 'tp-res-l' : ''}">${h.w}–${h.l}</span>` : '<span class="scout-n">never met</span>'}</td></tr>`).join('')}</tbody></table></div>` : '';
+  const recentHtml = p.recent.length ? `<table><thead><tr><th>Date</th><th>Ladder</th><th>Result</th><th>Civ</th><th>Map</th><th>Opponent</th></tr></thead><tbody>${p.recent.map(m =>
+    `<tr><td>${escapeHtml(m.date || '')}</td><td>${escapeHtml(m.ladder)}</td><td class="${m.won ? 'tp-res-w' : 'tp-res-l'}">${m.won ? 'Win' : 'Loss'}</td><td>${escapeHtml(m.civ || '—')}</td><td>${escapeHtml(m.map || '—')}</td><td>${escapeHtml(m.opp || '—')}</td></tr>`).join('')}</tbody></table>` : '<p class="desc">No recent console games.</p>';
+
+  content.innerHTML = `
+    <div class="card">
+      <div class="tourney-head"><h2 style="font-size:22px">${escapeHtml(p.name)}</h2><span class="scout-tag">${t.flag} ${escapeHtml(t.name)}${t.titleOdds != null ? ` · team title odds ${t.titleOdds < 0.01 ? '<1%' : Math.round(t.titleOdds * 100) + '%'}` : ''}</span></div>
+      ${altParam ? `<p class="desc" style="margin:6px 0 0">You followed an alt account (#${escapeHtml(altParam)}); this page combines it with ${escapeHtml(p.name)}.</p>` : ''}
+      ${p.alts && p.alts.length ? `<p class="desc" style="margin:6px 0 0">Alt accounts counted: ${p.alts.map(a => `<a class="x-plink" href="player.html?id=${a}">#${a}</a>`).join(', ')}</p>` : ''}
+      <div class="tp-slots">${slots}</div>
+      <div class="tp-tiles">${tile('1v1 Console', one)}${tile('Team Console', tm)}</div>
+      <a class="tp-btn" href="player.html?id=${p.id}">🔎 Full Player Spotlight →</a><a class="tp-btn" href="competitive.html#scouting">${t.flag} ${escapeHtml(t.name)} team scouting report →</a>
+    </div>
+    <div class="card"><h2>Scouting read</h2><ul class="scout-take">${read.map(r => `<li>${r}</li>`).join('')}</ul>
+      <p class="desc" style="margin:10px 0 0">WOE is wins above what the rating gap predicts, per 100 games. Built from ranked console games over the last 12 months, refreshed ${escapeHtml(data.generated)}.</p></div>
+    <div class="tp-two">
+      <div class="card"><h2>Map pool</h2><p class="desc">Last 12 months, all console ladders. Tournament pool maps first.</p>${mapsHtml}</div>
+      <div class="card"><h2>Civs</h2><p class="desc">Most played over the last 12 months.</p>${civsHtml}${cbm}</div>
+    </div>
+    <div class="card"><h2>Partners</h2><p class="desc">Team games on the same side as a teammate from this roster.</p>${partnersHtml}</div>
+    ${h2hHtml}
+    <div class="card"><h2>Recent console games</h2>${recentHtml}<a class="tp-btn" href="player.html?id=${p.id}">See every recent match on the Spotlight →</a></div>`;
+}
+main();
+</script>
+</body>
+</html>

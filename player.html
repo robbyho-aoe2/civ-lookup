@@ -56,6 +56,10 @@ header .back:hover{color:var(--amberL);}
 .player-badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px;}
 .badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--surf2);border:1px solid var(--border2);color:var(--text2);}
 .badge.rating{background:var(--amberBg);color:var(--amberL);border-color:var(--amber);}
+.nc-link-a{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:8px 16px;border-radius:20px;border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);font-size:12px;font-weight:700;text-decoration:none;}
+.nc-link-a:hover{background:var(--amber);color:var(--bg);}
+.nc-link-a span{font-weight:500;opacity:.85;}
+.badge.platform{background:var(--surf2);color:var(--text);border-color:var(--border2);}
 .badge.rating.crossplay{background:var(--surf2);color:var(--text2);border-color:var(--border2);}
 .badge-peak{font-weight:400;opacity:.75;}
 
@@ -230,6 +234,22 @@ function playerLinkOrName(name, id) {
   return `<a href="player.html?id=${id}">${label}</a>`;
 }
 
+// "See this player's tournament scouting page": shown whenever the player (or one of
+// their known alt accounts) is on a scouted Nations Cup roster (nc-players.json).
+async function attachTournamentLink(entry) {
+  try {
+    const res = await fetch('nc-players.json');
+    if (!res.ok) return;
+    const d = await res.json();
+    const id = String(entry.profileId);
+    const owner = d.players[id] ? id : (d.alias || {})[id];
+    const p = owner && d.players[owner];
+    const el = document.getElementById('nc-link');
+    if (!p || !el) return;
+    el.innerHTML = `<a class="nc-link-a" href="tournament-player.html?id=${owner}${owner !== id ? '&alt=' + id : ''}">🏆 See ${escapeHtml(entry.name)}'s Nations Cup scouting page → <span>${p.team.flag} ${escapeHtml(p.team.name)}</span></a>`;
+  } catch (e) { /* no tournament page for this player, or data unavailable */ }
+}
+
 // ---- live lookup for players outside the tracked roster ----
 // Ported from update_players.py's extract_match/get_opponents/
 // get_teammates so an untracked player's spotlight page computes
@@ -372,6 +392,7 @@ async function liveTopUpTracked(entry, player) {
     });
     status.newGames += updatedResults;
     if (pRes.status === 'fulfilled') {
+      if (pRes.value.platformName) entry.platform = pRes.value.platformName;
       entry.ratings = entry.ratings || {};
       entry.peaks = entry.peaks || {};
       (pRes.value.ratings || []).forEach(r => {
@@ -423,7 +444,7 @@ async function fetchLivePlayer(id) {
   });
 
   return {
-    entry: { name: profile.name, profileId: numId, group: null, ratings, peaks, live: true, countryIcon: profile.countryIcon || null, countryName: profile.countryName || null },
+    entry: { name: profile.name, profileId: numId, group: null, platform: profile.platformName || null, ratings, peaks, live: true, countryIcon: profile.countryIcon || null, countryName: profile.countryName || null },
     player: { name: profile.name, profileId: numId, group: null, ladders },
   };
 }
@@ -698,6 +719,7 @@ function render(content, entry, player) {
       ${entry.live ? `<div class="tracker-hint">Not part of the permanent AoE Auto Scout roster — this page was fetched live from AoE2Companion and won't be saved or refreshed automatically. <a href="${requestTrackingUrl(entry.name, entry.profileId)}" target="_blank" rel="noopener">Request ${escapeHtml(entry.name)} be tracked permanently</a> (form pre-filled), or ask in the <a href="https://discord.gg/2uRZG6qSyy" target="_blank" rel="noopener">Discord</a> or a <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank" rel="noopener">Fast Castle and Chill</a> video comment.</div>` : ''}
       ${imposterHintHtml}
       ${impersonatorsHintHtml}
+      <div id="nc-link"></div>
     </div>
     ${altsCardHtml}
 
@@ -774,6 +796,7 @@ function render(content, entry, player) {
     card.prepend(tag);
   });
 
+  attachTournamentLink(entry);
   const badgesEl = document.getElementById('player-badges');
   const shownLadders = new Set(Object.keys(entry.ratings || {}));
   // entry.ratings is restricted to the player's own group's ladders (e.g.
@@ -792,7 +815,9 @@ function render(content, entry, player) {
     .filter(([l, p]) => !shownLadders.has(l) && p && p.current != null)
     .map(([l, p]) => `<span class="badge rating crossplay">${l}: ${p.current}${peakSuffix(l, p.current)}</span>`)
     .join('');
-  badgesEl.innerHTML = `<span class="badge">${entry.group || 'not tracked'}</span>` +
+  const PLATFORM_LABEL = { PSN: '🎮 PSN', Xbox: '🎮 Xbox', Steam: '🖥️ Steam' };
+  const platformBadge = entry.platform ? `<span class="badge platform" title="Platform of this account">${escapeHtml(PLATFORM_LABEL[entry.platform] || entry.platform)}</span>` : '';
+  badgesEl.innerHTML = `<span class="badge">${entry.group || 'not tracked'}</span>` + platformBadge +
     Object.entries(entry.ratings || {}).map(([l, r]) => `<span class="badge rating">${l}: ${r}${peakSuffix(l, r)}</span>`).join('') +
     crossplayBadges;
 
