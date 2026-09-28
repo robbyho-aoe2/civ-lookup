@@ -1484,7 +1484,7 @@ function renderWeeklyReport(report) {
   const usesWindowSchema = !!report.rivalryUpdates;
   const rivalryOfWeekHtml = report.rivalryOfWeek ? `
       <div class="weekly-highlight" style="margin-bottom:12px">
-        <b>Rivalry of the week:</b> ${wLink(report.rivalryOfWeek.nameA, report.rivalryOfWeek.idA)} vs ${wLink(report.rivalryOfWeek.nameB, report.rivalryOfWeek.idB)} — ${report.rivalryOfWeek.gamesThisWindow.toLocaleString()} games this window, record ${report.rivalryOfWeek.record}
+        <b>Rivalry of the week:</b> ${wLink(report.rivalryOfWeek.nameA, report.rivalryOfWeek.idA)} vs ${wLink(report.rivalryOfWeek.nameB, report.rivalryOfWeek.idB)} — ${report.rivalryOfWeek.gamesThisWindow.toLocaleString()} games this window, record ${report.rivalryOfWeek.record}${report.rivalryOfWeek.allTimeGames != null ? ` (all-time: ${report.rivalryOfWeek.allTimeGames.toLocaleString()} games, ${report.rivalryOfWeek.allTimeRecord})` : ''}
       </div>` : '';
   const rivalries = `
     <div class="weekly-section">
