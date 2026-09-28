@@ -319,7 +319,7 @@ const KNOWN_ALT_GROUPS = [
   [20168942, 12798178], // Combi I Chow / DS Chowde
   [20945272, 13379095], // Steve Irwin6443 / ObelusCipher
   [23790720, 12760988, 23284031, 18667559], // Dolphinjack7648 / Shadow8373 / #23284031 / AlightOwl218
-  [23477132, 25840006, 25065929, 22701518, 26059654], // ItsGutsAoE / KingSlaayerAoE (was LordSnowAoE) / boss_slewz2 / ql7mt / Garyy-__-1 (ql7mt + Garyy confirmed by ItsGuts himself)
+  [23477132, 25840006, 25065929, 22701518], // ItsGutsAoE / KingSlaayerAoE (was LordSnowAoE) / boss_slewz2 / ql7mt (ql7mt confirmed by ItsGuts himself; Garyy-__-1 is only a POSSIBLE alt, see POSSIBLE_ALTS)
   [22759370, 24074346], // BillieDown / BillieDownn
   [25767683, 25437131, 24924936, 21495993], // FI2 JRC / F12JRCRunsAoE / Cak Loek Pro / Treeman2490
   [12484696, 16389471], // sologhost / Chiefboy AK
@@ -352,6 +352,13 @@ const KNOWN_ALT_GROUPS = [
 // Shown in their own "Imposter Accounts" list rather than merged into a
 // KNOWN_ALT_GROUPS entry, since merging would incorrectly imply they're
 // the same person.
+// Accounts flagged as a POSSIBLE alt of a tracked player: not confirmed, so they stay
+// separate entries everywhere (not merged) and this list only surfaces the suspicion.
+// (Unlike KNOWN_ALT_GROUPS, which is confirmed and merged.) Kept in sync with player.html.
+const POSSIBLE_ALTS = [
+  { id: 26059654, name: 'Garyy-__-1', of: 23477132, note: 'Garyy-__-1 and the ItsGutsAoE accounts play at overlapping times, so if it is the same person, others also use these accounts.' },
+];
+
 const IMPOSTER_ACCOUNTS = [
   { id: 24659170, impersonating: 12477800, note: 'Near-identical name to Ghost of 6am ("Ghost 0f 6am") — not confirmed to be the same real person.' },
   { id: 26084405, impersonating: 3452279, note: 'Near-identical name to OleCrookedWoody ("OleCrookedW00dy") — not confirmed to be the same real person.' },
@@ -657,6 +664,10 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       <h3 class="sub-heading">Imposter Accounts</h3>
       <p class="desc">Accounts with a near-identical name to a real, already-tracked player — but NOT confirmed to be the same real person. Unlike the alt/smurf groups above, these are kept as fully separate entries everywhere on the site; this list exists only to flag the naming collision.</p>
       <div class="alt-groups" id="imposter-rows"></div>
+
+      <h3 class="sub-heading">Possible Alts</h3>
+      <p class="desc">Accounts suspected, but not confirmed, to be another tracked player. They stay fully separate everywhere on the site (not merged); this list only flags the suspicion.</p>
+      <div class="alt-groups" id="possible-alt-rows"></div>
       </div>
       <button class="peek-toggle" data-target="alts-peek" type="button">Show more ▾</button>
     </section>
@@ -1152,6 +1163,20 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       `<a class="alt-group-member kept" href="player.html?id=${entry.impersonating}">${escapeHtml(realName)}</a>` +
       `<div style="flex-basis:100%;font-size:11px;color:var(--text3);margin-top:4px;">${escapeHtml(entry.note)}</div>`;
     imposterRowsEl.appendChild(row);
+  });
+
+  // ---- possible alts (not merged) ----
+  const possibleRowsEl = document.getElementById('possible-alt-rows');
+  POSSIBLE_ALTS.forEach(entry => {
+    const a = consolePlayers.find(x => x.profileId === entry.id);
+    const b = consolePlayers.find(x => x.profileId === entry.of);
+    const row = document.createElement('div');
+    row.className = 'alt-group';
+    row.innerHTML = `<a class="alt-group-member" href="player.html?id=${entry.id}">${escapeHtml(a ? a.name : (entry.name || `Unknown (${entry.id})`))}</a>` +
+      `<span class="alt-group-sep">? possible alt of</span>` +
+      `<a class="alt-group-member kept" href="player.html?id=${entry.of}">${escapeHtml(b ? b.name : `Unknown (${entry.of})`)}</a>` +
+      `<div style="flex-basis:100%;font-size:11px;color:var(--text3);margin-top:4px;">${escapeHtml(entry.note)}</div>`;
+    possibleRowsEl.appendChild(row);
   });
 
   // ---- top squads ----

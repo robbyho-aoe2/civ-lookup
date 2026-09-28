@@ -179,6 +179,8 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
 .tracker-hint a:hover{text-decoration:none;}
 .imposter-hint{font-size:11px;color:var(--text2);background:var(--redBg);border:1px solid var(--redBd);border-radius:var(--radius);padding:10px 12px;margin-top:10px;}
 .imposter-hint a{color:var(--red);font-weight:700;}
+.possible-hint{font-size:11px;color:var(--text2);background:var(--surf2);border:1px solid var(--amber);border-radius:var(--radius);padding:10px 12px;margin-top:10px;}
+.possible-hint a{color:var(--amberL);font-weight:700;}
 .imposter-hint a:hover{text-decoration:none;}
 </style>
 </head>
@@ -534,7 +536,7 @@ const KNOWN_ALT_GROUPS = [
   [20168942, 12798178], // Combi I Chow / DS Chowde
   [20945272, 13379095], // Steve Irwin6443 / ObelusCipher
   [23790720, 12760988, 23284031, 18667559], // Dolphinjack7648 / Shadow8373 / #23284031 / AlightOwl218
-  [23477132, 25840006, 25065929, 22701518, 26059654], // ItsGutsAoE / KingSlaayerAoE (was LordSnowAoE) / boss_slewz2 / ql7mt / Garyy-__-1 (ql7mt + Garyy confirmed by ItsGuts himself)
+  [23477132, 25840006, 25065929, 22701518], // ItsGutsAoE / KingSlaayerAoE (was LordSnowAoE) / boss_slewz2 / ql7mt (ql7mt confirmed by ItsGuts himself; Garyy-__-1 is only a POSSIBLE alt, see POSSIBLE_ALTS)
   [22759370, 24074346], // BillieDown / BillieDownn
   [25767683, 25437131, 24924936, 21495993], // FI2 JRC / F12JRCRunsAoE / Cak Loek Pro / Treeman2490
   [12484696, 16389471], // sologhost / Chiefboy AK
@@ -569,6 +571,13 @@ function findAltGroup(id) {
 // flagged as a likely impersonator of a real tracked player, NOT
 // confirmed to be the same real person (see insights.html for why this
 // is separate from KNOWN_ALT_GROUPS).
+// Accounts flagged as a POSSIBLE alt of a tracked player: not confirmed, so they stay
+// separate entries everywhere (not merged) and this list only surfaces the suspicion.
+// (Unlike KNOWN_ALT_GROUPS, which is confirmed and merged.) Kept in sync with player.html.
+const POSSIBLE_ALTS = [
+  { id: 26059654, name: 'Garyy-__-1', of: 23477132, note: 'Garyy-__-1 and the ItsGutsAoE accounts play at overlapping times, so if it is the same person, others also use these accounts.' },
+];
+
 const IMPOSTER_ACCOUNTS = [
   { id: 24659170, impersonating: 12477800, note: 'Near-identical name to Ghost of 6am ("Ghost 0f 6am") — not confirmed to be the same real person.' },
   { id: 26084405, impersonating: 3452279, note: 'Near-identical name to OleCrookedWoody ("OleCrookedW00dy") — not confirmed to be the same real person.' },
@@ -713,6 +722,19 @@ function render(content, entry, player) {
     ? `<div class="imposter-hint">⚠ ${impersonatorLinks} ${impersonators.length > 1 ? 'are NOT' : 'is NOT'} ${escapeHtml(entry.name)} — just a near-identical name. Flagged as a possible impersonator, not confirmed to be the same real person.</div>`
     : '';
 
+  // Possible (unconfirmed, unmerged) alts: shown on the flagged account and on the account/group it may belong to.
+  const myGroup = findAltGroup(entry.profileId) || [Number(entry.profileId)];
+  const possibleHints = [];
+  POSSIBLE_ALTS.forEach(pa => {
+    const nameOf = id => { const p = ALL_TRACKED.find(x => x.profileId === id); return p ? p.name : (id === pa.id && pa.name) || '#' + id; };
+    if (Number(entry.profileId) === pa.id) {
+      possibleHints.push(`❓ Possible alt of <a href="player.html?id=${pa.of}">${escapeHtml(nameOf(pa.of))}</a> — not confirmed, so ${escapeHtml(entry.name)} stays a separate entry. ${escapeHtml(pa.note)}`);
+    } else if (myGroup.includes(pa.of)) {
+      possibleHints.push(`❓ <a href="player.html?id=${pa.id}">${escapeHtml(nameOf(pa.id))}</a> is a possible alt of this player — not confirmed, not merged. ${escapeHtml(pa.note)}`);
+    }
+  });
+  const possibleAltHtml = possibleHints.map(h => `<div class="possible-hint">${h}</div>`).join('');
+
   const lastUpdated = !entry.live ? latestPulledDate(player) : null;
   const lt = entry.liveTopUp;
   const liveNote = !lt ? '' : lt.ok
@@ -734,6 +756,7 @@ function render(content, entry, player) {
       ${entry.live ? `<div class="tracker-hint">Not part of the permanent AoE Auto Scout roster — this page was fetched live from AoE2Companion and won't be saved or refreshed automatically. <a href="${requestTrackingUrl(entry.name, entry.profileId)}" target="_blank" rel="noopener">Request ${escapeHtml(entry.name)} be tracked permanently</a> (form pre-filled), or ask in the <a href="https://discord.gg/2uRZG6qSyy" target="_blank" rel="noopener">Discord</a> or a <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank" rel="noopener">Fast Castle and Chill</a> video comment.</div>` : ''}
       ${imposterHintHtml}
       ${impersonatorsHintHtml}
+      ${possibleAltHtml}
       <div id="nc-link"></div>
       <div id="pro-link"></div>
     </div>
