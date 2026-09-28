@@ -1508,8 +1508,13 @@ function renderWeeklyReport(report) {
       <h3>Biggest Upsets This Week</h3>
       <p class="sub-desc">Based on each player's current rating, not their rating at the time of the match — an approximation.</p>
       ${weeklyTable(
-        [{ label: 'Winner' }, { label: 'Loser' }, { label: 'Gap', num: true }, { label: 'Map' }, { label: 'Date' }],
-        report.biggestUpsets.map(u => [`${wLink(u.winnerName, u.winnerId)} (${u.winnerRating})`, `${wLink(u.loserName, u.loserId)} (${u.loserRating})`, u.gap.toLocaleString(), u.map, u.date])
+        [{ label: 'Winner' }, { label: 'Loser' }, { label: 'Gap', num: true }, { label: 'Map' }, { label: 'Date' }, { label: '' }],
+        report.biggestUpsets.map(u => [
+          `${wLink(u.winnerName, u.winnerId)} (${u.winnerRating})`,
+          `${wLink(u.loserName, u.loserId)} (${u.loserRating})`,
+          u.gap.toLocaleString(), u.map, u.date,
+          u.matchId != null ? `<a href="https://www.aoe2insights.com/match/${u.matchId}/#overview" target="_blank" rel="noopener">Watch ↗</a>` : ''
+        ])
       )}
     </div>`;
 
