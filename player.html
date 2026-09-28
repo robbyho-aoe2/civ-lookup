@@ -250,6 +250,20 @@ async function attachTournamentLink(entry) {
   } catch (e) { /* no tournament page for this player, or data unavailable */ }
 }
 
+// "See this player on the Tournament Auto Scout" (separate site, pro tournament play from
+// Liquipedia): shown when pro-scout-map.json maps this profileId to a name on that site.
+async function attachProScoutLink(entry) {
+  try {
+    const res = await fetch('pro-scout-map.json');
+    if (!res.ok) return;
+    const d = await res.json();
+    const hit = (d.players || {})[String(entry.profileId)];
+    const el = document.getElementById('pro-link');
+    if (!hit || !el) return;
+    el.innerHTML = `<a class="nc-link-a" href="${d.base}?player=${encodeURIComponent(hit.name)}" target="_blank" rel="noopener">📊 See ${escapeHtml(hit.name)} on the Tournament Auto Scout ↗ <span>pro tournament results</span></a>`;
+  } catch (e) { /* not on the tournament site, or map unavailable */ }
+}
+
 // ---- live lookup for players outside the tracked roster ----
 // Ported from update_players.py's extract_match/get_opponents/
 // get_teammates so an untracked player's spotlight page computes
@@ -720,6 +734,7 @@ function render(content, entry, player) {
       ${imposterHintHtml}
       ${impersonatorsHintHtml}
       <div id="nc-link"></div>
+      <div id="pro-link"></div>
     </div>
     ${altsCardHtml}
 
@@ -797,6 +812,7 @@ function render(content, entry, player) {
   });
 
   attachTournamentLink(entry);
+  attachProScoutLink(entry);
   const badgesEl = document.getElementById('player-badges');
   const shownLadders = new Set(Object.keys(entry.ratings || {}));
   // entry.ratings is restricted to the player's own group's ladders (e.g.
