@@ -821,7 +821,7 @@ function render(content, entry, player) {
     });
   });
 
-  const RS = { raws: [], seen: new Set(), page: 0, done: false, failed: false, loading: false, bulk: false, stop: false, ladder: 'All', open: new Set() };
+  const RS = { raws: [], seen: new Set(), page: 0, done: false, failed: false, loading: false, bulk: false, stop: false, ladder: 'All', open: new Set(), expanded: false };
   loadRecentPages(2);
 
   function renderLadder(ladderName) {
@@ -995,6 +995,16 @@ function render(content, entry, player) {
     const oldest = RS.raws.length ? (RS.raws[RS.raws.length - 1].started || '').slice(0, 10) : '';
     descEl.textContent = `${shown.length.toLocaleString()} game${shown.length !== 1 ? 's' : ''} loaded from AoE2Companion, newest first, back to ${oldest}${RS.done ? ' (that is the start of the available history)' : ''}${last10.length ? ` · last ${last10.length}: ${w10}-${last10.length - w10}` : ''}.`;
 
+    // Collapsed by default: just the 3 newest games and an expand button.
+    if (!RS.expanded) {
+      descEl.textContent = `Latest 3 of ${shown.length.toLocaleString()} loaded game${shown.length !== 1 ? 's' : ''}${last10.length ? ` · last ${last10.length}: ${w10}-${last10.length - w10}` : ''}.`;
+      listEl.innerHTML = shown.slice(0, 3).map(matchCardHtml).join('') +
+        (shown.length > 3 || !RS.done ? '<div class="mc-btns"><button class="mc-more" id="recent-expand">Show more games</button></div>' : '');
+      const ex = document.getElementById('recent-expand');
+      if (ex) ex.addEventListener('click', () => { RS.expanded = true; renderRecentMatches(); });
+      return;
+    }
+
     // group by month; the newest month is open by default (or whatever the user opened)
     const groups = [];
     shown.forEach(r => {
@@ -1006,7 +1016,7 @@ function render(content, entry, player) {
     });
     if (!RS.open.size && groups.length) RS.open.add(groups[0].key);
     const monthLabel = k => { const m = /^(\d{4})-(\d{2})$/.exec(k); return m ? `${MONTHS[Number(m[2]) - 1]} ${m[1]}` : 'Unknown date'; };
-    listEl.innerHTML = groups.map(g => {
+    listEl.innerHTML = '<div class="mc-btns" style="margin:0 0 10px"><button class="mc-more" id="recent-collapse">Show fewer</button></div>' + groups.map(g => {
       const dec = g.rows.filter(r => iWon(r) != null), w = dec.filter(iWon).length;
       return `<details class="mc-month" data-k="${escapeHtml(g.key)}"${RS.open.has(g.key) ? ' open' : ''}><summary>${escapeHtml(monthLabel(g.key))}<span class="mc-msub">${g.rows.length} game${g.rows.length !== 1 ? 's' : ''}${dec.length ? ` · ${w}-${dec.length - w}` : ''}</span></summary><div class="mc-month-body"></div></details>`;
     }).join('') +
@@ -1028,6 +1038,8 @@ function render(content, entry, player) {
       det.addEventListener('toggle', () => { if (det.open) { RS.open.add(det.dataset.k); fill(det); } else RS.open.delete(det.dataset.k); });
     });
     const more = document.getElementById('recent-more'), all = document.getElementById('recent-all'), stop = document.getElementById('recent-stop');
+    const collapse = document.getElementById('recent-collapse');
+    if (collapse) collapse.addEventListener('click', () => { RS.expanded = false; renderRecentMatches(); });
     if (more) more.addEventListener('click', () => loadRecentPages(1));
     if (all) all.addEventListener('click', () => loadRecentPages(0, true));
     if (stop) stop.addEventListener('click', () => { RS.stop = true; stop.textContent = 'Stopping…'; });
