@@ -1512,7 +1512,7 @@ function renderWeeklyReport(report) {
   const upsets = `
     <div class="weekly-section">
       <h3>Biggest Upsets This Week</h3>
-      <p class="sub-desc">Based on each player's current rating, not their rating at the time of the match — an approximation.</p>
+      <p class="sub-desc">Based on each player's current rating, not their rating at the time of the match — an approximation. Games under 5 minutes are excluded (early resigns, not real upsets).</p>
       ${weeklyTable(
         [{ label: 'Winner' }, { label: 'Loser' }, { label: 'Gap', num: true }, { label: 'Map' }, { label: 'Date' }, { label: 'Length', num: true }, { label: '' }],
         report.biggestUpsets.map(u => [
