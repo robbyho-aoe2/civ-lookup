@@ -268,7 +268,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.47</div>
+    <div class="version">v2.48</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -3667,6 +3667,7 @@ function selectPlayer(idx) {
         if (activePlayer === idx) render(); // only re-render if still viewing this player
       });
     }
+    if (entry.source === 'remote') liveRefreshPlayer(idx);
     // Keep the map filter across player switches when possible — only
     // clear it if the newly-selected player has no data for that map
     // (under whatever ladder is currently active) rather than always
@@ -4496,6 +4497,125 @@ function getPlayerPulledDate(playerKey) {
   return dates.reduce((max, d) => (d > max ? d : max), dates[0]);
 }
 
+/* ── Live top-up ────────────────────────────────────────────────────────────
+   The stored snapshot (player-data repo) is refreshed on a schedule across
+   ~17k players, so it can be hours or days behind. When a tracked player is
+   opened, this pulls their newest matches and current ratings straight from
+   the aoe2companion API (CORS-open) and merges them into the cached snapshot
+   in memory. The record shape and parsing mirror update_players.py exactly,
+   so every downstream view reads the merged data with no other changes.
+   A unique query param bypasses their CDN cache (s-maxage=3600). If the
+   live call fails, the snapshot is used as-is and the header says so. */
+const LIVE_API_BASE = 'https://data.aoe2companion.com/api';
+const LIVE_MIN_INTERVAL_MS = 60000;
+const LIVE_LADDER_MAP = {
+  '1v1 Random Map (Console)': '1v1 Console', '1v1 Random Map (Controller)': '1v1 Console',
+  'Team Random Map (Console)': 'Team Console', 'Team Random Map (Controller)': 'Team Console',
+  '1v1 Random Map': '1v1 PC', 'Team Random Map': 'Team PC',
+};
+const LIVE_PROFILE_LADDER_MAP = { rm_1v1_console: '1v1 Console', rm_team_console: 'Team Console', rm_1v1: '1v1 PC', rm_team: 'Team PC' };
+const LIVE_CIV_NORM = { Mayans: 'Maya', Inca: 'Incas' };
+const _liveState = {}; // profileId -> { status: 'loading'|'ok'|'failed', at, newGames, updated }
+
+function liveExtractMatch(raw, profileId) {
+  const ladder = LIVE_LADDER_MAP[raw.leaderboardName || ''];
+  if (!ladder || raw.matchId == null) return null;
+  const teams = raw.teams || [];
+  let ourIdx = -1, our = null;
+  teams.forEach((t, i) => (t.players || []).forEach(p => { if (p.profileId === profileId) { ourIdx = i; our = p; } }));
+  const civRaw = our ? (our.civName || our.civilizationName || our.civ) : null;
+  const started = raw.started || raw.finished || null;
+  const t0 = raw.started ? Date.parse(raw.started) : NaN, t1 = raw.finished ? Date.parse(raw.finished) : NaN;
+  const dur = (t1 - t0) > 0 && (t1 - t0) / 1000 <= 5 * 3600 ? Math.round((t1 - t0) / 1000) : null;
+  const opponents = [], teammates = [];
+  teams.forEach((t, i) => (t.players || []).forEach(p => {
+    if (p.profileId == null || p.profileId === profileId) return;
+    (i === ourIdx ? teammates : opponents).push({ profileId: p.profileId, name: p.name });
+  }));
+  return { ladder, record: {
+    matchId: raw.matchId, civ: civRaw ? (LIVE_CIV_NORM[civRaw] || civRaw) : null,
+    map: raw.mapName ?? raw.map ?? null, won: our ? (our.won ?? null) : null,
+    patch: raw.patch ?? raw.version ?? raw.gameVersion ?? null,
+    date: started && !isNaN(Date.parse(started)) ? new Date(started).toISOString().slice(0, 10) : null,
+    startedAt: started, dur, opponents: ourIdx < 0 ? [] : opponents, teammates: ourIdx < 0 ? [] : teammates,
+  } };
+}
+
+async function liveRefreshPlayer(idx) {
+  const entry = PLAYER_LIST[idx];
+  if (!entry || entry.source !== 'remote') return;
+  const pid = entry.profileId;
+  const prev = _liveState[pid];
+  if (prev && (prev.status === 'loading' || Date.now() - prev.at < LIVE_MIN_INTERVAL_MS)) return;
+  _liveState[pid] = { status: 'loading', at: Date.now(), newGames: 0, updated: false };
+  try {
+    await fetchRemotePlayerData(entry.group, pid);
+    const cache = _remotePlayerCache[pid];
+    if (!cache || cache.error) throw new Error('no snapshot');
+    const bust = Date.now();
+    const getJson = url => fetch(url).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+    // Newest page first; keep paging (max 3) only while the page had nothing
+    // we already stored, i.e. the snapshot is more than a page behind.
+    const fetchMatches = async () => {
+      let newGames = 0, updated = false;
+      const pending = {};
+      for (let page = 1; page <= 3; page++) {
+        const v = await getJson(`${LIVE_API_BASE}/matches?profile_ids=${pid}&page=${page}&_=${bust}`);
+        const raws = Array.isArray(v) ? v : (v.matches || []);
+        if (!raws.length) break;
+        const fresh = {};
+        raws.forEach(raw => {
+          const r = liveExtractMatch(raw, pid);
+          if (r) (fresh[r.ladder] = fresh[r.ladder] || []).push(r.record);
+        });
+        let sawKnown = false;
+        Object.entries(fresh).forEach(([ladder, recs]) => {
+          const l = cache.ladders[ladder] || (cache.ladders[ladder] = { meta: {}, matches: [] });
+          const byId = new Map(l.matches.map(m => [m.matchId, m]));
+          const add = [];
+          recs.forEach(rec => {
+            const ex = byId.get(rec.matchId);
+            if (!ex) add.push(rec);
+            else { sawKnown = true; if (ex.won == null && rec.won != null) { Object.assign(ex, rec); updated = true; } }
+          });
+          if (add.length) { (pending[ladder] = pending[ladder] || []).push(...add); newGames += add.length; }
+        });
+        if (sawKnown) break;
+      }
+      // Prepend in fetch order (page 1 = newest) so matches[0] stays the latest game.
+      Object.entries(pending).forEach(([ladder, add]) => {
+        const l = cache.ladders[ladder];
+        l.matches = add.concat(l.matches);
+        l.meta = l.meta || {};
+        l.meta.totalGames = l.matches.length;
+      });
+      return { newGames, updated };
+    };
+    cache.ladders = cache.ladders || {};
+    const [mRes, pRes] = await Promise.allSettled([fetchMatches(), getJson(`${LIVE_API_BASE}/profiles/${pid}?_=${bust}`)]);
+    if (mRes.status !== 'fulfilled' && pRes.status !== 'fulfilled') throw new Error('both requests failed');
+    let newGames = 0, updated = false;
+    if (mRes.status === 'fulfilled') { newGames = mRes.value.newGames; updated = mRes.value.updated; }
+    if (pRes.status === 'fulfilled') {
+      (pRes.value.ratings || []).forEach(entryR => {
+        const ladder = LIVE_PROFILE_LADDER_MAP[entryR.leaderboardId];
+        if (!ladder) return;
+        const hist = (entryR.ratings || []).map(x => x.rating).filter(x => x != null);
+        if (!hist.length) return;
+        const l = cache.ladders[ladder] || (cache.ladders[ladder] = { meta: {}, matches: [] });
+        l.meta = l.meta || {};
+        if (l.meta.latestRating !== hist[0]) updated = true;
+        l.meta.latestRating = hist[0];
+        l.meta.peakRating = Math.max(l.meta.peakRating || 0, ...hist);
+      });
+    }
+    _liveState[pid] = { status: 'ok', at: Date.now(), newGames, updated: updated || newGames > 0 };
+  } catch (e) {
+    _liveState[pid] = { status: 'failed', at: Date.now(), newGames: 0, updated: false };
+  }
+  if (activePlayer === idx) render();
+}
+
 /* Every ladder object ({meta, matches}) a player has, keyed by ladder label —
    whichever source it lives in (cached remote JSON, or the compiled pro data). */
 function getPlayerLadderMap(playerKey) {
@@ -4632,6 +4752,16 @@ function renderPlayerGrid() {
     gamesLabel = `${meta.totalGames.toLocaleString()} ranked 1v1 matches`;
   }
 
+  // Snapshot vs live: remote players get topped up from the API when opened
+  // (liveRefreshPlayer); say plainly which one the numbers below are.
+  const liveSt = p.source === 'remote' ? _liveState[p.profileId] : null;
+  const snapNote = `Snapshot from ${meta.source}, pulled ${meta.pulledDate || 'recently'}`;
+  const snapshotNote =
+    liveSt?.status === 'loading' ? `${snapNote} · <span style="color:var(--yellow)">● checking for newer games…</span>` :
+    liveSt?.status === 'ok' ? `${snapNote} + <span style="color:var(--green)">● live top-up at ${new Date(liveSt.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>${liveSt.newGames ? ` (${liveSt.newGames} newer game${liveSt.newGames !== 1 ? 's' : ''})` : ' (already up to date)'}.` :
+    liveSt?.status === 'failed' ? `${snapNote} — <span style="color:var(--red)">live update failed</span>, showing the snapshot only.` :
+    `${snapNote} — not live.`;
+
   const currentPatchNote = (isMatchSource && activeRecencyMode === 'patch') ? ` · <b style="color:var(--amberL)">current patch only</b>` : '';
   const recentFormNote = (isMatchSource && activeRecencyMode === 'form') ? ` · <b style="color:var(--amberL)">More recent games weighted more heavily than older ones</b>` : '';
 
@@ -4641,7 +4771,7 @@ function renderPlayerGrid() {
     valueOf: c => stats[c]?.wr || 0,
     valueLabel: c => `${stats[c].wr}% win rate (${stats[c].games} game${stats[c].games !== 1 ? 's' : ''})`,
     headerHtml: `${p.emoji} ${escapeHtml(p.label)} — real personal civ win rates${ladderNote}${filterNote}${currentPatchNote}${recentFormNote} <a href="player.html?id=${p.profileId}" style="font-weight:400;text-transform:none;letter-spacing:normal;color:var(--amberL);text-decoration:none;font-size:11px">🔎 Full Spotlight →</a>`,
-    subHeaderHtml: `<b style="color:var(--amberL)">${gamesLabel}</b> · Snapshot from ${meta.source}, pulled ${meta.pulledDate || 'recently'} — not live. Showing civs with ${activeMinGames > 0 ? activeMinGames + '+' : 'any number of'} games.${activeRecencyMode === 'form' ? ' Win rates below are recency-weighted, not flat averages.' : ''}${missingData.length ? ` No qualifying data for: ${missingData.slice(0,15).join(', ')}${missingData.length>15?'…':''}.` : ''}${isMatchSource ? playerProfileStripHtml(p.key, activeLadder) : ''}${mapPillsHtml}`,
+    subHeaderHtml: `<b style="color:var(--amberL)">${gamesLabel}</b> · ${snapshotNote} Showing civs with ${activeMinGames > 0 ? activeMinGames + '+' : 'any number of'} games.${activeRecencyMode === 'form' ? ' Win rates below are recency-weighted, not flat averages.' : ''}${missingData.length ? ` No qualifying data for: ${missingData.slice(0,15).join(', ')}${missingData.length>15?'…':''}.` : ''}${isMatchSource ? playerProfileStripHtml(p.key, activeLadder) : ''}${mapPillsHtml}`,
     clearLabel: `${p.emoji} ${escapeHtml(p.label)} tier list`,
   });
 }
