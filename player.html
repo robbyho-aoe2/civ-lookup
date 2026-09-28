@@ -220,6 +220,7 @@ const svgNS = 'http://www.w3.org/2000/svg';
 const params = new URLSearchParams(location.search);
 const profileId = params.get('id'); // null -> landing page instead of a specific player
 let ALL_TRACKED = []; // meta.players, kept around for search + similar-players + the landing page
+let PLATFORMS_MAP = {}; // profileId (string) -> 'Xbox' | 'PSN' | 'Steam', bridge for console players whose own file predates platform tracking
 // Player display names come straight from the game's own API (any player
 // can set theirs to arbitrary text) and get interpolated into innerHTML
 // all over this page — escape before rendering so a name like "<s>" or
@@ -618,10 +619,16 @@ function fmtDur(seconds) {
 async function loadAndRender() {
   const content = document.getElementById('content');
   try {
-    const metaRes = await fetch(`${PLAYER_DATA_BASE}/aggregate-meta.json?t=${Date.now()}`, { cache: 'no-store' });
+    const [metaRes, platformsRes] = await Promise.all([
+      fetch(`${PLAYER_DATA_BASE}/aggregate-meta.json?t=${Date.now()}`, { cache: 'no-store' }),
+      fetch(`${PLAYER_DATA_BASE}/platforms.json?t=${Date.now()}`, { cache: 'no-store' }).catch(() => null),
+    ]);
     if (!metaRes.ok) throw new Error('HTTP ' + metaRes.status);
     const meta = await metaRes.json();
     ALL_TRACKED = meta.players || [];
+    if (platformsRes && platformsRes.ok) {
+      try { PLATFORMS_MAP = await platformsRes.json(); } catch { PLATFORMS_MAP = {}; }
+    }
     setupPlayerSearch();
 
     if (!profileId) { renderLandingPage(content); return; }
@@ -856,8 +863,18 @@ function render(content, entry, player) {
     .map(([l, p]) => `<span class="badge rating crossplay">${l}: ${p.current}${peakSuffix(l, p.current)}</span>`)
     .join('');
   const PLATFORM_LABEL = { PSN: '🎮 PSN', Xbox: '🎮 Xbox', Steam: '🖥️ Steam' };
-  const platformBadge = entry.platform ? `<span class="badge platform" title="Platform of this account">${escapeHtml(PLATFORM_LABEL[entry.platform] || entry.platform)}</span>` : '';
-  badgesEl.innerHTML = `<span class="badge">${entry.group || 'not tracked'}</span>` + platformBadge +
+  // The group badge used to just say "console" for every console player,
+  // which tells you nothing — swap in the actual platform (Xbox/PSN) when
+  // known. entry.platform covers the live (not-yet-tracked) fallback path;
+  // PLATFORMS_MAP is the bridge for tracked players whose own file predates
+  // platform tracking. Falls back to "Console" only when neither has it.
+  const resolvedPlatform = entry.platform || PLATFORMS_MAP[String(entry.profileId)] || null;
+  const groupBadgeText = entry.group === 'console'
+    ? (PLATFORM_LABEL[resolvedPlatform] || 'Console')
+    : entry.group === 'pc'
+      ? 'PC'
+      : (entry.group || 'not tracked');
+  badgesEl.innerHTML = `<span class="badge" title="Platform / pool">${escapeHtml(groupBadgeText)}</span>` +
     Object.entries(entry.ratings || {}).map(([l, r]) => `<span class="badge rating">${l}: ${r}${peakSuffix(l, r)}</span>`).join('') +
     crossplayBadges;
 
