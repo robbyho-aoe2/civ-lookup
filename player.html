@@ -652,7 +652,8 @@ function render(content, entry, player) {
 
     <div class="card" id="recent-card">
       <h2>Recent Matches</h2>
-      <p class="desc" id="recent-desc">Latest games on this ladder, newest first.</p>
+      <p class="desc" id="recent-desc">Latest games, newest first.</p>
+      <div class="ladder-toggle" id="recent-toggle" style="margin-bottom:10px"></div>
       <div class="table-scroll" style="max-height:440px"><table id="recent-table"></table></div>
     </div>
 
@@ -765,6 +766,9 @@ function render(content, entry, player) {
     });
   });
 
+  let recentLadder = 'All';
+  renderRecentMatches();
+
   function renderLadder(ladderName) {
     const matches = player.ladders[ladderName].matches || [];
     const wins = matches.filter(m => m.won).length;
@@ -788,9 +792,6 @@ function render(content, entry, player) {
       statRow.appendChild(el);
     });
 
-    // ---- recent matches ----
-    renderRecentMatches(matches, ladderName);
-
     // ---- win rate over time (monthly, last 24 months) ----
     renderTrend(matches);
 
@@ -809,29 +810,40 @@ function render(content, entry, player) {
     renderSimilarPlayers(ladderName);
   }
 
-  function renderRecentMatches(matches, ladderName) {
+  function renderRecentMatches() {
     const RECENT_LIMIT = 40;
+    const LADDER_ORDER = ['1v1 Console', 'Team Console', '1v1 PC', 'Team PC'];
     const stamp = m => m.startedAt || m.date || '';
-    const rows = matches.slice().sort((a, b) => (stamp(b) > stamp(a) ? 1 : stamp(b) < stamp(a) ? -1 : 0)).slice(0, RECENT_LIMIT);
+    const withGames = LADDER_ORDER.filter(l => ((player.ladders[l] || {}).matches || []).length);
+    if (recentLadder !== 'All' && !withGames.includes(recentLadder)) recentLadder = 'All';
+    const toggleEl = document.getElementById('recent-toggle');
+    toggleEl.innerHTML = ['All', ...withGames].map(l => `<button data-ladder="${l}" class="${l === recentLadder ? 'on' : ''}">${l === 'All' ? 'All ladders' : l}</button>`).join('');
+    toggleEl.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => { recentLadder = btn.dataset.ladder; renderRecentMatches(); }));
+
+    const all = [];
+    (recentLadder === 'All' ? withGames : [recentLadder]).forEach(l => (player.ladders[l].matches || []).forEach(m => all.push({ m, ladder: l })));
+    all.sort((x, y) => (stamp(y.m) > stamp(x.m) ? 1 : stamp(y.m) < stamp(x.m) ? -1 : 0));
+    const rows = all.slice(0, RECENT_LIMIT);
     const descEl = document.getElementById('recent-desc');
     const tableEl = document.getElementById('recent-table');
-    if (!rows.length) { descEl.textContent = `No ${ladderName} games on record.`; tableEl.innerHTML = ''; return; }
+    if (!rows.length) { descEl.textContent = 'No games on record.'; tableEl.innerHTML = ''; return; }
     const last10 = rows.slice(0, 10);
-    const w10 = last10.filter(m => m.won).length, l10 = last10.filter(m => m.won === false).length;
-    descEl.textContent = `Last ${rows.length} ${ladderName} games, newest first. Last ${last10.length}: ${w10}-${l10}.`;
+    const w10 = last10.filter(r => r.m.won).length, l10 = last10.filter(r => r.m.won === false).length;
+    descEl.textContent = `Last ${rows.length} ${recentLadder === 'All' ? '' : recentLadder + ' '}games, newest first. Last ${last10.length}: ${w10}-${l10}.`;
     const when = m => {
       const d = m.startedAt ? new Date(m.startedAt) : null;
       if (d && !isNaN(d)) return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
       return m.date ? formatPulledDate(m.date) : '—';
     };
     const names = list => (list || []).map(p => playerLinkOrName(p.name, p.profileId)).join(', ');
-    const thead = '<thead><tr><th>When</th><th>Result</th><th>Civ</th><th>Map</th><th>Opponent</th><th class="num">Length</th></tr></thead>';
-    const tbody = '<tbody>' + rows.map(m => {
+    const showLadder = recentLadder === 'All';
+    const thead = `<thead><tr><th>When</th>${showLadder ? '<th>Ladder</th>' : ''}<th>Result</th><th>Civ</th><th>Map</th><th>Opponent</th><th class="num">Length</th></tr></thead>`;
+    const tbody = '<tbody>' + rows.map(({ m, ladder }) => {
       const res = m.won == null ? '<span style="color:var(--text3)">—</span>'
         : m.won ? '<b style="color:var(--green)">Win</b>' : '<b style="color:var(--red)">Loss</b>';
       const opp = names(m.opponents) || '<span style="color:var(--text3)">—</span>';
       const mates = (m.teammates || []).length ? `<div style="font-size:10px;color:var(--text3)">with ${names(m.teammates)}</div>` : '';
-      return `<tr><td style="white-space:nowrap">${escapeHtml(when(m))}</td><td>${res}</td><td>${escapeHtml(m.civ || '—')}</td><td>${escapeHtml(m.map || '—')}</td><td>${opp}${mates}</td><td class="num">${m.dur != null ? fmtDur(m.dur) : '—'}</td></tr>`;
+      return `<tr><td style="white-space:nowrap">${escapeHtml(when(m))}</td>${showLadder ? `<td style="white-space:nowrap;color:var(--text2)">${escapeHtml(ladder)}</td>` : ''}<td>${res}</td><td>${escapeHtml(m.civ || '—')}</td><td>${escapeHtml(m.map || '—')}</td><td>${opp}${mates}</td><td class="num">${m.dur != null ? fmtDur(m.dur) : '—'}</td></tr>`;
     }).join('') + '</tbody>';
     tableEl.innerHTML = thead + tbody;
   }
