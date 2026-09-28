@@ -261,12 +261,77 @@ function extractMatchLive(raw, pid) {
     ladder,
     record: {
       matchId: raw.matchId, civ, map, won,
+      patch: raw.patch ?? raw.version ?? raw.gameVersion ?? null,
       date: coerceDateLive(raw.started || raw.finished),
+      startedAt: raw.started || raw.finished || null,
       dur: computeDurationLive(raw),
       opponents: getOpponentsLive(raw, pid),
       teammates: getTeammatesLive(raw, pid),
     },
   };
+}
+
+// Top up a tracked player's stored snapshot with whatever aoe2companion has
+// newer: pages through the newest matches until it meets one already stored
+// (max 3 pages), fills in results for games the snapshot caught mid-match, and
+// refreshes current/peak ratings. A unique query param bypasses their CDN
+// cache. Never throws -- on any failure the snapshot is shown as-is and
+// entry.liveTopUp says so.
+async function liveTopUpTracked(entry, player) {
+  const numId = Number(entry.profileId);
+  const bust = Date.now();
+  const getJson = url => fetch(url).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  const status = { ok: false, newGames: 0, at: Date.now() };
+  const run = async () => {
+    const pending = {};
+    let updatedResults = 0;
+    const matchesP = (async () => {
+      for (let page = 1; page <= 3; page++) {
+        const data = await getJson(`${LIVE_MATCHES_URL}?profile_ids=${numId}&page=${page}&_=${bust}`);
+        const raws = Array.isArray(data) ? data : (data.matches || []);
+        if (!raws.length) break;
+        const fresh = {};
+        raws.forEach(raw => { const ex = extractMatchLive(raw, numId); if (ex) (fresh[ex.ladder] = fresh[ex.ladder] || []).push(ex.record); });
+        let sawKnown = false;
+        Object.entries(fresh).forEach(([ladder, recs]) => {
+          const l = player.ladders[ladder] || (player.ladders[ladder] = { meta: {}, matches: [] });
+          const byId = new Map(l.matches.map(m => [m.matchId, m]));
+          recs.forEach(rec => {
+            const have = byId.get(rec.matchId);
+            if (!have) (pending[ladder] = pending[ladder] || []).push(rec);
+            else { sawKnown = true; if (have.won == null && rec.won != null) { Object.assign(have, rec); updatedResults++; } }
+          });
+        });
+        if (sawKnown) break;
+      }
+    })();
+    const [mRes, pRes] = await Promise.allSettled([matchesP, getJson(`${LIVE_PROFILE_URL}/${numId}?_=${bust}`)]);
+    if (mRes.status !== 'fulfilled' && pRes.status !== 'fulfilled') throw new Error('both requests failed');
+    Object.entries(pending).forEach(([ladder, add]) => {
+      const l = player.ladders[ladder];
+      l.matches = add.concat(l.matches); // fetch order: page 1 = newest
+      l.meta = l.meta || {};
+      l.meta.totalGames = l.matches.length;
+      status.newGames += add.length;
+    });
+    status.newGames += updatedResults;
+    if (pRes.status === 'fulfilled') {
+      entry.ratings = entry.ratings || {};
+      entry.peaks = entry.peaks || {};
+      (pRes.value.ratings || []).forEach(r => {
+        const ladderName = PROFILE_LADDER_MAP[r.leaderboardId];
+        const hist = (r.ratings || []).map(x => x.rating).filter(x => x != null);
+        if (!ladderName || !hist.length) return;
+        if (entry.ratings[ladderName] != null) entry.ratings[ladderName] = hist[0];
+        entry.peaks[ladderName] = { peak: Math.max(Math.max(...hist), (entry.peaks[ladderName] || {}).peak || 0), current: hist[0] };
+      });
+    }
+    status.ok = true;
+  };
+  try {
+    await Promise.race([run(), new Promise((_, rej) => setTimeout(() => rej(new Error('timed out')), 8000))]);
+  } catch (e) { status.error = e.message; }
+  entry.liveTopUp = status;
 }
 
 async function fetchLivePlayer(id) {
@@ -466,6 +531,8 @@ async function loadAndRender() {
       const dataRes = await fetch(`${PLAYER_DATA_BASE}/${entry.group}/${profileId}.json?t=${Date.now()}`, { cache: 'no-store' });
       if (!dataRes.ok) throw new Error('HTTP ' + dataRes.status);
       player = await dataRes.json();
+      content.innerHTML = '<div class="loading">Checking for newer games…</div>';
+      await liveTopUpTracked(entry, player);
     } else {
       content.innerHTML = '<div class="loading">Not in the tracked roster — fetching live from AoE2Companion…</div>';
       const live = await fetchLivePlayer(profileId);
@@ -555,8 +622,12 @@ function render(content, entry, player) {
     : '';
 
   const lastUpdated = !entry.live ? latestPulledDate(player) : null;
+  const lt = entry.liveTopUp;
+  const liveNote = !lt ? '' : lt.ok
+    ? ` · <span style="color:var(--green)">live top-up just now</span> (${lt.newGames ? lt.newGames + ' newer game' + (lt.newGames !== 1 ? 's' : '') : 'already up to date'})`
+    : ` · <span style="color:var(--red)">live update failed</span>, showing the stored snapshot`;
   const updatedNoteHtml = lastUpdated
-    ? `<div class="updated-note">Data last updated ${formatPulledDate(lastUpdated)}</div>`
+    ? `<div class="updated-note">Data last updated ${formatPulledDate(lastUpdated)}${liveNote}</div>`
     : (entry.live ? `<div class="updated-note">Live data — fetched just now</div>` : '');
 
   content.innerHTML = `
@@ -577,6 +648,12 @@ function render(content, entry, player) {
     <div class="card">
       <div class="ladder-toggle" id="ladder-toggle"></div>
       <div class="stat-row" id="stat-row"></div>
+    </div>
+
+    <div class="card" id="recent-card">
+      <h2>Recent Matches</h2>
+      <p class="desc" id="recent-desc">Latest games on this ladder, newest first.</p>
+      <div class="table-scroll" style="max-height:440px"><table id="recent-table"></table></div>
     </div>
 
     <div class="card" id="similar-card">
@@ -711,6 +788,9 @@ function render(content, entry, player) {
       statRow.appendChild(el);
     });
 
+    // ---- recent matches ----
+    renderRecentMatches(matches, ladderName);
+
     // ---- win rate over time (monthly, last 24 months) ----
     renderTrend(matches);
 
@@ -727,6 +807,33 @@ function render(content, entry, player) {
     renderTeammatesTable(matches, ladderName);
     // ---- similar players (by rating, this ladder) ----
     renderSimilarPlayers(ladderName);
+  }
+
+  function renderRecentMatches(matches, ladderName) {
+    const RECENT_LIMIT = 40;
+    const stamp = m => m.startedAt || m.date || '';
+    const rows = matches.slice().sort((a, b) => (stamp(b) > stamp(a) ? 1 : stamp(b) < stamp(a) ? -1 : 0)).slice(0, RECENT_LIMIT);
+    const descEl = document.getElementById('recent-desc');
+    const tableEl = document.getElementById('recent-table');
+    if (!rows.length) { descEl.textContent = `No ${ladderName} games on record.`; tableEl.innerHTML = ''; return; }
+    const last10 = rows.slice(0, 10);
+    const w10 = last10.filter(m => m.won).length, l10 = last10.filter(m => m.won === false).length;
+    descEl.textContent = `Last ${rows.length} ${ladderName} games, newest first. Last ${last10.length}: ${w10}-${l10}.`;
+    const when = m => {
+      const d = m.startedAt ? new Date(m.startedAt) : null;
+      if (d && !isNaN(d)) return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      return m.date ? formatPulledDate(m.date) : '—';
+    };
+    const names = list => (list || []).map(p => playerLinkOrName(p.name, p.profileId)).join(', ');
+    const thead = '<thead><tr><th>When</th><th>Result</th><th>Civ</th><th>Map</th><th>Opponent</th><th class="num">Length</th></tr></thead>';
+    const tbody = '<tbody>' + rows.map(m => {
+      const res = m.won == null ? '<span style="color:var(--text3)">—</span>'
+        : m.won ? '<b style="color:var(--green)">Win</b>' : '<b style="color:var(--red)">Loss</b>';
+      const opp = names(m.opponents) || '<span style="color:var(--text3)">—</span>';
+      const mates = (m.teammates || []).length ? `<div style="font-size:10px;color:var(--text3)">with ${names(m.teammates)}</div>` : '';
+      return `<tr><td style="white-space:nowrap">${escapeHtml(when(m))}</td><td>${res}</td><td>${escapeHtml(m.civ || '—')}</td><td>${escapeHtml(m.map || '—')}</td><td>${opp}${mates}</td><td class="num">${m.dur != null ? fmtDur(m.dur) : '—'}</td></tr>`;
+    }).join('') + '</tbody>';
+    tableEl.innerHTML = thead + tbody;
   }
 
   function renderSimilarPlayers(ladderName) {
