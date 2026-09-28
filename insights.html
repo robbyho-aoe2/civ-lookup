@@ -1424,6 +1424,12 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
 
 // ---- weekly recap ----
 function weeklyPct(x) { return x == null ? '—' : (x * 100).toFixed(1) + '%'; }
+function weeklyDuration(seconds) {
+  if (seconds == null) return '—';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
 function weeklyTable(headers, rows) {
   if (!rows.length) return '<p class="weekly-empty">No data for this segment this week.</p>';
   const thead = '<thead><tr>' + headers.map(h => `<th class="${h.num ? 'num' : ''}">${h.label}</th>`).join('') + '</tr></thead>';
@@ -1508,11 +1514,11 @@ function renderWeeklyReport(report) {
       <h3>Biggest Upsets This Week</h3>
       <p class="sub-desc">Based on each player's current rating, not their rating at the time of the match — an approximation.</p>
       ${weeklyTable(
-        [{ label: 'Winner' }, { label: 'Loser' }, { label: 'Gap', num: true }, { label: 'Map' }, { label: 'Date' }, { label: '' }],
+        [{ label: 'Winner' }, { label: 'Loser' }, { label: 'Gap', num: true }, { label: 'Map' }, { label: 'Date' }, { label: 'Length', num: true }, { label: '' }],
         report.biggestUpsets.map(u => [
           `${wLink(u.winnerName, u.winnerId)} (${u.winnerRating})`,
           `${wLink(u.loserName, u.loserId)} (${u.loserRating})`,
-          u.gap.toLocaleString(), u.map, u.date,
+          u.gap.toLocaleString(), u.map, u.date, weeklyDuration(u.durSeconds),
           u.matchId != null ? `<a href="https://www.aoe2insights.com/match/${u.matchId}/#overview" target="_blank" rel="noopener">Watch ↗</a>` : ''
         ])
       )}
