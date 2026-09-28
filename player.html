@@ -88,6 +88,16 @@ header .back:hover{color:var(--amberL);}
 .mc-d.dn{color:var(--red);}
 .mc-more{display:block;margin:6px auto 0;padding:8px 18px;background:var(--surf2);border:1px solid var(--border2);border-radius:20px;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;}
 .mc-more:hover{color:var(--amberL);border-color:var(--amber);}
+.mc-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:6px;}
+.mc-btns .mc-more{margin:0;}
+.mc-month{margin-bottom:10px;}
+.mc-month>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;padding:9px 14px;background:var(--surf2);border:1px solid var(--border2);border-radius:9px;font-size:13px;font-weight:700;}
+.mc-month>summary::-webkit-details-marker{display:none;}
+.mc-month>summary::before{content:'\25B8';color:var(--text3);font-size:11px;}
+.mc-month[open]>summary::before{content:'\25BE';}
+.mc-month>summary .mc-msub{margin-left:auto;font-weight:500;font-size:12px;color:var(--text2);}
+.mc-month>.mc-month-body{margin-top:8px;}
+.mc-progress{font-size:12px;color:var(--text2);text-align:center;margin:8px 0;}
 
 .mc-team.mc-wide{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;}
 @media(max-width:760px){.mc-team.mc-wide{grid-template-columns:1fr;}.mc{grid-template-columns:1fr;}.mc-teams{grid-template-columns:1fr;}.mc-vs{text-align:center;}}
@@ -811,7 +821,7 @@ function render(content, entry, player) {
     });
   });
 
-  const RS = { raws: [], seen: new Set(), page: 0, done: false, failed: false, loading: false, ladder: 'All' };
+  const RS = { raws: [], seen: new Set(), page: 0, done: false, failed: false, loading: false, bulk: false, stop: false, ladder: 'All', open: new Set() };
   loadRecentPages(2);
 
   function renderLadder(ladderName) {
@@ -860,7 +870,7 @@ function render(content, entry, player) {
   // AoE2Companion. If the API can't be reached it falls back to a plain table
   // from the stored snapshot.
   const RECENT_LADDER_ORDER = ['1v1 Console', 'Team Console', '1v1 PC', 'Team PC'];
-  const recentLabel = raw => LADDER_MAP[raw.leaderboardName || ''] || raw.leaderboardName || 'Other';
+  const recentLabel = raw => LADDER_MAP[raw.leaderboardName || ''] || (/^\[/.test(raw.leaderboardName || '') ? 'Other' : raw.leaderboardName) || 'Other';
 
   function timeAgo(iso) {
     const t = iso ? new Date(iso).getTime() : NaN;
@@ -917,27 +927,45 @@ function render(content, entry, player) {
       `<div class="mc-teams">${sides[0] || ''}<span class="mc-vs">VS</span>${sides[1] || '<div></div>'}${extra}</div></div>`;
   }
 
-  async function loadRecentPages(count) {
+  const RECENT_PAGE_LIMIT = 400; // safety only; the API runs out well before this (about 160 pages for the heaviest accounts)
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  // Fetch `count` more pages (or, with bulk, every remaining page until the API
+  // runs dry). Bulk mode paces requests to stay under the API's rate limit and
+  // can be stopped; progress shows in #recent-progress without re-rendering the list.
+  async function loadRecentPages(count, bulk) {
     if (RS.loading || RS.done) return;
-    RS.loading = true;
+    RS.loading = true; RS.bulk = !!bulk; RS.stop = false;
     renderRecentMatches();
     const bust = Date.now();
+    const pid = Number(entry.profileId);
     try {
-      for (let i = 0; i < count; i++) {
+      for (let i = 0; bulk || i < count; i++) {
+        if (RS.stop) break;
         RS.page++;
-        const res = await fetch(`${LIVE_MATCHES_URL}?profile_ids=${Number(entry.profileId)}&page=${RS.page}&_=${bust}`);
+        let res = await fetch(`${LIVE_MATCHES_URL}?profile_ids=${pid}&page=${RS.page}&_=${bust}`);
+        if (res.status === 429) { await sleep(10000); res = await fetch(`${LIVE_MATCHES_URL}?profile_ids=${pid}&page=${RS.page}&_=${bust}`); }
         if (!res.ok) { RS.page--; throw new Error('HTTP ' + res.status); }
         const data = await res.json();
         const raws = Array.isArray(data) ? data : (data.matches || []);
         raws.forEach(r => { if (r.matchId != null && !RS.seen.has(r.matchId)) { RS.seen.add(r.matchId); RS.raws.push(r); } });
-        if (raws.length < 20 || RS.page >= 15) { RS.done = true; break; }
+        if (raws.length < 20 || RS.page >= RECENT_PAGE_LIMIT) { RS.done = true; break; }
+        if (bulk) {
+          const prog = document.getElementById('recent-progress');
+          const oldest = RS.raws.length ? (RS.raws[RS.raws.length - 1].started || '').slice(0, 10) : '';
+          if (prog) prog.textContent = `Loading… ${RS.raws.length.toLocaleString()} games so far, back to ${oldest}.`;
+          await sleep(650);
+        }
       }
     } catch (e) {
       if (!RS.raws.length) RS.failed = true;
     }
-    RS.loading = false;
+    RS.loading = false; RS.bulk = false;
     renderRecentMatches();
   }
+
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const iWon = r => { const p = (r.teams || []).flatMap(x => x.players || []).find(q => q.profileId === Number(entry.profileId)); return p ? p.won : null; };
 
   function renderRecentMatches() {
     const descEl = document.getElementById('recent-desc');
@@ -958,17 +986,51 @@ function render(content, entry, player) {
       return (ix < 0 ? 99 : ix) - (iy < 0 ? 99 : iy) || counts[y] - counts[x];
     });
     if (RS.ladder !== 'All' && !counts[RS.ladder]) RS.ladder = 'All';
-    toggleEl.innerHTML = ['All', ...labels].map(l => `<button data-ladder="${escapeHtml(l)}" class="${l === RS.ladder ? 'on' : ''}">${l === 'All' ? 'All' : escapeHtml(l)}${l === 'All' ? '' : ` <span style="opacity:.6">${counts[l]}</span>`}</button>`).join('');
+    toggleEl.innerHTML = ['All', ...labels].map(l => `<button data-ladder="${escapeHtml(l)}" class="${l === RS.ladder ? 'on' : ''}">${l === 'All' ? 'All' : escapeHtml(l)}${l === 'All' ? '' : ` <span style="opacity:.6">${counts[l].toLocaleString()}</span>`}</button>`).join('');
     toggleEl.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => { RS.ladder = btn.dataset.ladder; renderRecentMatches(); }));
 
     const shown = RS.raws.filter(r => RS.ladder === 'All' || recentLabel(r) === RS.ladder);
-    const decided = shown.slice(0, 10).filter(r => { const t = (r.teams || []).flatMap(x => x.players || []).find(p => p.profileId === Number(entry.profileId)); return t && t.won != null; });
-    const w = decided.filter(r => (r.teams || []).flatMap(x => x.players || []).find(p => p.profileId === Number(entry.profileId)).won).length;
-    descEl.textContent = `${shown.length} game${shown.length !== 1 ? 's' : ''} loaded from AoE2Companion, newest first${decided.length ? ` · last ${decided.length}: ${w}-${decided.length - w}` : ''}.`;
-    listEl.innerHTML = (shown.length ? shown.map(matchCardHtml).join('') : '<p style="font-size:12px;color:var(--text3)">No games loaded for this ladder yet.</p>') +
-      (RS.done ? '' : `<button class="mc-more" id="recent-more">${RS.loading ? 'Loading…' : 'Show more'}</button>`);
-    const more = document.getElementById('recent-more');
+    const last10 = shown.slice(0, 10).filter(r => iWon(r) != null);
+    const w10 = last10.filter(iWon).length;
+    const oldest = RS.raws.length ? (RS.raws[RS.raws.length - 1].started || '').slice(0, 10) : '';
+    descEl.textContent = `${shown.length.toLocaleString()} game${shown.length !== 1 ? 's' : ''} loaded from AoE2Companion, newest first, back to ${oldest}${RS.done ? ' (that is the start of the available history)' : ''}${last10.length ? ` · last ${last10.length}: ${w10}-${last10.length - w10}` : ''}.`;
+
+    // group by month; the newest month is open by default (or whatever the user opened)
+    const groups = [];
+    shown.forEach(r => {
+      const iso = r.finished || r.started || '';
+      const key = iso.slice(0, 7) || 'unknown';
+      let g = groups[groups.length - 1];
+      if (!g || g.key !== key) { g = { key, rows: [] }; groups.push(g); }
+      g.rows.push(r);
+    });
+    if (!RS.open.size && groups.length) RS.open.add(groups[0].key);
+    const monthLabel = k => { const m = /^(\d{4})-(\d{2})$/.exec(k); return m ? `${MONTHS[Number(m[2]) - 1]} ${m[1]}` : 'Unknown date'; };
+    listEl.innerHTML = groups.map(g => {
+      const dec = g.rows.filter(r => iWon(r) != null), w = dec.filter(iWon).length;
+      return `<details class="mc-month" data-k="${escapeHtml(g.key)}"${RS.open.has(g.key) ? ' open' : ''}><summary>${escapeHtml(monthLabel(g.key))}<span class="mc-msub">${g.rows.length} game${g.rows.length !== 1 ? 's' : ''}${dec.length ? ` · ${w}-${dec.length - w}` : ''}</span></summary><div class="mc-month-body"></div></details>`;
+    }).join('') +
+      `<div class="mc-progress" id="recent-progress">${RS.loading && RS.bulk ? `Loading… ${RS.raws.length.toLocaleString()} games so far, back to ${oldest}.` : ''}</div>` +
+      (RS.done ? '' : `<div class="mc-btns">${RS.loading
+        ? (RS.bulk ? '<button class="mc-more" id="recent-stop">Stop</button>' : '<button class="mc-more" disabled>Loading…</button>')
+        : '<button class="mc-more" id="recent-more">Show 20 more</button><button class="mc-more" id="recent-all">Load everything</button>'}</div>`);
+
+    // fill a month's cards only when it is open (keeps thousands of games light)
+    const fill = det => {
+      const body = det.querySelector('.mc-month-body');
+      if (body.dataset.filled) return;
+      const g = groups.find(x => x.key === det.dataset.k);
+      body.innerHTML = g.rows.map(matchCardHtml).join('');
+      body.dataset.filled = '1';
+    };
+    listEl.querySelectorAll('details.mc-month').forEach(det => {
+      if (det.open) fill(det);
+      det.addEventListener('toggle', () => { if (det.open) { RS.open.add(det.dataset.k); fill(det); } else RS.open.delete(det.dataset.k); });
+    });
+    const more = document.getElementById('recent-more'), all = document.getElementById('recent-all'), stop = document.getElementById('recent-stop');
     if (more) more.addEventListener('click', () => loadRecentPages(1));
+    if (all) all.addEventListener('click', () => loadRecentPages(0, true));
+    if (stop) stop.addEventListener('click', () => { RS.stop = true; stop.textContent = 'Stopping…'; });
   }
 
   // Plain table from the stored snapshot, used only if the live API is unreachable.
