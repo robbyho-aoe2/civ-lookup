@@ -536,6 +536,9 @@ const REGION_DEFS = [
   { key: 'europe',label: 'Europe',        match: c => EUROPE_CODES.has(c) },
   { key: 'africa',label: 'Africa',        match: c => AFRICA_CODES.has(c) },
   { key: 'asia',  label: 'Asia',          match: c => ASIA_CODES.has(c) },
+  // Platform bucket, not a country: matches on the account's console platform
+  // (aoe2companion's platformName, captured by the pipeline), so it spans every country.
+  { key: 'psn',   label: '🎮 PSN',        test: p => p.platform === 'PSN' },
 ];
 // A player's ranking rating: the higher of their 1v1 Console / Team
 // Console ratings, whichever they have — "top Team and 1v1 elos when
@@ -1339,7 +1342,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
   REGION_DEFS.forEach(def => {
     regionRows[def.key] = consolePlayers
       .filter(p => !regionDropIds.has(p.profileId))
-      .filter(p => p.country && def.match(p.country))
+      .filter(p => def.test ? def.test(p) : (p.country && def.match(p.country)))
       .map(p => ({ ...p, best: bestConsoleRating(p) }))
       .filter(p => p.best)
       .sort((a, b) => b.best.rating - a.best.rating);
@@ -1355,7 +1358,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     const tableEl = document.getElementById('region-table');
     const expandEl = document.getElementById('region-expand-row');
     if (!rows.length) {
-      tableEl.innerHTML = `<tbody><tr><td style="padding:16px 0;color:var(--text3);font-size:12px">No tracked console players with a rated ladder from this region yet.</td></tr></tbody>`;
+      tableEl.innerHTML = `<tbody><tr><td style="padding:16px 0;color:var(--text3);font-size:12px">No tracked console players with a rated ladder from this region yet (PSN fills in as the pipeline records each account's platform).</td></tr></tbody>`;
       expandEl.innerHTML = '';
       return;
     }
