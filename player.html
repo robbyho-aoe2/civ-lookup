@@ -17,6 +17,10 @@
 body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;}
 .wrap{max-width:900px;margin:0 auto;padding:28px 20px 60px;}
 
+.page-tabs{display:flex;gap:6px;margin:0 0 22px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.page-tabs a{padding:10px 16px;font-size:13px;font-weight:600;color:var(--text2);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.page-tabs a:hover{color:var(--text);}
+.page-tabs a.on{color:var(--amberL);border-bottom-color:var(--amber);}
 header{display:flex;align-items:center;gap:14px;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--border);}
 header h1{font-size:20px;margin:0;}
 header .back{font-size:13px;color:var(--text2);text-decoration:none;}
@@ -168,9 +172,18 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
   <header>
     <div>
       <h1>🔎 Player Spotlight</h1>
-      <p class="subtitle"><a class="back" href="index.html">← AoE Auto Scout</a> · <a class="back" href="insights.html">Console Insights</a></p>
+      <p class="subtitle">Ratings, civs, maps, recent games and head-to-heads for any player.</p>
     </div>
   </header>
+
+  <nav class="page-tabs">
+    <a href="index.html">🏠 Auto Scout</a>
+    <a href="player.html" class="on">🔎 Player Spotlight</a>
+    <a href="competitive.html">Console Competitive</a>
+    <a href="insights.html">📊 Console Insights</a>
+    <a href="civ-insights.html">🧮 Civ Insights</a>
+    <a href="build-order.html">🛠️ Build Order</a>
+  </nav>
 
   <div class="card" id="lookup-card">
     <h2>Look Up a Player</h2>
