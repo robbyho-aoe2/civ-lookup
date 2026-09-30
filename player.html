@@ -873,7 +873,11 @@ function render(content, entry, player) {
     : entry.group === 'pc'
       ? 'PC'
       : (entry.group || 'not tracked');
-  badgesEl.innerHTML = `<span class="badge" title="Platform / pool">${escapeHtml(groupBadgeText)}</span>` +
+  const countryBadge = entry.countryName
+    ? `<span class="badge" title="Reported country">${entry.countryIcon ? escapeHtml(entry.countryIcon) + ' ' : ''}${escapeHtml(entry.countryName)}</span>`
+    : '';
+  badgesEl.innerHTML = countryBadge +
+    `<span class="badge" title="Platform / pool">${escapeHtml(groupBadgeText)}</span>` +
     Object.entries(entry.ratings || {}).map(([l, r]) => `<span class="badge rating">${l}: ${r}${peakSuffix(l, r)}</span>`).join('') +
     crossplayBadges;
 
