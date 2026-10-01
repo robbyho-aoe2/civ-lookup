@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Investigations — AoE Auto Scout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#100E0C;--surf:#17130F;--surf2:#1F1A15;--border:#241F1A;--border2:#362E24;
+  --amber:#3F9B72;--amberL:#5FB88C;--amberBg:rgba(63,155,114,.12);
+  --text:#EDE8DD;--text2:#8F8578;--text3:#5C544A;
+  --radius:9px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;min-height:100vh;}
+#app{max-width:1200px;margin:0 auto;padding:16px 16px 80px;}
+header{position:relative;border-radius:14px;margin-bottom:6px;background:var(--surf);border:1px solid var(--border);display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;padding:12px 18px;}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+.subtitle{font-size:13px;color:var(--text3);flex-basis:100%;}
+.subtitle a{color:#7fb8e8;text-decoration:none;border-bottom:1px solid rgba(127,184,232,.5);}
+.subtitle a:hover{border-color:#7fb8e8;}
+.page-tabs{display:flex;gap:6px;margin:0 0 22px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.page-tabs a{padding:10px 16px;font-size:13px;font-weight:600;color:var(--text2);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.page-tabs a:hover{color:var(--text);}
+.page-tabs a.on{color:var(--amberL);border-bottom-color:var(--amber);}
+
+.deck-wrap{max-width:1500px;margin:0 auto;}
+.deck-head{margin:0 0 18px;}
+.deck-head h1{font-size:22px;font-weight:700;margin:0 0 4px;}
+.deck-head p{font-size:13px;color:var(--text2);margin:0;}
+
+.slide-viewport{position:relative;width:100%;background:#15120F;border-radius:14px;overflow:hidden;border:1px solid var(--border);}
+.slide-stage{position:relative;transform-origin:top left;}
+.slide{position:absolute;top:0;left:0;width:1920px;height:1080px;overflow:hidden;display:none;}
+.slide.active{display:block;}
+.slide > section{position:relative;width:100%;height:100%;box-sizing:border-box;}
+
+.deck-controls{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:14px;flex-wrap:wrap;}
+.deck-nav-btns{display:flex;gap:8px;}
+.deck-nav-btns button{background:var(--surf2);border:1px solid var(--border2);color:var(--text);border-radius:var(--radius);padding:9px 18px;font-size:14px;font-weight:600;cursor:pointer;}
+.deck-nav-btns button:hover:not(:disabled){border-color:var(--amber);color:var(--amberL);}
+.deck-nav-btns button:disabled{opacity:.35;cursor:default;}
+.deck-counter{font-size:13px;color:var(--text2);font-variant-numeric:tabular-nums;}
+.deck-progress{height:3px;background:var(--border);border-radius:2px;overflow:hidden;flex:1;min-width:120px;}
+.deck-progress-bar{height:100%;background:var(--amber);transition:width .25s ease;}
+
+@media (max-width:900px){
+  .deck-wrap{max-width:100%;}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1 class="sr-only">AoE Auto Scout</h1>
+    <p class="subtitle">by <a href="https://youtube.com/@Fastcastleandchill" target="_blank" rel="noopener">Fast Castle and Chill</a></p>
+    <p class="subtitle"><a href="https://robbyho-aoe2.github.io/aoe2-Tournament-Auto-scout/" target="_blank" rel="noopener">🏆 Check out AoE2 Tournament Auto Scout</a></p>
+  </header>
+  <nav class="page-tabs">
+    <a href="index.html">🏠 Auto Scout</a>
+    <a href="player.html">🔎 Player Spotlight</a>
+    <a href="competitive.html">Console Competitive</a>
+    <a href="insights.html">📊 Console Insights</a>
+    <a href="civ-insights.html">🧮 Civ Insights</a>
+    <a href="build-order.html">🛠️ Build Order</a>
+    <a href="investigations.html" class="on">🕵️ Investigations</a>
+  </nav>
+
+  <div class="deck-wrap">
+    <div class="deck-head">
+      <h1>Who Is Garyy-__-1?</h1>
+      <p>A statistical deep-dive into a console AoE2 account that climbed from 1,000 to 2,000+ rating in a month &mdash; and who's really behind the controller for the hardest games.</p>
+    </div>
+    <div class="slide-viewport" id="slide-viewport">
+      <div class="slide-stage" id="slide-stage">
+<div class="slide" data-slide="cover">
+<section id="cover" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:32px">
+<p style="font-family:'IBM Plex Sans', Arial, sans-serif;font-size:28px;font-weight:600;color:#E8505B;letter-spacing:4px;text-transform:uppercase;margin:0">A Console Investigation</p>
+<h1 style="font-family:'Oswald', Arial, sans-serif;font-size:160px;font-weight:700;line-height:1.02;margin:0;color:#F5F1EA">WHO IS<br>GARYY<span style="color:#FAC775">-__-1</span>?</h1>
+<p style="font-size:32px;color:#B8B0A6;max-width:1300px;margin:0">One PSN account rocketed from 1000 to 2020 rating in 30 days. Then the wins stopped. Here's what the data says about who's really behind the controller.</p>
+<div style="position:absolute;left:128px;bottom:64px;display:flex;align-items:center;gap:16px">
+<p style="font-size:24px;color:#6a6459;margin:0">AoE2 Console Investigation Series</p>
+</div>
+</section>
+</div>
+<div class="slide" data-slide="setup">
+<section id="setup" data-section="The account's rise and the wall it hit" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:72px;font-weight:700;margin:0">THE CLIMB</h2>
+<p style="font-size:30px;color:#B8B0A6;max-width:1500px;margin:0">Garyy-__-1 showed up on PSN and won almost everything&nbsp;&mdash; until the matchmaker started feeding him real competition.</p>
+<div style="display:flex;gap:40px;flex:1;align-items:stretch">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#1F1A15;padding:48px;border-radius:24px;border:1px solid #332B22">
+<p style="font-size:24px;font-weight:600;color:#FAC775;text-transform:uppercase;letter-spacing:2px;margin:0">First 60 games</p>
+<h3 style="font-family:'Oswald', Arial, sans-serif;font-size:128px;font-weight:700;margin:0;color:#F5F1EA">54&ndash;6</h3>
+<p style="font-size:32px;color:#B8B0A6;margin:0">90% win rate, 1000 &rarr; ~1900 rating</p>
+</div>
+<div style="width:120px;display:flex;align-items:center;justify-content:center">
+<x-icon name="Lightning" style="color:#E8505B;width:80px;height:80px"></x-icon>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#2A1518;padding:48px;border-radius:24px;border:1px solid #4A2228">
+<p style="font-size:24px;font-weight:600;color:#E8505B;text-transform:uppercase;letter-spacing:2px;margin:0">Vs. 1900+ rated opponents</p>
+<h3 style="font-family:'Oswald', Arial, sans-serif;font-size:128px;font-weight:700;margin:0;color:#F5F1EA">9&ndash;15</h3>
+<p style="font-size:32px;color:#D9A8AC;margin:0">37.5% win rate, 24 games, peak 2020</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;font-size:24px;color:#6a6459;margin:0">Source: aoe2companion match history, Aug 28 &ndash; Sep 29 2026</p>
+</section>
+</div>
+<div class="slide" data-slide="pc-debunk">
+<section id="pc-debunk" data-section="Ruling out the obvious guess" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:32px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:72px;font-weight:700;margin:0">"HE'S GARY FROM PC"</h2>
+<p style="font-size:28px;color:#B8B0A6;max-width:1600px;margin:0">The claim: Garyy-__-1 is secretly Gary_zZ, a known PC pro. One person can't be mid-game on two platforms at once &mdash; but that's exactly what the clock shows, <b style="color:#F5F1EA">19 separate times.</b></p>
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="background:#1F1A15;border-radius:16px;padding:24px 36px;display:flex;align-items:center;gap:32px">
+<p style="font-size:24px;color:#8a8275;width:220px;margin:0">Aug 28, 2026</p>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:24px;margin:0"><span style="color:#E8505B;font-weight:700">Garyy-__-1</span><span style="color:#B8B0A6"> &nbsp;21:21 &ndash; 22:00 PSN</span></p>
+<p style="font-size:24px;margin:0"><span style="color:#FAC775;font-weight:700">Gary_zZ</span><span style="color:#B8B0A6"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;21:29 &ndash; 21:56 Steam</span></p>
+</div>
+<p style="font-size:32px;color:#F5F1EA;font-weight:700;margin:0">27 min overlap</p>
+</div>
+<div style="background:#1F1A15;border-radius:16px;padding:24px 36px;display:flex;align-items:center;gap:32px">
+<p style="font-size:24px;color:#8a8275;width:220px;margin:0">Sep 23, 2026</p>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:24px;margin:0"><span style="color:#E8505B;font-weight:700">Garyy-__-1</span><span style="color:#B8B0A6"> &nbsp;21:18 &ndash; 21:53 PSN</span></p>
+<p style="font-size:24px;margin:0"><span style="color:#FAC775;font-weight:700">Gary_zZ</span><span style="color:#B8B0A6"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;20:58 &ndash; 21:41 Steam</span></p>
+</div>
+<p style="font-size:32px;color:#F5F1EA;font-weight:700;margin:0">23 min overlap</p>
+</div>
+<div style="background:#1F1A15;border-radius:16px;padding:24px 36px;display:flex;align-items:center;gap:32px">
+<p style="font-size:24px;color:#8a8275;width:220px;margin:0">Sep 24, 2026</p>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:24px;margin:0"><span style="color:#E8505B;font-weight:700">Garyy-__-1</span><span style="color:#B8B0A6"> &nbsp;22:43 &ndash; 23:08 PSN</span></p>
+<p style="font-size:24px;margin:0"><span style="color:#FAC775;font-weight:700">Gary_zZ</span><span style="color:#B8B0A6"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;22:46 &ndash; 23:19 Steam</span></p>
+</div>
+<p style="font-size:32px;color:#F5F1EA;font-weight:700;margin:0">23 min overlap</p>
+</div>
+</div>
+<div style="background:#2A1518;border-radius:16px;padding:28px 40px;border-left:8px solid #E8505B;display:flex;align-items:center;gap:24px">
+<p style="font-size:28px;color:#F5F1EA;margin:0">These are 3 of <b style="color:#FAC775">19 separate instances</b> &mdash; full ranked matches running simultaneously, in progress, on two different platforms. Same person, same keyboard, same controller? Not possible.</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;font-size:24px;color:#6a6459;margin:0">Source: both accounts' own match timestamps, Aug 28 &ndash; Sep 29 2026</p>
+</section>
+</div>
+<div class="slide" data-slide="ps5-network">
+<section id="ps5-network" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:32px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:64px;font-weight:700;margin:0">HOW BIG IS THE PS5 POOL?</h2>
+<p style="font-size:28px;color:#B8B0A6;max-width:1650px;margin:0">Matchmaking defaults to PSN-only. Crossplay is an opt-in toggle, not the default.</p>
+<div style="display:flex;gap:28px">
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#1F1A15;padding:36px;border-radius:20px;border:1px solid #332B22">
+<p style="font-size:24px;font-weight:600;color:#FAC775;margin:0">Turning on crossplay</p>
+<p style="font-size:24px;color:#B8B0A6;margin:0">Options (the 3-line button on the controller) &rarr; Game &rarr; "Enable Cross Play" &rarr; set to On</p>
+<p style="font-size:22px;color:#8a8275;margin:0">Off by default, per players in the scene</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#1F1A15;padding:36px;border-radius:20px;border:1px solid #332B22">
+<p style="font-size:24px;font-weight:600;color:#FAC775;margin:0">Total ranked console pool</p>
+<h3 style="font-family:'Oswald', Arial, sans-serif;font-size:72px;font-weight:700;margin:0;color:#F5F1EA">1,557</h3>
+<p style="font-size:22px;color:#8a8275;margin:0">All ranked 1v1 Console players, Xbox + PSN combined</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#2A1518;padding:36px;border-radius:20px;border:2px solid #E8505B">
+<p style="font-size:24px;font-weight:600;color:#D9A8AC;margin:0">What that means</p>
+<p style="font-size:26px;color:#F5F1EA;margin:0">A large base of PSN players who, by default, only ever match with other PSN players</p>
+</div>
+</div>
+<div style="background:#1F1A15;border-radius:16px;padding:28px 40px;border-left:8px solid #FAC775">
+<p style="font-size:26px;color:#F5F1EA;margin:0">That's the pool the same handful of names keep crossing paths in &mdash; a self-contained PSN-only scene, separate from the much larger crossplay pool most players match into.</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;font-size:24px;color:#6a6459;margin:0">Crossplay instructions per players in the scene. Population figures from the live rm_1v1_console leaderboard</p>
+</section>
+</div>
+<div class="slide" data-slide="early-psn">
+<section id="early-psn" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:32px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:64px;font-weight:700;margin:0">HIS EARLY PSN CIRCLE</h2>
+<p style="font-size:28px;color:#B8B0A6;max-width:1650px;margin:0">Everyone he's shared an unranked custom lobby with more than once, since day 1.</p>
+<table style="font-family:'IBM Plex Sans', Arial, sans-serif;font-size:24px;color:#F5F1EA">
+<tr><th style="width:20%;text-align:left;color:#6a6459;font-weight:600">Player</th><th style="width:16%;text-align:left;color:#6a6459;font-weight:600">Country</th><th style="width:16%;text-align:left;color:#6a6459;font-weight:600">Lobbies together</th><th style="width:48%;text-align:left;color:#6a6459;font-weight:600">Note</th></tr>
+<tr style="background:#1F1A15"><td>drz_danik</td><td style="color:#B8B0A6">Unset</td><td style="color:#FAC775;font-weight:700">5</td><td style="color:#1baf7a">Most durable connection &mdash; still playing with him in Sept</td></tr>
+<tr><td>Ayaxe19</td><td style="color:#B8B0A6">Mexico</td><td style="color:#FAC775;font-weight:700">5</td><td style="color:#B8B0A6">Tied for most frequent</td></tr>
+<tr style="background:#1F1A15"><td>Itz_ED_aoe</td><td style="color:#B8B0A6">USA</td><td style="color:#B8B0A6;font-weight:700">4</td><td style="color:#B8B0A6">Plays Tuesdays normally</td></tr>
+<tr><td>DANY_THA_GOER559</td><td style="color:#B8B0A6">USA</td><td style="color:#B8B0A6;font-weight:700">4</td><td style="color:#B8B0A6">&nbsp;</td></tr>
+<tr style="background:#1F1A15"><td>ARG_DSP_10</td><td style="color:#B8B0A6">Argentina</td><td style="color:#B8B0A6;font-weight:700">3</td><td style="color:#B8B0A6">Day 2 teammate</td></tr>
+<tr><td>UTA_Boy</td><td style="color:#B8B0A6">USA</td><td style="color:#B8B0A6;font-weight:700">3</td><td style="color:#B8B0A6">&nbsp;</td></tr>
+<tr style="background:#1F1A15"><td>BillieDownn</td><td style="color:#B8B0A6">UK</td><td style="color:#B8B0A6;font-weight:700">3</td><td style="color:#B8B0A6">&nbsp;</td></tr>
+<tr><td>Hydra_spy</td><td style="color:#B8B0A6">Sweden</td><td style="color:#B8B0A6;font-weight:700">2</td><td style="color:#B8B0A6">Day 1 teammate</td></tr>
+</table>
+<div style="background:#1F1A15;border-radius:16px;padding:28px 40px;border-left:8px solid #FAC775">
+<p style="font-size:26px;color:#F5F1EA;margin:0">This group played unranked customs with Garyy repeatedly from his very first days on the account &mdash; a real, pre-existing social circle.</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;font-size:24px;color:#6a6459;margin:0">Unranked lobbies only. Full social graph built from custom-lobby rosters, Aug 28 &ndash; Sep 29 2026</p>
+</section>
+</div>
+<div class="slide" data-slide="second-hop">
+<section id="second-hop" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:24px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:56px;font-weight:700;margin:0">WHO CONNECTS TO MULTIPLE OF THEM</h2>
+<p style="font-size:26px;color:#B8B0A6;max-width:1650px;margin:0">Looked past Garyy's own games &mdash; at who else shows up repeatedly across several of his early circle's own unranked lobby histories.</p>
+<table style="font-family:'IBM Plex Sans', Arial, sans-serif;font-size:25px;color:#F5F1EA">
+<tr><th style="width:24%;text-align:left;color:#6a6459;font-weight:600">Player</th><th style="width:18%;text-align:left;color:#6a6459;font-weight:600">Connects to</th><th style="width:18%;text-align:left;color:#6a6459;font-weight:600">Combined games</th><th style="width:40%;text-align:left;color:#6a6459;font-weight:600">Which circle members</th></tr>
+<tr style="background:#1F1A15"><td>DarklyNoon12</td><td>5 of 8</td><td>458</td><td style="color:#B8B0A6">UTA_Boy, Itz_ED_aoe, DANY_THA_GOER559, Ayaxe19, drz_danik</td></tr>
+<tr><td>CloudAth</td><td>5 of 8</td><td>448</td><td style="color:#B8B0A6">UTA_Boy, Ayaxe19, ARG_DSP_10, Itz_ED_aoe, DANY_THA_GOER559</td></tr>
+<tr style="background:#2A1518"><td style="color:#E8505B;font-weight:700">pandosopoderoso</td><td style="color:#E8505B;font-weight:700">4 of 8</td><td style="color:#E8505B;font-weight:700">537</td><td style="color:#E8505B">UTA_Boy, Itz_ED_aoe, Ayaxe19, ARG_DSP_10</td></tr>
+<tr style="background:#1F1A15"><td>Ceiling_Cricket_</td><td>4 of 8</td><td>488</td><td style="color:#B8B0A6">UTA_Boy, Itz_ED_aoe, Ayaxe19, ARG_DSP_10</td></tr>
+<tr><td>HG_212</td><td>3 of 8</td><td>322</td><td style="color:#B8B0A6">Itz_ED_aoe, UTA_Boy, ARG_DSP_10</td></tr>
+<tr style="background:#1F1A15"><td>Pitbull_Mama8</td><td>3 of 8</td><td>249</td><td style="color:#B8B0A6">Ayaxe19, DANY_THA_GOER559, drz_danik</td></tr>
+<tr><td>laurasan1375</td><td>3 of 8</td><td>234</td><td style="color:#B8B0A6">drz_danik, ARG_DSP_10, DANY_THA_GOER559</td></tr>
+</table>
+<div style="background:#1F1A15;border-radius:16px;padding:24px 36px;border-left:8px solid #FAC775">
+<p style="font-size:24px;color:#F5F1EA;margin:0"><b style="color:#E8505B">pandosopoderoso</b> is a confirmed alt of Pandaofpeace93 &mdash; and it's not even the most-connected name here. This early circle is one dense, real social cluster, not a handful of coincidences.</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;font-size:24px;color:#6a6459;margin:0">Each player's own unranked lobby history, top-10 contacts cross-referenced across the circle</p>
+</section>
+</div>
+<div class="slide" data-slide="intra-circle">
+<section id="intra-circle" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:28px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:56px;font-weight:700;margin:0">DOES THIS PREDATE GARYY?</h2>
+<p style="font-size:26px;color:#B8B0A6;max-width:1650px;margin:0">Checked the 2 months right before Aug 28, 2026 &mdash; the day Garyy's account was created &mdash; against the month after.</p>
+<table style="font-family:'IBM Plex Sans', Arial, sans-serif;font-size:26px;color:#F5F1EA">
+<tr><th style="width:26%;text-align:left;color:#6a6459;font-weight:600">Player</th><th style="width:24%;text-align:left;color:#6a6459;font-weight:600">2 months before</th><th style="width:24%;text-align:left;color:#6a6459;font-weight:600">After Aug 28</th><th style="width:26%;text-align:left;color:#6a6459;font-weight:600">Strongest link</th></tr>
+<tr style="background:#1F1A15"><td>Ayaxe19</td><td style="color:#FAC775;font-weight:700">72.8 lobbies/mo</td><td style="color:#B8B0A6">62.7 lobbies/mo</td><td style="color:#B8B0A6">ARG_DSP_10</td></tr>
+<tr><td>ARG_DSP_10</td><td style="color:#B8B0A6">56.6 lobbies/mo</td><td style="color:#FAC775;font-weight:700">64.5 lobbies/mo</td><td style="color:#B8B0A6">Ayaxe19</td></tr>
+<tr style="background:#1F1A15"><td>Itz_ED_aoe</td><td style="color:#B8B0A6">36.9 lobbies/mo</td><td style="color:#FAC775;font-weight:700">90.0 lobbies/mo</td><td style="color:#B8B0A6">UTA_Boy</td></tr>
+<tr><td>DANY_THA_GOER559</td><td style="color:#B8B0A6">97.9 lobbies/mo</td><td style="color:#FAC775;font-weight:700">144.5 lobbies/mo</td><td style="color:#B8B0A6">Ayaxe19</td></tr>
+<tr style="background:#1F1A15"><td>UTA_Boy</td><td style="color:#B8B0A6">45.2 lobbies/mo</td><td style="color:#FAC775;font-weight:700">72.7 lobbies/mo</td><td style="color:#B8B0A6">Itz_ED_aoe</td></tr>
+<tr><td>drz_danik</td><td style="color:#B8B0A6">33.9 lobbies/mo</td><td style="color:#FAC775;font-weight:700">47.3 lobbies/mo</td><td style="color:#B8B0A6">DANY_THA_GOER559</td></tr>
+</table>
+<div style="background:#1F1A15;border-radius:16px;padding:28px 40px;border-left:8px solid #FAC775">
+<p style="font-size:26px;color:#F5F1EA;margin:0">This group was already running at near-full intensity in the 2 months right before Garyy's account existed &mdash; Ayaxe19 was even busier before. This isn't a circle that formed around him.</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;font-size:24px;color:#6a6459;margin:0">Rates normalized to games/month, matched 61-day-before vs 33-day-after windows</p>
+</section>
+</div>
+<div class="slide" data-slide="all-candidates">
+<section id="all-candidates" data-section="Narrowing the field by skill, activity, and platform" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:28px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:64px;font-weight:700;margin:0">WHO'S EVEN CAPABLE?</h2>
+<p style="font-size:26px;color:#B8B0A6;max-width:1650px;margin:0">Every tracked console player, all time, with a peak rating near Garyy's 2020 (1955&ndash;2306) &mdash; confirmed alts merged into one entry. 37 distinct people.</p>
+<table style="font-family:'IBM Plex Sans', Arial, sans-serif;font-size:22px;color:#F5F1EA">
+<tr><th style="width:16%;text-align:left;color:#6a6459;font-weight:600">Player</th><th style="width:17%;text-align:left;color:#6a6459;font-weight:600">Peak</th><th style="width:16%;text-align:left;color:#6a6459;font-weight:600">Player</th><th style="width:17%;text-align:left;color:#6a6459;font-weight:600">Peak</th><th style="width:16%;text-align:left;color:#6a6459;font-weight:600">Player</th><th style="width:17%;text-align:left;color:#6a6459;font-weight:600">Peak</th></tr>
+<tr><td style="width:16%;color:#F5F1EA">volcanloup</td><td style="width:17%;color:#FAC775">2306</td><td style="width:16%;color:#F5F1EA">ALPO4769</td><td style="width:17%;color:#FAC775">2075</td><td style="width:16%;color:#F5F1EA">CrazyBball4life</td><td style="width:17%;color:#FAC775">2002</td></tr>
+<tr><td style="width:16%;color:#F5F1EA">Faith2Adventure</td><td style="width:17%;color:#FAC775">2291</td><td style="width:16%;color:#F5F1EA">El Macho O1</td><td style="width:17%;color:#FAC775">2072</td><td style="width:16%;color:#F5F1EA">BillieDown</td><td style="width:17%;color:#FAC775">2001</td></tr>
+<tr><td style="width:16%;color:#F5F1EA">UxDora</td><td style="width:17%;color:#FAC775">2279</td><td style="width:16%;color:#F5F1EA">ItsGutsAoE</td><td style="width:17%;color:#FAC775">2068</td><td style="width:16%;color:#F5F1EA">OverladenSnake6</td><td style="width:17%;color:#FAC775">1996</td></tr>
+<tr><td style="width:16%;color:#F5F1EA">UxLiho</td><td style="width:17%;color:#FAC775">2222</td><td style="width:16%;color:#F5F1EA">FI2 JRC</td><td style="width:17%;color:#FAC775">2053</td><td style="width:16%;color:#F5F1EA">Darth Llahma</td><td style="width:17%;color:#FAC775">1993</td></tr>
+<tr><td style="width:16%;color:#F5F1EA">DarK Slaayer</td><td style="width:17%;color:#FAC775">2185</td><td style="width:16%;color:#F5F1EA">Shadow8373</td><td style="width:17%;color:#FAC775">2050</td><td style="width:16%;color:#F5F1EA">Im2Good4YoMoma</td><td style="width:17%;color:#FAC775">1991</td></tr>
+<tr><td style="width:16%;color:#F5F1EA">Donald2O16Trump</td><td style="width:17%;color:#FAC775">2184</td><td style="width:16%;color:#F5F1EA">Dbs Elm</td><td style="width:17%;color:#FAC775">2048</td><td style="width:16%;color:#F5F1EA">xXDeltaXFadesXx</td><td style="width:17%;color:#FAC775">1987</td></tr>
+<tr><td style="width:16%;color:#F5F1EA">Prottardo</td><td style="width:17%;color:#FAC775">2183</td><td style="width:16%;color:#F5F1EA">BeaverMan5</td><td style="width:17%;color:#FAC775">2045</td><td style="width:16%;color:#F5F1EA">RKs Raggz</td><td style="width:17%;color:#FAC775">1981</td></tr>
+<tr><td style="width:16%;color:#F5F1EA">sologhost</td><td style="width:17%;color:#FAC775">2178</td><td style="width:16%;color:#F5F1EA">Zotico3</td><td style="width:17%;color:#FAC775">2044</td><td style="width:16%;color:#F5F1EA">ObelusCipher</td><td style="width:17%;color:#FAC775">1975</td></tr>
+<tr><td style="width:16%;color:#F5F1EA">MORIS0202</td><td style="width:17%;color:#FAC775">2138</td><td style="width:16%;color:#F5F1EA">CrustyPotato313</td><td style="width:17%;color:#FAC775">2038</td><td style="width:16%;color:#F5F1EA">PrEyOnU1</td><td style="width:17%;color:#FAC775">1968</td></tr>
+<tr><td style="width:16%;color:#F5F1EA">xE Tundra</td><td style="width:17%;color:#FAC775">2132</td><td style="width:16%;color:#F5F1EA">Prop1aNea</td><td style="width:17%;color:#FAC775">2031</td><td style="width:16%;color:#F5F1EA">Turtle tank3344</td><td style="width:17%;color:#FAC775">1956</td></tr>
+<tr><td style="width:16%;color:#F5F1EA">x FalKo i</td><td style="width:17%;color:#FAC775">2101</td><td style="width:16%;color:#F5F1EA">SpaciousBunion5</td><td style="width:17%;color:#FAC775">2025</td><td style="width:16%;color:#F5F1EA">lduzo</td><td style="width:17%;color:#FAC775">1955</td></tr>
+<tr><td style="width:16%;color:#F5F1EA">D4NI3L J0N35</td><td style="width:17%;color:#FAC775">2098</td><td style="width:16%;color:#F5F1EA">Cain2point0</td><td style="width:17%;color:#FAC775">2021</td><td style="width:16%"></td><td style="width:17%"></td></tr>
+<tr><td style="width:16%;color:#F5F1EA">CarefulTulip69</td><td style="width:17%;color:#FAC775">2076</td><td style="width:16%;color:#F5F1EA">skully1770</td><td style="width:17%;color:#FAC775">2020</td><td style="width:16%"></td><td style="width:17%"></td></tr>
+</table>
+<p style="position:absolute;left:128px;bottom:64px;font-size:24px;color:#6a6459;margin:0">Source: aggregate-meta.json + site's confirmed alt-group records, 1v1 Console leaderboard, all-time peak rating</p>
+</section>
+</div>
+<div class="slide" data-slide="ps5-only">
+<section id="ps5-only" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:64px;font-weight:700;margin:0">WHO'S ON PS5?</h2>
+<p style="font-size:28px;color:#B8B0A6;max-width:1600px;margin:0">Of the 37 capable players (alts merged, all still active), only 4 accounts are on PSN &mdash; and two are already confirmed alts of each other.</p>
+<div style="display:flex;gap:32px;flex:1">
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#1F1A15;padding:40px;border-radius:20px;border:2px solid #FAC775">
+<p style="font-size:24px;font-weight:600;color:#FAC775;margin:0">ItsGutsAoE</p>
+<h3 style="font-family:'Oswald', Arial, sans-serif;font-size:72px;font-weight:700;margin:0">2068</h3>
+<p style="font-size:22px;color:#B8B0A6;margin:0">+ KingSlaayerAoE (2029)</p>
+<p style="font-size:20px;color:#8a8275;margin:0">7-account confirmed alt group</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#1F1A15;padding:40px;border-radius:20px;border:1px solid #332B22">
+<p style="font-size:24px;font-weight:600;color:#B8B0A6;margin:0">CrustyPotato313</p>
+<h3 style="font-family:'Oswald', Arial, sans-serif;font-size:72px;font-weight:700;margin:0">2038</h3>
+<p style="font-size:22px;color:#B8B0A6;margin:0">+ ReallyScaryPotat (alt)</p>
+<p style="font-size:20px;color:#8a8275;margin:0">&nbsp;</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#1F1A15;padding:40px;border-radius:20px;border:1px solid #332B22">
+<p style="font-size:24px;font-weight:600;color:#B8B0A6;margin:0">Prop1aNea</p>
+<h3 style="font-family:'Oswald', Arial, sans-serif;font-size:72px;font-weight:700;margin:0">2031</h3>
+<p style="font-size:22px;color:#B8B0A6;margin:0">no known alts</p>
+<p style="font-size:20px;color:#8a8275;margin:0">&nbsp;</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#1F1A15;padding:40px;border-radius:20px;border:2px solid #E8505B">
+<p style="font-size:24px;font-weight:600;color:#E8505B;margin:0">BillieDown</p>
+<h3 style="font-family:'Oswald', Arial, sans-serif;font-size:72px;font-weight:700;margin:0">2001</h3>
+<p style="font-size:22px;color:#B8B0A6;margin:0">+ BillieDownn (alt)</p>
+<p style="font-size:20px;color:#8a8275;margin:0">confirmed alt pair</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;font-size:24px;color:#6a6459;margin:0">All 5 played Garyy, or someone in his direct circle, at least once</p>
+</section>
+</div>
+<div class="slide" data-slide="play-times">
+<section id="play-times" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:88px 128px 56px;display:flex;flex-direction:column;gap:18px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:58px;font-weight:700;margin:0">WHEN DO THEY PLAY? (ALL GAMES)</h2>
+<p style="font-size:24px;color:#B8B0A6;max-width:1650px;margin:0">All game modes, last 3 months only (since July 1), 3-hour blocks (EDT). Garyy split into before/after he first crossed 1900 rating (Sept 25). Top players = the 11 ranked opponents from the tracked field Garyy has actually faced.</p>
+<svg viewBox="0 0 1664 500" style="width:1664px;height:420px">
+<rect x="0" y="440" width="1664" height="1" fill="#332B22"/>
+<rect x="24.0" y="364.1" width="28" height="75.9" fill="#8FD0FF" rx="3"/>
+<rect x="57.0" y="344.4" width="28" height="95.6" fill="#1C5FA8" rx="3"/>
+<rect x="90.0" y="358.5" width="28" height="81.5" fill="#FAC775" rx="3"/>
+<rect x="123.0" y="437.2" width="28" height="2.8" fill="#E8505B" rx="3"/>
+<rect x="156.0" y="313.5" width="28" height="126.5" fill="#5FBF8F" rx="3"/>
+<rect x="232.0" y="432.5" width="28" height="7.5" fill="#8FD0FF" rx="3"/>
+<rect x="265.0" y="440.0" width="28" height="0.0" fill="#1C5FA8" rx="3"/>
+<rect x="298.0" y="282.6" width="28" height="157.4" fill="#FAC775" rx="3"/>
+<rect x="331.0" y="344.4" width="28" height="95.6" fill="#E8505B" rx="3"/>
+<rect x="364.0" y="415.6" width="28" height="24.4" fill="#5FBF8F" rx="3"/>
+<rect x="440.0" y="425.0" width="28" height="15.0" fill="#8FD0FF" rx="3"/>
+<rect x="473.0" y="421.3" width="28" height="18.7" fill="#1C5FA8" rx="3"/>
+<rect x="506.0" y="305.1" width="28" height="134.9" fill="#FAC775" rx="3"/>
+<rect x="539.0" y="336.0" width="28" height="104.0" fill="#E8505B" rx="3"/>
+<rect x="572.0" y="414.7" width="28" height="25.3" fill="#5FBF8F" rx="3"/>
+<rect x="648.0" y="348.2" width="28" height="91.8" fill="#8FD0FF" rx="3"/>
+<rect x="681.0" y="344.4" width="28" height="95.6" fill="#1C5FA8" rx="3"/>
+<rect x="714.0" y="340.7" width="28" height="99.3" fill="#FAC775" rx="3"/>
+<rect x="747.0" y="331.3" width="28" height="108.7" fill="#E8505B" rx="3"/>
+<rect x="780.0" y="395.0" width="28" height="45.0" fill="#5FBF8F" rx="3"/>
+<rect x="856.0" y="211.4" width="28" height="228.6" fill="#8FD0FF" rx="3"/>
+<rect x="889.0" y="210.4" width="28" height="229.6" fill="#1C5FA8" rx="3"/>
+<rect x="922.0" y="233.8" width="28" height="206.2" fill="#FAC775" rx="3"/>
+<rect x="955.0" y="240.4" width="28" height="199.6" fill="#E8505B" rx="3"/>
+<rect x="988.0" y="307.9" width="28" height="132.1" fill="#5FBF8F" rx="3"/>
+<rect x="1064.0" y="242.3" width="28" height="197.7" fill="#8FD0FF" rx="3"/>
+<rect x="1097.0" y="114.8" width="28" height="325.2" fill="#1C5FA8" rx="3"/>
+<rect x="1130.0" y="295.7" width="28" height="144.3" fill="#FAC775" rx="3"/>
+<rect x="1163.0" y="51.1" width="28" height="388.9" fill="#E8505B" rx="3"/>
+<rect x="1196.0" y="267.6" width="28" height="172.4" fill="#5FBF8F" rx="3"/>
+<rect x="1272.0" y="264.8" width="28" height="175.2" fill="#8FD0FF" rx="3"/>
+<rect x="1305.0" y="363.2" width="28" height="76.8" fill="#1C5FA8" rx="3"/>
+<rect x="1338.0" y="356.6" width="28" height="83.4" fill="#FAC775" rx="3"/>
+<rect x="1371.0" y="402.5" width="28" height="37.5" fill="#E8505B" rx="3"/>
+<rect x="1404.0" y="253.5" width="28" height="186.5" fill="#5FBF8F" rx="3"/>
+<rect x="1480.0" y="295.7" width="28" height="144.3" fill="#8FD0FF" rx="3"/>
+<rect x="1513.0" y="344.4" width="28" height="95.6" fill="#1C5FA8" rx="3"/>
+<rect x="1546.0" y="409.1" width="28" height="30.9" fill="#FAC775" rx="3"/>
+<rect x="1579.0" y="440.0" width="28" height="0.0" fill="#E8505B" rx="3"/>
+<rect x="1612.0" y="214.2" width="28" height="225.8" fill="#5FBF8F" rx="3"/>
+<text x="104.0" y="468" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">12-3AM</text>
+<text x="312.0" y="468" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">3-6AM</text>
+<text x="520.0" y="468" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">6-9AM</text>
+<text x="728.0" y="468" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">9-12PM</text>
+<text x="936.0" y="468" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">12-3PM</text>
+<text x="1144.0" y="468" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">3-6PM</text>
+<text x="1352.0" y="468" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">6-9PM</text>
+<text x="1560.0" y="468" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">9-12AM</text>
+</svg>
+<div style="display:flex;gap:28px;align-items:center;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#8FD0FF"></div><p style="font-size:22px;color:#F5F1EA;margin:0">Garyy, low-elo era <span style="color:#6a6459">(123)</span></p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#1C5FA8"></div><p style="font-size:22px;color:#F5F1EA;margin:0">Garyy, high-elo era <span style="color:#6a6459">(49)</span></p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#FAC775"></div><p style="font-size:22px;color:#F5F1EA;margin:0">ItsGuts group <span style="color:#6a6459">(369)</span></p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#E8505B"></div><p style="font-size:22px;color:#F5F1EA;margin:0">BillieDown <span style="color:#6a6459">(371)</span></p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#5FBF8F"></div><p style="font-size:22px;color:#F5F1EA;margin:0">Top players faced <span style="color:#6a6459">(4,266, 11 accts)</span></p></div>
+</div>
+</section>
+</div>
+<div class="slide" data-slide="play-times-1v1">
+<section id="play-times-1v1" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:88px 128px 56px;display:flex;flex-direction:column;gap:18px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:58px;font-weight:700;margin:0">WHEN DO THEY PLAY? (1v1 ONLY)</h2>
+<p style="font-size:24px;color:#B8B0A6;max-width:1650px;margin:0">Ranked 1v1 games, last 3 months only (since July 1), 3-hour blocks (EDT). Garyy split into before/after he first crossed 1900 rating (Sept 25). Top players = the 11 ranked opponents from the tracked field Garyy has actually faced.</p>
+<svg viewBox="0 0 1664 500" style="width:1664px;height:420px">
+<rect x="0" y="440" width="1664" height="1" fill="#332B22"/>
+<rect x="24.0" y="351.2" width="28" height="88.8" fill="#8FD0FF" rx="3"/>
+<rect x="57.0" y="224.0" width="28" height="216.0" fill="#1C5FA8" rx="3"/>
+<rect x="90.0" y="424.8" width="28" height="15.2" fill="#FAC775" rx="3"/>
+<rect x="123.0" y="440.0" width="28" height="0.0" fill="#E8505B" rx="3"/>
+<rect x="156.0" y="271.8" width="28" height="168.2" fill="#5FBF8F" rx="3"/>
+<rect x="232.0" y="440.0" width="28" height="0.0" fill="#8FD0FF" rx="3"/>
+<rect x="265.0" y="440.0" width="28" height="0.0" fill="#1C5FA8" rx="3"/>
+<rect x="298.0" y="395.6" width="28" height="44.4" fill="#FAC775" rx="3"/>
+<rect x="331.0" y="206.4" width="28" height="233.6" fill="#E8505B" rx="3"/>
+<rect x="364.0" y="398.0" width="28" height="42.0" fill="#5FBF8F" rx="3"/>
+<rect x="440.0" y="410.8" width="28" height="29.2" fill="#8FD0FF" rx="3"/>
+<rect x="473.0" y="396.8" width="28" height="43.2" fill="#1C5FA8" rx="3"/>
+<rect x="506.0" y="51.1" width="28" height="388.9" fill="#FAC775" rx="3"/>
+<rect x="539.0" y="284.7" width="28" height="155.3" fill="#E8505B" rx="3"/>
+<rect x="572.0" y="395.6" width="28" height="44.4" fill="#5FBF8F" rx="3"/>
+<rect x="648.0" y="306.9" width="28" height="133.1" fill="#8FD0FF" rx="3"/>
+<rect x="681.0" y="353.6" width="28" height="86.4" fill="#1C5FA8" rx="3"/>
+<rect x="714.0" y="260.2" width="28" height="179.8" fill="#FAC775" rx="3"/>
+<rect x="747.0" y="255.5" width="28" height="184.5" fill="#E8505B" rx="3"/>
+<rect x="780.0" y="368.8" width="28" height="71.2" fill="#5FBF8F" rx="3"/>
+<rect x="856.0" y="129.4" width="28" height="310.6" fill="#8FD0FF" rx="3"/>
+<rect x="889.0" y="94.3" width="28" height="345.7" fill="#1C5FA8" rx="3"/>
+<rect x="922.0" y="231.0" width="28" height="209.0" fill="#FAC775" rx="3"/>
+<rect x="955.0" y="185.4" width="28" height="254.6" fill="#E8505B" rx="3"/>
+<rect x="988.0" y="257.8" width="28" height="182.2" fill="#5FBF8F" rx="3"/>
+<rect x="1064.0" y="188.9" width="28" height="251.1" fill="#8FD0FF" rx="3"/>
+<rect x="1097.0" y="94.3" width="28" height="345.7" fill="#1C5FA8" rx="3"/>
+<rect x="1130.0" y="155.0" width="28" height="285.0" fill="#FAC775" rx="3"/>
+<rect x="1163.0" y="142.2" width="28" height="297.8" fill="#E8505B" rx="3"/>
+<rect x="1196.0" y="255.5" width="28" height="184.5" fill="#5FBF8F" rx="3"/>
+<rect x="1272.0" y="218.1" width="28" height="221.9" fill="#8FD0FF" rx="3"/>
+<rect x="1305.0" y="353.6" width="28" height="86.4" fill="#1C5FA8" rx="3"/>
+<rect x="1338.0" y="395.6" width="28" height="44.4" fill="#FAC775" rx="3"/>
+<rect x="1371.0" y="398.0" width="28" height="42.0" fill="#E8505B" rx="3"/>
+<rect x="1404.0" y="202.9" width="28" height="237.1" fill="#5FBF8F" rx="3"/>
+<rect x="1480.0" y="306.9" width="28" height="133.1" fill="#8FD0FF" rx="3"/>
+<rect x="1513.0" y="396.8" width="28" height="43.2" fill="#1C5FA8" rx="3"/>
+<rect x="1546.0" y="440.0" width="28" height="0.0" fill="#FAC775" rx="3"/>
+<rect x="1579.0" y="440.0" width="28" height="0.0" fill="#E8505B" rx="3"/>
+<rect x="1612.0" y="201.8" width="28" height="238.2" fill="#5FBF8F" rx="3"/>
+<text x="104.0" y="468" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">12-3AM</text>
+<text x="312.0" y="468" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">3-6AM</text>
+<text x="520.0" y="468" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">6-9AM</text>
+<text x="728.0" y="468" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">9-12PM</text>
+<text x="936.0" y="468" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">12-3PM</text>
+<text x="1144.0" y="468" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">3-6PM</text>
+<text x="1352.0" y="468" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">6-9PM</text>
+<text x="1560.0" y="468" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">9-12AM</text>
+</svg>
+<div style="display:flex;gap:28px;align-items:center;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#8FD0FF"></div><p style="font-size:22px;color:#F5F1EA;margin:0">Garyy, low-elo era <span style="color:#6a6459">(79)</span></p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#1C5FA8"></div><p style="font-size:22px;color:#F5F1EA;margin:0">Garyy, high-elo era <span style="color:#6a6459">(27)</span></p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#FAC775"></div><p style="font-size:22px;color:#F5F1EA;margin:0">ItsGuts group <span style="color:#6a6459">(78)</span></p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#E8505B"></div><p style="font-size:22px;color:#F5F1EA;margin:0">BillieDown <span style="color:#6a6459">(165)</span></p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#5FBF8F"></div><p style="font-size:22px;color:#F5F1EA;margin:0">Top players faced <span style="color:#6a6459">(1,205, 11 accts)</span></p></div>
+</div>
+</section>
+</div>
+<div class="slide" data-slide="record">
+<section id="record" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:24px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:64px;font-weight:700;margin:0">GARYY'S RECORD VS. EACH OF THEM</h2>
+<p style="font-size:26px;color:#B8B0A6;max-width:1650px;margin:0">Head-to-head vs. all 37 capable players. He's only actually crossed paths with <b style="color:#F5F1EA">12 of them</b> &mdash; a winning record against most.</p>
+<table style="font-family:'IBM Plex Sans', Arial, sans-serif;font-size:24px;color:#F5F1EA">
+<tr><th style="width:13%;text-align:left;color:#6a6459;font-weight:600">Player</th><th style="width:7%;text-align:left;color:#6a6459;font-weight:600">Peak</th><th style="width:13%;text-align:left;color:#6a6459;font-weight:600">Record</th><th style="width:13%;text-align:left;color:#6a6459;font-weight:600">Player</th><th style="width:7%;text-align:left;color:#6a6459;font-weight:600">Peak</th><th style="width:13%;text-align:left;color:#6a6459;font-weight:600">Record</th><th style="width:13%;text-align:left;color:#6a6459;font-weight:600">Player</th><th style="width:7%;text-align:left;color:#6a6459;font-weight:600">Peak</th><th style="width:13%;text-align:left;color:#6a6459;font-weight:600">Record</th></tr>
+<tr><td style="width:13%;color:#F5F1EA">volcanloup</td><td style="width:7%;color:#FAC775">2306</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td><td style="width:13%;color:#F5F1EA">ALPO4769</td><td style="width:7%;color:#FAC775">2075</td><td style="width:13%"><span style="color:#1baf7a;font-weight:700">6-3</span></td><td style="width:13%;color:#F5F1EA">CrazyBball4life</td><td style="width:7%;color:#FAC775">2002</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td></tr>
+<tr><td style="width:13%;color:#F5F1EA">Faith2Adventure</td><td style="width:7%;color:#FAC775">2291</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td><td style="width:13%;color:#F5F1EA">El Macho O1</td><td style="width:7%;color:#FAC775">2072</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td><td style="width:13%;color:#F5F1EA">BillieDown</td><td style="width:7%;color:#FAC775">2001</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td></tr>
+<tr><td style="width:13%;color:#F5F1EA">UxDora</td><td style="width:7%;color:#FAC775">2279</td><td style="width:13%"><span style="color:#E8505B;font-weight:700">0-2</span></td><td style="width:13%;color:#F5F1EA">ItsGutsAoE</td><td style="width:7%;color:#FAC775">2068</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td><td style="width:13%;color:#F5F1EA">OverladenSnake6</td><td style="width:7%;color:#FAC775">1996</td><td style="width:13%"><span style="color:#1baf7a;font-weight:700">4-1</span></td></tr>
+<tr><td style="width:13%;color:#F5F1EA">UxLiho</td><td style="width:7%;color:#FAC775">2222</td><td style="width:13%"><span style="color:#E8505B;font-weight:700">1-3</span></td><td style="width:13%;color:#F5F1EA">FI2 JRC</td><td style="width:7%;color:#FAC775">2053</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td><td style="width:13%;color:#F5F1EA">Darth Llahma</td><td style="width:7%;color:#FAC775">1993</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td></tr>
+<tr><td style="width:13%;color:#F5F1EA">DarK Slaayer</td><td style="width:7%;color:#FAC775">2185</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td><td style="width:13%;color:#F5F1EA">Shadow8373</td><td style="width:7%;color:#FAC775">2050</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td><td style="width:13%;color:#F5F1EA">Im2Good4YoMoma</td><td style="width:7%;color:#FAC775">1991</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td></tr>
+<tr><td style="width:13%;color:#F5F1EA">Donald2O16Trump</td><td style="width:7%;color:#FAC775">2184</td><td style="width:13%"><span style="color:#E8505B;font-weight:700">0-1</span></td><td style="width:13%;color:#F5F1EA">Dbs Elm</td><td style="width:7%;color:#FAC775">2048</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td><td style="width:13%;color:#F5F1EA">xXDeltaXFadesXx</td><td style="width:7%;color:#FAC775">1987</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td></tr>
+<tr><td style="width:13%;color:#F5F1EA">Prottardo</td><td style="width:7%;color:#FAC775">2183</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td><td style="width:13%;color:#F5F1EA">BeaverMan5</td><td style="width:7%;color:#FAC775">2045</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td><td style="width:13%;color:#F5F1EA">RKs Raggz</td><td style="width:7%;color:#FAC775">1981</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td></tr>
+<tr><td style="width:13%;color:#F5F1EA">sologhost</td><td style="width:7%;color:#FAC775">2178</td><td style="width:13%"><span style="color:#E8505B;font-weight:700">0-1</span></td><td style="width:13%;color:#F5F1EA">Zotico3</td><td style="width:7%;color:#FAC775">2044</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td><td style="width:13%;color:#F5F1EA">ObelusCipher</td><td style="width:7%;color:#FAC775">1975</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td></tr>
+<tr><td style="width:13%;color:#F5F1EA">MORIS0202</td><td style="width:7%;color:#FAC775">2138</td><td style="width:13%"><span style="color:#E8505B;font-weight:700">2-4</span></td><td style="width:13%;color:#F5F1EA">CrustyPotato313</td><td style="width:7%;color:#FAC775">2038</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td><td style="width:13%;color:#F5F1EA">PrEyOnU1</td><td style="width:7%;color:#FAC775">1968</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td></tr>
+<tr><td style="width:13%;color:#F5F1EA">xE Tundra</td><td style="width:7%;color:#FAC775">2132</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td><td style="width:13%;color:#F5F1EA">Prop1aNea</td><td style="width:7%;color:#FAC775">2031</td><td style="width:13%"><span style="color:#1baf7a;font-weight:700">1-0</span></td><td style="width:13%;color:#F5F1EA">Turtle tank3344</td><td style="width:7%;color:#FAC775">1956</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td></tr>
+<tr><td style="width:13%;color:#F5F1EA">x FalKo i</td><td style="width:7%;color:#FAC775">2101</td><td style="width:13%"><span style="color:#E8505B;font-weight:700">0-1</span></td><td style="width:13%;color:#F5F1EA">SpaciousBunion5</td><td style="width:7%;color:#FAC775">2025</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td><td style="width:13%;color:#F5F1EA">lduzo</td><td style="width:7%;color:#FAC775">1955</td><td style="width:13%"><span style="color:#1baf7a;font-weight:700">2-0</span></td></tr>
+<tr><td style="width:13%;color:#F5F1EA">D4NI3L J0N35</td><td style="width:7%;color:#FAC775">2098</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td><td style="width:13%;color:#F5F1EA">Cain2point0</td><td style="width:7%;color:#FAC775">2021</td><td style="width:13%"><span style="color:#55504A">&mdash;</span></td><td style="width:13%"></td><td style="width:7%"></td><td style="width:13%"></td></tr>
+<tr><td style="width:13%;color:#F5F1EA">CarefulTulip69</td><td style="width:7%;color:#FAC775">2076</td><td style="width:13%"><span style="color:#B8B0A6;font-weight:700">1-1</span></td><td style="width:13%;color:#F5F1EA">skully1770</td><td style="width:7%;color:#FAC775">2020</td><td style="width:13%"><span style="color:#1baf7a;font-weight:700">2-1</span></td><td style="width:13%"></td><td style="width:7%"></td><td style="width:13%"></td></tr>
+</table>
+<p style="position:absolute;left:128px;bottom:64px;font-size:24px;color:#6a6459;margin:0">Green = winning record · Red = losing record · Grey = never matched up, by chance or by luck</p>
+</section>
+</div>
+<div class="slide" data-slide="all-records-garyy">
+<section id="all-records-garyy" data-transition="fade" style="background:#15120f">
+  <p id="e1-up3yji" style="position:absolute; bottom:64px; left:128px; font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; color:#6a6459">Green = winning, red = losing, amber = roughly even, grey = never played</p>
+  <h2 id="1f6d440a" style="position:absolute; top:128px; left:128px; width:1664px; font-family:Oswald, Arial, sans-serif; font-size:64px; font-weight:700; color:#f5f1ea">GARYY'S RECORD V MOST PLAYED</h2>
+  <p id="8f8059af" style="position:absolute; top:242px; left:128px; width:1650px; font-family:'IBM Plex Sans', Arial, sans-serif; font-size:28px; color:#b8b0a6">Garyy, BillieDown, and ItsGuts group against the same 4 rivals — one table.</p>
+  <table id="3ebc4275" style="position:absolute; top:321px; left:128px; width:1664px; font-family:'IBM Plex Sans', Arial, sans-serif; font-size:30px; color:#f5f1ea">
+    <tr><th style="font-weight:600; width:20%; color:#6a6459">Account</th><th style="font-weight:600; width:20%; color:#6a6459">ALPO4769</th><th style="font-weight:600; width:20%; color:#6a6459">MORIS0202</th><th style="font-weight:600; width:20%; color:#6a6459">OverladenSnake6</th><th style="font-weight:600; width:20%; color:#6a6459">UxLiho</th></tr>
+    <tr style="background:#1f1a15"><td style="color:#fac775">Garyy</td><td style="color:#1baf7a">6-3 (66.7%)</td><td style="color:#e8505b">2-4 (33.3%)</td><td style="color:#1baf7a">4-1 (80.0%)</td><td style="color:#e8505b">1-3 (25.0%)</td></tr>
+  </table>
+</section>
+</div>
+<div class="slide" data-slide="all-records">
+<section id="all-records" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:64px;font-weight:700;margin:0">ALL THREE, SIDE BY SIDE</h2>
+<p style="font-size:28px;color:#B8B0A6;max-width:1650px;margin:0">Garyy, BillieDown, and ItsGuts group against the same 4 rivals &mdash; one table.</p>
+<table style="font-family:'IBM Plex Sans', Arial, sans-serif;font-size:30px;color:#F5F1EA">
+<tr><th style="width:20%;text-align:left;color:#6a6459;font-weight:600">Account</th><th style="width:20%;text-align:left;color:#6a6459;font-weight:700">ALPO4769</th><th style="width:20%;text-align:left;color:#6a6459;font-weight:700">MORIS0202</th><th style="width:20%;text-align:left;color:#6a6459;font-weight:700">OverladenSnake6</th><th style="width:20%;text-align:left;color:#6a6459;font-weight:700">UxLiho</th></tr>
+<tr style="background:#1F1A15"><td style="color:#FAC775;font-weight:700">Garyy</td><td style="color:#1baf7a">6-3 (66.7%)</td><td style="color:#E8505B">2-4 (33.3%)</td><td style="color:#1baf7a">4-1 (80.0%)</td><td style="color:#E8505B">1-3 (25.0%)</td></tr>
+<tr><td style="color:#E8505B;font-weight:700">BillieDown</td><td style="color:#E8505B">4-12 (25.0%)</td><td style="color:#E8505B">1-4 (20.0%)</td><td style="color:#1baf7a">2-1 (66.7%)</td><td style="color:#FAC775">3-4 (42.9%)</td></tr>
+<tr style="background:#1F1A15"><td style="color:#FAC775;font-weight:700">ItsGuts group</td><td style="color:#1baf7a">16-5 (76.2%)</td><td style="color:#FAC775">1-1 (50.0%)</td><td style="color:#1baf7a">2-1 (66.7%)</td><td style="color:#55504A">never played</td></tr>
+</table>
+<div style="background:#1F1A15;border-radius:16px;padding:28px 40px;border-left:8px solid #FAC775">
+<p style="font-size:28px;color:#F5F1EA;margin:0">No single account's win rate consistently tracks with Garyy's across all 4 rivals &mdash; each of the three has its own strong and weak matchups.</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;font-size:24px;color:#6a6459;margin:0">Green = winning, red = losing, amber = roughly even, grey = never played</p>
+</section>
+</div>
+<div class="slide" data-slide="breakdown-1">
+<section id="breakdown-1" data-section="What the data shows about who's really playing" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:32px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:64px;font-weight:700;margin:0">THE BREAKDOWN</h2>
+<p style="font-size:26px;color:#B8B0A6;max-width:1650px;margin:0">The question isn't "how often is each candidate quiet" &mdash; it's whether they go <b style="color:#F5F1EA">MORE quiet specifically when Garyy faces tough opponents</b>, compared to how often they're normally quiet at that exact time of day on random other days &mdash; no reference to Garyy at all.</p>
+<table style="font-family:'IBM Plex Sans', Arial, sans-serif;font-size:25px;color:#F5F1EA">
+<tr><th style="width:24%;text-align:left;color:#6a6459;font-weight:600">Candidate</th><th style="width:20%;text-align:left;color:#6a6459;font-weight:600">Baseline (random days)</th><th style="width:16%;text-align:left;color:#6a6459;font-weight:600">Tough games</th><th style="width:14%;text-align:left;color:#6a6459;font-weight:600">Excess</th><th style="width:26%;text-align:left;color:#6a6459;font-weight:600">p-value</th></tr>
+<tr style="background:#1F1A15"><td style="color:#B8B0A6">Prop1aNea</td><td>97.6% quiet</td><td style="color:#B8B0A6">94.1% quiet</td><td style="color:#8a8275">&minus;3.5pp</td><td style="color:#8a8275">0.349 &mdash; not significant</td></tr>
+</table>
+<div style="background:#1F1A15;border-radius:16px;padding:24px 36px;display:flex;align-items:center;gap:24px">
+<x-icon name="Lightbulb" style="color:#FAC775;width:40px;height:40px"></x-icon>
+<p style="font-size:24px;color:#B8B0A6;margin:0"><b style="color:#F5F1EA">What's "baseline"?</b> How often this person is normally quiet at that same clock time, on random days that have nothing to do with Garyy &mdash; just their everyday schedule. If their quiet rate during Garyy's tough games is way above that, it's not just a quiet moment, it's happening specifically when it matters. The <b style="color:#F5F1EA">p-value</b> is the odds that gap would show up by pure chance.</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;font-size:24px;color:#6a6459;margin:0">p-values from a 10,000-trial permutation test against each player's own quiet rate at that same clock time on random other days</p>
+</section>
+</div>
+<div class="slide" data-slide="breakdown-2">
+<section id="breakdown-2" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:32px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:64px;font-weight:700;margin:0">THE BREAKDOWN</h2>
+<p style="font-size:26px;color:#B8B0A6;max-width:1650px;margin:0">The question isn't "how often is each candidate quiet" &mdash; it's whether they go <b style="color:#F5F1EA">MORE quiet specifically when Garyy faces tough opponents</b>, compared to how often they're normally quiet at that exact time of day on random other days &mdash; no reference to Garyy at all.</p>
+<table style="font-family:'IBM Plex Sans', Arial, sans-serif;font-size:25px;color:#F5F1EA">
+<tr><th style="width:24%;text-align:left;color:#6a6459;font-weight:600">Candidate</th><th style="width:20%;text-align:left;color:#6a6459;font-weight:600">Baseline (random days)</th><th style="width:16%;text-align:left;color:#6a6459;font-weight:600">Tough games</th><th style="width:14%;text-align:left;color:#6a6459;font-weight:600">Excess</th><th style="width:26%;text-align:left;color:#6a6459;font-weight:600">p-value</th></tr>
+<tr style="background:#1F1A15"><td style="color:#B8B0A6">Prop1aNea</td><td>97.6% quiet</td><td style="color:#B8B0A6">94.1% quiet</td><td style="color:#8a8275">&minus;3.5pp</td><td style="color:#8a8275">0.349 &mdash; not significant</td></tr>
+<tr style="border-top:2px dashed #332B22"><td style="color:#B8B0A6;font-style:italic">UxDora (control, no known connection)</td><td>94.0% quiet</td><td style="color:#B8B0A6">100.0% quiet</td><td style="color:#8a8275">+6.0pp</td><td style="color:#8a8275">0.369 &mdash; not significant</td></tr>
+</table>
+<div style="background:#1F1A15;border-radius:16px;padding:24px 36px;display:flex;align-items:center;gap:24px">
+<x-icon name="Lightbulb" style="color:#FAC775;width:40px;height:40px"></x-icon>
+<p style="font-size:24px;color:#B8B0A6;margin:0"><b style="color:#F5F1EA">Why the raw percentage alone doesn't prove anything:</b> UxDora is also 100% quiet on Garyy's tough games &mdash; same number you'll see for the real candidates later. But his baseline is already 94%, so hitting 100% isn't surprising (p=0.369). It's the gap from baseline that matters, not the headline number.</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;font-size:24px;color:#6a6459;margin:0">p-values from a 10,000-trial permutation test against each player's own quiet rate at that same clock time on random other days</p>
+</section>
+</div>
+<div class="slide" data-slide="breakdown-3">
+<section id="breakdown-3" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:32px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:64px;font-weight:700;margin:0">THE BREAKDOWN</h2>
+<p style="font-size:26px;color:#B8B0A6;max-width:1650px;margin:0">The question isn't "how often is each candidate quiet" &mdash; it's whether they go <b style="color:#F5F1EA">MORE quiet specifically when Garyy faces tough opponents</b>, compared to how often they're normally quiet at that exact time of day on random other days &mdash; no reference to Garyy at all.</p>
+<table style="font-family:'IBM Plex Sans', Arial, sans-serif;font-size:25px;color:#F5F1EA">
+<tr><th style="width:24%;text-align:left;color:#6a6459;font-weight:600">Candidate</th><th style="width:20%;text-align:left;color:#6a6459;font-weight:600">Baseline (random days)</th><th style="width:16%;text-align:left;color:#6a6459;font-weight:600">Tough games</th><th style="width:14%;text-align:left;color:#6a6459;font-weight:600">Excess</th><th style="width:26%;text-align:left;color:#6a6459;font-weight:600">p-value</th></tr>
+<tr style="background:#1F1A15"><td style="color:#B8B0A6">Prop1aNea</td><td>97.6% quiet</td><td style="color:#B8B0A6">94.1% quiet</td><td style="color:#8a8275">&minus;3.5pp</td><td style="color:#8a8275">0.349 &mdash; not significant</td></tr>
+<tr><td style="color:#B8B0A6;font-style:italic">UxDora (control, no known connection)</td><td>94.0% quiet</td><td style="color:#B8B0A6">100.0% quiet</td><td style="color:#8a8275">+6.0pp</td><td style="color:#8a8275">0.369 &mdash; not significant</td></tr>
+<tr style="background:#2A1518"><td style="color:#FAC775;font-weight:700">ItsGuts group (7)</td><td>87.0% quiet</td><td style="color:#F5F1EA;font-weight:600">100.0% quiet</td><td style="color:#FAC775;font-weight:700">+13.0pp</td><td style="color:#FAC775;font-weight:700">&lt;0.0001 &mdash; real</td></tr>
+</table>
+<div style="background:#1F1A15;border-radius:16px;padding:24px 36px;display:flex;align-items:center;gap:24px">
+<x-icon name="Lightbulb" style="color:#FAC775;width:40px;height:40px"></x-icon>
+<p style="font-size:24px;color:#B8B0A6;margin:0"><b style="color:#F5F1EA">ItsGuts group clears this test.</b> An earlier version of this comparison (against their own easy-game rate instead of a true random-day baseline) made them look borderline. Measured against their real, Garyy-independent baseline, they were quiet for all 17 of Garyy's toughest games &mdash; a pattern that would happen by chance less than once in 10,000 tries.</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;font-size:24px;color:#6a6459;margin:0">p-values from a 10,000-trial permutation test against each player's own quiet rate at that same clock time on random other days</p>
+</section>
+</div>
+<div class="slide" data-slide="breakdown-4">
+<section id="breakdown-4" data-transition="fade" style="display:flex;flex-direction:column;gap:28px;padding:128px 128px 160px;background:#15120f;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif">
+<h2 style="font-family:Oswald, Arial, sans-serif;font-size:64px;font-weight:700;margin:0">THE BREAKDOWN</h2>
+<p style="max-width:1650px;font-size:26px;color:#b8b0a6;margin:0">The question isn't "how often is each candidate quiet" &mdash; it's whether they go <b style="color:#f5f1ea">MORE quiet specifically when Garyy faces tough opponents</b>, compared to how often they're normally quiet at that exact time of day on random other days &mdash; no reference to Garyy at all.</p>
+<table style="font-family:'IBM Plex Sans', Arial, sans-serif;font-size:24px;color:#f5f1ea">
+<tr><th style="font-weight:600;width:24%;color:#6a6459">Candidate</th><th style="font-weight:600;width:20%;color:#6a6459">Baseline (random days)</th><th style="font-weight:600;width:16%;color:#6a6459">Tough games</th><th style="font-weight:600;width:14%;color:#6a6459">Excess</th><th style="font-weight:600;width:26%;color:#6a6459">p-value</th></tr>
+<tr style="background:#1f1a15"><td style="color:#b8b0a6">Prop1aNea</td><td>97.6% quiet</td><td style="color:#b8b0a6">94.1% quiet</td><td style="color:#8a8275">&minus;3.5pp</td><td style="color:#8a8275">0.349 &mdash; not significant</td></tr>
+<tr><td style="color:#b8b0a6;font-style:italic">UxDora (control, no known connection)</td><td>94.0% quiet</td><td style="color:#b8b0a6">100.0% quiet</td><td style="color:#8a8275">+6.0pp</td><td style="color:#8a8275">0.369 &mdash; not significant</td></tr>
+<tr style="background:#1f1a15"><td style="color:#FAC775;font-weight:700">ItsGuts group (7)</td><td>87.0% quiet</td><td style="color:#f5f1ea;font-weight:600">100.0% quiet</td><td style="color:#FAC775;font-weight:700">+13.0pp</td><td style="color:#FAC775;font-weight:700">&lt;0.0001 &mdash; real</td></tr>
+<tr style="background:#2a1518"><td style="color:#e8505b;font-weight:700">BillieDown (+alt)</td><td>81.5% quiet</td><td style="color:#f5f1ea;font-weight:600">100.0% quiet</td><td style="color:#e8505b;font-weight:700">+18.5pp</td><td style="color:#e8505b;font-weight:700">&lt;0.0001 &mdash; real</td></tr>
+</table>
+<div style="display:flex;flex-direction:column;padding:28px 40px;background:#1f1a15;border-left:8px solid #e8505b;border-radius:16px">
+<p style="font-family:'IBM Plex Sans', Arial, sans-serif;font-size:26px;color:#f5f1ea;margin:0">Both <b style="color:#e8505b">BillieDown</b> and <b style="color:#FAC775">ItsGuts group</b> were quiet for <b style="color:#FAC775">all 17</b> of Garyy's toughest games since he crossed 1700 rating &mdash; zero exceptions, each &mdash; and both clear p&nbsp;&lt;&nbsp;0.0001 against a baseline built entirely from their own normal schedule, with no reference to Garyy at all.</p>
+</div>
+<p style="position:absolute;bottom:64px;left:128px;font-family:'IBM Plex Sans', Arial, sans-serif;font-size:24px;color:#6a6459;margin:0">p-values from a 10,000-trial permutation test against each player's own quiet rate at that same clock time on random other days</p>
+</section>
+</div>
+<div class="slide" data-slide="session-timeline">
+<section id="session-timeline" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:72px 128px 48px;display:flex;flex-direction:column;gap:16px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:52px;font-weight:700;margin:0">THE SAME 8 DAYS, SESSION BY SESSION</h2>
+<p style="font-size:22px;color:#B8B0A6;max-width:1650px;margin:0">Garyy's 17 tough games (gold) against BillieDown's full activity (red) on those same 8 days, same timeline. UTC times. Where the boxes overlap, both were &quot;on&quot; at once &mdash; where gold sits alone, Billie was quiet.</p>
+<svg viewBox="0 0 1700 600" style="width:1700px;height:540px">
+<rect x="0" y="5.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="71.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="139.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="207.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="275.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="343.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="411.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="479.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="545.0" width="1700" height="1" fill="#332B22"/>
+<rect x="150.0" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="343.8" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="537.5" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="731.2" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="925.0" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1118.8" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1312.5" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1506.2" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1700.0" y="10" width="1" height="530" fill="#2A241C"/>
+<line x1="972.1" y1="43.0" x2="1167.8" y2="43.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1189.6" y1="43.0" x2="1198.9" y2="43.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1226.9" y1="43.0" x2="1229.1" y2="43.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1251.6" y1="43.0" x2="1269.6" y2="43.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1288.6" y1="43.0" x2="1297.5" y2="43.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1330.5" y1="43.0" x2="1334.9" y2="43.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1348.2" y1="43.0" x2="1435.9" y2="43.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="422.8" y1="99.0" x2="439.6" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="473.8" y1="99.0" x2="1422.9" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1437.6" y1="99.0" x2="1440.7" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1466.1" y1="99.0" x2="1470.9" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1426.2" y1="179.0" x2="1452.2" y2="179.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1467.7" y1="179.0" x2="1471.1" y2="179.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1492.1" y1="179.0" x2="1513.2" y2="179.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1515.7" y1="179.0" x2="1526.6" y2="179.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1563.4" y1="179.0" x2="1571.8" y2="179.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1340.0" y1="167.0" x2="1343.2" y2="167.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="639.5" y1="247.0" x2="719.0" y2="247.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="744.0" y1="247.0" x2="761.9" y2="247.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="778.9" y1="247.0" x2="1000.4" y2="247.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1015.8" y1="247.0" x2="1034.7" y2="247.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1050.6" y1="247.0" x2="1061.0" y2="247.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1067.5" y1="247.0" x2="1087.4" y2="247.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1106.3" y1="247.0" x2="1111.8" y2="247.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1140.1" y1="247.0" x2="1232.6" y2="247.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1233.8" y1="247.0" x2="1242.4" y2="247.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1268.8" y1="247.0" x2="1281.2" y2="247.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1317.7" y1="247.0" x2="1326.0" y2="247.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1359.0" y1="247.0" x2="1370.4" y2="247.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1395.0" y1="247.0" x2="1416.4" y2="247.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1431.4" y1="247.0" x2="1458.6" y2="247.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1470.4" y1="247.0" x2="1476.3" y2="247.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1383.6" y1="303.0" x2="1426.7" y2="303.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="504.3" y1="371.0" x2="1476.1" y2="371.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1486.4" y1="371.0" x2="1490.6" y2="371.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1416.1" y1="451.0" x2="1441.1" y2="451.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1479.6" y1="451.0" x2="1523.2" y2="451.0" stroke="#E8505B" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="404.7" y1="507.0" x2="1448.8" y2="507.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<rect x="945.8" y="13.0" width="26.3" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1167.8" y="13.0" width="21.8" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1198.9" y="13.0" width="28.0" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1229.1" y="13.0" width="22.6" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1269.6" y="13.0" width="19.0" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1297.5" y="13.0" width="33.0" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1334.9" y="13.0" width="13.3" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1435.9" y="13.0" width="36.0" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1699.7" y="13.0" width="3.0" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1538.6" y="81.0" width="5.7" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="388.7" y="81.0" width="34.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="439.6" y="81.0" width="34.2" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1422.9" y="81.0" width="14.8" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1440.7" y="81.0" width="25.4" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1470.9" y="81.0" width="29.2" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1404.2" y="149.0" width="22.0" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1452.2" y="149.0" width="15.5" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1471.1" y="149.0" width="21.1" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1513.2" y="149.0" width="3.0" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1526.6" y="149.0" width="36.8" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1571.8" y="149.0" width="10.8" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1310.4" y="149.0" width="29.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1343.2" y="149.0" width="21.3" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="610.7" y="217.0" width="28.8" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="719.0" y="217.0" width="25.1" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="761.9" y="217.0" width="17.0" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1000.4" y="217.0" width="15.4" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1034.7" y="217.0" width="15.9" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1061.0" y="217.0" width="6.5" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1087.4" y="217.0" width="18.9" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1111.8" y="217.0" width="28.3" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1232.6" y="217.0" width="3.0" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1242.4" y="217.0" width="26.4" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1281.2" y="217.0" width="36.5" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1326.0" y="217.0" width="33.0" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1370.4" y="217.0" width="24.5" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1416.4" y="217.0" width="14.9" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1458.6" y="217.0" width="11.8" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1476.3" y="217.0" width="30.3" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1617.8" y="217.0" width="27.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1481.3" y="285.0" width="25.7" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1342.7" y="285.0" width="40.8" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1426.7" y="285.0" width="36.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="473.7" y="353.0" width="30.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1476.1" y="353.0" width="10.3" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1490.6" y="353.0" width="27.0" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1380.2" y="421.0" width="35.9" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1441.1" y="421.0" width="38.4" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="1523.2" y="421.0" width="35.1" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="975.4" y="421.0" width="46.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="362.3" y="489.0" width="42.4" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1448.8" y="489.0" width="26.7" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<text x="134" y="45.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 13 <tspan fill="#6a6459" font-size="20">(Sun)</tspan></text>
+<text x="134" y="113.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 14 <tspan fill="#6a6459" font-size="20">(Mon)</tspan></text>
+<text x="134" y="181.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 23 <tspan fill="#6a6459" font-size="20">(Wed)</tspan></text>
+<text x="134" y="249.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 24 <tspan fill="#6a6459" font-size="20">(Thu)</tspan></text>
+<text x="134" y="317.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 25 <tspan fill="#6a6459" font-size="20">(Fri)</tspan></text>
+<text x="134" y="385.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 26 <tspan fill="#6a6459" font-size="20">(Sat)</tspan></text>
+<text x="134" y="453.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 28 <tspan fill="#6a6459" font-size="20">(Mon)</tspan></text>
+<text x="134" y="521.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 29 <tspan fill="#6a6459" font-size="20">(Tue)</tspan></text>
+<text x="150.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">00:00</text>
+<text x="343.8" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">03:00</text>
+<text x="537.5" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">06:00</text>
+<text x="731.2" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">09:00</text>
+<text x="925.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">12:00</text>
+<text x="1118.8" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">15:00</text>
+<text x="1312.5" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">18:00</text>
+<text x="1506.2" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">21:00</text>
+<text x="1700.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">24:00</text>
+</svg>
+<div style="display:flex;gap:28px;align-items:center;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#FAC775;opacity:0.75"></div><p style="font-size:22px;color:#F5F1EA;margin:0">Garyy, tough game (the 17)</p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#E8505B;opacity:0.75"></div><p style="font-size:22px;color:#F5F1EA;margin:0">BillieDown, any game</p></div>
+</div>
+</section>
+</div>
+<div class="slide" data-slide="session-timeline-prior">
+<section id="session-timeline-prior" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:72px 128px 48px;display:flex;flex-direction:column;gap:16px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:52px;font-weight:700;margin:0">THE WEEK BEFORE, SAME SLOTS</h2>
+<p style="font-size:22px;color:#B8B0A6;max-width:1650px;margin:0">Garyy's 17 tough games (gold) against where BillieDown actually was at that exact time-of-day, one week earlier (muted red, shifted forward to line up). Circled = he was active at that slot the week before &mdash; the one place a standing weekly habit would predict he'd be quiet too, and isn't.</p>
+<svg viewBox="0 0 1700 600" style="width:1700px;height:540px">
+<rect x="0" y="5.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="71.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="139.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="207.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="275.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="343.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="411.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="479.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="545.0" width="1700" height="1" fill="#332B22"/>
+<rect x="150.0" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="343.8" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="537.5" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="731.2" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="925.0" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1118.8" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1312.5" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1506.2" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1700.0" y="10" width="1" height="530" fill="#2A241C"/>
+<line x1="422.8" y1="99.0" x2="439.6" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="473.8" y1="99.0" x2="1422.9" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1437.6" y1="99.0" x2="1440.7" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1466.1" y1="99.0" x2="1470.9" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1340.0" y1="167.0" x2="1343.2" y2="167.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="909.3" y1="247.0" x2="980.5" y2="247.0" stroke="#C97A86" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1011.9" y1="247.0" x2="1016.5" y2="247.0" stroke="#C97A86" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1027.2" y1="247.0" x2="1032.1" y2="247.0" stroke="#C97A86" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1066.0" y1="247.0" x2="1150.4" y2="247.0" stroke="#C97A86" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1181.3" y1="247.0" x2="1233.0" y2="247.0" stroke="#C97A86" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1249.4" y1="247.0" x2="1276.2" y2="247.0" stroke="#C97A86" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1277.4" y1="247.0" x2="1279.6" y2="247.0" stroke="#C97A86" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1304.8" y1="247.0" x2="1312.6" y2="247.0" stroke="#C97A86" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1324.2" y1="247.0" x2="1328.4" y2="247.0" stroke="#C97A86" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1350.3" y1="247.0" x2="1385.2" y2="247.0" stroke="#C97A86" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1403.9" y1="247.0" x2="1430.6" y2="247.0" stroke="#C97A86" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1383.6" y1="303.0" x2="1426.7" y2="303.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1405.5" y1="383.0" x2="1439.0" y2="383.0" stroke="#C97A86" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1469.0" y1="383.0" x2="1473.3" y2="383.0" stroke="#C97A86" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="504.3" y1="371.0" x2="1476.1" y2="371.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1486.4" y1="371.0" x2="1490.6" y2="371.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="404.7" y1="507.0" x2="1448.8" y2="507.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<rect x="1699.7" y="13.0" width="3.0" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="388.7" y="81.0" width="34.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="439.6" y="81.0" width="34.2" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1422.9" y="81.0" width="14.8" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1440.7" y="81.0" width="25.4" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1470.9" y="81.0" width="29.2" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1310.4" y="149.0" width="29.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1343.2" y="149.0" width="21.3" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="900.8" y="217.0" width="8.5" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="980.5" y="217.0" width="31.4" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="1016.5" y="217.0" width="10.7" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="1032.1" y="217.0" width="33.9" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="1150.4" y="217.0" width="30.9" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="1233.0" y="217.0" width="16.4" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="1276.2" y="217.0" width="3.0" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="1279.6" y="217.0" width="25.3" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="1312.6" y="217.0" width="11.6" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="1328.4" y="217.0" width="21.8" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="1385.2" y="217.0" width="18.7" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="1430.6" y="217.0" width="38.2" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="1617.8" y="217.0" width="27.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1479.0" y="285.0" width="15.9" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="1342.7" y="285.0" width="40.8" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1426.7" y="285.0" width="36.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1376.8" y="353.0" width="28.6" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="1439.0" y="353.0" width="29.9" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="1473.3" y="353.0" width="36.7" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="473.7" y="353.0" width="30.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1476.1" y="353.0" width="10.3" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1490.6" y="353.0" width="27.0" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1469.6" y="421.0" width="35.7" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="975.4" y="421.0" width="46.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1478.3" y="489.0" width="36.7" height="48.0" fill="#C97A86" fill-opacity="0.62" stroke="#C97A86" stroke-width="1.5" rx="3"/>
+<rect x="362.3" y="489.0" width="42.4" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1448.8" y="489.0" width="26.7" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1433.0" y="344.0" width="90.6" height="66.0" fill="none" stroke="#FF6B6B" stroke-width="3" rx="8"/>
+<rect x="1442.8" y="480.0" width="78.2" height="66.0" fill="none" stroke="#FF6B6B" stroke-width="3" rx="8"/>
+<text x="134" y="45.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 13 <tspan fill="#6a6459" font-size="20">(Sun)</tspan></text>
+<text x="134" y="113.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 14 <tspan fill="#6a6459" font-size="20">(Mon)</tspan></text>
+<text x="134" y="181.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 23 <tspan fill="#6a6459" font-size="20">(Wed)</tspan></text>
+<text x="134" y="249.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 24 <tspan fill="#6a6459" font-size="20">(Thu)</tspan></text>
+<text x="134" y="317.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 25 <tspan fill="#6a6459" font-size="20">(Fri)</tspan></text>
+<text x="134" y="385.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 26 <tspan fill="#6a6459" font-size="20">(Sat)</tspan></text>
+<text x="134" y="453.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 28 <tspan fill="#6a6459" font-size="20">(Mon)</tspan></text>
+<text x="134" y="521.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 29 <tspan fill="#6a6459" font-size="20">(Tue)</tspan></text>
+<text x="150.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">00:00</text>
+<text x="343.8" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">03:00</text>
+<text x="537.5" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">06:00</text>
+<text x="731.2" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">09:00</text>
+<text x="925.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">12:00</text>
+<text x="1118.8" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">15:00</text>
+<text x="1312.5" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">18:00</text>
+<text x="1506.2" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">21:00</text>
+<text x="1700.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">24:00</text>
+</svg>
+<div style="display:flex;gap:28px;align-items:center;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#FAC775;opacity:0.75"></div><p style="font-size:22px;color:#F5F1EA;margin:0">Garyy, tough game (the 17)</p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#C97A86;opacity:0.75"></div><p style="font-size:22px;color:#F5F1EA;margin:0">BillieDown, same slot 1 week earlier</p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:8px;border:3px solid #FF6B6B"></div><p style="font-size:22px;color:#F5F1EA;margin:0">Overlap (3 of 17)</p></div>
+</div>
+</section>
+</div>
+<div class="slide" data-slide="session-timeline-2wk">
+<section id="session-timeline-2wk" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:72px 128px 48px;display:flex;flex-direction:column;gap:16px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:52px;font-weight:700;margin:0">TWO WEEKS BEFORE, SAME SLOTS</h2>
+<p style="font-size:22px;color:#B8B0A6;max-width:1650px;margin:0">Same test, pushed back a second week. BillieDown was quiet at this exact time-of-day only 8 of 17 times (47%) &mdash; versus 100% during the actual tough games. The further back you go, the less it looks like a standing schedule gap.</p>
+<svg viewBox="0 0 1700 600" style="width:1700px;height:540px">
+<rect x="0" y="5.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="71.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="139.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="207.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="275.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="343.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="411.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="479.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="545.0" width="1700" height="1" fill="#332B22"/>
+<rect x="150.0" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="343.8" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="537.5" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="731.2" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="925.0" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1118.8" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1312.5" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1506.2" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1700.0" y="10" width="1" height="530" fill="#2A241C"/>
+<line x1="1358.4" y1="43.0" x2="1386.3" y2="43.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1399.0" y1="43.0" x2="1400.5" y2="43.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1419.8" y1="43.0" x2="1431.5" y2="43.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1432.4" y1="43.0" x2="1433.9" y2="43.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1464.3" y1="43.0" x2="1471.7" y2="43.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1534.8" y1="43.0" x2="1556.5" y2="43.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1234.7" y1="111.0" x2="1237.1" y2="111.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1264.4" y1="111.0" x2="1388.7" y2="111.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1410.0" y1="111.0" x2="1418.2" y2="111.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="422.8" y1="99.0" x2="439.6" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="473.8" y1="99.0" x2="1422.9" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1437.6" y1="99.0" x2="1440.7" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1466.1" y1="99.0" x2="1470.9" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1062.3" y1="179.0" x2="1090.5" y2="179.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1135.0" y1="179.0" x2="1171.1" y2="179.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1201.1" y1="179.0" x2="1215.0" y2="179.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1235.8" y1="179.0" x2="1238.3" y2="179.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1248.0" y1="179.0" x2="1251.4" y2="179.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1296.3" y1="179.0" x2="1323.2" y2="179.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1343.9" y1="179.0" x2="1354.5" y2="179.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1365.2" y1="179.0" x2="1389.4" y2="179.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1415.0" y1="179.0" x2="1449.8" y2="179.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1451.0" y1="179.0" x2="1453.4" y2="179.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1489.4" y1="179.0" x2="1619.6" y2="179.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1340.0" y1="167.0" x2="1343.2" y2="167.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="798.8" y1="247.0" x2="815.5" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="835.7" y1="247.0" x2="865.2" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="897.9" y1="247.0" x2="919.9" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="941.0" y1="247.0" x2="946.5" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="977.9" y1="247.0" x2="985.3" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1001.2" y1="247.0" x2="1005.7" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1019.8" y1="247.0" x2="1047.1" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1061.4" y1="247.0" x2="1070.9" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1092.6" y1="247.0" x2="1113.0" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1129.3" y1="247.0" x2="1136.8" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1166.7" y1="247.0" x2="1188.5" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1206.2" y1="247.0" x2="1214.4" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1234.0" y1="247.0" x2="1469.2" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1491.7" y1="247.0" x2="1527.2" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1555.7" y1="247.0" x2="1565.8" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1620.8" y1="247.0" x2="1633.2" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1634.8" y1="247.0" x2="1637.5" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1651.9" y1="247.0" x2="1655.0" y2="247.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="697.3" y1="315.0" x2="706.5" y2="315.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="709.8" y1="315.0" x2="733.3" y2="315.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="746.7" y1="315.0" x2="764.5" y2="315.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="808.6" y1="315.0" x2="844.0" y2="315.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="872.5" y1="315.0" x2="887.3" y2="315.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="888.1" y1="315.0" x2="890.2" y2="315.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="909.3" y1="315.0" x2="933.8" y2="315.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1383.6" y1="303.0" x2="1426.7" y2="303.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1154.2" y1="383.0" x2="1165.9" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1175.8" y1="383.0" x2="1178.5" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1178.7" y1="383.0" x2="1180.4" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1192.9" y1="383.0" x2="1296.6" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1336.9" y1="383.0" x2="1342.0" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1355.6" y1="383.0" x2="1368.9" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1387.5" y1="383.0" x2="1416.0" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1416.4" y1="383.0" x2="1437.1" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1463.7" y1="383.0" x2="1474.5" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1491.9" y1="383.0" x2="1493.6" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1512.4" y1="383.0" x2="1517.6" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1558.8" y1="383.0" x2="1569.5" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1588.1" y1="383.0" x2="1596.8" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1597.3" y1="383.0" x2="1598.6" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1617.1" y1="383.0" x2="1628.5" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1628.7" y1="383.0" x2="1630.4" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1630.6" y1="383.0" x2="1632.5" y2="383.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="504.3" y1="371.0" x2="1476.1" y2="371.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1486.4" y1="371.0" x2="1490.6" y2="371.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1481.7" y1="519.0" x2="1518.4" y2="519.0" stroke="#A0758C" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="404.7" y1="507.0" x2="1448.8" y2="507.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<rect x="1338.9" y="13.0" width="19.5" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1386.3" y="13.0" width="12.7" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1400.5" y="13.0" width="19.2" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1431.5" y="13.0" width="3.0" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1433.9" y="13.0" width="30.4" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1471.7" y="13.0" width="63.1" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1556.5" y="13.0" width="3.4" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1699.7" y="13.0" width="3.0" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1233.1" y="81.0" width="3.0" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1237.1" y="81.0" width="27.3" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1388.7" y="81.0" width="21.3" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1418.2" y="81.0" width="57.3" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="388.7" y="81.0" width="34.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="439.6" y="81.0" width="34.2" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1422.9" y="81.0" width="14.8" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1440.7" y="81.0" width="25.4" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1470.9" y="81.0" width="29.2" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1049.8" y="149.0" width="12.5" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1090.5" y="149.0" width="44.5" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1171.1" y="149.0" width="30.0" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1215.0" y="149.0" width="20.8" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1238.3" y="149.0" width="9.7" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1251.4" y="149.0" width="44.9" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1323.2" y="149.0" width="20.7" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1354.5" y="149.0" width="10.7" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1389.4" y="149.0" width="25.6" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1449.8" y="149.0" width="3.0" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1453.4" y="149.0" width="36.0" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1619.6" y="149.0" width="27.7" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1310.4" y="149.0" width="29.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1343.2" y="149.0" width="21.3" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="785.0" y="217.0" width="13.7" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="815.5" y="217.0" width="20.2" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="865.2" y="217.0" width="32.7" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="919.9" y="217.0" width="21.1" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="946.5" y="217.0" width="31.3" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="985.3" y="217.0" width="15.8" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1005.7" y="217.0" width="14.1" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1047.1" y="217.0" width="14.3" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1070.9" y="217.0" width="21.7" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1113.0" y="217.0" width="16.3" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1136.8" y="217.0" width="30.0" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1188.5" y="217.0" width="17.7" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1214.4" y="217.0" width="19.5" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1469.2" y="217.0" width="22.5" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1527.2" y="217.0" width="28.5" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1565.8" y="217.0" width="54.9" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1633.2" y="217.0" width="3.0" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1637.5" y="217.0" width="14.4" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1655.0" y="217.0" width="11.0" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1617.8" y="217.0" width="27.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="694.7" y="285.0" width="3.0" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="706.5" y="285.0" width="3.3" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="733.3" y="285.0" width="13.4" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="764.5" y="285.0" width="44.1" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="844.0" y="285.0" width="28.5" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="887.3" y="285.0" width="3.0" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="890.2" y="285.0" width="19.1" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="933.8" y="285.0" width="23.7" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1342.7" y="285.0" width="40.8" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1426.7" y="285.0" width="36.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1120.6" y="353.0" width="33.6" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1165.9" y="353.0" width="9.9" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1178.5" y="353.0" width="3.0" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1180.4" y="353.0" width="12.6" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1296.6" y="353.0" width="40.3" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1342.0" y="353.0" width="13.6" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1368.9" y="353.0" width="18.6" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1416.0" y="353.0" width="3.0" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1437.1" y="353.0" width="26.5" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1474.5" y="353.0" width="17.4" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1493.6" y="353.0" width="18.7" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1517.6" y="353.0" width="41.2" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1569.5" y="353.0" width="18.6" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1596.8" y="353.0" width="3.0" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1598.6" y="353.0" width="18.5" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1628.5" y="353.0" width="3.0" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1630.4" y="353.0" width="3.0" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1632.5" y="353.0" width="18.8" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="473.7" y="353.0" width="30.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1476.1" y="353.0" width="10.3" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1490.6" y="353.0" width="27.0" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1538.6" y="421.0" width="5.7" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="975.4" y="421.0" width="46.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1464.7" y="489.0" width="17.0" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="1518.4" y="489.0" width="34.9" height="48.0" fill="#A0758C" fill-opacity="0.62" stroke="#A0758C" stroke-width="1.5" rx="3"/>
+<rect x="362.3" y="489.0" width="42.4" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1448.8" y="489.0" width="26.7" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1382.7" y="72.0" width="123.3" height="66.0" fill="none" stroke="#FF6B6B" stroke-width="3" rx="8"/>
+<rect x="1245.4" y="140.0" width="125.8" height="66.0" fill="none" stroke="#FF6B6B" stroke-width="3" rx="8"/>
+<rect x="1559.8" y="208.0" width="112.2" height="66.0" fill="none" stroke="#FF6B6B" stroke-width="3" rx="8"/>
+<rect x="1431.1" y="344.0" width="133.7" height="66.0" fill="none" stroke="#FF6B6B" stroke-width="3" rx="8"/>
+<rect x="1442.8" y="480.0" width="44.8" height="66.0" fill="none" stroke="#FF6B6B" stroke-width="3" rx="8"/>
+<text x="134" y="45.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 13 <tspan fill="#6a6459" font-size="20">(Sun)</tspan></text>
+<text x="134" y="113.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 14 <tspan fill="#6a6459" font-size="20">(Mon)</tspan></text>
+<text x="134" y="181.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 23 <tspan fill="#6a6459" font-size="20">(Wed)</tspan></text>
+<text x="134" y="249.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 24 <tspan fill="#6a6459" font-size="20">(Thu)</tspan></text>
+<text x="134" y="317.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 25 <tspan fill="#6a6459" font-size="20">(Fri)</tspan></text>
+<text x="134" y="385.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 26 <tspan fill="#6a6459" font-size="20">(Sat)</tspan></text>
+<text x="134" y="453.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 28 <tspan fill="#6a6459" font-size="20">(Mon)</tspan></text>
+<text x="134" y="521.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 29 <tspan fill="#6a6459" font-size="20">(Tue)</tspan></text>
+<text x="150.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">00:00</text>
+<text x="343.8" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">03:00</text>
+<text x="537.5" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">06:00</text>
+<text x="731.2" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">09:00</text>
+<text x="925.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">12:00</text>
+<text x="1118.8" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">15:00</text>
+<text x="1312.5" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">18:00</text>
+<text x="1506.2" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">21:00</text>
+<text x="1700.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">24:00</text>
+</svg>
+<div style="display:flex;gap:28px;align-items:center;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#FAC775;opacity:0.75"></div><p style="font-size:22px;color:#F5F1EA;margin:0">Garyy, tough game (the 17)</p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#A0758C;opacity:0.75"></div><p style="font-size:22px;color:#F5F1EA;margin:0">BillieDown, same slot 2 weeks earlier</p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:8px;border:3px solid #FF6B6B"></div><p style="font-size:22px;color:#F5F1EA;margin:0">Overlap (9 of 17)</p></div>
+</div>
+</section>
+</div>
+<div class="slide" data-slide="session-timeline-guts">
+<section id="session-timeline-guts" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:72px 128px 48px;display:flex;flex-direction:column;gap:16px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:52px;font-weight:700;margin:0">THE SAME 8 DAYS, ITSGUTS GROUP</h2>
+<p style="font-size:22px;color:#B8B0A6;max-width:1650px;margin:0">Same chart as before, swapping BillieDown for ItsGuts group (7 accounts combined). Garyy's 17 tough games (gold) against ItsGuts group's full activity (green) on those same 8 days. UTC times.</p>
+<svg viewBox="0 0 1700 600" style="width:1700px;height:540px">
+<rect x="0" y="5.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="71.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="139.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="207.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="275.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="343.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="411.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="479.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="545.0" width="1700" height="1" fill="#332B22"/>
+<rect x="150.0" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="343.8" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="537.5" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="731.2" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="925.0" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1118.8" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1312.5" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1506.2" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1700.0" y="10" width="1" height="530" fill="#2A241C"/>
+<line x1="653.6" y1="43.0" x2="1161.7" y2="43.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="542.1" y1="111.0" x2="616.7" y2="111.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="649.9" y1="111.0" x2="1164.0" y2="111.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="422.8" y1="99.0" x2="439.6" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="473.8" y1="99.0" x2="1422.9" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1437.6" y1="99.0" x2="1440.7" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1466.1" y1="99.0" x2="1470.9" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1340.0" y1="167.0" x2="1343.2" y2="167.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="900.9" y1="247.0" x2="907.3" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="934.6" y1="247.0" x2="976.9" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="997.0" y1="247.0" x2="1000.7" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1013.5" y1="247.0" x2="1016.0" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1041.1" y1="247.0" x2="1044.4" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1068.0" y1="247.0" x2="1075.3" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1104.4" y1="247.0" x2="1476.3" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1506.6" y1="247.0" x2="1534.7" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1276.1" y1="315.0" x2="1280.3" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1294.1" y1="315.0" x2="1301.2" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1324.6" y1="315.0" x2="1496.5" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1518.5" y1="315.0" x2="1532.5" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1574.7" y1="315.0" x2="1581.8" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1614.2" y1="315.0" x2="1626.7" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1383.6" y1="303.0" x2="1426.7" y2="303.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="567.7" y1="383.0" x2="774.9" y2="383.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="827.2" y1="383.0" x2="831.0" y2="383.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="867.5" y1="383.0" x2="875.4" y2="383.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="892.7" y1="383.0" x2="1143.8" y2="383.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1167.5" y1="383.0" x2="1168.9" y2="383.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1189.0" y1="383.0" x2="1197.9" y2="383.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1224.2" y1="383.0" x2="1243.3" y2="383.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1277.2" y1="383.0" x2="1281.1" y2="383.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="504.3" y1="371.0" x2="1476.1" y2="371.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1486.4" y1="371.0" x2="1490.6" y2="371.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="404.7" y1="507.0" x2="1448.8" y2="507.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<rect x="620.7" y="13.0" width="32.9" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1161.7" y="13.0" width="49.6" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1699.7" y="13.0" width="3.0" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="541.3" y="81.0" width="3.0" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="616.7" y="81.0" width="33.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1164.0" y="81.0" width="32.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="388.7" y="81.0" width="34.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="439.6" y="81.0" width="34.2" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1422.9" y="81.0" width="14.8" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1440.7" y="81.0" width="25.4" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1470.9" y="81.0" width="29.2" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1159.4" y="149.0" width="21.5" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1310.4" y="149.0" width="29.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1343.2" y="149.0" width="21.3" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="867.4" y="217.0" width="33.5" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="907.3" y="217.0" width="27.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="976.9" y="217.0" width="20.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1000.7" y="217.0" width="12.8" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1016.0" y="217.0" width="25.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1044.4" y="217.0" width="23.6" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1075.3" y="217.0" width="29.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1476.3" y="217.0" width="30.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1534.7" y="217.0" width="30.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1617.8" y="217.0" width="27.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1233.1" y="285.0" width="43.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1280.3" y="285.0" width="13.9" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1301.2" y="285.0" width="23.4" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1496.5" y="285.0" width="22.0" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1532.5" y="285.0" width="42.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1581.8" y="285.0" width="32.5" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1626.7" y="285.0" width="22.7" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1342.7" y="285.0" width="40.8" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1426.7" y="285.0" width="36.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="559.5" y="353.0" width="8.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="774.9" y="353.0" width="52.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="831.0" y="353.0" width="36.5" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="875.4" y="353.0" width="17.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1143.8" y="353.0" width="23.7" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1168.9" y="353.0" width="20.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1197.9" y="353.0" width="26.4" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1243.3" y="353.0" width="33.9" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1281.1" y="353.0" width="37.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="473.7" y="353.0" width="30.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1476.1" y="353.0" width="10.3" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1490.6" y="353.0" width="27.0" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="856.8" y="421.0" width="32.6" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="975.4" y="421.0" width="46.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="362.3" y="489.0" width="42.4" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1448.8" y="489.0" width="26.7" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<text x="134" y="45.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 13 <tspan fill="#6a6459" font-size="20">(Sun)</tspan></text>
+<text x="134" y="113.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 14 <tspan fill="#6a6459" font-size="20">(Mon)</tspan></text>
+<text x="134" y="181.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 23 <tspan fill="#6a6459" font-size="20">(Wed)</tspan></text>
+<text x="134" y="249.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 24 <tspan fill="#6a6459" font-size="20">(Thu)</tspan></text>
+<text x="134" y="317.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 25 <tspan fill="#6a6459" font-size="20">(Fri)</tspan></text>
+<text x="134" y="385.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 26 <tspan fill="#6a6459" font-size="20">(Sat)</tspan></text>
+<text x="134" y="453.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 28 <tspan fill="#6a6459" font-size="20">(Mon)</tspan></text>
+<text x="134" y="521.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 29 <tspan fill="#6a6459" font-size="20">(Tue)</tspan></text>
+<text x="150.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">00:00</text>
+<text x="343.8" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">03:00</text>
+<text x="537.5" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">06:00</text>
+<text x="731.2" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">09:00</text>
+<text x="925.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">12:00</text>
+<text x="1118.8" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">15:00</text>
+<text x="1312.5" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">18:00</text>
+<text x="1506.2" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">21:00</text>
+<text x="1700.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">24:00</text>
+</svg>
+<div style="display:flex;gap:28px;align-items:center;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#FAC775;opacity:0.75"></div><p style="font-size:22px;color:#F5F1EA;margin:0">Garyy, tough game (the 17)</p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#5FBF8F;opacity:0.75"></div><p style="font-size:22px;color:#F5F1EA;margin:0">ItsGuts group, any game</p></div>
+</div>
+</section>
+</div>
+<div class="slide" data-slide="session-timeline-guts-prior">
+<section id="session-timeline-guts-prior" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:72px 128px 48px;display:flex;flex-direction:column;gap:16px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:52px;font-weight:700;margin:0">ITSGUTS: THE WEEK BEFORE, SAME SLOTS</h2>
+<p style="font-size:22px;color:#B8B0A6;max-width:1650px;margin:0">Same test as BillieDown's, run on ItsGuts group. Garyy's 17 tough games (gold) against where ItsGuts actually was at that exact time-of-day, one week earlier (green, shifted forward to line up). Quiet 13 of 17 times one week earlier, vs 17/17 during the actual tough games.</p>
+<svg viewBox="0 0 1700 600" style="width:1700px;height:540px">
+<rect x="0" y="5.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="71.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="139.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="207.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="275.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="343.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="411.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="479.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="545.0" width="1700" height="1" fill="#332B22"/>
+<rect x="150.0" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="343.8" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="537.5" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="731.2" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="925.0" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1118.8" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1312.5" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1506.2" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1700.0" y="10" width="1" height="530" fill="#2A241C"/>
+<line x1="603.2" y1="43.0" x2="620.3" y2="43.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="649.4" y1="43.0" x2="920.1" y2="43.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="792.2" y1="111.0" x2="836.3" y2="111.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="863.2" y1="111.0" x2="1236.9" y2="111.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="422.8" y1="99.0" x2="439.6" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="473.8" y1="99.0" x2="1422.9" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1437.6" y1="99.0" x2="1440.7" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1466.1" y1="99.0" x2="1470.9" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1340.0" y1="167.0" x2="1343.2" y2="167.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="831.8" y1="247.0" x2="835.0" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="841.9" y1="247.0" x2="854.9" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="856.0" y1="247.0" x2="857.5" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="864.5" y1="247.0" x2="868.0" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="899.2" y1="247.0" x2="900.8" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="909.3" y1="247.0" x2="980.5" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1011.9" y1="247.0" x2="1016.5" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1027.2" y1="247.0" x2="1032.1" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1066.0" y1="247.0" x2="1483.7" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1491.0" y1="247.0" x2="1492.4" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1511.8" y1="247.0" x2="1513.4" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1521.7" y1="247.0" x2="1522.9" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1554.1" y1="247.0" x2="1555.9" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1571.8" y1="247.0" x2="1573.0" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1596.8" y1="247.0" x2="1599.1" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1630.9" y1="247.0" x2="1634.0" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="677.2" y1="315.0" x2="685.1" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="711.1" y1="315.0" x2="812.3" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="841.8" y1="315.0" x2="844.5" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="861.3" y1="315.0" x2="863.0" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="881.6" y1="315.0" x2="885.7" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="896.9" y1="315.0" x2="909.7" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="941.8" y1="315.0" x2="944.9" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="989.5" y1="315.0" x2="1349.8" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1372.8" y1="315.0" x2="1425.6" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1434.8" y1="315.0" x2="1438.4" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1470.7" y1="315.0" x2="1473.6" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1496.7" y1="315.0" x2="1539.0" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1549.1" y1="315.0" x2="1558.0" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1579.0" y1="315.0" x2="1590.6" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1383.6" y1="303.0" x2="1426.7" y2="303.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="761.0" y1="383.0" x2="855.1" y2="383.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="872.7" y1="383.0" x2="886.1" y2="383.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="900.5" y1="383.0" x2="915.9" y2="383.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="948.6" y1="383.0" x2="955.6" y2="383.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="504.3" y1="371.0" x2="1476.1" y2="371.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1486.4" y1="371.0" x2="1490.6" y2="371.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1280.9" y1="519.0" x2="1316.1" y2="519.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1349.6" y1="519.0" x2="1361.8" y2="519.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1408.0" y1="519.0" x2="1418.3" y2="519.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1458.0" y1="519.0" x2="1478.3" y2="519.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="404.7" y1="507.0" x2="1448.8" y2="507.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<rect x="556.0" y="13.0" width="47.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="620.3" y="13.0" width="29.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="920.1" y="13.0" width="35.0" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1699.7" y="13.0" width="3.0" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="755.3" y="81.0" width="37.0" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="836.3" y="81.0" width="26.9" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1236.9" y="81.0" width="29.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="388.7" y="81.0" width="34.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="439.6" y="81.0" width="34.2" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1422.9" y="81.0" width="14.8" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1440.7" y="81.0" width="25.4" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1470.9" y="81.0" width="29.2" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1310.4" y="149.0" width="29.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1343.2" y="149.0" width="21.3" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="823.7" y="217.0" width="8.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="835.0" y="217.0" width="6.9" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="854.9" y="217.0" width="3.0" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="857.5" y="217.0" width="7.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="868.0" y="217.0" width="31.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="900.8" y="217.0" width="8.5" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="980.5" y="217.0" width="31.4" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1016.5" y="217.0" width="10.7" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1032.1" y="217.0" width="33.9" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1483.7" y="217.0" width="7.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1492.4" y="217.0" width="19.4" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1513.4" y="217.0" width="8.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1522.9" y="217.0" width="31.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1555.9" y="217.0" width="15.9" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1573.0" y="217.0" width="23.8" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1599.1" y="217.0" width="31.8" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1634.0" y="217.0" width="19.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1617.8" y="217.0" width="27.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="639.1" y="285.0" width="64.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="642.6" y="285.0" width="34.6" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="685.1" y="285.0" width="26.0" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="812.3" y="285.0" width="29.5" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="844.5" y="285.0" width="16.8" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="863.0" y="285.0" width="18.6" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="885.7" y="285.0" width="11.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="909.7" y="285.0" width="32.0" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="944.9" y="285.0" width="44.6" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1349.8" y="285.0" width="23.0" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1425.6" y="285.0" width="9.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1438.4" y="285.0" width="32.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1473.6" y="285.0" width="23.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1539.0" y="285.0" width="10.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1558.0" y="285.0" width="21.0" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1590.6" y="285.0" width="23.5" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1342.7" y="285.0" width="40.8" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1426.7" y="285.0" width="36.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="732.2" y="353.0" width="28.8" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="855.1" y="353.0" width="17.6" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="886.1" y="353.0" width="14.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="915.9" y="353.0" width="32.7" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="955.6" y="353.0" width="31.0" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="473.7" y="353.0" width="30.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1476.1" y="353.0" width="10.3" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1490.6" y="353.0" width="27.0" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="975.4" y="421.0" width="46.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1253.7" y="489.0" width="27.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1316.1" y="489.0" width="33.5" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1361.8" y="489.0" width="46.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1418.3" y="489.0" width="39.7" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1478.3" y="489.0" width="36.7" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="362.3" y="489.0" width="42.4" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1448.8" y="489.0" width="26.7" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1593.1" y="208.0" width="65.9" height="66.0" fill="none" stroke="#FF6B6B" stroke-width="3" rx="8"/>
+<rect x="1336.7" y="276.0" width="166.0" height="66.0" fill="none" stroke="#FF6B6B" stroke-width="3" rx="8"/>
+<rect x="1412.3" y="480.0" width="108.7" height="66.0" fill="none" stroke="#FF6B6B" stroke-width="3" rx="8"/>
+<text x="134" y="45.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 13 <tspan fill="#6a6459" font-size="20">(Sun)</tspan></text>
+<text x="134" y="113.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 14 <tspan fill="#6a6459" font-size="20">(Mon)</tspan></text>
+<text x="134" y="181.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 23 <tspan fill="#6a6459" font-size="20">(Wed)</tspan></text>
+<text x="134" y="249.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 24 <tspan fill="#6a6459" font-size="20">(Thu)</tspan></text>
+<text x="134" y="317.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 25 <tspan fill="#6a6459" font-size="20">(Fri)</tspan></text>
+<text x="134" y="385.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 26 <tspan fill="#6a6459" font-size="20">(Sat)</tspan></text>
+<text x="134" y="453.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 28 <tspan fill="#6a6459" font-size="20">(Mon)</tspan></text>
+<text x="134" y="521.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 29 <tspan fill="#6a6459" font-size="20">(Tue)</tspan></text>
+<text x="150.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">00:00</text>
+<text x="343.8" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">03:00</text>
+<text x="537.5" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">06:00</text>
+<text x="731.2" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">09:00</text>
+<text x="925.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">12:00</text>
+<text x="1118.8" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">15:00</text>
+<text x="1312.5" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">18:00</text>
+<text x="1506.2" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">21:00</text>
+<text x="1700.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">24:00</text>
+</svg>
+<div style="display:flex;gap:28px;align-items:center;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#FAC775;opacity:0.75"></div><p style="font-size:22px;color:#F5F1EA;margin:0">Garyy, tough game (the 17)</p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#5FBF8F;opacity:0.75"></div><p style="font-size:22px;color:#F5F1EA;margin:0">ItsGuts group, same slot 1 week earlier</p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:8px;border:3px solid #FF6B6B"></div><p style="font-size:22px;color:#F5F1EA;margin:0">Overlap (4 of 17)</p></div>
+</div>
+</section>
+</div>
+<div class="slide" data-slide="session-timeline-guts-2wk">
+<section id="session-timeline-guts-2wk" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:72px 128px 48px;display:flex;flex-direction:column;gap:16px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:52px;font-weight:700;margin:0">ITSGUTS: TWO WEEKS BEFORE, SAME SLOTS</h2>
+<p style="font-size:22px;color:#B8B0A6;max-width:1650px;margin:0">Same test, pushed back a second week. ItsGuts group was quiet at this exact time-of-day 11 of 17 times (65%) two weeks earlier &mdash; versus 100% during the actual tough games.</p>
+<svg viewBox="0 0 1700 600" style="width:1700px;height:540px">
+<rect x="0" y="5.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="71.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="139.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="207.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="275.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="343.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="411.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="479.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="545.0" width="1700" height="1" fill="#332B22"/>
+<rect x="150.0" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="343.8" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="537.5" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="731.2" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="925.0" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1118.8" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1312.5" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1506.2" y="10" width="1" height="530" fill="#2A241C"/>
+<rect x="1700.0" y="10" width="1" height="530" fill="#2A241C"/>
+<line x1="430.7" y1="43.0" x2="672.1" y2="43.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="700.3" y1="43.0" x2="719.9" y2="43.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="752.0" y1="43.0" x2="866.9" y2="43.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="886.8" y1="43.0" x2="1152.2" y2="43.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1199.3" y1="43.0" x2="1260.4" y2="43.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1294.1" y1="43.0" x2="1493.3" y2="43.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1522.7" y1="43.0" x2="1531.7" y2="43.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1556.2" y1="43.0" x2="1573.2" y2="43.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1575.5" y1="43.0" x2="1645.3" y2="43.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1470.1" y1="111.0" x2="1496.1" y2="111.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1561.7" y1="111.0" x2="1612.2" y2="111.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1629.7" y1="111.0" x2="1635.4" y2="111.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="422.8" y1="99.0" x2="439.6" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="473.8" y1="99.0" x2="1422.9" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1437.6" y1="99.0" x2="1440.7" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1466.1" y1="99.0" x2="1470.9" y2="99.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="669.7" y1="179.0" x2="686.2" y2="179.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="704.2" y1="179.0" x2="1189.0" y2="179.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1340.0" y1="167.0" x2="1343.2" y2="167.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="941.0" y1="247.0" x2="946.5" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="977.9" y1="247.0" x2="1018.3" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1041.5" y1="247.0" x2="1100.6" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1118.2" y1="247.0" x2="1154.3" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1167.9" y1="247.0" x2="1172.7" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1180.7" y1="247.0" x2="1188.5" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1206.2" y1="247.0" x2="1213.1" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1236.5" y1="247.0" x2="1332.3" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1361.5" y1="247.0" x2="1379.1" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1409.8" y1="247.0" x2="1505.6" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1523.4" y1="247.0" x2="1527.2" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1555.7" y1="247.0" x2="1568.8" y2="247.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="168.1" y1="315.0" x2="175.4" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="206.0" y1="315.0" x2="790.5" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="805.5" y1="315.0" x2="1020.7" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1057.1" y1="315.0" x2="1067.2" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1068.6" y1="315.0" x2="1072.9" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1100.5" y1="315.0" x2="1245.4" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1250.3" y1="315.0" x2="1252.5" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1268.8" y1="315.0" x2="1331.9" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1353.3" y1="315.0" x2="1462.4" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1485.0" y1="315.0" x2="1490.8" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1518.0" y1="315.0" x2="1523.0" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1547.3" y1="315.0" x2="1553.6" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1567.8" y1="315.0" x2="1570.9" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1594.7" y1="315.0" x2="1603.2" y2="315.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1383.6" y1="303.0" x2="1426.7" y2="303.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="909.4" y1="383.0" x2="913.3" y2="383.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="504.3" y1="371.0" x2="1476.1" y2="371.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="1486.4" y1="371.0" x2="1490.6" y2="371.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="542.1" y1="451.0" x2="616.7" y2="451.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="649.9" y1="451.0" x2="1164.0" y2="451.0" stroke="#5FBF8F" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<line x1="404.7" y1="507.0" x2="1448.8" y2="507.0" stroke="#FAC775" stroke-width="2.5" stroke-dasharray="5,4" opacity="0.7"/>
+<rect x="393.3" y="13.0" width="37.4" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="672.1" y="13.0" width="28.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="719.9" y="13.0" width="32.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="866.9" y="13.0" width="19.9" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1152.2" y="13.0" width="47.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1260.4" y="13.0" width="33.7" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1493.3" y="13.0" width="29.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1531.7" y="13.0" width="24.5" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1573.2" y="13.0" width="3.0" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1645.3" y="13.0" width="25.5" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1699.7" y="13.0" width="3.0" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1439.9" y="81.0" width="30.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1496.1" y="81.0" width="65.6" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1612.2" y="81.0" width="17.4" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1635.4" y="81.0" width="30.4" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="388.7" y="81.0" width="34.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="439.6" y="81.0" width="34.2" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1422.9" y="81.0" width="14.8" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1440.7" y="81.0" width="25.4" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1470.9" y="81.0" width="29.2" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="640.8" y="149.0" width="28.9" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="686.2" y="149.0" width="18.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1189.0" y="149.0" width="32.0" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1310.4" y="149.0" width="29.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1343.2" y="149.0" width="21.3" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="919.9" y="217.0" width="21.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="946.5" y="217.0" width="31.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1018.3" y="217.0" width="23.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1100.6" y="217.0" width="17.6" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1154.3" y="217.0" width="14.9" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1159.9" y="217.0" width="7.9" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1172.7" y="217.0" width="13.4" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1176.2" y="217.0" width="4.6" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1188.5" y="217.0" width="17.7" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1213.1" y="217.0" width="23.4" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1332.3" y="217.0" width="29.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1379.1" y="217.0" width="30.7" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1505.6" y="217.0" width="17.8" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1527.2" y="217.0" width="28.5" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1568.8" y="217.0" width="33.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1617.8" y="217.0" width="27.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="165.9" y="285.0" width="3.0" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="175.4" y="285.0" width="30.6" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="790.5" y="285.0" width="15.0" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1020.7" y="285.0" width="36.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1067.2" y="285.0" width="3.0" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1072.9" y="285.0" width="27.5" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1245.4" y="285.0" width="4.9" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1252.5" y="285.0" width="16.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1331.9" y="285.0" width="21.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1462.4" y="285.0" width="22.6" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1490.8" y="285.0" width="27.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1523.0" y="285.0" width="24.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1553.6" y="285.0" width="14.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1570.9" y="285.0" width="23.8" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1603.2" y="285.0" width="29.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1342.7" y="285.0" width="40.8" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1426.7" y="285.0" width="36.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="877.5" y="353.0" width="31.9" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="913.3" y="353.0" width="31.2" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="473.7" y="353.0" width="30.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1476.1" y="353.0" width="10.3" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1490.6" y="353.0" width="27.0" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="541.3" y="421.0" width="3.0" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="616.7" y="421.0" width="33.3" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1164.0" y="421.0" width="32.1" height="48.0" fill="#5FBF8F" fill-opacity="0.62" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="975.4" y="421.0" width="46.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="362.3" y="489.0" width="42.4" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1448.8" y="489.0" width="26.7" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="1416.9" y="72.0" width="150.9" height="66.0" fill="none" stroke="#FF6B6B" stroke-width="3" rx="8"/>
+<rect x="1562.8" y="208.0" width="88.1" height="66.0" fill="none" stroke="#FF6B6B" stroke-width="3" rx="8"/>
+<rect x="1325.9" y="276.0" width="165.1" height="66.0" fill="none" stroke="#FF6B6B" stroke-width="3" rx="8"/>
+<text x="134" y="45.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 13 <tspan fill="#6a6459" font-size="20">(Sun)</tspan></text>
+<text x="134" y="113.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 14 <tspan fill="#6a6459" font-size="20">(Mon)</tspan></text>
+<text x="134" y="181.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 23 <tspan fill="#6a6459" font-size="20">(Wed)</tspan></text>
+<text x="134" y="249.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 24 <tspan fill="#6a6459" font-size="20">(Thu)</tspan></text>
+<text x="134" y="317.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 25 <tspan fill="#6a6459" font-size="20">(Fri)</tspan></text>
+<text x="134" y="385.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 26 <tspan fill="#6a6459" font-size="20">(Sat)</tspan></text>
+<text x="134" y="453.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 28 <tspan fill="#6a6459" font-size="20">(Mon)</tspan></text>
+<text x="134" y="521.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 29 <tspan fill="#6a6459" font-size="20">(Tue)</tspan></text>
+<text x="150.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">00:00</text>
+<text x="343.8" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">03:00</text>
+<text x="537.5" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">06:00</text>
+<text x="731.2" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">09:00</text>
+<text x="925.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">12:00</text>
+<text x="1118.8" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">15:00</text>
+<text x="1312.5" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">18:00</text>
+<text x="1506.2" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">21:00</text>
+<text x="1700.0" y="570" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#6a6459">24:00</text>
+</svg>
+<div style="display:flex;gap:28px;align-items:center;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#FAC775;opacity:0.75"></div><p style="font-size:22px;color:#F5F1EA;margin:0">Garyy, tough game (the 17)</p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:6px;background:#5FBF8F;opacity:0.75"></div><p style="font-size:22px;color:#F5F1EA;margin:0">ItsGuts group, same slot 2 weeks earlier</p></div>
+<div style="display:flex;align-items:center;gap:12px"><div style="width:26px;height:26px;border-radius:8px;border:3px solid #FF6B6B"></div><p style="font-size:22px;color:#F5F1EA;margin:0">Overlap (6 of 17)</p></div>
+</div>
+</section>
+</div>
+<div class="slide" data-slide="external-baseline-test">
+<section id="external-baseline-test" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:120px 128px 160px;display:flex;flex-direction:column;gap:28px">
+<h2 style="font-family:'Oswald', Arial, sans-serif;font-size:60px;font-weight:700;margin:0">A CLEANER TEST</h2>
+<p style="font-size:26px;color:#B8B0A6;max-width:1650px;margin:0">The easy-vs-tough comparison has a flaw: if a candidate is also playing some of Garyy's easy games, the "easy" bucket stops being a clean baseline &mdash; it's still built from Garyy's own account. Fix: compare both buckets instead to how often each candidate is normally quiet at that exact clock time, on random days that have <i>nothing to do with Garyy at all</i>.</p>
+<table style="font-family:'IBM Plex Sans', Arial, sans-serif;font-size:25px;color:#F5F1EA">
+<tr><th style="width:20%;text-align:left;color:#6a6459;font-weight:600">Candidate</th><th style="width:14%;text-align:left;color:#6a6459;font-weight:600">Games</th><th style="width:18%;text-align:left;color:#6a6459;font-weight:600">Observed quiet</th><th style="width:20%;text-align:left;color:#6a6459;font-weight:600">Baseline (random days)</th><th style="width:14%;text-align:left;color:#6a6459;font-weight:600">Excess</th><th style="width:14%;text-align:left;color:#6a6459;font-weight:600">p-value</th></tr>
+<tr style="background:#1F1A15"><td style="color:#FAC775;font-weight:700">ItsGuts group</td><td style="color:#8a8275">easy</td><td>91.7%</td><td style="color:#B8B0A6">88.3%</td><td style="color:#8a8275">+3.3pp</td><td style="color:#8a8275">0.185</td></tr>
+<tr><td style="color:#FAC775;font-weight:700">ItsGuts group</td><td style="color:#8a8275">tough</td><td style="font-weight:600">100.0%</td><td style="color:#B8B0A6">87.0%</td><td style="color:#FAC775;font-weight:700">+13.0pp</td><td style="color:#FAC775;font-weight:700">&lt;0.0001</td></tr>
+<tr style="background:#2A1518"><td style="color:#E8505B;font-weight:700">BillieDown</td><td style="color:#8a8275">easy</td><td>69.4%</td><td style="color:#B8B0A6">88.6%</td><td style="color:#8FD0FF;font-weight:700">&minus;19.2pp</td><td style="color:#8FD0FF;font-weight:700">0.0006</td></tr>
+<tr style="background:#2A1518"><td style="color:#E8505B;font-weight:700">BillieDown</td><td style="color:#8a8275">tough</td><td style="font-weight:600">100.0%</td><td style="color:#B8B0A6">81.5%</td><td style="color:#E8505B;font-weight:700">+18.5pp</td><td style="color:#E8505B;font-weight:700">&lt;0.0001</td></tr>
+</table>
+<div style="display:flex;gap:24px;margin-top:4px">
+<div style="background:#1F1A15;border-radius:16px;padding:28px 32px;flex:1">
+<p style="font-size:24px;color:#8a8275;margin:0">Tough games, both candidates</p>
+<p style="font-size:26px;color:#F5F1EA;margin:8px 0 0">p &lt; 0.0001 &mdash; essentially impossible to reach by chance, even measured against each candidate's own normal behavior on days with no connection to Garyy. Whatever's driving this, it isn't noise.</p>
+</div>
+<div style="background:#1F1A15;border-radius:16px;padding:28px 32px;flex:1">
+<p style="font-size:24px;color:#8a8275;margin:0">Easy games, the two diverge</p>
+<p style="font-size:26px;color:#F5F1EA;margin:8px 0 0">BillieDown is unusually <b style="color:#8FD0FF">active</b> (p=0.0006) &mdash; his normal schedule overlapping Garyy's, not evidence of involvement. ItsGuts shows no significant shift either way (p=0.185).</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;font-size:22px;color:#6a6459;margin:0">Baseline = quiet rate at that same clock time on random other days (10,000 trials per bucket) &mdash; built from each candidate's own schedule, not from anything Garyy did</p>
+</section>
+</div>
+<div class="slide" data-slide="verdict">
+<section id="verdict" data-transition="fade" style="background:#15120F;color:#F5F1EA;font-family:'IBM Plex Sans', Arial, sans-serif;padding:100px 128px;display:flex;flex-direction:column;justify-content:center;gap:32px">
+<p style="font-size:26px;font-weight:600;color:#E8505B;letter-spacing:4px;text-transform:uppercase;margin:0">The Case, In Brief</p>
+<h1 style="font-family:'Oswald', Arial, sans-serif;font-size:64px;font-weight:700;line-height:1.1;margin:0;color:#F5F1EA">TWO ACCOUNTS GO QUIET<br>EXACTLY WHEN IT MATTERS</h1>
+<div style="display:flex;gap:24px">
+<div style="background:#1F1A15;border-radius:16px;padding:28px 32px;flex:1">
+<p style="font-size:52px;color:#E8505B;font-weight:700;margin:0">&lt; 1 in 10,000</p>
+<p style="font-size:24px;color:#B8B0A6;margin:12px 0 0">chance either is coincidence (p&nbsp;&lt;&nbsp;0.0001 each), measured against each account's own normal behavior on days with no connection to Garyy. Of his 17 toughest games since crossing 1700 rating, both <b style="color:#E8505B">BillieDown</b> and <b style="color:#FAC775">ItsGuts group</b> were quiet for all 17 &mdash; zero exceptions, each.</p>
+</div>
+<div style="background:#1F1A15;border-radius:16px;padding:28px 32px;flex:1">
+<p style="font-size:52px;color:#FAC775;font-weight:700;margin:0">Not a habit</p>
+<p style="font-size:24px;color:#B8B0A6;margin:12px 0 0">At that exact time-of-day one and two weeks earlier, both were often still active &mdash; BillieDown 82%/53% of the time, ItsGuts 77%/65%. The quiet tracks the real games, not a standing weekly gap.</p>
+</div>
+<div style="background:#1F1A15;border-radius:16px;padding:28px 32px;flex:1">
+<p style="font-size:52px;color:#8FD0FF;font-weight:700;margin:0">Mid-session, then gone</p>
+<p style="font-size:24px;color:#B8B0A6;margin:12px 0 0">On the days this happens, both are often deep in their own sessions right up until the tough game starts, then resume right after &mdash; not days they're simply absent.</p>
+</div>
+</div>
+<div style="background:#1F1A15;border-radius:16px;padding:28px 36px;border-left:8px solid #6a6459;margin-top:8px">
+<p style="font-size:24px;color:#B8B0A6;margin:0"><b style="color:#F5F1EA">Caveat:</b> this pattern is specific to Garyy's hardest matchups. It isn't a claim that one person plays the whole account, or that BillieDown and ItsGuts cover every tough game between them &mdash; lower-elo games, and some of the other high-elo games, may well be Garyy himself or other players in his circle. A handful of tough games (the 3-6am stretch) can't be attributed either way with this method.</p>
+</div>
+<p style="position:absolute;left:128px;bottom:48px;font-size:22px;color:#6a6459;margin:0">Full data, methodology, and the raw numbers in the description</p>
+</section>
+</div>
+<div class="slide" data-slide="unexplained-games">
+<section id="unexplained-games" data-transition="fade" style="background:#15120f">
+  <h2 id="a6867ec9" style="position:absolute; top:120px; left:128px; width:1664px; font-family:Oswald, Arial, sans-serif; font-size:64px; font-weight:700; color:#f5f1ea">THE FOUR WE CAN'T EXPLAIN</h2>
+  <p id="ffb0be81" style="position:absolute; top:217px; left:128px; width:1650px; font-family:'IBM Plex Sans', Arial, sans-serif; font-size:26px; color:#b8b0a6">4 of Garyy's 17 tough games landed between 3-6am UTC — the one stretch where the quiet-rate method has no power. Both BillieDown and ItsGuts group are already near-silent on their own accounts at this hour, win or lose, tough game or not.</p>
+  <table id="d38da234" style="position:absolute; top:313px; left:128px; width:1664px; font-family:'IBM Plex Sans', Arial, sans-serif; font-size:26px; color:#f5f1ea">
+    <tr><th style="font-weight:600; width:22%; color:#6a6459">Game (UTC)</th><th style="font-weight:600; width:22%; color:#6a6459">Opponent</th><th style="font-weight:600; width:16%; color:#6a6459">Rating gap</th><th style="font-weight:600; width:14%; color:#6a6459">Result</th><th style="font-weight:600; width:26%; color:#6a6459">Billie / ItsGuts</th></tr>
+    <tr style="background:#1f1a15"><td>Sep 14, 03:41</td><td>skully1770</td><td style="color:#b8b0a6">+93</td><td style="color:#1baf7a">WIN</td><td style="color:#8a8275">quiet / quiet</td></tr>
+    <tr><td>Sep 14, 04:29</td><td>ALPO4769</td><td style="color:#b8b0a6">+188</td><td style="color:#1baf7a">WIN</td><td style="color:#8a8275">quiet / quiet</td></tr>
+    <tr style="background:#1f1a15"><td>Sep 26, 05:00</td><td>Prop1aNea</td><td style="color:#b8b0a6">+65</td><td style="color:#1baf7a">WIN</td><td style="color:#8a8275">quiet / quiet</td></tr>
+    <tr><td>Sep 29, 03:17</td><td>Donald2O16Trump</td><td style="color:#b8b0a6">+201</td><td style="color:#e8505b">loss</td><td style="color:#8a8275">quiet / quiet</td></tr>
+  </table>
+  <svg id="unexplained-mini-chart" viewBox="0 0 1700 260" style="position:absolute; top:598px; left:128px; width:1664px; height:254px">
+<rect x="0" y="5.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="71.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="139.0" width="1700" height="1" fill="#332B22"/>
+<rect x="0" y="205.0" width="1700" height="1" fill="#332B22"/>
+<rect x="150.0" y="10" width="1" height="190" fill="#2A241C"/>
+<rect x="343.8" y="10" width="1" height="190" fill="#2A241C"/>
+<rect x="537.5" y="10" width="1" height="190" fill="#2A241C"/>
+<rect x="731.2" y="10" width="1" height="190" fill="#2A241C"/>
+<rect x="925.0" y="10" width="1" height="190" fill="#2A241C"/>
+<rect x="1118.8" y="10" width="1" height="190" fill="#2A241C"/>
+<rect x="1312.5" y="10" width="1" height="190" fill="#2A241C"/>
+<rect x="1506.2" y="10" width="1" height="190" fill="#2A241C"/>
+<rect x="1700.0" y="10" width="1" height="190" fill="#2A241C"/>
+<line x1="542.1" y1="47.0" x2="616.7" y2="47.0" stroke="#5FBF8F" stroke-width="2" stroke-dasharray="5,4" opacity="0.6"/>
+<line x1="649.9" y1="47.0" x2="1164.0" y2="47.0" stroke="#5FBF8F" stroke-width="2" stroke-dasharray="5,4" opacity="0.6"/>
+<line x1="567.7" y1="115.0" x2="774.9" y2="115.0" stroke="#5FBF8F" stroke-width="2" stroke-dasharray="5,4" opacity="0.6"/>
+<line x1="827.2" y1="115.0" x2="831.0" y2="115.0" stroke="#5FBF8F" stroke-width="2" stroke-dasharray="5,4" opacity="0.6"/>
+<line x1="867.5" y1="115.0" x2="875.4" y2="115.0" stroke="#5FBF8F" stroke-width="2" stroke-dasharray="5,4" opacity="0.6"/>
+<line x1="892.7" y1="115.0" x2="1143.8" y2="115.0" stroke="#5FBF8F" stroke-width="2" stroke-dasharray="5,4" opacity="0.6"/>
+<line x1="1167.5" y1="115.0" x2="1168.9" y2="115.0" stroke="#5FBF8F" stroke-width="2" stroke-dasharray="5,4" opacity="0.6"/>
+<line x1="1189.0" y1="115.0" x2="1197.9" y2="115.0" stroke="#5FBF8F" stroke-width="2" stroke-dasharray="5,4" opacity="0.6"/>
+<line x1="1224.2" y1="115.0" x2="1243.3" y2="115.0" stroke="#5FBF8F" stroke-width="2" stroke-dasharray="5,4" opacity="0.6"/>
+<line x1="1277.2" y1="115.0" x2="1281.1" y2="115.0" stroke="#5FBF8F" stroke-width="2" stroke-dasharray="5,4" opacity="0.6"/>
+<rect x="541.3" y="13.0" width="3.0" height="48.0" fill="#5FBF8F" fill-opacity="0.55" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="616.7" y="13.0" width="33.3" height="48.0" fill="#5FBF8F" fill-opacity="0.55" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1164.0" y="13.0" width="32.1" height="48.0" fill="#5FBF8F" fill-opacity="0.55" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1538.6" y="13.0" width="5.7" height="48.0" fill="#E8505B" fill-opacity="0.62" stroke="#E8505B" stroke-width="1.5" rx="3"/>
+<rect x="388.7" y="13.0" width="34.1" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="439.6" y="13.0" width="34.2" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="559.5" y="81.0" width="8.2" height="48.0" fill="#5FBF8F" fill-opacity="0.55" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="774.9" y="81.0" width="52.3" height="48.0" fill="#5FBF8F" fill-opacity="0.55" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="831.0" y="81.0" width="36.5" height="48.0" fill="#5FBF8F" fill-opacity="0.55" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="875.4" y="81.0" width="17.3" height="48.0" fill="#5FBF8F" fill-opacity="0.55" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1143.8" y="81.0" width="23.7" height="48.0" fill="#5FBF8F" fill-opacity="0.55" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1168.9" y="81.0" width="20.1" height="48.0" fill="#5FBF8F" fill-opacity="0.55" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1197.9" y="81.0" width="26.4" height="48.0" fill="#5FBF8F" fill-opacity="0.55" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1243.3" y="81.0" width="33.9" height="48.0" fill="#5FBF8F" fill-opacity="0.55" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="1281.1" y="81.0" width="37.2" height="48.0" fill="#5FBF8F" fill-opacity="0.55" stroke="#5FBF8F" stroke-width="1.5" rx="3"/>
+<rect x="473.7" y="81.0" width="30.6" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<rect x="362.3" y="149.0" width="42.4" height="48.0" fill="#FAC775" fill-opacity="0.62" stroke="#FAC775" stroke-width="1.5" rx="3"/>
+<text x="134" y="45.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 14 <tspan fill="#6a6459" font-size="20">(Mon)</tspan></text>
+<text x="134" y="113.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 26 <tspan fill="#6a6459" font-size="20">(Sat)</tspan></text>
+<text x="134" y="181.0" text-anchor="end" font-family='IBM Plex Sans, Arial, sans-serif' font-size="24" fill="#B8B0A6">Sep 29 <tspan fill="#6a6459" font-size="20">(Tue)</tspan></text>
+<text x="150.0" y="230" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="22" fill="#6a6459">00:00</text>
+<text x="343.8" y="230" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="22" fill="#6a6459">03:00</text>
+<text x="537.5" y="230" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="22" fill="#6a6459">06:00</text>
+<text x="731.2" y="230" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="22" fill="#6a6459">09:00</text>
+<text x="925.0" y="230" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="22" fill="#6a6459">12:00</text>
+<text x="1118.8" y="230" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="22" fill="#6a6459">15:00</text>
+<text x="1312.5" y="230" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="22" fill="#6a6459">18:00</text>
+<text x="1506.2" y="230" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="22" fill="#6a6459">21:00</text>
+<text x="1700.0" y="230" text-anchor="middle" font-family='IBM Plex Sans, Arial, sans-serif' font-size="22" fill="#6a6459">24:00</text>
+</svg>
+  <div id="unexplained-legend" style="position:absolute; top:870px; left:128px; width:1664px; display:flex; gap:28px; align-items:center">
+    <div style="display:flex;align-items:center;gap:10px"><div style="width:22px;height:22px;border-radius:5px;background:#FAC775;opacity:0.75"></div><p style="font-size:20px;color:#F5F1EA;margin:0">Garyy, tough game</p></div>
+    <div style="display:flex;align-items:center;gap:10px"><div style="width:22px;height:22px;border-radius:5px;background:#E8505B;opacity:0.7"></div><p style="font-size:20px;color:#F5F1EA;margin:0">BillieDown</p></div>
+    <div style="display:flex;align-items:center;gap:10px"><div style="width:22px;height:22px;border-radius:5px;background:#5FBF8F;opacity:0.65"></div><p style="font-size:20px;color:#F5F1EA;margin:0">ItsGuts group</p></div>
+  </div>
+</section>
+</div>
+      </div>
+    </div>
+    <div class="deck-controls">
+      <div class="deck-nav-btns">
+        <button id="prev-btn">&larr; Prev</button>
+        <button id="next-btn">Next &rarr;</button>
+      </div>
+      <div class="deck-progress"><div class="deck-progress-bar" id="progress-bar"></div></div>
+      <div class="deck-counter" id="counter">1 / 27</div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var total = slides.length;
+  var idx = 0;
+  var stage = document.getElementById('slide-stage');
+  var viewport = document.getElementById('slide-viewport');
+  var prevBtn = document.getElementById('prev-btn');
+  var nextBtn = document.getElementById('next-btn');
+  var counter = document.getElementById('counter');
+  var progressBar = document.getElementById('progress-bar');
+  var STAGE_W = 1920, STAGE_H = 1080;
+
+  function resize(){
+    var w = viewport.clientWidth;
+    var scale = w / STAGE_W;
+    stage.style.transform = 'scale(' + scale + ')';
+    viewport.style.height = (STAGE_H * scale) + 'px';
+  }
+
+  function render(){
+    slides.forEach(function(s, i){ s.classList.toggle('active', i === idx); });
+    counter.textContent = (idx+1) + ' / ' + total;
+    progressBar.style.width = (((idx+1)/total)*100) + '%';
+    prevBtn.disabled = idx === 0;
+    nextBtn.disabled = idx === total-1;
+  }
+
+  function go(delta){
+    idx = Math.max(0, Math.min(total-1, idx+delta));
+    render();
+  }
+
+  prevBtn.addEventListener('click', function(){ go(-1); });
+  nextBtn.addEventListener('click', function(){ go(1); });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowLeft') go(-1);
+    if (e.key === 'ArrowRight') go(1);
+  });
+  window.addEventListener('resize', resize);
+
+  resize();
+  render();
+})();
+</script>
+</body>
+</html>
