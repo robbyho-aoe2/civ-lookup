@@ -584,16 +584,16 @@ const POSSIBLE_ALTS = [
 ];
 
 // YouTube videos a player appears in. `players` lists profileIds; a video also shows on
-// every confirmed alt account of any listed player (via findAltGroup). `t` = start seconds.
+// every confirmed alt account of any listed player (via findAltGroup).
 const PLAYER_VIDEOS = [
   { id: 'te1BxnLaCgk', title: "When Booming Goes Wrong… and He Gets PUNISHED 😬", players: [13623295, 12591985, 8154765, 12551734] }, // ALPO4769 / Im2Good4YoMoma / GOAT Gobz / KronosX6104
   { id: 'TOc3h1kFIAQ', title: "24 Wins. Zero Losses. Is This Sicilian Build Actually Uncounterable?", players: [24133272] }, // NegiGen6000
-  { id: 'j9q8bIk_kfs', t: 1219, title: "This Strategy Is Broken: Inca Champi Drush Goes 13–0 in Age of Empires II", players: [24924936] }, // Cak Loek Pro
-  { id: 'C3I28ac8Vuo', t: 1625, title: "The Tower Rush That Made a Top 40 Player Panic! | Nomad Madness", players: [12471204, 14602117] }, // KAIOSUSHIMASTER / not A theist
-  { id: 'LZmcf-qT1pc', t: 9, title: "When HERA Met the BEST on XBOX — VolcanLoup & Faith2Adventure (Strategy Breakdown)", players: [12893749, 12527010] }, // volcanloup / Faith2Adventure
-  { id: 'HDtjbb3o1jM', t: 1002, title: "This Video is for The 92%", players: [14602117, 16314476, 13885770, 12525616] }, // not A theist / balinthusa / ryanp1001 / SharkeyTank
-  { id: 'CpdWF2d70qk', t: 3113, title: "Lose an Ally, Lose the Crown | CCL Community League | AoE2- oops forgot game audio", players: [24050143, 14602117, 12477800, 12525616, 13885770, 12904223, 8154765, 16829189] }, // bombeater3 / not A theist / Ghost of 6am / SharkeyTank / ryanp1001 / Zoopu / GOAT Gobz / Seth41737spare
-  { id: 'iqc_sy7Yfz8', t: 3435, title: "WILD and ICY AC GAME - Ice2207 leads his team vs The French", players: [25350624, 12507343, 13669577, 14065945, 17828880, 22702087, 22826540] }, // MERGUEZ1370 / supercharlie12 / kiff57 / vN eRaaz / Ice2207 / D-Saboteur / BloodyCalyps
+  { id: 'j9q8bIk_kfs', title: "This Strategy Is Broken: Inca Champi Drush Goes 13–0 in Age of Empires II", players: [24924936] }, // Cak Loek Pro
+  { id: 'C3I28ac8Vuo', title: "The Tower Rush That Made a Top 40 Player Panic! | Nomad Madness", players: [12471204, 14602117] }, // KAIOSUSHIMASTER / not A theist
+  { id: 'LZmcf-qT1pc', title: "When HERA Met the BEST on XBOX — VolcanLoup & Faith2Adventure (Strategy Breakdown)", players: [12893749, 12527010] }, // volcanloup / Faith2Adventure
+  { id: 'HDtjbb3o1jM', title: "This Video is for The 92%", players: [14602117, 16314476, 13885770, 12525616] }, // not A theist / balinthusa / ryanp1001 / SharkeyTank
+  { id: 'CpdWF2d70qk', title: "Lose an Ally, Lose the Crown | CCL Community League | AoE2- oops forgot game audio", players: [24050143, 14602117, 12477800, 12525616, 13885770, 12904223, 8154765, 16829189] }, // bombeater3 / not A theist / Ghost of 6am / SharkeyTank / ryanp1001 / Zoopu / GOAT Gobz / Seth41737spare
+  { id: 'iqc_sy7Yfz8', title: "WILD and ICY AC GAME - Ice2207 leads his team vs The French", players: [25350624, 12507343, 13669577, 14065945, 17828880, 22702087, 22826540] }, // MERGUEZ1370 / supercharlie12 / kiff57 / vN eRaaz / Ice2207 / D-Saboteur / BloodyCalyps
   { id: 'DN-J9twmXOQ', title: "Arena Champi Spam - Ghost of 6am v BigHugMonster - CONSOLE AOE2 LADDER", players: [12945126, 12477800] }, // BigHugmonster / Ghost of 6am
   { id: 'KDWwxUTvaT0', title: "Ratstack LOW ELO FINALS - EPIC_25o and pandosopoderoso v ManBearPig1511 and Seth41737spare", players: [23630056, 23448013, 8764015, 16829189] }, // EPIC_25o / pandosopoderoso / ManBearPig1511 / Seth41737spare
   { id: '7ayczxpMI6U', title: "Battle of Europe 2 - Iberia FFA Diplo AOE2 Console", players: [22753596, 12904223, 14602117, 17828880, 23630056, 23448013, 16314476, 13885770] }, // SammyDiamonds / Zoopu / not A theist / Ice2207 / EPIC_25o / pandosopoderoso / balinthusa / ryanp1001
@@ -782,9 +782,8 @@ function render(content, entry, player) {
 
   const videos = videosFor(entry.profileId);
   const videoHtml = videos.map((v, i) => {
-    const from = v.t >= 60 ? ` · from ${Math.floor(v.t / 60)}:${String(v.t % 60).padStart(2, '0')}` : '';
     const label = v.title ? escapeHtml(v.title) : `Watch ${escapeHtml(entry.name)} in ${videos.length > 1 ? 'video ' + (i + 1) : 'a video'}`;
-    return `<a class="nc-link-a" href="https://youtu.be/${v.id}${v.t ? '?t=' + v.t : ''}" target="_blank" rel="noopener">▶ ${label} ↗ <span>YouTube${from}</span></a>`;
+    return `<a class="nc-link-a" href="https://youtu.be/${v.id}" target="_blank" rel="noopener">▶ ${label} ↗ <span>YouTube</span></a>`;
   }).join(' ');
 
   const suspectedEntry = SUSPECTED_SHARED_ACCOUNTS.find(e => e.id === Number(entry.profileId));
