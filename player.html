@@ -61,6 +61,10 @@ header .back:hover{color:var(--amberL);}
 .nc-link-a span{font-weight:500;opacity:.85;}
 .video-links{display:flex;flex-wrap:wrap;gap:0 8px;}
 .video-links .nc-link-a{border-radius:14px;line-height:1.35;}
+.video-more{display:contents;}
+.video-more[hidden]{display:none;}
+.video-toggle{margin-top:12px;padding:8px 16px;border-radius:14px;border:1px dashed var(--border2);background:transparent;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+.video-toggle:hover{border-color:var(--amber);color:var(--amberL);}
 .badge.platform{background:var(--surf2);color:var(--text);border-color:var(--border2);}
 .badge.rating.crossplay{background:var(--surf2);color:var(--text2);border-color:var(--border2);}
 .badge-peak{font-weight:400;opacity:.75;}
@@ -627,6 +631,14 @@ const PLAYER_VIDEOS = [
   { id: 'BUb2duhFAho', title: "They Let a WONDER Finish… and LOST EVERYTHING | CCL Game 1", players: [12893749, 12630274, 13994899, 12512031, 14602117, 15047238, 5633456, 12599503] }, // volcanloup / EaterOfAnts5997 / ShangDynasty11 / Bostonstrain / not A theist / MightyMosaic369 / XXFUAHALAXX / FeedTHEPony90
   { id: '1SJIiBXiDqc', title: "Mid-ELO Madness on Hamburger! Transport Ships, Tower Fails & Treb Drama!", players: [12981906, 15729635] }, // LastBoyScout466 / SEEYOUNNTEA (untracked, fetched live)
 ];
+function toggleVideos(btn) {
+  const more = document.getElementById('video-more');
+  const opening = more.hidden;
+  more.hidden = !opening;
+  btn.setAttribute('aria-expanded', String(opening));
+  const n = Number(btn.dataset.count);
+  btn.textContent = opening ? 'Show fewer ▴' : `Show ${n} more video${n === 1 ? '' : 's'} ▾`;
+}
 function videosFor(profileId) {
   const n = Number(profileId);
   const group = findAltGroup(n) || [n];
@@ -804,10 +816,15 @@ function render(content, entry, player) {
   const possibleAltHtml = possibleHints.map(h => `<div class="possible-hint">${h}</div>`).join('');
 
   const videos = videosFor(entry.profileId);
-  const videoHtml = videos.map((v, i) => {
+  const VIDEOS_COLLAPSED = 2;
+  const videoPills = videos.map((v, i) => {
     const label = v.title ? escapeHtml(v.title) : `Watch ${escapeHtml(entry.name)} in ${videos.length > 1 ? 'video ' + (i + 1) : 'a video'}`;
     return `<a class="nc-link-a" href="https://youtu.be/${v.id}" target="_blank" rel="noopener">▶ ${label} ↗ <span>YouTube</span></a>`;
-  }).join(' ');
+  });
+  const videoMoreCount = Math.max(0, videoPills.length - VIDEOS_COLLAPSED);
+  const videoHtml = videoPills.slice(0, VIDEOS_COLLAPSED).join(' ')
+    + (videoMoreCount ? `<div class="video-more" id="video-more" hidden>${videoPills.slice(VIDEOS_COLLAPSED).join(' ')}</div>
+       <button type="button" class="video-toggle" id="video-toggle" data-count="${videoMoreCount}" aria-expanded="false" aria-controls="video-more" onclick="toggleVideos(this)">Show ${videoMoreCount} more video${videoMoreCount === 1 ? '' : 's'} ▾</button>` : '');
 
   const suspectedEntry = SUSPECTED_SHARED_ACCOUNTS.find(e => e.id === Number(entry.profileId));
   const suspectedHtml = suspectedEntry
