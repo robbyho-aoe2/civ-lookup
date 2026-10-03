@@ -59,6 +59,8 @@ header .back:hover{color:var(--amberL);}
 .nc-link-a{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:8px 16px;border-radius:20px;border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);font-size:12px;font-weight:700;text-decoration:none;}
 .nc-link-a:hover{background:var(--amber);color:var(--bg);}
 .nc-link-a span{font-weight:500;opacity:.85;}
+.video-links{display:flex;flex-wrap:wrap;gap:0 8px;}
+.video-links .nc-link-a{border-radius:14px;line-height:1.35;}
 .badge.platform{background:var(--surf2);color:var(--text);border-color:var(--border2);}
 .badge.rating.crossplay{background:var(--surf2);color:var(--text2);border-color:var(--border2);}
 .badge-peak{font-weight:400;opacity:.75;}
@@ -584,16 +586,21 @@ const POSSIBLE_ALTS = [
 // YouTube videos a player appears in. `players` lists profileIds; a video also shows on
 // every confirmed alt account of any listed player (via findAltGroup). `t` = start seconds.
 const PLAYER_VIDEOS = [
-  { id: 'te1BxnLaCgk', players: [13623295, 12591985, 8154765, 12551734] }, // ALPO4769 / Im2Good4YoMoma / GOAT Gobz / KronosX6104
-  { id: 'TOc3h1kFIAQ', players: [24133272] },                              // NegiGen6000
-  { id: 'j9q8bIk_kfs', t: 1219, players: [24924936] },                     // Cak Loek Pro
-  { id: 'C3I28ac8Vuo', t: 1625, players: [12471204, 14602117] },           // KAIOSUSHIMASTER / not A theist
-  { id: 'LZmcf-qT1pc', t: 9, players: [12893749, 12527010] },              // volcanloup / Faith2Adventure
-  { id: 'HDtjbb3o1jM', t: 1002, players: [14602117, 16314476, 13885770, 12525616] }, // not A theist / balinthusa / ryanp1001 / SharkeyTank
-  { id: 'CpdWF2d70qk', t: 3113, players: [24050143, 14602117, 12477800, 12525616, 13885770, 12904223, 8154765, 16829189] }, // bombeater3 / not A theist / Ghost of 6am / SharkeyTank / ryanp1001 / Zoopu / GOAT Gobz / Seth41737spare
-  { id: 'iqc_sy7Yfz8', t: 3435, players: [25350624, 12507343, 13669577, 14065945, 17828880, 22702087, 22826540] }, // MERGUEZ1370 / supercharlie12 / kiff57 / vN eRaaz / Ice2207 / D-Saboteur / BloodyCalyps
-  { id: 'DN-J9twmXOQ', players: [12945126, 12477800] }, // BigHugmonster / Ghost of 6am
-  { id: 'KDWwxUTvaT0', players: [23630056, 23448013, 8764015, 16829189] }, // EPIC_25o / pandosopoderoso / ManBearPig1511 / Seth41737spare
+  { id: 'te1BxnLaCgk', title: "When Booming Goes Wrong… and He Gets PUNISHED 😬", players: [13623295, 12591985, 8154765, 12551734] }, // ALPO4769 / Im2Good4YoMoma / GOAT Gobz / KronosX6104
+  { id: 'TOc3h1kFIAQ', title: "24 Wins. Zero Losses. Is This Sicilian Build Actually Uncounterable?", players: [24133272] }, // NegiGen6000
+  { id: 'j9q8bIk_kfs', t: 1219, title: "This Strategy Is Broken: Inca Champi Drush Goes 13–0 in Age of Empires II", players: [24924936] }, // Cak Loek Pro
+  { id: 'C3I28ac8Vuo', t: 1625, title: "The Tower Rush That Made a Top 40 Player Panic! | Nomad Madness", players: [12471204, 14602117] }, // KAIOSUSHIMASTER / not A theist
+  { id: 'LZmcf-qT1pc', t: 9, title: "When HERA Met the BEST on XBOX — VolcanLoup & Faith2Adventure (Strategy Breakdown)", players: [12893749, 12527010] }, // volcanloup / Faith2Adventure
+  { id: 'HDtjbb3o1jM', t: 1002, title: "This Video is for The 92%", players: [14602117, 16314476, 13885770, 12525616] }, // not A theist / balinthusa / ryanp1001 / SharkeyTank
+  { id: 'CpdWF2d70qk', t: 3113, title: "Lose an Ally, Lose the Crown | CCL Community League | AoE2- oops forgot game audio", players: [24050143, 14602117, 12477800, 12525616, 13885770, 12904223, 8154765, 16829189] }, // bombeater3 / not A theist / Ghost of 6am / SharkeyTank / ryanp1001 / Zoopu / GOAT Gobz / Seth41737spare
+  { id: 'iqc_sy7Yfz8', t: 3435, title: "WILD and ICY AC GAME - Ice2207 leads his team vs The French", players: [25350624, 12507343, 13669577, 14065945, 17828880, 22702087, 22826540] }, // MERGUEZ1370 / supercharlie12 / kiff57 / vN eRaaz / Ice2207 / D-Saboteur / BloodyCalyps
+  { id: 'DN-J9twmXOQ', title: "Arena Champi Spam - Ghost of 6am v BigHugMonster - CONSOLE AOE2 LADDER", players: [12945126, 12477800] }, // BigHugmonster / Ghost of 6am
+  { id: 'KDWwxUTvaT0', title: "Ratstack LOW ELO FINALS - EPIC_25o and pandosopoderoso v ManBearPig1511 and Seth41737spare", players: [23630056, 23448013, 8764015, 16829189] }, // EPIC_25o / pandosopoderoso / ManBearPig1511 / Seth41737spare
+  { id: '7ayczxpMI6U', title: "Battle of Europe 2 - Iberia FFA Diplo AOE2 Console", players: [22753596, 12904223, 14602117, 17828880, 23630056, 23448013, 16314476, 13885770] }, // SammyDiamonds / Zoopu / not A theist / Ice2207 / EPIC_25o / pandosopoderoso / balinthusa / ryanp1001
+  { id: 'wwCcI3h46g4', title: "Wavidian Wednesday - Spanish Armada and Euro-Africa Conflict", players: [13323926, 16314476, 12462155, 19931559, 3452279, 14602117, 23448013, 24050143] }, // D0cTOrSniper / balinthusa / Zotico3 / Nglsh / OleCrookedWoody / not A theist / pandosopoderoso / bombeater3
+  { id: '0rGzbwMDZF8', title: "James1880Garfield Shows us the FASTEST FAST CASTLE Build", players: [16314476, 14602117, 12554124, 25913859, 25553039] }, // balinthusa / not A theist / Donald2O16Trump / Lizard_Liddard / Dirty F150
+  { id: 'n4Afwb9lZrE', title: "I’ve Never Seen an Eco K/D Like This… Dark Age Champis vs CarefulTulip", players: [13624096] }, // CarefulTulip69
+  { id: 'zeUGJWFCoUs', title: "The Mapuche Douche", players: [14602117] }, // not A theist
 ];
 function videosFor(profileId) {
   const n = Number(profileId);
@@ -774,7 +781,8 @@ function render(content, entry, player) {
   const videos = videosFor(entry.profileId);
   const videoHtml = videos.map((v, i) => {
     const from = v.t >= 60 ? ` · from ${Math.floor(v.t / 60)}:${String(v.t % 60).padStart(2, '0')}` : '';
-    return `<a class="nc-link-a" href="https://youtu.be/${v.id}${v.t ? '?t=' + v.t : ''}" target="_blank" rel="noopener">▶ Watch ${escapeHtml(entry.name)} in ${videos.length > 1 ? 'video ' + (i + 1) : 'a video'} ↗ <span>YouTube${from}</span></a>`;
+    const label = v.title ? escapeHtml(v.title) : `Watch ${escapeHtml(entry.name)} in ${videos.length > 1 ? 'video ' + (i + 1) : 'a video'}`;
+    return `<a class="nc-link-a" href="https://youtu.be/${v.id}${v.t ? '?t=' + v.t : ''}" target="_blank" rel="noopener">▶ ${label} ↗ <span>YouTube${from}</span></a>`;
   }).join(' ');
 
   const suspectedEntry = SUSPECTED_SHARED_ACCOUNTS.find(e => e.id === Number(entry.profileId));
@@ -806,7 +814,7 @@ function render(content, entry, player) {
       ${impersonatorsHintHtml}
       ${possibleAltHtml}
       ${suspectedHtml}
-      ${videoHtml ? `<div>${videoHtml}</div>` : ''}
+      ${videoHtml ? `<div class="video-links">${videoHtml}</div>` : ''}
       <div id="nc-link"></div>
       <div id="pro-link"></div>
     </div>
