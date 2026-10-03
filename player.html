@@ -581,6 +581,22 @@ function findAltGroup(id) {
 const POSSIBLE_ALTS = [
 ];
 
+// YouTube videos a player appears in. `players` lists profileIds; a video also shows on
+// every confirmed alt account of any listed player (via findAltGroup). `t` = start seconds.
+const PLAYER_VIDEOS = [
+  { id: 'te1BxnLaCgk', players: [13623295, 12591985, 8154765, 12551734] }, // ALPO4769 / Im2Good4YoMoma / GOAT Gobz / KronosX6104
+  { id: 'TOc3h1kFIAQ', players: [24133272] },                              // NegiGen6000
+  { id: 'j9q8bIk_kfs', t: 1219, players: [24924936] },                     // Cak Loek Pro
+  { id: 'C3I28ac8Vuo', t: 1625, players: [12471204, 14602117] },           // KAIOSUSHIMASTER / not A theist
+  { id: 'LZmcf-qT1pc', t: 9, players: [12893749, 12527010] },              // volcanloup / Faith2Adventure
+  { id: 'HDtjbb3o1jM', t: 1002, players: [14602117, 16314476, 13885770, 12525616] }, // not A theist / balinthusa / ryanp1001 / SharkeyTank
+];
+function videosFor(profileId) {
+  const n = Number(profileId);
+  const group = findAltGroup(n) || [n];
+  return PLAYER_VIDEOS.filter(v => v.players.some(p => group.includes(p)));
+}
+
 // Accounts flagged as a possible alt/smurf or shared account, with a link to the
 // write-up in investigations.html. Unconfirmed, unmerged, and not cross-posted to
 // other players' pages (unlike POSSIBLE_ALTS above).
@@ -751,6 +767,12 @@ function render(content, entry, player) {
   });
   const possibleAltHtml = possibleHints.map(h => `<div class="possible-hint">${h}</div>`).join('');
 
+  const videos = videosFor(entry.profileId);
+  const videoHtml = videos.map((v, i) => {
+    const from = v.t >= 60 ? ` · from ${Math.floor(v.t / 60)}:${String(v.t % 60).padStart(2, '0')}` : '';
+    return `<a class="nc-link-a" href="https://youtu.be/${v.id}${v.t ? '?t=' + v.t : ''}" target="_blank" rel="noopener">▶ Watch ${escapeHtml(entry.name)} in ${videos.length > 1 ? 'video ' + (i + 1) : 'a video'} ↗ <span>YouTube${from}</span></a>`;
+  }).join(' ');
+
   const suspectedEntry = SUSPECTED_SHARED_ACCOUNTS.find(e => e.id === Number(entry.profileId));
   const suspectedHtml = suspectedEntry
     ? `<div class="possible-hint">❓ <b>Possible alt / smurf account</b> — not confirmed. ${escapeHtml(suspectedEntry.note)}</div>
@@ -780,6 +802,7 @@ function render(content, entry, player) {
       ${impersonatorsHintHtml}
       ${possibleAltHtml}
       ${suspectedHtml}
+      ${videoHtml ? `<div>${videoHtml}</div>` : ''}
       <div id="nc-link"></div>
       <div id="pro-link"></div>
     </div>
