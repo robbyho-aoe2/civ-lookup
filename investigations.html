@@ -33,6 +33,14 @@ header{position:relative;border-radius:14px;margin-bottom:6px;background:var(--s
 .deck-head h1{font-size:22px;font-weight:700;margin:0 0 4px;}
 .deck-head p{font-size:13px;color:var(--text2);margin:0;}
 
+.deck-links{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
+.deck-links a{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:20px;border:1px solid var(--amber);background:var(--surf2);color:var(--amberL);font-size:12px;font-weight:700;text-decoration:none;}
+.deck-links a:hover{background:var(--amber);color:var(--bg);}
+.deck-video{margin-top:28px;max-width:900px;}
+.deck-video h2{font-size:16px;font-weight:700;margin:0 0 10px;}
+.video-frame{position:relative;width:100%;aspect-ratio:16/9;background:#000;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.video-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+
 .slide-viewport{position:relative;width:100%;background:#15120F;border-radius:14px;overflow:hidden;border:1px solid var(--border);}
 .slide-stage{position:relative;transform-origin:top left;}
 .slide{position:absolute;top:0;left:0;width:1920px;height:1080px;overflow:hidden;display:none;}
@@ -74,6 +82,10 @@ header{position:relative;border-radius:14px;margin-bottom:6px;background:var(--s
     <div class="deck-head">
       <h1>Who Is Garyy-__-1?</h1>
       <p>A statistical deep-dive into a console AoE2 account that climbed from 1,000 to 2,000+ rating in a month &mdash; and who's really behind the controller for the hardest games.</p>
+      <div class="deck-links">
+        <a href="player.html?id=26059654">🔎 Garyy-__-1 player lookup →</a>
+        <a href="https://youtu.be/Mj9lwyJCFNk" target="_blank" rel="noopener">▶ Watch the video ↗</a>
+      </div>
     </div>
     <div class="slide-viewport" id="slide-viewport">
       <div class="slide-stage" id="slide-stage">
@@ -2481,6 +2493,12 @@ header{position:relative;border-radius:14px;margin-bottom:6px;background:var(--s
       </div>
       <div class="deck-progress"><div class="deck-progress-bar" id="progress-bar"></div></div>
       <div class="deck-counter" id="counter">1 / 30</div>
+    </div>
+    <div class="deck-video">
+      <h2>Watch the video</h2>
+      <div class="video-frame">
+        <iframe src="https://www.youtube-nocookie.com/embed/Mj9lwyJCFNk" title="Who Is Gary? - Fast Castle and Chill" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
     </div>
   </div>
 </div>

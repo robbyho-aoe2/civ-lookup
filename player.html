@@ -581,6 +581,13 @@ function findAltGroup(id) {
 const POSSIBLE_ALTS = [
 ];
 
+// Accounts flagged as a possible alt/smurf or shared account, with a link to the
+// write-up in investigations.html. Unconfirmed, unmerged, and not cross-posted to
+// other players' pages (unlike POSSIBLE_ALTS above).
+const SUSPECTED_SHARED_ACCOUNTS = [
+  { id: 26059654, note: "Statistical analysis of this account's hardest games suggests more than one person may be playing it. This is an inference from play-time patterns, not a confirmation." },
+];
+
 const IMPOSTER_ACCOUNTS = [
   { id: 24659170, impersonating: 12477800, note: 'Near-identical name to Ghost of 6am ("Ghost 0f 6am") — not confirmed to be the same real person.' },
   { id: 26084405, impersonating: 3452279, note: 'Near-identical name to OleCrookedWoody ("OleCrookedW00dy") — not confirmed to be the same real person.' },
@@ -744,6 +751,12 @@ function render(content, entry, player) {
   });
   const possibleAltHtml = possibleHints.map(h => `<div class="possible-hint">${h}</div>`).join('');
 
+  const suspectedEntry = SUSPECTED_SHARED_ACCOUNTS.find(e => e.id === Number(entry.profileId));
+  const suspectedHtml = suspectedEntry
+    ? `<div class="possible-hint">❓ <b>Possible alt / smurf account</b> — not confirmed. ${escapeHtml(suspectedEntry.note)}</div>
+       <a class="nc-link-a" href="investigations.html">🕵️ Read the investigation → <span>who is ${escapeHtml(entry.name)}?</span></a>`
+    : '';
+
   const lastUpdated = !entry.live ? latestPulledDate(player) : null;
   const lt = entry.liveTopUp;
   const liveNote = !lt ? '' : lt.ok
@@ -766,6 +779,7 @@ function render(content, entry, player) {
       ${imposterHintHtml}
       ${impersonatorsHintHtml}
       ${possibleAltHtml}
+      ${suspectedHtml}
       <div id="nc-link"></div>
       <div id="pro-link"></div>
     </div>
