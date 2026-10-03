@@ -733,12 +733,27 @@ async function loadAndRender() {
 
 function playersWithVideosSection() {
   const VISIBLE = 12;
-  const rows = Object.keys(VIDEO_PLAYER_NAMES).map(id => {
-    const vids = videosFor(id);
-    return { id, name: VIDEO_PLAYER_NAMES[id], count: vids.length, views: vids.reduce((sum, v) => sum + (VIDEO_VIEWS[v.id] || 0), 0) };
-  }).filter(r => r.count)
-    .sort((a, b) => b.views - a.views || b.count - a.count || a.name.localeCompare(b.name));
-  const card = r => `<a href="player.html?id=${r.id}"><b>${escapeHtml(r.name)}</b><span>${r.count} video${r.count === 1 ? '' : 's'} · ${r.views.toLocaleString()} views</span></a>`;
+  const infoOf = id => ALL_TRACKED.find(p => Number(p.profileId) === Number(id));
+  const topRating = id => {
+    const r = Object.values((infoOf(id) || {}).ratings || {});
+    return r.length ? Math.max(...r) : -1;
+  };
+  // One card per person: confirmed alts merge into the account with the highest rating.
+  const seen = new Set();
+  const rows = [];
+  Object.keys(VIDEO_PLAYER_NAMES).forEach(id => {
+    const group = findAltGroup(id) || [Number(id)];
+    const key = group.join(',');
+    if (seen.has(key)) return;
+    seen.add(key);
+    const rep = group.reduce((best, cur) => topRating(cur) > topRating(best) ? cur : best, group[0]);
+    const vids = videosFor(rep);
+    const name = (infoOf(rep) || {}).name || VIDEO_PLAYER_NAMES[rep] || VIDEO_PLAYER_NAMES[id];
+    rows.push({ id: rep, name, alts: group.length - 1, count: vids.length, views: vids.reduce((sum, v) => sum + (VIDEO_VIEWS[v.id] || 0), 0) });
+  });
+  rows.filter(r => !r.count).forEach(r => rows.splice(rows.indexOf(r), 1));
+  rows.sort((a, b) => b.views - a.views || b.count - a.count || a.name.localeCompare(b.name));
+  const card = r => `<a href="player.html?id=${r.id}"><b>${escapeHtml(r.name)}</b><span>${r.count} video${r.count === 1 ? '' : 's'} · ${r.views.toLocaleString()} views${r.alts ? ` · +${r.alts} alt${r.alts === 1 ? '' : 's'}` : ''}</span></a>`;
   const rest = rows.slice(VISIBLE);
   return `
     <div class="card">
