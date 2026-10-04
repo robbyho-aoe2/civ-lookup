@@ -270,7 +270,7 @@ header{
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v2.87</div>
+    <div class="version">v2.88</div>
   </div>
 </div>
 <div id="tooltip"></div>
@@ -3304,6 +3304,9 @@ const UNIQUE_TECH_CATEGORY_OVERRIDE = {
   // description on file yet, category confirmed directly by the site owner.
   'Vendel Legacy': { include: ['Cavalry'] },
   'Gothikon': { include: ['Infantry'] },
+  // Chieftains' "+5 gold when defeating ... Monks" line reads as a Monk keyword,
+  // but it's an Infantry/Eco tech, not a Monk bonus (site owner, 2026-10-04).
+  'Chieftains': { exclude:['Monk'] },
   // "resources" reads as an Eco keyword, but Atheism is purely a
   // Relic/Monastery-denial tech.
   'Atheism': { exclude:['Monk'], include:['Defensive','Eco'] },
