@@ -141,6 +141,17 @@ th.num,td.num{text-align:center;font-family:var(--font-mono);}
 .civ-ladder-toggle{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
 .region-toggle{flex-wrap:wrap;overflow:visible;}
 #weekly-archive-select{background:var(--surf);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-size:12px;font-weight:600;margin-bottom:14px;font-family:inherit;}
+.snl-archive-nav{display:flex;align-items:center;gap:6px;margin-bottom:14px;}
+#snl-archive-select{background:var(--surf);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-size:12px;font-weight:600;font-family:inherit;}
+.snl-nav-btn{background:var(--surf);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);width:28px;height:28px;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;}
+.snl-nav-btn:hover:not(:disabled){color:var(--amberL);border-color:var(--amber);}
+.snl-nav-btn:disabled{opacity:.3;cursor:default;}
+.snl-delta{font-family:var(--font-mono);font-size:10px;font-weight:700;margin-left:6px;white-space:nowrap;}
+.snl-delta.up{color:var(--green);}
+.snl-delta.down{color:var(--red);}
+.snl-delta.flat{color:var(--text3);}
+.snl-delta.new{color:var(--amberL);text-transform:uppercase;letter-spacing:.03em;font-size:9px;}
+.stat-tile .value-row{display:flex;align-items:baseline;flex-wrap:wrap;}
 .weekly-section{margin-top:20px;}
 .weekly-section:first-child{margin-top:0;}
 .weekly-section h3{font-family:var(--font-display);font-weight:600;font-size:15px;margin:0 0 4px;color:var(--text);}
@@ -572,7 +583,12 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
 
     <section id="snl" class="card">
       <h2>🌙 Saturday Night Live</h2>
-      <p class="desc" id="snl-desc">Team Console 3v3/4v4 games, Saturday 6pm EDT through Sunday 3am EDT — a report lands here every Sunday morning.</p>
+      <p class="desc" id="snl-desc">Team Console 3v3/4v4 games, Saturday 6pm EDT through Sunday 3am EDT — a report lands on the first Saturday of every month.</p>
+      <div class="snl-archive-nav" id="snl-archive-nav" style="display:none">
+        <button class="snl-nav-btn" id="snl-older" type="button" aria-label="Older report">◀</button>
+        <select id="snl-archive-select"></select>
+        <button class="snl-nav-btn" id="snl-newer" type="button" aria-label="Newer report">▶</button>
+      </div>
       <div class="card-peek" id="snl-peek"><div id="snl-content"><div class="loading">Loading…</div></div></div>
       <button class="peek-toggle" data-target="snl-peek" type="button">Show more ▾</button>
     </section>
@@ -1656,14 +1672,52 @@ async function loadAndRenderWeekly() {
 }
 
 // ---- saturday night live ----
-// Same shape of section as Weekly Recap above (index.json -> latest dated
-// report), but with no archive dropdown — SNL is a single "most recent
-// weekend" snapshot, not something anyone needs to page back through yet.
-// The report itself doesn't exist until the routine's first-ever fire
-// (Sunday 2026-09-06, ~6am EDT) — until then (and on any fetch failure)
-// this renders the real section labels/layout with placeholder content
-// rather than hiding the section, so the site owner can see the shape of
-// it land immediately instead of waiting for real data.
+// Same shape of section as Weekly Recap above (index.json -> every dated
+// report), with its own archive dropdown + prev/next arrows now that the
+// report runs monthly (first Saturday of each month) rather than every
+// week — there's a real history worth paging through. The report itself
+// doesn't exist until the routine's first-ever fire (Sunday 2026-09-06,
+// ~6am EDT) — until then (and on any fetch failure) this renders the real
+// section labels/layout with placeholder content rather than hiding the
+// section, so the site owner can see the shape of it land immediately
+// instead of waiting for real data.
+
+// windowStart/windowEnd are ISO UTC timestamps that are always 4 hours
+// ahead of EDT by construction (the report always targets EDT, see
+// player-data's snl_report.py) — subtract that fixed offset rather than
+// doing real timezone math for a single display string.
+function fmtSnlWindow(startIso, endIso) {
+  const EDT_MS = 4 * 60 * 60 * 1000;
+  const fmt = iso => {
+    const d = new Date(new Date(iso).getTime() - EDT_MS);
+    const month = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
+    const day = d.getUTCDate();
+    let h = d.getUTCHours();
+    const ampm = h >= 12 ? 'pm' : 'am';
+    h = h % 12 || 12;
+    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${month} ${day}, ${h}:${mm}${ampm} EDT`;
+  };
+  return `${fmt(startIso)} → ${fmt(endIso)}`;
+}
+
+function fmtSnlDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+}
+
+function snlDelta(cur, prev, { foundInPrev = true } = {}) {
+  if (prev === null || prev === undefined) {
+    return foundInPrev ? '' : '<span class="snl-delta new">New</span>';
+  }
+  const diff = cur - prev;
+  if (diff === 0) return '<span class="snl-delta flat">±0</span>';
+  const dir = diff > 0 ? 'up' : 'down';
+  const arrow = diff > 0 ? '▲' : '▼';
+  const sign = diff > 0 ? '+' : '−';
+  return `<span class="snl-delta ${dir}">${arrow} ${sign}${Math.abs(diff)}</span>`;
+}
+
 function snlEmptyState() {
   const soon = 'No report yet — the first Saturday Night Live report lands Sunday morning (~6am EDT), a few hours after the window closes.';
   return `
@@ -1683,23 +1737,32 @@ function snlEmptyState() {
     </div>`;
 }
 
-function renderSnlReport(report) {
+function renderSnlReport(report, prevReport) {
   const g = report.gamesTracked || {};
+  const pg = prevReport ? (prevReport.gamesTracked || {}) : null;
   const caveat = report.dataComplete === false
     ? `<p class="sub-desc" style="margin:-8px 0 14px;color:var(--amberL);">⚠ Some of this window's games only had a date (not an exact timestamp) to go on, so this reading is real but approximate — precision improves as more matches carry full timestamps.</p>`
     : '';
+  const tile = (label, val, prevVal) => `
+      <div class="stat-tile"><div class="label">${label}</div><div class="value-row"><div class="value">${(val || 0).toLocaleString()}</div>${pg ? snlDelta(val || 0, prevVal || 0) : ''}</div></div>`;
   const headline = `
     <div class="stat-row">
-      <div class="stat-tile"><div class="label">Games Tracked</div><div class="value">${(g.total || 0).toLocaleString()}</div></div>
-      <div class="stat-tile"><div class="label">3v3</div><div class="value">${(g.threeVThree || 0).toLocaleString()}</div></div>
-      <div class="stat-tile"><div class="label">4v4</div><div class="value">${(g.fourVFour || 0).toLocaleString()}</div></div>
+      ${tile('Games Tracked', g.total, pg && pg.total)}
+      ${tile('3v3', g.threeVThree, pg && pg.threeVThree)}
+      ${tile('4v4', g.fourVFour, pg && pg.fourVFour)}
     </div>`;
+  const prevByPid = new Map();
+  if (prevReport) (prevReport.mostGames || []).forEach(p => prevByPid.set(p.profileId, p.games));
   const mostGames = `
     <div class="weekly-section">
       <h3>Most Games Played</h3>
       ${weeklyTable(
         [{ label: 'Player' }, { label: 'Games', num: true }, { label: 'Win Rate', num: true }],
-        (report.mostGames || []).map(p => [wLink(p.name, p.profileId), p.games.toLocaleString(), weeklyPct(p.winRate)])
+        (report.mostGames || []).map(p => {
+          const hadPrev = prevByPid.has(p.profileId);
+          const badge = prevReport ? snlDelta(p.games, hadPrev ? prevByPid.get(p.profileId) : null, { foundInPrev: hadPrev }) : '';
+          return [wLink(p.name, p.profileId), `${p.games.toLocaleString()}${badge}`, weeklyPct(p.winRate)];
+        })
       )}
     </div>`;
   const rs = report.ratstacks || {};
@@ -1720,16 +1783,44 @@ function renderSnlReport(report) {
 async function loadAndRenderSnl() {
   const descEl = document.getElementById('snl-desc');
   const contentEl = document.getElementById('snl-content');
+  const navEl = document.getElementById('snl-archive-nav');
+  const selectEl = document.getElementById('snl-archive-select');
+  const olderBtn = document.getElementById('snl-older');
+  const newerBtn = document.getElementById('snl-newer');
   try {
     const idxRes = await fetch(`${SNL_INDEX_URL}?t=${Date.now()}`, { cache: 'no-store' });
     if (!idxRes.ok) throw new Error('no index yet');
     const dates = await idxRes.json();
     if (!dates.length) throw new Error('index empty');
-    const res = await fetch(`${snlReportUrl(dates[0])}?t=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const report = await res.json();
-    descEl.textContent = `Team Console 3v3/4v4, ${report.windowStart} → ${report.windowEnd}.`;
-    contentEl.innerHTML = renderSnlReport(report);
+
+    // Small, monthly-cadence archive (a dozen or so a year) — fetching every
+    // report up front, same as the dropdown-population pass below needs
+    // anyway, is simplest and lets delta badges diff against the adjacent
+    // report without a second round-trip per selection.
+    const reports = await Promise.all(dates.map(async d => {
+      const res = await fetch(`${snlReportUrl(d)}?t=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }));
+
+    selectEl.innerHTML = reports.map((r, i) => `<option value="${i}">${fmtSnlDate(r.date)}</option>`).join('');
+    navEl.style.display = '';
+
+    function showIndex(i) {
+      i = Math.max(0, Math.min(reports.length - 1, i));
+      selectEl.value = i;
+      newerBtn.disabled = i === 0;
+      olderBtn.disabled = i === reports.length - 1;
+      const report = reports[i];
+      const prevReport = reports[i + 1] || null;
+      descEl.textContent = `Team Console 3v3/4v4, ${fmtSnlWindow(report.windowStart, report.windowEnd)}.`;
+      contentEl.innerHTML = renderSnlReport(report, prevReport);
+    }
+
+    selectEl.addEventListener('change', () => showIndex(parseInt(selectEl.value, 10)));
+    olderBtn.addEventListener('click', () => showIndex(parseInt(selectEl.value, 10) + 1));
+    newerBtn.addEventListener('click', () => showIndex(parseInt(selectEl.value, 10) - 1));
+    showIndex(0);
   } catch (e) {
     contentEl.innerHTML = snlEmptyState();
   }
