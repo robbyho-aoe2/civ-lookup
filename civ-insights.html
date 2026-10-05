@@ -674,7 +674,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.64</div>
+    <div class="version">v1.65</div>
   </div>
 </div>
 
@@ -4485,11 +4485,12 @@ document.getElementById('castle-table-status').textContent = 'Temporarily disabl
     const n = t.newOnly.find(x => x[0] === civ);
     return n ? { wr: n[3], g: n[4], chg: null } : null;
   };
-  const cell = (label, s) => {
+  const cell = (label, s, low) => {
     if (!s) return '';
+    const star = s.g < low ? '*' : '';
     const arrow = s.chg == null ? '' : s.chg === 0 ? ' <span class="wr-flat">&plusmn;0.0</span>'
       : ` <span class="${s.chg > 0 ? 'wr-up' : 'wr-down'}">${s.chg > 0 ? '&#9650; +' : '&#9660; &minus;'}${Math.abs(s.chg).toFixed(1)}</span>`;
-    return `<span title="${s.g.toLocaleString()} ${label} games since the update">${label} ${s.wr.toFixed(1)}%${arrow}</span>`;
+    return `<span title="${s.g.toLocaleString()} ${label} games since the update${star ? ' (low sample)' : ''}">${label} ${s.wr.toFixed(1)}%${star}${arrow}</span>`;
   };
   fetch(URL + '?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => {
     if (!d) return;
@@ -4497,11 +4498,13 @@ document.getElementById('castle-table-status').textContent = 'Temporarily disabl
       const ul = b.parentElement.querySelector('ul.civ-changes');
       if (!ul) return;
       const civ = b.textContent.trim();
-      const one = cell('1v1', stat(d, '1v1 Console', civ)), team = cell('Team', stat(d, 'Team Console', civ));
+      const low = d.lowSampleBelow || 40;
+      const one = cell('1v1', stat(d, '1v1 Console', civ), low), team = cell('Team', stat(d, 'Team Console', civ), low);
       if (!one && !team) return;
       const li = document.createElement('li');
       li.className = 'civ-wr';
-      li.innerHTML = '<span class="lbl">Console win rate now:</span> ' + [one, team].filter(Boolean).join(' &middot; ');
+      li.innerHTML = '<span class="lbl">Console win rate now:</span> ' + [one, team].filter(Boolean).join(' &middot; ') +
+        (/\*/.test(one + team) ? ' <span title="Under ' + low + ' games since the update">(* low sample)</span>' : '');
       ul.appendChild(li);
     });
   }).catch(() => {});
