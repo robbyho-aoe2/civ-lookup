@@ -1444,6 +1444,13 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
 
 // ---- weekly recap ----
 function weeklyPct(x) { return x == null ? '—' : (x * 100).toFixed(1) + '%'; }
+// Percentage-point change vs. last week, with the same up/down badge style as the stat tiles.
+function weeklyPpChange(pp) {
+  if (pp == null) return '—';
+  if (pp === 0) return '<span class="snl-delta flat">±0.00pp</span>';
+  const up = pp > 0;
+  return `<span class="snl-delta ${up ? 'up' : 'down'}">${up ? '▲ +' : '▼ −'}${Math.abs(pp).toFixed(2)}pp</span>`;
+}
 function weeklyDuration(seconds) {
   if (seconds == null) return '—';
   const m = Math.floor(seconds / 60);
@@ -1578,9 +1585,10 @@ function renderWeeklyReport(report, prevReport) {
   const civWatchHtml = (cp.civWatch && cp.civWatch.length) ? `
       <p class="sub-desc" style="margin-top:12px">Still tracking</p>
       ${weeklyTable(
-        [{ label: 'Civ' }, { label: 'Games', num: true }, { label: 'Pick Rate', num: true }, { label: 'Win Rate', num: true }, { label: '1v1 Games', num: true }, { label: '1v1 WR', num: true }, { label: 'Team Games', num: true }, { label: 'Team WR', num: true }],
-        cp.civWatch.map(c => [civLink(c.civ), c.games.toLocaleString(), weeklyPct(c.pickRate), weeklyPct(c.winRate), c.games1v1.toLocaleString(), weeklyPct(c.winRate1v1), c.gamesTeam.toLocaleString(), weeklyPct(c.winRateTeam)])
-      )}` : '';
+        [{ label: 'Civ' }, { label: 'Games', num: true }, { label: 'Pick Rate', num: true }, { label: 'Pick Δ', num: true }, { label: 'Win Rate', num: true }, { label: 'Win Δ', num: true }, { label: '1v1 Games', num: true }, { label: '1v1 WR', num: true }, { label: 'Team Games', num: true }, { label: 'Team WR', num: true }],
+        cp.civWatch.map(c => [civLink(c.civ), c.games.toLocaleString(), weeklyPct(c.pickRate), weeklyPpChange(c.pickRateChange), weeklyPct(c.winRate), weeklyPpChange(c.winRateChange), c.games1v1.toLocaleString(), weeklyPct(c.winRate1v1), c.gamesTeam.toLocaleString(), weeklyPct(c.winRateTeam)])
+      )}
+      <p class="sub-desc" style="margin-top:6px">Δ is the change in percentage points vs. last week. A dash means the civ had no games last week, or this report predates the comparison.</p>` : '';
   const civPopularity = `
     <div class="weekly-section">
       <h3>Civ Popularity This Week</h3>
