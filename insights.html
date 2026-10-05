@@ -1154,7 +1154,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       : `<span class="snl-delta ${v > 0 ? 'up' : 'down'}">${v > 0 ? '&#9650; +' : '&#9660; &minus;'}${Math.abs(v).toFixed(1)}</span>`;
     const tableEl = document.getElementById('civ-dlc-table');
     tableEl.innerHTML = '<thead><tr>' + th('name', 'Civ', 'civ-col') + th('before', 'Before') + th('after', 'After') + th('change', 'Change (pts)') + '</tr></thead><tbody>' +
-      rows.map(r => `<tr><td class="civ-col">${r.name}</td>` +
+      rows.map(r => `<tr><td class="civ-col"><div style="display:flex;align-items:center;gap:6px;white-space:nowrap"><img src="${civIconUrl(r.name)}" alt="" style="height:18px;width:18px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">${r.name}</div></td>` +
         (r.wrB == null ? '<td class="wr-cell">&mdash;</td>' : `<td class="wr-cell">${r.wrB.toFixed(1)}%<div class="pr-sub">${r.gB.toLocaleString()}g</div></td>`) +
         `<td class="wr-cell${r.low ? ' low-sample' : ''}">${r.wrA.toFixed(1)}%<div class="pr-sub">${r.gA.toLocaleString()}g${r.low ? ' &middot; low sample' : ''}</div></td>` +
         `<td class="num${r.low ? ' low-sample' : ''}">${r.change == null ? '&mdash;' : chg(r.change)}</td></tr>`).join('') + '</tbody>';
