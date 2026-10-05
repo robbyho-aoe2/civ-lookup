@@ -1137,10 +1137,13 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     const br = dlcData.beforeRange || ['2026-07-07', '2026-09-22'];
     document.getElementById('civ-dlc-desc').textContent =
       `${dlcLadder === '1v1 Console' ? '1v1 Console' : 'Team Console'} win rate per civ, before vs. after the update. "Before" is the whole previous patch (${fmtDate(br[0])} - ${fmtDate(br[1])}, ${d.before[0].toLocaleString()} games, ${d.before[1]}% average); "after" is the new patch through ${fmtDate(dlcData.through)} (${d.after[0].toLocaleString()} games, ${d.after[1]}% average). Raw win rates, not adjusted for player rating - swings under about 3-4 points are within normal noise.`;
-    const rows = d.rows.map(r => ({ name: r[0], wrB: r[1], gB: r[2], wrA: r[3], gA: r[4], change: Math.round((r[3] - r[1]) * 10) / 10 }));
+    // newOnly = the new civs: no "before", so they show a dash there and sort last on Before/Change.
+    const rows = d.rows.map(r => ({ name: r[0], wrB: r[1], gB: r[2], wrA: r[3], gA: r[4], change: Math.round((r[3] - r[1]) * 10) / 10 }))
+      .concat((d.newOnly || []).map(r => ({ name: r[0], wrB: null, gB: 0, wrA: r[3], gA: r[4], change: null })));
     const keyMap = { name: 'name', before: 'wrB', after: 'wrA', change: 'change' };
     const k = keyMap[dlcSort.key] || 'change';
     rows.sort((a, b) => {
+      if (k !== 'name' && (a[k] == null || b[k] == null)) return (a[k] == null) - (b[k] == null) || a.name.localeCompare(b.name);
       const c = k === 'name' ? a.name.localeCompare(b.name) : a[k] - b[k];
       return dlcSort.dir === 'asc' ? c : -c;
     });
@@ -1150,17 +1153,16 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
     const tableEl = document.getElementById('civ-dlc-table');
     tableEl.innerHTML = '<thead><tr>' + th('name', 'Civ', 'civ-col') + th('before', 'Before') + th('after', 'After') + th('change', 'Change (pts)') + '</tr></thead><tbody>' +
       rows.map(r => `<tr><td class="civ-col">${r.name}</td>` +
-        `<td class="wr-cell">${r.wrB.toFixed(1)}%<div class="pr-sub">${r.gB.toLocaleString()}g</div></td>` +
+        (r.wrB == null ? '<td class="wr-cell">&mdash;</td>' : `<td class="wr-cell">${r.wrB.toFixed(1)}%<div class="pr-sub">${r.gB.toLocaleString()}g</div></td>`) +
         `<td class="wr-cell">${r.wrA.toFixed(1)}%<div class="pr-sub">${r.gA.toLocaleString()}g</div></td>` +
-        `<td class="num">${chg(r.change)}</td></tr>`).join('') + '</tbody>';
+        `<td class="num">${r.change == null ? '&mdash;' : chg(r.change)}</td></tr>`).join('') + '</tbody>';
     tableEl.querySelectorAll('th[data-key]').forEach(h => h.addEventListener('click', () => {
       const key = h.dataset.key;
       dlcSort = dlcSort.key === key ? { key, dir: dlcSort.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' ? 'asc' : 'desc' };
       renderDlcCivs();
     }));
-    document.getElementById('civ-dlc-note').textContent = d.newOnly.length
-      ? 'New civs (no "before"): ' + d.newOnly.map(r => `${r[0]} ${r[3].toFixed(1)}% over ${r[4].toLocaleString()} games`).join(' · ') + '. Civs with under 40 games after the update are left out.'
-      : '';
+    document.getElementById('civ-dlc-note').textContent = (d.newOnly && d.newOnly.length
+      ? 'The new civs have no "before", so they show a dash. ' : '') + 'Civs with under 40 games after the update are left out.';
   }
   renderDlcCivs();
   fetch(`${PLAYER_DATA_BASE}/civ-patch-change.json?t=${Date.now()}`, { cache: 'no-store' })
