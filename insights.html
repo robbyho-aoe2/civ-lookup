@@ -1467,22 +1467,28 @@ function civLink(civ) {
   return `<a href="index.html?civ=${encodeURIComponent(civ)}">${safe}</a>`;
 }
 
-function renderWeeklyReport(report) {
+function renderWeeklyReport(report, prevReport) {
   const g = report.totalGames;
+  const pg = prevReport ? prevReport.totalGames : null;
+  // Same stat-tile + delta-badge pattern as the Saturday Night Live report
+  // (snlDelta / .value-row / .snl-delta) — reused as-is for visual
+  // consistency rather than inventing a second badge style.
+  const tile = (label, val, prevVal) => `
+      <div class="stat-tile"><div class="label">${label}</div><div class="value-row"><div class="value">${(val ?? 0).toLocaleString()}</div>${prevReport && prevVal != null ? snlDelta(val ?? 0, prevVal) : ''}</div></div>`;
   const headline = `
     <div class="weekly-section">
       <div class="stat-row">
-        ${report.activePlayers != null ? `<div class="stat-tile"><div class="label">Active Players This Week</div><div class="value">${report.activePlayers.toLocaleString()}</div></div>` : ''}
-        <div class="stat-tile"><div class="label">All-Time 1v1</div><div class="value">${g.allTime1v1.toLocaleString()}</div></div>
-        <div class="stat-tile"><div class="label">All-Time Team</div><div class="value">${g.allTimeTeam.toLocaleString()}</div></div>
-        <div class="stat-tile"><div class="label">All-Time Combined</div><div class="value">${g.allTimeCombined.toLocaleString()}</div></div>
-        <div class="stat-tile"><div class="label">This Week (${report.windowStart} → ${report.windowEnd})</div><div class="value">${g.windowCombined.toLocaleString()}</div></div>
+        ${report.activePlayers != null ? tile('Active Players This Week', report.activePlayers, prevReport && prevReport.activePlayers) : ''}
+        ${tile('All-Time 1v1', g.allTime1v1, pg && pg.allTime1v1)}
+        ${tile('All-Time Team', g.allTimeTeam, pg && pg.allTimeTeam)}
+        ${tile('All-Time Combined', g.allTimeCombined, pg && pg.allTimeCombined)}
+        ${tile(`This Week (${report.windowStart} → ${report.windowEnd})`, g.windowCombined, pg && pg.windowCombined)}
       </div>
       ${g.windowBySize ? `
       <div class="stat-row" style="margin-top:8px">
-        ${Object.entries(g.windowBySize).filter(([size]) => size !== 'total').map(([size, count]) => `
-          <div class="stat-tile"><div class="label">${size} This Week</div><div class="value">${count.toLocaleString()}</div></div>
-        `).join('')}
+        ${Object.entries(g.windowBySize).filter(([size]) => size !== 'total').map(([size, count]) =>
+          tile(`${size} This Week`, count, pg && pg.windowBySize && pg.windowBySize[size])
+        ).join('')}
       </div>` : ''}
       <p class="sub-desc">+${g.growth1v1.toLocaleString()} 1v1 / +${g.growthTeam.toLocaleString()} Team since last report · this week: ${g.window1v1.toLocaleString()} 1v1, ${g.windowTeam.toLocaleString()} Team${g.lowActivityCaveat ? ' — <b>note:</b> this looks low for the tracked pool, likely a data-refresh lag rather than an real activity drop' : ''}</p>
     </div>`;
@@ -1565,6 +1571,16 @@ function renderWeeklyReport(report) {
         [{ label: 'Civ' }, { label: 'Games', num: true }, { label: 'Pick Rate', num: true }, { label: 'Win Rate', num: true }, { label: '1v1 Games', num: true }, { label: '1v1 WR', num: true }, { label: 'Team Games', num: true }, { label: 'Team WR', num: true }],
         cp.newCivsDebut.map(c => [civLink(c.civ), c.games.toLocaleString(), weeklyPct(c.pickRate), weeklyPct(c.winRate), c.games1v1.toLocaleString(), weeklyPct(c.winRate1v1), c.gamesTeam.toLocaleString(), weeklyPct(c.winRateTeam)])
       )}` : '';
+  // Civs the site owner wants kept in view past their debut week (e.g. a
+  // recent DLC's new civs), independent of newCivsDebut's one-time 0%-prior
+  // -share check — stays on the report every week via data/civ-watchlist.json
+  // in player-data until that list is edited.
+  const civWatchHtml = (cp.civWatch && cp.civWatch.length) ? `
+      <p class="sub-desc" style="margin-top:12px">Still tracking</p>
+      ${weeklyTable(
+        [{ label: 'Civ' }, { label: 'Games', num: true }, { label: 'Pick Rate', num: true }, { label: 'Win Rate', num: true }, { label: '1v1 Games', num: true }, { label: '1v1 WR', num: true }, { label: 'Team Games', num: true }, { label: 'Team WR', num: true }],
+        cp.civWatch.map(c => [civLink(c.civ), c.games.toLocaleString(), weeklyPct(c.pickRate), weeklyPct(c.winRate), c.games1v1.toLocaleString(), weeklyPct(c.winRate1v1), c.gamesTeam.toLocaleString(), weeklyPct(c.winRateTeam)])
+      )}` : '';
   const civPopularity = `
     <div class="weekly-section">
       <h3>Civ Popularity This Week</h3>
@@ -1575,6 +1591,7 @@ function renderWeeklyReport(report) {
       <p class="sub-desc" style="margin-top:12px">Biggest pick-rate movers vs. last week — gainers first, losers last</p>
       ${weeklyTable([{ label: 'Civ' }, { label: 'Pick Rate Δ', num: true }, { label: 'Now (Pick Rate)' }, { label: 'Prior (Pick Rate)' }], cp.biggestMovers.map(c => [civLink(c.civ), `${c.pctPointChange >= 0 ? '+' : ''}${c.pctPointChange.toFixed(2)}pp`, weeklyPct(c.nowShare), weeklyPct(c.priorShare)]))}
       ${newCivsDebutHtml}
+      ${civWatchHtml}
     </div>`;
 
   const bm = report.biggestMovers;
@@ -1661,8 +1678,21 @@ async function loadAndRenderWeekly() {
         const res = await fetch(`${weeklyReportUrl(date)}?t=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const report = await res.json();
+
+        // dates is newest-first, so the next entry is the immediately
+        // preceding week — fetch it just for the top-box delta badges;
+        // a failure here just means no badges, not a broken page.
+        let prevReport = null;
+        const prevDate = dates[dates.indexOf(date) + 1];
+        if (prevDate) {
+          try {
+            const prevRes = await fetch(`${weeklyReportUrl(prevDate)}?t=${Date.now()}`, { cache: 'no-store' });
+            if (prevRes.ok) prevReport = await prevRes.json();
+          } catch (_) { /* no badges this time */ }
+        }
+
         descEl.textContent = `What happened in the console scene, ${report.windowStart} → ${report.windowEnd}.`;
-        contentEl.innerHTML = renderWeeklyReport(report);
+        contentEl.innerHTML = renderWeeklyReport(report, prevReport);
         const searchInput = document.getElementById('player-search-input');
         if (searchInput) {
           searchInput.addEventListener('input', () => renderPlayerSearchMatches(report, searchInput.value));
