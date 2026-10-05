@@ -1525,35 +1525,44 @@ function renderWeeklyReport(report, prevReport) {
   // "rivalryOfWeek" callout. Support both so the archive dropdown still
   // renders older weeks correctly.
   const usesWindowSchema = !!report.rivalryUpdates;
-  // Only show pairs that actually played each other this window, busiest
-  // first — a quiet marquee pair still shows up in rivalryUpdates' raw
-  // data (so its all-time story keeps getting tracked week to week), it
-  // just doesn't earn a row here until they play again.
+  // The fixed top-5 marquee (by all-time games) always shows, quiet week
+  // or not — that's the ongoing storyline. Anything else in the report's
+  // broader rivalry pool (now fetched 15-deep server-side) that DID play
+  // this window gets appended below it, busiest matchup first, so an
+  // active pair outside the top 5 doesn't go unseen.
   const windowGames = r => usesWindowSchema ? (r.gamesThisWindow || 0) : (r.gamesThisWeek || 0);
-  const rivalryRows = (report.rivalryUpdates || report.rivalries || [])
+  const allRivalryRows = report.rivalryUpdates || report.rivalries || [];
+  const marquee = allRivalryRows.slice(0, 5);
+  const alsoActive = allRivalryRows.slice(5)
     .filter(r => windowGames(r) > 0)
     .sort((a, b) => windowGames(b) - windowGames(a));
   const rivalryOfWeekHtml = report.rivalryOfWeek ? `
       <div class="weekly-highlight" style="margin-bottom:12px">
         <b>Rivalry of the week:</b> ${wLink(report.rivalryOfWeek.nameA, report.rivalryOfWeek.idA)} vs ${wLink(report.rivalryOfWeek.nameB, report.rivalryOfWeek.idB)} — ${report.rivalryOfWeek.gamesThisWindow.toLocaleString()} games this window, record ${report.rivalryOfWeek.record}${report.rivalryOfWeek.allTimeGames != null ? ` (all-time: ${report.rivalryOfWeek.allTimeGames.toLocaleString()} games, ${report.rivalryOfWeek.allTimeRecord})` : ''}
       </div>` : '';
+  const rivalryRow = r => [
+    `${wLink(r.nameA, r.idA)} vs ${wLink(r.nameB, r.idB)}`,
+    r.record,
+    usesWindowSchema
+      ? (windowGames(r) ? `+${r.gamesThisWindow.toLocaleString()}` : 'quiet week')
+      : (r.recordThisWeek ? `${r.recordThisWeek} (${r.gamesThisWeek})` : 'quiet week'),
+  ];
   const rivalries = `
     <div class="weekly-section">
       <h3>Rivalries</h3>
-      <p class="sub-desc">Marquee 1v1 pairs who played each other this week, busiest matchup first.</p>
+      <p class="sub-desc">The marquee top 5 all-time pairs, plus anyone else who faced off this week.</p>
       ${rivalryOfWeekHtml}
-      ${rivalryRows.length ? weeklyTable(
+      ${weeklyTable(
         [{ label: 'Rivalry' }, { label: 'All-Time Record', num: true }, { label: 'This Week', num: true }],
-        rivalryRows.map(r => [
-          `${wLink(r.nameA, r.idA)} vs ${wLink(r.nameB, r.idB)}`,
-          r.record,
-          usesWindowSchema
-            ? `+${r.gamesThisWindow.toLocaleString()}`
-            : `${r.recordThisWeek} (${r.gamesThisWeek})`,
-        ])
-      ) : '<p class="weekly-empty">None of the marquee rivalries played each other this week.</p>'}
+        marquee.map(rivalryRow)
+      )}
+      ${alsoActive.length ? `
+      <p class="sub-desc" style="margin-top:12px">Also active this week</p>
+      ${weeklyTable(
+        [{ label: 'Rivalry' }, { label: 'All-Time Record', num: true }, { label: 'This Week', num: true }],
+        alsoActive.map(rivalryRow)
+      )}` : ''}
     </div>`;
-
   const upsets = `
     <div class="weekly-section">
       <h3>Biggest Upsets This Week</h3>
