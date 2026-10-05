@@ -1644,7 +1644,15 @@ async function loadAndRenderWeekly() {
       return;
     }
 
-    selectEl.innerHTML = dates.map(d => `<option value="${d}">Week of ${d}</option>`).join('');
+    // dates is newest-first and each entry's own date is that report's windowEnd;
+    // consecutive weekly reports chain exactly (this week's windowStart == last
+    // week's windowEnd, enforced by test_weekly_extras.py in player-data), so the
+    // next entry in this same array IS the window's start — no extra fetch needed.
+    selectEl.innerHTML = dates.map((d, i) => {
+      const start = dates[i + 1];
+      const label = start ? `${start} – ${d}` : `Through ${d}`;
+      return `<option value="${d}">${label}</option>`;
+    }).join('');
     selectEl.style.display = '';
 
     async function showWeek(date) {
