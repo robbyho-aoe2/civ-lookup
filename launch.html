@@ -3,27 +3,114 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Opening AoE2 Auto Scout</title>
+<title>AoE2 Auto Scout</title>
 <meta name="theme-color" content="#100E0C">
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/svg+xml" href="app-icons/favicon.svg">
-<style>body{margin:0;background:#100E0C;color:#8F8578;font:14px system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}a{color:#5FB88C}</style>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#100E0C;color:#EDE8DD;font:14px system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+a{color:#5FB88C}
+.wrap{width:100%;max-width:440px}
+.card{background:#17130F;border:1px solid #362E24;border-radius:14px;padding:22px}
+h1{font-size:19px;margin:0 0 4px}
+.sub{color:#8F8578;font-size:13px;line-height:1.5;margin:0 0 18px}
+h2{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#8F8578;margin:18px 0 8px}
+input[type=search]{width:100%;padding:11px 12px;border-radius:9px;border:1px solid #362E24;background:#100E0C;color:#EDE8DD;font:inherit}
+input[type=search]:focus{outline:2px solid #3F9B72;border-color:#3F9B72}
+.results{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.results button,.grid button,.skip{font:inherit;color:#EDE8DD;background:#1F1A15;border:1px solid #362E24;border-radius:9px;padding:10px 12px;cursor:pointer;text-align:left}
+.results button:hover,.grid button:hover{border-color:#3F9B72;color:#5FB88C}
+.results small{color:#8F8578;margin-left:6px}
+.msg{color:#8F8578;font-size:12px;margin-top:8px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.skip{display:block;width:100%;margin-top:16px;text-align:center;color:#8F8578;background:transparent}
+.note{color:#5C544A;font-size:11.5px;text-align:center;margin:14px 0 0;line-height:1.5}
+</style>
 </head>
 <body>
-<p>Opening AoE2 Auto Scout&hellip; <noscript><a href="index.html">Continue</a></noscript></p>
+<div class="wrap" id="app"><p style="text-align:center;color:#8F8578">Opening AoE2 Auto Scout&hellip; <noscript><a href="index.html">Continue</a></noscript></p></div>
 <script>
-// The installed app always starts here. It sends you to the page you chose with "App start page"
-// in the footer (or "Make this my player" on a player page); with no choice it opens the home page.
+// The installed app always starts here. If you've already chosen a start page (footer "App start
+// page", or "Make this my player" on a player page) it sends you straight there. The very first
+// time, it asks where the app should open and lets you search for your own player.
 (function () {
-  var PAGES = { home: 'index.html', spotlight: 'player.html', insights: 'insights.html', competitive: 'competitive.html',
-    civ: 'civ-insights.html', build: 'build-order.html', investigations: 'investigations.html' };
-  var url = 'index.html';
-  try {
-    var p = JSON.parse(localStorage.getItem('autoscout-start') || 'null');
-    if (p && p.page === 'me' && p.me && p.me.id) url = 'player.html?id=' + encodeURIComponent(p.me.id);
-    else if (p && PAGES[p.page]) url = PAGES[p.page];
-  } catch (e) {}
-  location.replace(url);
+  var KEY = 'autoscout-start';
+  var PAGES = [
+    ['home', 'index.html', 'Home'], ['spotlight', 'player.html', 'Player Spotlight'], ['insights', 'insights.html', 'Console Insights'],
+    ['competitive', 'competitive.html', 'Console Competitive'], ['civ', 'civ-insights.html', 'Civ Insights'],
+    ['build', 'build-order.html', 'Build Order'], ['investigations', 'investigations.html', 'Investigations'],
+  ];
+  var SEARCH = 'https://data.aoe2companion.com/api/profiles?search=';
+
+  function load() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
+  function save(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} }
+  function target(p) {
+    if (p && p.page === 'me' && p.me && p.me.id) return 'player.html?id=' + encodeURIComponent(p.me.id);
+    for (var i = 0; i < PAGES.length; i++) if (PAGES[i][0] === (p && p.page)) return PAGES[i][1];
+    return null;
+  }
+
+  var saved = load();
+  var dest = target(saved);
+  if (dest) { location.replace(dest); return; }
+
+  var app = document.getElementById('app');
+  app.innerHTML = '<div class="card"><h1>Welcome to AoE2 Auto Scout</h1>' +
+    '<p class="sub">Where should the app open? Search for your own player to open straight to your page, or pick a section.</p>' +
+    '<h2>Find your player</h2><input type="search" id="q" placeholder="Search by name or profile ID" autocomplete="off" aria-label="Search for your player">' +
+    '<div class="results" id="results" aria-live="polite"></div><div class="msg" id="msg"></div>' +
+    '<h2>Or open to</h2><div class="grid" id="grid"></div>' +
+    '<button class="skip" id="skip" type="button">Skip for now (open Home)</button>' +
+    '<p class="note">You can change this any time with &ldquo;App start page&rdquo; at the bottom of any page.</p></div>';
+
+  function go(p) { save(p); location.replace(target(p) || 'index.html'); }
+
+  var grid = document.getElementById('grid');
+  PAGES.forEach(function (pg) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = pg[2];
+    b.addEventListener('click', function () { go({ page: pg[0] }); });
+    grid.appendChild(b);
+  });
+  document.getElementById('skip').addEventListener('click', function () { go({ page: 'home' }); });
+
+  var q = document.getElementById('q'), results = document.getElementById('results'), msg = document.getElementById('msg');
+  var timer = null, seq = 0;
+  function pick(id, name) { go({ page: 'me', me: { id: String(id), name: name || String(id) } }); }
+  function render(items) {
+    results.innerHTML = '';
+    items.slice(0, 8).forEach(function (p) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.appendChild(document.createTextNode(p.name || ('#' + p.profileId)));
+      var s = document.createElement('small');
+      s.textContent = [p.country ? String(p.country).toUpperCase() : '', p.games ? Number(p.games).toLocaleString() + ' games' : ''].filter(Boolean).join(' · ');
+      b.appendChild(s);
+      b.addEventListener('click', function () { pick(p.profileId, p.name); });
+      results.appendChild(b);
+    });
+  }
+  function search(text) {
+    var n = ++seq;
+    msg.textContent = 'Searching…';
+    fetch(SEARCH + encodeURIComponent(text)).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (n !== seq) return;
+      var items = d ? (Array.isArray(d) ? d : (d.profiles || [])) : [];
+      if (/^\d{3,9}$/.test(text) && !items.some(function (p) { return String(p.profileId) === text; })) {
+        items = [{ profileId: text, name: 'Profile ' + text }].concat(items);
+      }
+      render(items);
+      msg.textContent = items.length ? 'Tap your name.' : 'No players found. Try another spelling.';
+    }).catch(function () { if (n === seq) msg.textContent = 'Search is unavailable right now. You can still pick a section below.'; });
+  }
+  q.addEventListener('input', function () {
+    clearTimeout(timer);
+    var text = q.value.trim();
+    if (text.length < 2) { seq++; results.innerHTML = ''; msg.textContent = ''; return; }
+    timer = setTimeout(function () { search(text); }, 350);
+  });
 })();
 </script>
 </body>
