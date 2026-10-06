@@ -126,6 +126,9 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 .lang-row{display:flex;gap:6px;margin:0 0 14px;}
 .lang-row button{background:var(--surf2);border:1px solid var(--border2);color:var(--text2);font:inherit;font-size:12px;font-weight:700;padding:5px 12px;border-radius:16px;cursor:pointer;}
 .lang-row button.on{background:var(--amberBg);color:var(--amberL);border-color:rgba(95,184,140,.4);}
+.nc-logo{display:block;width:100%;max-width:380px;height:auto;margin:0 auto;}
+.tourney-head:has(.nc-logo){justify-content:center;margin-bottom:14px;}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
 .map-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;}
 @media (max-width:700px){.map-grid{grid-template-columns:repeat(2,1fr);}}
 .map-tile{display:flex;align-items:center;gap:8px;background:#1F1A15;border:1px solid #362E24;border-radius:9px;padding:5px 10px 5px 5px;font-size:12.5px;font-weight:600;}
@@ -182,7 +185,8 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
   <div id="tab-tournament">
   <div class="card">
     <div class="tourney-head">
-      <h2>Nations Cup</h2>
+      <img class="nc-logo" src="img/nations-cup-logo.webp" alt="Nations Cup" width="720" height="480">
+      <h2 class="sr-only">Nations Cup</h2>
     </div>
     <p class="desc">
       A round-robin tournament of teams of 4-6 players, mostly formed from national regions
@@ -589,7 +593,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.48</div>
+    <div class="version">v0.49</div>
   </div>
 </div>
 
