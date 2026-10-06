@@ -63,7 +63,7 @@ input[type=search]:focus{outline:2px solid #3F9B72;border-color:#3F9B72}
     '<h2>Find your player</h2><input type="search" id="q" placeholder="Search by name or profile ID" autocomplete="off" aria-label="Search for your player">' +
     '<div class="results" id="results" aria-live="polite"></div><div class="msg" id="msg"></div>' +
     '<h2>Or open to</h2><div class="grid" id="grid"></div>' +
-    '<button class="skip" id="skip" type="button">Skip for now (open Home)</button>' +
+    '<button class="skip" id="skip" type="button">' + (dest ? 'Keep my current start page' : 'Skip for now (open Home)') + '</button>' +
     '<p class="note">You can change this later from the Make this my player button on your player page, or by opening aoe2autoscout.com/launch.html?setup=1.</p></div>';
 
   function go(p) { save(p); location.replace(target(p) || 'index.html'); }
@@ -76,7 +76,7 @@ input[type=search]:focus{outline:2px solid #3F9B72;border-color:#3F9B72}
     b.addEventListener('click', function () { go({ page: pg[0] }); });
     grid.appendChild(b);
   });
-  document.getElementById('skip').addEventListener('click', function () { go({ page: 'home' }); });
+  document.getElementById('skip').addEventListener('click', function () { if (dest) location.replace(dest); else go({ page: 'home' }); });
 
   var q = document.getElementById('q'), results = document.getElementById('results'), msg = document.getElementById('msg');
   var timer = null, seq = 0;
