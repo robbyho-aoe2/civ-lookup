@@ -1,0 +1,23 @@
+{
+  "name": "AoE Auto Scout",
+  "short_name": "Auto Scout",
+  "description": "Console Age of Empires II stats, scouting reports and insights.",
+  "id": "./",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#100E0C",
+  "theme_color": "#100E0C",
+  "categories": ["games", "sports"],
+  "icons": [
+    { "src": "app-icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "app-icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "app-icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Player Spotlight", "short_name": "Players", "url": "player.html", "icons": [{ "src": "app-icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Console Insights", "short_name": "Insights", "url": "insights.html", "icons": [{ "src": "app-icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Console Competitive", "short_name": "Competitive", "url": "competitive.html", "icons": [{ "src": "app-icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Investigations", "short_name": "Investigations", "url": "investigations.html", "icons": [{ "src": "app-icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
