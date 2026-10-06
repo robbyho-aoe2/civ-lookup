@@ -112,6 +112,15 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 .x-plink{color:inherit;text-decoration:underline dotted var(--text3);text-underline-offset:2px;}
 .x-plink:hover{color:var(--amberL);}
 @media(max-width:600px){.scout-rows>div{grid-template-columns:1fr;gap:2px;}}
+/* Phone layout */
+@media (max-width:700px){
+  .wrap{padding:14px 10px 40px;}
+  .card{padding:14px 12px 12px;margin-bottom:14px;border-radius:10px;}
+  th,td{padding:5px 5px;}
+  .page-tabs{flex-wrap:nowrap;overflow-x:auto;gap:0;margin-bottom:12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .page-tabs::-webkit-scrollbar{display:none;}
+  .page-tabs a{flex:none;padding:8px 10px;font-size:12px;white-space:nowrap;}
+}
 </style>
 <script data-goatcounter="https://robbyho.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
@@ -124,7 +133,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Auto Scout">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<script src="pwa.js?v=307" defer></script>
+<script src="pwa.js?v=308" defer></script>
 <meta name="description" content="Console Competitive: the Nations Cup tournament, teams, fixtures and a full scouting report.">
 <link rel="canonical" href="https://aoe2autoscout.com/competitive.html">
 <meta property="og:site_name" content="AoE2 Auto Scout">

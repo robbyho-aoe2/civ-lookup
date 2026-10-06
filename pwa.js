@@ -22,6 +22,13 @@
     });
   }
 
+  // On phones the menu is one scrolling row; start with the current page's tab in view.
+  function showActiveTab() {
+    var tabs = document.querySelector('.page-tabs'), on = tabs && tabs.querySelector('a.on');
+    if (tabs && on && tabs.scrollWidth > tabs.clientWidth) tabs.scrollLeft = on.offsetLeft - (tabs.clientWidth - on.offsetWidth) / 2;
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showActiveTab); else showActiveTab();
+
   var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
   function spot() {
