@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>Player Spotlight — AoE Auto Scout</title>
+<title>Player Spotlight — AoE2 Auto Scout</title>
 <style>
 :root{
   --bg:#100E0C;--surf:#17130F;--surf2:#1F1A15;--border:#241F1A;--border2:#362E24;
@@ -907,7 +907,7 @@ function render(content, entry, player) {
         </div>
         ${updatedNoteHtml}
       </div>
-      ${entry.live ? `<div class="tracker-hint">Not part of the permanent AoE Auto Scout roster — this page was fetched live from AoE2Companion and won't be saved or refreshed automatically. <a href="${requestTrackingUrl(entry.name, entry.profileId)}" target="_blank" rel="noopener">Request ${escapeHtml(entry.name)} be tracked permanently</a> (form pre-filled), or ask in the <a href="https://discord.gg/2uRZG6qSyy" target="_blank" rel="noopener">Discord</a> or a <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank" rel="noopener">Fast Castle and Chill</a> video comment.</div>` : ''}
+      ${entry.live ? `<div class="tracker-hint">Not part of the permanent AoE2 Auto Scout roster — this page was fetched live from AoE2Companion and won't be saved or refreshed automatically. <a href="${requestTrackingUrl(entry.name, entry.profileId)}" target="_blank" rel="noopener">Request ${escapeHtml(entry.name)} be tracked permanently</a> (form pre-filled), or ask in the <a href="https://discord.gg/2uRZG6qSyy" target="_blank" rel="noopener">Discord</a> or a <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank" rel="noopener">Fast Castle and Chill</a> video comment.</div>` : ''}
       ${imposterHintHtml}
       ${impersonatorsHintHtml}
       ${possibleAltHtml}
@@ -987,7 +987,7 @@ function render(content, entry, player) {
   content.querySelectorAll('.card').forEach(card => {
     const tag = document.createElement('div');
     tag.className = 'card-tag';
-    tag.textContent = `${entry.name} · AoE Auto Scout`;
+    tag.textContent = `${entry.name} · AoE2 Auto Scout`;
     card.prepend(tag);
   });
 

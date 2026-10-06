@@ -1,4 +1,4 @@
-// AoE Auto Scout service worker. Pages and the site's own files are fetched network-first, so
+// AoE2 Auto Scout service worker. Pages and the site's own files are fetched network-first, so
 // updates show up immediately; the cache is only a fallback when offline. Anything on another
 // origin (live match data, player data, API calls) is never touched, so numbers are never stale.
 const CACHE = 'autoscout-v1';
