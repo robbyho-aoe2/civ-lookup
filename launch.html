@@ -53,7 +53,9 @@ input[type=search]:focus{outline:2px solid #3F9B72;border-color:#3F9B72}
 
   var saved = load();
   var dest = target(saved);
-  if (dest) { location.replace(dest); return; }
+  // launch.html?setup=1 reopens this screen to change the start page.
+  var forceSetup = /[?&]setup/.test(location.search);
+  if (dest && !forceSetup) { location.replace(dest); return; }
 
   var app = document.getElementById('app');
   app.innerHTML = '<div class="card"><h1>Welcome to AoE2 Auto Scout</h1>' +
@@ -62,7 +64,7 @@ input[type=search]:focus{outline:2px solid #3F9B72;border-color:#3F9B72}
     '<div class="results" id="results" aria-live="polite"></div><div class="msg" id="msg"></div>' +
     '<h2>Or open to</h2><div class="grid" id="grid"></div>' +
     '<button class="skip" id="skip" type="button">Skip for now (open Home)</button>' +
-    '<p class="note">You can change this any time with &ldquo;App start page&rdquo; at the bottom of any page.</p></div>';
+    '<p class="note">You can change this later from the Make this my player button on your player page, or by opening aoe2autoscout.com/launch.html?setup=1.</p></div>';
 
   function go(p) { save(p); location.replace(target(p) || 'index.html'); }
 
