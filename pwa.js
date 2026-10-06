@@ -1,8 +1,8 @@
 // Registers the service worker and adds an "Install the app" link to the page footer (browser only).
 // Also exposes window.autoScoutStart, the saved "start page" choice used by launch.html and by the
-// "Make this my player" button on player pages (localStorage key "autoscout-start").
+// "Make this my player" button on player pages (localStorage key "autoscout-start-2").
 (function () {
-  var KEY = 'autoscout-start';
+  var KEY = 'autoscout-start-2';
   function load() {
     try { return JSON.parse(localStorage.getItem(KEY) || 'null') || {}; } catch (e) { return {}; }
   }
