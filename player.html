@@ -714,6 +714,33 @@ function fmtDur(seconds) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+// "Make this my player": the installed app can open straight to this page (see launch.html / pwa.js).
+function attachMyPlayerButton(entry) {
+  const api = window.autoScoutStart;
+  const badges = document.getElementById('player-badges');
+  if (!api || !badges) return;
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'text-align:center';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'nc-link-a';
+  btn.style.cssText = 'font-family:inherit;cursor:pointer;';
+  const paint = () => {
+    const me = api.get().me;
+    const isMe = me && String(me.id) === String(entry.profileId);
+    btn.innerHTML = isMe ? '★ This is my player <span>tap to clear</span>' : '☆ Make this my player <span>the installed app opens here</span>';
+  };
+  btn.addEventListener('click', () => {
+    const me = api.get().me;
+    if (me && String(me.id) === String(entry.profileId)) api.clearMe();
+    else api.setMe(entry.profileId, entry.name);
+    paint();
+  });
+  paint();
+  wrap.appendChild(btn);
+  badges.insertAdjacentElement('afterend', wrap);
+}
+
 async function loadAndRender() {
   const content = document.getElementById('content');
   try {
@@ -1002,6 +1029,7 @@ function render(content, entry, player) {
 
   attachTournamentLink(entry);
   attachProScoutLink(entry);
+  attachMyPlayerButton(entry);
   const badgesEl = document.getElementById('player-badges');
   const shownLadders = new Set(Object.keys(entry.ratings || {}));
   // entry.ratings is restricted to the player's own group's ladders (e.g.

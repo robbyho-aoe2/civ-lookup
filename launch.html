@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opening AoE2 Auto Scout</title>
+<meta name="theme-color" content="#100E0C">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="app-icons/favicon.svg">
+<style>body{margin:0;background:#100E0C;color:#8F8578;font:14px system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}a{color:#5FB88C}</style>
+</head>
+<body>
+<p>Opening AoE2 Auto Scout&hellip; <noscript><a href="index.html">Continue</a></noscript></p>
+<script>
+// The installed app always starts here. It sends you to the page you chose with "App start page"
+// in the footer (or "Make this my player" on a player page); with no choice it opens the home page.
+(function () {
+  var PAGES = { home: 'index.html', spotlight: 'player.html', insights: 'insights.html', competitive: 'competitive.html',
+    civ: 'civ-insights.html', build: 'build-order.html', investigations: 'investigations.html' };
+  var url = 'index.html';
+  try {
+    var p = JSON.parse(localStorage.getItem('autoscout-start') || 'null');
+    if (p && p.page === 'me' && p.me && p.me.id) url = 'player.html?id=' + encodeURIComponent(p.me.id);
+    else if (p && PAGES[p.page]) url = PAGES[p.page];
+  } catch (e) {}
+  location.replace(url);
+})();
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@
   "short_name": "Auto Scout",
   "description": "Console Age of Empires II stats, scouting reports and insights.",
   "id": "./",
-  "start_url": "./index.html",
+  "start_url": "./launch.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#100E0C",

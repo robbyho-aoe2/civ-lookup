@@ -1,10 +1,10 @@
 // AoE2 Auto Scout service worker. Pages and the site's own files are fetched network-first, so
 // updates show up immediately; the cache is only a fallback when offline. Anything on another
 // origin (live match data, player data, API calls) is never touched, so numbers are never stale.
-const CACHE = 'autoscout-v1';
+const CACHE = 'autoscout-v2';
 const SHELL = [
   './', 'index.html', 'player.html', 'insights.html', 'competitive.html', 'civ-insights.html',
-  'build-order.html', 'investigations.html', 'tournament-player.html', 'manifest.webmanifest', 'pwa.js',
+  'build-order.html', 'investigations.html', 'tournament-player.html', 'launch.html', 'manifest.webmanifest', 'pwa.js',
   'app-icons/icon-192.png', 'app-icons/icon-512.png', 'app-icons/favicon.svg',
 ];
 
