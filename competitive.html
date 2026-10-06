@@ -123,6 +123,9 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 }
 .fixture-week{grid-column:1/-1;margin:6px 0 0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#8F8578);}
 .fixture-week:first-child{margin-top:0;}
+.lang-row{display:flex;gap:6px;margin:0 0 14px;}
+.lang-row button{background:var(--surf2);border:1px solid var(--border2);color:var(--text2);font:inherit;font-size:12px;font-weight:700;padding:5px 12px;border-radius:16px;cursor:pointer;}
+.lang-row button.on{background:var(--amberBg);color:var(--amberL);border-color:rgba(95,184,140,.4);}
 .map-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;}
 @media (max-width:700px){.map-grid{grid-template-columns:repeat(2,1fr);}}
 .map-tile{display:flex;align-items:center;gap:8px;background:#1F1A15;border:1px solid #362E24;border-radius:9px;padding:5px 10px 5px 5px;font-size:12.5px;font-weight:600;}
@@ -196,8 +199,13 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
   </div>
 
   <details class="section">
-    <summary>📜 Official Rules <span class="summary-hint">start Oct 10 &middot; full rulebook, uploaded by the site owner</span></summary>
+    <summary>📜 Official Rules <span class="summary-hint">start Oct 10 &middot; full rulebook in English and Spanish</span></summary>
     <div class="card">
+      <div class="lang-row" role="tablist" aria-label="Rules language">
+        <button type="button" class="on" data-lang="en" role="tab">English</button>
+        <button type="button" data-lang="es" role="tab">Español</button>
+      </div>
+      <div id="rules-en" lang="en">
       <h2>AOE2 Nations Cup — Official Rules</h2>
       <p class="desc">
         <b>Start Date:</b> October 10th &nbsp;&middot;&nbsp; <b>Duration:</b> 2-3 weeks<br><br>
@@ -301,6 +309,138 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
       <ul class="rules-list">
         <li>Admins have final say in disputes. All decisions prioritize fairness and simplicity.</li>
       </ul>
+      </div>
+      <div id="rules-es" lang="es" hidden>
+      <h2>AOE2 Nations Cup — Reglas oficiales</h2>
+      <p class="desc">
+        <b>Fecha de inicio:</b> 10 de octubre &nbsp;&middot;&nbsp; <b>Duración:</b> 2-3 semanas<br><br>
+        Este torneo se centra en los mejores jugadores de cada nación para determinar cuál de ellas se alza
+        como la mejor. Las naciones se enfrentarán entre sí en un formato de todos contra todos
+        (<i>round-robin</i>), con partidas 1v1, 2v2, 3v3 y 4v4. Cada equipo contará con entre 4 y 6
+        jugadores, y los jugadores pueden participar en más de una partida por ronda. Habrá un proceso de
+        selección (<i>draft</i>) tanto de civilizaciones como de mapas, y no se pueden repetir
+        civilizaciones ni mapas dentro de una misma ronda. Las partidas 1v1 otorgan 1 punto; las 2v2,
+        2 puntos; las 3v3, 3 puntos; y las 4v4, 4 puntos. Las dos naciones con mayor puntuación tras la
+        fase de todos contra todos se enfrentarán en la final, y las que ocupen el tercer y cuarto puesto
+        jugarán un partido por el tercer lugar.
+      </p>
+
+      <h3 class="sub-heading">1) Elegibilidad y reglas de plataforma</h3>
+      <ul class="rules-list">
+        <li>Solo se permite el uso de mando (controlador). No está permitido jugar con teclado y ratón.</li>
+        <li>Los jugadores no pueden estar en un grupo (<i>party</i>) con personas ajenas a su equipo
+          durante las partidas oficiales.</li>
+        <li>Los jugadores deben aparecer como "en línea" mientras disputan los partidos del torneo (esta
+          regla debe ser verificable).</li>
+        <li>El apodo en Discord debe coincidir estrechamente con el <i>Gamertag</i> para facilitar la
+          programación de los encuentros.</li>
+        <li>Al menos una persona por equipo debe estar presente en el servidor de Discord.</li>
+      </ul>
+
+      <h3 class="sub-heading">2) Conducta y juego limpio</h3>
+      <ul class="rules-list">
+        <li>Todos los participantes deben mantener un comportamiento respetuoso y colaborativo.</li>
+        <li>No se permite el comportamiento disruptivo o malintencionado (<i>griefing</i>), como esconder
+          unidades, pausar excesivamente, ausentarse intencionadamente (AFK) o provocar retrasos
+          artificiales.</li>
+        <li>No se permite recibir asesoramiento externo (<i>coaching</i>) durante las partidas.</li>
+        <li>Los administradores se reservan el derecho de descalificar a jugadores por hacer trampas o
+          mostrar una conducta antideportiva.</li>
+        <li><b>Sling</b> (transferencia de recursos): para realizarlo, tanto el jugador que transfiere los
+          recursos como el que los recibe deben haber alcanzado la Edad Imperial.</li>
+      </ul>
+
+      <h3 class="sub-heading">3) Inscripciones</h3>
+      <ul class="rules-list">
+        <li>Los participantes se inscribirán de forma individual. Si más de 6 jugadores se inscriben por
+          una misma nación, serán los propios jugadores de dicha nación quienes decidan quiénes formarán
+          parte del equipo definitivo.</li>
+        <li>Se permite que los jugadores participen en múltiples partidas por ronda para agilizar el
+          desarrollo del torneo y la programación de los encuentros.</li>
+        <li>Se tendrán en cuenta la zona horaria del jugador, su tiempo de juego habitual y su
+          participación previa en torneos. Si un jugador deja de participar activamente en el torneo,
+          puede ser sustituido.</li>
+        <li>Se permiten sustitutos siempre que se considere que tienen un nivel de habilidad igual o
+          inferior al del jugador al que reemplazan. Esta evaluación corre a cargo de los administradores,
+          quienes tienen plena autoridad sobre la decisión final.</li>
+      </ul>
+
+      <h3 class="sub-heading">4) Formato</h3>
+      <ul class="rules-list">
+        <li>Sistema de todos contra todos (<i>round robin</i>). Los partidos se jugarán los fines de
+          semana, comenzando el fin de semana del 10 de octubre de 2026. También se pueden jugar partidos
+          entre semana si ambos equipos están dispuestos y pueden hacerlo.</li>
+        <li>El torneo tendrá una duración total de 2 a 3 semanas.</li>
+        <li>Los equipos que no hagan un esfuerzo real por jugar sus partidos serán descalificados, sujeto a
+          revisión por parte de los administradores.</li>
+      </ul>
+
+      <h3 class="sub-heading">5) Programación</h3>
+      <ul class="rules-list">
+        <li>Los administradores publicarán los horarios iniciales una vez finalizadas las inscripciones.</li>
+        <li>Corresponde a los equipos acordar la fecha y hora específicas de su serie de partidas.</li>
+        <li>Los equipos deben estar disponibles durante el día al menos dos fines de semana durante el
+          periodo del torneo, debiendo identificar una de esas semanas al inicio del mismo. Esto es para
+          facilitar la coordinación con jugadores de otras regiones.</li>
+        <li>Las cancelaciones realizadas con menos de 24 horas de antelación deben reprogramarse en un
+          plazo de 7 días.</li>
+        <li>Se debe avisar de la cancelación 8 horas antes de la hora prevista de juego para evitar perder
+          la partida por incomparecencia (a menos que el otro equipo acepte reprogramar). Las excepciones
+          quedan a discreción de los administradores.</li>
+        <li>Si se reprograma para una nueva semana, el equipo deberá jugar dos series de partidas.</li>
+        <li>Los administradores pueden otorgar la puntuación completa a un equipo si el equipo rival no
+          muestra interés en coordinar el horario.</li>
+      </ul>
+
+      <h3 class="sub-heading">6) Mapas y civilizaciones</h3>
+      <ul class="rules-list">
+        <li>Mapas: Arabia, Arena, African Clearing, Pilgrims, Oasis (reemplaza a Frontline), Team Islands
+          (reemplaza a Migration), Glade, Black Forest.</li>
+        <li>Un representante elegido por cada equipo realizará la selección de mapas y civilizaciones. No
+          se pueden repetir mapas ni civilizaciones durante una misma serie.</li>
+        <li>Partida 1: mapa designado por los administradores. Partida 2: elegido por el perdedor de la
+          Partida 1. Partida 3: elegido por el perdedor de la Partida 2.</li>
+      </ul>
+
+      <h3 class="sub-heading">7) Bolsa de premios</h3>
+      <ul class="rules-list">
+        <li>La bolsa de premios inicial es de 200 $. Se fomentan las donaciones, las cuales serán
+          entregadas al equipo ganador por Old Peenuts. Cualquier persona que desee donar al torneo puede
+          contactar directamente con Old Peenuts.</li>
+      </ul>
+
+      <h3 class="sub-heading">8) Desconexiones y reinicios</h3>
+      <ul class="rules-list">
+        <li>Los compañeros de equipo deben pausar la partida inmediatamente si se produce una
+          desconexión.</li>
+        <li>Antes del minuto 5 &rarr; reinicio completo. Después del minuto 5 &rarr; restaurar desde el
+          archivo guardado.</li>
+        <li>Pausa máxima: 5 minutos (puede extenderse si ambos equipos están de acuerdo).</li>
+        <li>Dos desconexiones del mismo equipo = derrota en la partida.</li>
+        <li>Las partidas reanudadas requieren al menos una transmisión desde la perspectiva del jugador
+          (POV) por equipo.</li>
+      </ul>
+
+      <h3 class="sub-heading">9) Configuración de la partida</h3>
+      <ul class="rules-list">
+        <li>Modo de juego: Mapa aleatorio. Configuración estándar de partidas clasificatorias en línea.
+          Civilizaciones ocultas en la configuración de la sala.</li>
+      </ul>
+
+      <h3 class="sub-heading">10) Configuración de espectadores</h3>
+      <ul class="rules-list">
+        <li>Las partidas deben ser públicas, con espectadores habilitados y un retraso de exactamente
+          2 minutos para los espectadores.</li>
+        <li>Si la partida no es pública o visible al ser detectada por un administrador, se reiniciará
+          inmediatamente.</li>
+      </ul>
+
+      <h3 class="sub-heading">11) Autoridad de los administradores</h3>
+      <ul class="rules-list">
+        <li>Los administradores tienen la última palabra en caso de disputas. Todas las decisiones
+          priorizan la equidad y la simplicidad.</li>
+      </ul>
+      </div>
     </div>
   </details>
 
@@ -449,7 +589,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.47</div>
+    <div class="version">v0.48</div>
   </div>
 </div>
 
@@ -657,6 +797,16 @@ document.getElementById('standings-table').innerHTML = `
     `).join('')}
   </tbody>
 `;
+
+// ---- Rules language switch (English / Español) ----
+(function () {
+  const btns = document.querySelectorAll('.lang-row button');
+  btns.forEach(b => b.addEventListener('click', () => {
+    document.getElementById('rules-en').hidden = b.dataset.lang !== 'en';
+    document.getElementById('rules-es').hidden = b.dataset.lang !== 'es';
+    btns.forEach(x => x.classList.toggle('on', x === b));
+  }));
+})();
 
 // ---- Tabs: Tournament / Scouting Report (URL hash keeps the choice) ----
 (function () {
