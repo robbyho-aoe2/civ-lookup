@@ -121,6 +121,8 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
   .page-tabs::-webkit-scrollbar{display:none;}
   .page-tabs a{flex:none;padding:8px 10px;font-size:12px;white-space:nowrap;}
 }
+.fixture-week{grid-column:1/-1;margin:6px 0 0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#8F8578);}
+.fixture-week:first-child{margin-top:0;}
 .map-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;}
 @media (max-width:700px){.map-grid{grid-template-columns:repeat(2,1fr);}}
 .map-tile{display:flex;align-items:center;gap:8px;background:#1F1A15;border:1px solid #362E24;border-radius:9px;padding:5px 10px 5px 5px;font-size:12.5px;font-weight:600;}
@@ -447,7 +449,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.46</div>
+    <div class="version">v0.47</div>
   </div>
 </div>
 
@@ -607,7 +609,25 @@ function fixtureCardHtml([a, b]) {
     </div>
   `;
 }
-document.getElementById('fixtures-grid').innerHTML = FIXTURES.map(fixtureCardHtml).join('');
+// Scheduled weeks, in the order the matches are listed. Everything else stays under "Not yet scheduled".
+const SCHEDULE = [
+  { label: 'Week 1 · Oct 10', matches: [['uk', 'france'], ['usa', 'mexico'], ['canada', 'ps5']] },
+];
+const samePair = (f, [x, y]) => (f[0].id === x && f[1].id === y) || (f[0].id === y && f[1].id === x);
+const scheduled = new Set();
+const fixtureGroups = SCHEDULE.map(w => {
+  const list = w.matches.map(m => {
+    const f = FIXTURES.find(f => samePair(f, m));
+    if (f) scheduled.add(f);
+    // Show the teams in the order the schedule lists them.
+    return f && f[0].id !== m[0] ? [f[1], f[0]] : f;
+  }).filter(Boolean);
+  return { label: w.label, list };
+});
+const unscheduled = FIXTURES.filter(f => !scheduled.has(f));
+if (unscheduled.length) fixtureGroups.push({ label: 'Not yet scheduled', list: unscheduled });
+document.getElementById('fixtures-grid').innerHTML = fixtureGroups
+  .map(g => `<h3 class="fixture-week">${g.label}</h3>${g.list.map(fixtureCardHtml).join('')}`).join('');
 
 // Standings -- pure series win/loss record (a "series" is the full
 // 1v1/2v2/3v3/4v4 block against one opponent, not an individual set).
