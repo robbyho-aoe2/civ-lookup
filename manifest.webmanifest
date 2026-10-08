@@ -17,7 +17,7 @@
   "shortcuts": [
     { "name": "Player Spotlight", "short_name": "Players", "url": "player.html", "icons": [{ "src": "app-icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Console Insights", "short_name": "Insights", "url": "insights.html", "icons": [{ "src": "app-icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Console Competitive", "short_name": "Competitive", "url": "competitive.html", "icons": [{ "src": "app-icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Nations Cup", "short_name": "Nations Cup", "url": "competitive.html", "icons": [{ "src": "app-icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Investigations", "short_name": "Investigations", "url": "investigations.html", "icons": [{ "src": "app-icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }
