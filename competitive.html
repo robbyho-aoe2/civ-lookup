@@ -295,8 +295,8 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
       <ul class="rules-list">
         <li>Map pool: Arabia, Arena, African Clearing, Pilgrims, Oasis, Team Islands, Glade, Black Forest.</li>
         <li>A set is the full 1v1, 2v2, 3v3 and 4v4 against one opponent. Each of the four is a single game on one map.</li>
-        <li>The map draft will contain 1 ban for each team.</li>
-        <li>Game 1 is a 1v1 on the admin map, picked at random from the map draft. Game 2 is a 4v4, Game 3 a 3v3 and Game 4 a 2v2. The loser of each game chooses the map for the next one.</li>
+        <li>Bans happen in the map draft: each team bans 1 map.</li>
+        <li>Game 1 is a 1v1 on the admin map, picked at random from the maps left in the draft after the bans. Game 2 is a 4v4, Game 3 a 3v3 and Game 4 a 2v2. The loser of each game chooses the map for the next one.</li>
         <li>A map draft and civ draft are held by a chosen representative from each team. Maps and civs
           cannot be repeated during a set: a civ played in the 1v1 cannot be played again in the 2v2, 3v3 or 4v4.</li>
       </ul>
@@ -433,8 +433,8 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
       <ul class="rules-list">
         <li>Mapas: Arabia, Arena, African Clearing, Pilgrims, Oasis, Team Islands, Glade, Black Forest.</li>
         <li>Una serie (set) es el conjunto completo de 1v1, 2v2, 3v3 y 4v4 contra un rival. Cada una de las cuatro es una sola partida en un solo mapa.</li>
-        <li>El draft de mapas incluirá 1 veto por equipo.</li>
-        <li>La partida 1 es un 1v1 en el mapa de los administradores, elegido al azar entre los mapas del draft. La partida 2 es un 4v4, la 3 un 3v3 y la 4 un 2v2. El perdedor de cada partida elige el mapa de la siguiente.</li>
+        <li>Los vetos se hacen en el draft de mapas: cada equipo veta 1 mapa.</li>
+        <li>La partida 1 es un 1v1 en el mapa de los administradores, elegido al azar entre los mapas que quedan en el draft tras los vetos. La partida 2 es un 4v4, la 3 un 3v3 y la 4 un 2v2. El perdedor de cada partida elige el mapa de la siguiente.</li>
         <li>Un representante elegido por cada equipo realizará la selección de mapas y civilizaciones. No
           se pueden repetir mapas ni civilizaciones durante una misma serie: una civilización usada en el 1v1
           no puede usarse de nuevo en el 2v2, 3v3 o 4v4.</li>
@@ -490,7 +490,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 
   <div class="card">
     <h2>Maps</h2>
-    <p class="desc">The eight-map pool. The map draft will contain 1 ban for each team. Games go 1v1, 4v4, 3v3, 2v2: the 1v1 map is picked at random from the draft, then the loser of each game picks the next map.</p>
+    <p class="desc">The eight-map pool. Bans happen in the map draft, 1 per team. Games go 1v1, 4v4, 3v3, 2v2: the 1v1 map is picked at random from the maps left, then the loser of each game picks the next map.</p>
     <div class="map-grid">
       <div class="map-tile"><img src="img/maps/arabia.jpg" alt="" width="56" height="56" loading="lazy"><span>Arabia</span></div>
       <div class="map-tile"><img src="img/maps/arena.jpg" alt="" width="56" height="56" loading="lazy"><span>Arena</span></div>
@@ -536,7 +536,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
         three and volcanloup as the field's second-best player, and counts known alt accounts with their owner. Treat it as a projection, not a forecast.
       </p>
       <p class="standings-note" style="margin:8px 0 0">
-        Each card proposes a lineup for every set and the map to ban against each opponent, and the two best maps to pick after a loss. A set is played in a fixed order, 1v1, 4v4, 3v3, 2v2. The 1v1 map is picked at random from the draft, each team bans one map, and the loser of each game picks the map for the next one. Bans are the maps where the opponent has the biggest edge, and maps with few games count for less. Lineups are the strongest combination by rating and form. Map advice uses each
+        Each card proposes a lineup for every set and the map to ban against each opponent, and the two best maps to pick after a loss. A set is played in a fixed order, 1v1, 4v4, 3v3, 2v2. Each team bans one map in the map draft, the 1v1 map is picked at random from what is left, and the loser of each game picks the map for the next one. Bans are the maps where the opponent has the biggest edge, and maps with few games count for less. Lineups are the strongest combination by rating and form. Map advice uses each
         team's last 12 months on the eight tournament maps only (40+ games needed to count, 60+ to be picked). Pilgrims and Team Islands are barely played by anyone, and
         Oasis only by a few teams, so they are rarely recommended. Open maps are Arabia, African Clearing, Glade and Oasis; closed maps are Arena, Black Forest, Pilgrims and Team Islands.
       </p>
@@ -627,7 +627,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.68</div>
+    <div class="version">v0.69</div>
   </div>
 </div>
 
