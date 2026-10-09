@@ -70,6 +70,9 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .set-row:first-of-type{border-top:none;}
 .set-row .set-label{color:var(--text2);font-weight:600;}
 .set-status{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--surf);border:1px solid var(--border2);color:var(--text3);text-transform:uppercase;letter-spacing:.03em;}
+.fx-watch{display:inline-block;margin:2px 0 6px;font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;}
+.fx-watch:hover{text-decoration:underline;}
+a.set-status{text-decoration:none;}
 .set-status.sched{color:var(--amberL);border-color:var(--amber);background:var(--amberBg);}
 .sched-list{display:grid;gap:10px;margin-top:10px;}
 .sched-item{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 14px;}
@@ -655,7 +658,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.76</div>
+    <div class="version">v0.77</div>
   </div>
 </div>
 
@@ -833,10 +836,11 @@ function fixtureCardHtml([a, b]) {
         <span class="fv-sep">vs</span>
         <span class="fv-team">${b.name}</span>
       </div>
+      ${(sg => sg && casterLink(sg.caster) ? `<a class="fx-watch" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">Watch on Twitch with ${sg.caster}</a>` : '')(SET_FORMATS.map(f => scheduledFor(a, b, f)).find(Boolean))}
       ${SET_FORMATS.map(fmt => `
         <div class="set-row">
           <span class="set-label">${fmt}</span>
-          ${(sg => sg ? `<span class="set-status sched">${sg.short} · ${sg.time.replace(':00', '')}</span>` : '<span class="set-status">Not Played</span>')(scheduledFor(a, b, fmt))}
+          ${(sg => sg ? (casterLink(sg.caster) ? `<a class="set-status sched" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">${sg.short} · ${sg.time.replace(':00', '')}</a>` : `<span class="set-status sched">${sg.short} · ${sg.time.replace(':00', '')}</span>`) : '<span class="set-status">Not Played</span>')(scheduledFor(a, b, fmt))}
         </div>
       `).join('')}
     </div>
