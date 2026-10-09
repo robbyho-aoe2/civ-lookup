@@ -666,7 +666,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.81</div>
+    <div class="version">v0.82</div>
   </div>
 </div>
 
@@ -828,6 +828,9 @@ const SET_POINTS = { '1v1': 1, '2v2': 2, '3v3': 3, '4v4': 4 };
 const SET_RESULTS = [
   { teams: ['canada', 'ps5'], fmt: '1v1', winner: 'canada', map: 'Oasis',
     winners: [{ name: 'volcanloup', id: 12893749 }], losers: [{ name: 'ItsGutsAoE', id: 23477132 }] },
+  { teams: ['canada', 'ps5'], fmt: '2v2', winner: 'ps5', map: 'Arena',
+    winners: [{ name: 'CrustyPotato313', id: 23147426 }, { name: 'ItsGutsAoE', id: 23477132 }],
+    losers: [{ name: 'volcanloup', id: 12893749 }, { name: 'Dbs Elm', id: 14276793 }] },
 ];
 const resultFor = (a, b, fmt) => SET_RESULTS.find(r => r.fmt === fmt && ((r.teams[0] === a.id && r.teams[1] === b.id) || (r.teams[0] === b.id && r.teams[1] === a.id)));
 const plink = p => `<a href="player.html?id=${p.id}">${p.name}</a>`;
