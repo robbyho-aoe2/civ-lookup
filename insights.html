@@ -268,6 +268,9 @@ svg.pad{width:100%;height:auto;display:block;}
 .pad .p-t{fill:var(--text2);font-size:9px;font-family:var(--font-mono);pointer-events:none;}
 .pad .p-lab{fill:var(--text3);font-size:8px;font-family:var(--font-mono);pointer-events:none;}
 .pad .on + .p-lab,.pad .p-face.on + .p-t{fill:#100E0C;}
+.pad .p-t.xbY{fill:#fbbf24;}.pad .p-t.xbX{fill:#60a5fa;}.pad .p-t.xbB{fill:#f87171;}.pad .p-t.xbA{fill:#4ade80;}
+.pad .p-t.psY{fill:#4ade80;}.pad .p-t.psB{fill:#f87171;}.pad .p-t.psA{fill:#60a5fa;}.pad .p-t.psX{fill:#f472b6;}
+.pad .p-face.on + .p-t{fill:#100E0C;}
 .set-grid,.todo-list{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));}
 .set-row{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;}
 .set-row div{display:flex;flex-direction:column;gap:1px;min-width:0;}
@@ -2235,44 +2238,63 @@ loadAndRender();
     return u;
   }
 
+  var BODY = {
+    xbox: 'M57.0 22.0 C58.8 21.8 65.2 21.5 67.0 22.0 C68.8 22.5 66.2 24.2 68.0 25.0 C69.8 25.8 74.3 25.5 78.0 27.0 C81.7 28.5 86.2 32.3 90.0 34.0 C93.8 35.7 92.8 36.5 101.0 37.0 C109.2 37.5 131.3 37.3 139.0 37.0 C146.7 36.7 144.7 36.0 147.0 35.0 C149.3 34.0 150.0 32.3 153.0 31.0 C156.0 29.7 159.3 27.5 165.0 27.0 C170.7 26.5 180.7 26.7 187.0 28.0 C193.3 29.3 198.0 29.2 203.0 35.0 C208.0 40.8 213.2 53.0 217.0 63.0 C220.8 73.0 223.5 84.0 226.0 95.0 C228.5 106.0 231.0 117.2 232.0 129.0 C233.0 140.8 232.5 158.2 232.0 166.0 C231.5 173.8 230.3 173.0 229.0 176.0 C227.7 179.0 225.7 182.2 224.0 184.0 C222.3 185.8 221.5 186.5 219.0 187.0 C216.5 187.5 213.0 188.0 209.0 187.0 C205.0 186.0 198.7 183.0 195.0 181.0 C191.3 179.0 192.2 180.0 187.0 175.0 C181.8 170.0 169.8 156.2 164.0 151.0 C158.2 145.8 155.5 145.5 152.0 144.0 C148.5 142.5 152.3 142.3 143.0 142.0 C133.7 141.7 106.8 141.2 96.0 142.0 C85.2 142.8 82.0 145.5 78.0 147.0 C74.0 148.5 76.8 146.5 72.0 151.0 C67.2 155.5 54.5 168.8 49.0 174.0 C43.5 179.2 42.5 179.8 39.0 182.0 C35.5 184.2 31.8 186.2 28.0 187.0 C24.2 187.8 18.7 187.3 16.0 187.0 C13.3 186.7 13.3 186.0 12.0 185.0 C10.7 184.0 9.3 183.2 8.0 181.0 C6.7 178.8 5.0 177.3 4.0 172.0 C3.0 166.7 1.7 158.5 2.0 149.0 C2.3 139.5 4.2 126.0 6.0 115.0 C7.8 104.0 10.7 91.8 13.0 83.0 C15.3 74.2 17.0 69.7 20.0 62.0 C23.0 54.3 28.0 42.0 31.0 37.0 C34.0 32.0 36.3 33.7 38.0 32.0 C39.7 30.3 38.3 28.2 41.0 27.0 C43.7 25.8 51.5 25.7 54.0 25.0 C56.5 24.3 55.5 23.5 56.0 23.0 C56.5 22.5 55.2 22.2 57.0 22.0 Z',
+    ps: 'M72.0 52.0 C76.2 52.0 91.2 52.5 96.0 53.0 C100.8 53.5 100.0 53.8 101.0 55.0 C102.0 56.2 96.0 59.8 102.0 60.0 C108.0 60.2 120.2 56.8 137.0 56.0 C153.8 55.2 186.0 54.8 203.0 55.0 C220.0 55.2 229.2 56.0 239.0 57.0 C248.8 58.0 257.8 60.5 262.0 61.0 C266.2 61.5 263.7 61.2 264.0 60.0 C264.3 58.8 262.7 55.3 264.0 54.0 C265.3 52.7 267.5 52.3 272.0 52.0 C276.5 51.7 284.2 50.5 291.0 52.0 C297.8 53.5 309.0 58.3 313.0 61.0 C317.0 63.7 313.7 66.5 315.0 68.0 C316.3 69.5 317.0 62.8 321.0 70.0 C325.0 77.2 333.3 94.3 339.0 111.0 C344.7 127.7 351.7 155.5 355.0 170.0 C358.3 184.5 358.2 188.5 359.0 198.0 C359.8 207.5 360.3 217.7 360.0 227.0 C359.7 236.3 358.2 247.3 357.0 254.0 C355.8 260.7 354.3 263.8 353.0 267.0 C351.7 270.2 351.8 270.3 349.0 273.0 C346.2 275.7 341.0 280.8 336.0 283.0 C331.0 285.2 324.0 285.5 319.0 286.0 C314.0 286.5 309.5 288.3 306.0 286.0 C302.5 283.7 302.8 283.0 298.0 272.0 C293.2 261.0 282.2 230.5 277.0 220.0 C271.8 209.5 270.5 211.7 267.0 209.0 C263.5 206.3 260.0 204.5 256.0 204.0 C252.0 203.5 265.8 205.7 243.0 206.0 C220.2 206.3 141.5 206.3 119.0 206.0 C96.5 205.7 111.8 203.5 108.0 204.0 C104.2 204.5 99.7 206.3 96.0 209.0 C92.3 211.7 91.0 209.8 86.0 220.0 C81.0 230.2 70.8 259.0 66.0 270.0 C61.2 281.0 60.7 283.3 57.0 286.0 C53.3 288.7 49.0 286.5 44.0 286.0 C39.0 285.5 31.0 284.2 27.0 283.0 C23.0 281.8 22.2 280.7 20.0 279.0 C17.8 277.3 15.8 275.5 14.0 273.0 C12.2 270.5 10.7 269.7 9.0 264.0 C7.3 258.3 4.8 249.7 4.0 239.0 C3.2 228.3 3.0 213.0 4.0 200.0 C5.0 187.0 6.5 176.2 10.0 161.0 C13.5 145.8 19.8 123.8 25.0 109.0 C30.2 94.2 37.2 78.8 41.0 72.0 C44.8 65.2 46.7 69.7 48.0 68.0 C49.3 66.3 48.2 63.5 49.0 62.0 C49.8 60.5 49.3 60.5 53.0 59.0 C56.7 57.5 67.8 54.2 71.0 53.0 C74.2 51.8 67.8 52.0 72.0 52.0 Z'
+  };
   function pad(u, plat) {
     var ps = plat === 'ps';
     var L = LABELS[plat];
     function on(k) { return u[k] ? ' on' : ''; }
-    function cross(x, y, keys) {
+    function cross(x, y, keys, arm, wid, gap) {
       var d = '';
-      d += '<rect class="p-dp' + on(keys[0]) + '" x="' + (x - 5.5) + '" y="' + (y - 17) + '" width="11" height="15" rx="3"/>';
-      d += '<rect class="p-dp' + on(keys[1]) + '" x="' + (x - 5.5) + '" y="' + (y + 2) + '" width="11" height="15" rx="3"/>';
-      d += '<rect class="p-dp' + on(keys[2]) + '" x="' + (x - 17) + '" y="' + (y - 5.5) + '" width="15" height="11" rx="3"/>';
-      d += '<rect class="p-dp' + on(keys[3]) + '" x="' + (x + 2) + '" y="' + (y - 5.5) + '" width="15" height="11" rx="3"/>';
-      d += '<rect class="p-dpc" x="' + (x - 5) + '" y="' + (y - 5) + '" width="10" height="10"/>';
-      return '<circle class="p-well" cx="' + x + '" cy="' + y + '" r="20"/>' + d;
+      d += '<rect class="p-dp' + on(keys[0]) + '" x="' + (x - wid / 2) + '" y="' + (y - gap - arm) + '" width="' + wid + '" height="' + arm + '" rx="3"/>';
+      d += '<rect class="p-dp' + on(keys[1]) + '" x="' + (x - wid / 2) + '" y="' + (y + gap) + '" width="' + wid + '" height="' + arm + '" rx="3"/>';
+      d += '<rect class="p-dp' + on(keys[2]) + '" x="' + (x - gap - arm) + '" y="' + (y - wid / 2) + '" width="' + arm + '" height="' + wid + '" rx="3"/>';
+      d += '<rect class="p-dp' + on(keys[3]) + '" x="' + (x + gap) + '" y="' + (y - wid / 2) + '" width="' + arm + '" height="' + wid + '" rx="3"/>';
+      d += '<rect class="p-dpc" x="' + (x - gap - 1) + '" y="' + (y - gap - 1) + '" width="' + (gap * 2 + 2) + '" height="' + (gap * 2 + 2) + '"/>';
+      return d;
     }
-    function stick(x, y, key) {
-      return '<circle class="p-well" cx="' + x + '" cy="' + y + '" r="17"/><circle class="p-stick' + on(key) + '" cx="' + x + '" cy="' + y + '" r="12"/><circle class="p-ring" cx="' + x + '" cy="' + y + '" r="6.5"/>';
+    function stick(x, y, key, well, cap) {
+      return '<circle class="p-well" cx="' + x + '" cy="' + y + '" r="' + well + '"/><circle class="p-stick' + on(key) + '" cx="' + x + '" cy="' + y + '" r="' + cap + '"/><circle class="p-ring" cx="' + x + '" cy="' + y + '" r="' + (cap * 0.55) + '"/>';
     }
-    var dp = ps ? [66, 58] : [96, 88], ls = ps ? [96, 90] : [66, 58], rs = ps ? [144, 90] : [144, 88], fc = ps ? [174, 58] : [174, 58];
-    var s = '<svg viewBox="0 0 240 152" class="pad" aria-hidden="true">';
-    s += '<rect class="p-trig' + on('LT') + '" x="46" y="4" width="38" height="18" rx="7"/><text class="p-lab" x="65" y="16" text-anchor="middle">' + esc(L.LT) + '</text>';
-    s += '<rect class="p-trig' + on('RT') + '" x="156" y="4" width="38" height="18" rx="7"/><text class="p-lab" x="175" y="16" text-anchor="middle">' + esc(L.RT) + '</text>';
-    s += '<rect class="p-bump' + on('LB') + '" x="38" y="22" width="52" height="12" rx="6"/><text class="p-lab" x="64" y="31" text-anchor="middle">' + esc(L.LB) + '</text>';
-    s += '<rect class="p-bump' + on('RB') + '" x="150" y="22" width="52" height="12" rx="6"/><text class="p-lab" x="176" y="31" text-anchor="middle">' + esc(L.RB) + '</text>';
-    s += '<path class="p-body" d="M62 34 C90 29 150 29 178 34 C196 35 210 45 216 66 C222 88 226 112 220 124 C214 137 196 139 186 127 C176 115 170 105 158 101 C146 97 94 97 82 101 C70 105 64 115 54 127 C44 139 26 137 20 124 C14 112 18 88 24 66 C30 45 44 35 62 34 Z"/>';
+    function face(cx, cy, off, r, color) {
+      var s = '';
+      [['Y', cx, cy - off], ['A', cx, cy + off], ['X', cx - off, cy], ['B', cx + off, cy]].forEach(function (f) {
+        s += '<circle class="p-face' + on(f[0]) + '" cx="' + f[1] + '" cy="' + f[2] + '" r="' + r + '"/><text class="p-t' + (color ? ' ' + color + f[0] : '') + '" x="' + f[1] + '" y="' + (f[2] + r * (color === 'ps' ? 0.52 : 0.42)) + '" text-anchor="middle" font-size="' + (r * (color === 'ps' ? 1.6 : 1.15)) + '">' + esc(L[f[0]]) + '</text>';
+      });
+      return s;
+    }
+    var s;
     if (ps) {
-      s += '<rect class="p-pad" x="97" y="40" width="46" height="26" rx="8"/>';
-      s += '<rect class="p-small' + on('MAP') + '" x="80" y="42" width="8" height="14" rx="4"/><rect class="p-small" x="152" y="42" width="8" height="14" rx="4"/>';
-      s += '<circle class="p-small" cx="120" cy="78" r="5.5"/><rect class="p-small" x="117" y="88" width="6" height="4" rx="2"/>';
-      s += cross(dp[0], dp[1], ['DU', 'DD', 'DL', 'DR']);
-      s += stick(ls[0], ls[1], 'LS') + stick(rs[0], rs[1], 'RS');
-    } else {
-      s += '<circle class="p-small" cx="120" cy="46" r="7"/>';
-      s += '<circle class="p-small' + on('MAP') + '" cx="102" cy="58" r="4.5"/><circle class="p-small" cx="138" cy="58" r="4.5"/>';
-      s += stick(ls[0], ls[1], 'LS') + cross(dp[0], dp[1], ['DU', 'DD', 'DL', 'DR']) + stick(rs[0], rs[1], 'RS');
+      s = '<svg viewBox="0 12 366 282" class="pad" aria-hidden="true">';
+      s += '<rect class="p-trig' + on('LT') + '" x="50" y="14" width="64" height="36" rx="12"/><text class="p-lab" x="82" y="38" text-anchor="middle" font-size="15">' + esc(L.LT) + '</text>';
+      s += '<rect class="p-trig' + on('RT') + '" x="252" y="14" width="64" height="36" rx="12"/><text class="p-lab" x="284" y="38" text-anchor="middle" font-size="15">' + esc(L.RT) + '</text>';
+      s += '<path class="p-body" d="' + BODY.ps + '"/>';
+      s += '<g transform="rotate(-9 81 58)"><rect class="p-bump' + on('LB') + '" x="50" y="50" width="62" height="15" rx="7"/><text class="p-lab" x="81" y="61" text-anchor="middle" font-size="11">' + esc(L.LB) + '</text></g>';
+      s += '<g transform="rotate(9 283 58)"><rect class="p-bump' + on('RB') + '" x="252" y="50" width="62" height="15" rx="7"/><text class="p-lab" x="283" y="61" text-anchor="middle" font-size="11">' + esc(L.RB) + '</text></g>';
+      s += '<rect class="p-pad" x="118" y="66" width="130" height="62" rx="12"/>';
+      s += '<rect class="p-small" x="118" y="132" width="130" height="8" rx="4"/>';
+      s += '<rect class="p-small' + on('MAP') + '" x="95" y="74" width="9" height="22" rx="4.5"/><rect class="p-small" x="262" y="74" width="9" height="22" rx="4.5"/>';
+      s += cross(76, 118, ['DU', 'DD', 'DL', 'DR'], 21, 17, 6);
+      s += face(288, 120, 27, 14, 'ps');
+      s += stick(122, 168, 'LS', 30, 21) + stick(240, 168, 'RS', 30, 21);
+      s += '<circle class="p-small" cx="181" cy="168" r="9"/><rect class="p-small" x="168" y="190" width="26" height="4" rx="2"/>';
+      s += '</svg>';
+      return s;
     }
-    var fx = fc[0], fy = fc[1];
-    [['Y', fx, fy - 14], ['A', fx, fy + 14], ['X', fx - 14, fy], ['B', fx + 14, fy]].forEach(function (f) {
-      s += '<circle class="p-face' + on(f[0]) + '" cx="' + f[1] + '" cy="' + f[2] + '" r="8.5"/><text class="p-t" x="' + f[1] + '" y="' + (f[2] + 3.8) + '" text-anchor="middle">' + esc(L[f[0]]) + '</text>';
-    });
+    s = '<svg viewBox="0 0 243 205" class="pad" aria-hidden="true">';
+    s += '<rect class="p-trig' + on('LT') + '" x="26" y="2" width="38" height="28" rx="10"/><text class="p-lab" x="45" y="19" text-anchor="middle" font-size="10">' + esc(L.LT) + '</text>';
+    s += '<rect class="p-trig' + on('RT') + '" x="179" y="2" width="38" height="28" rx="10"/><text class="p-lab" x="198" y="19" text-anchor="middle" font-size="10">' + esc(L.RT) + '</text>';
+    s += '<path class="p-body" d="' + BODY.xbox + '"/>';
+    s += '<g transform="rotate(-9 54 31)"><rect class="p-bump' + on('LB') + '" x="26" y="25" width="56" height="11" rx="5.5"/><text class="p-lab" x="54" y="33.5" text-anchor="middle" font-size="8">' + esc(L.LB) + '</text></g>';
+    s += '<g transform="rotate(9 189 31)"><rect class="p-bump' + on('RB') + '" x="161" y="25" width="56" height="11" rx="5.5"/><text class="p-lab" x="189" y="33.5" text-anchor="middle" font-size="8">' + esc(L.RB) + '</text></g>';
+    s += '<circle class="p-small" cx="120" cy="62" r="13"/><circle class="p-ring" cx="120" cy="62" r="8"/>';
+    s += '<rect class="p-small' + on('MAP') + '" x="90" y="57" width="12" height="10" rx="5"/><rect class="p-small" x="138" y="57" width="12" height="10" rx="5"/>';
+    s += stick(53, 57, 'LS', 17, 12);
+    s += '<circle class="p-well" cx="85" cy="97" r="20"/>' + cross(85, 97, ['DU', 'DD', 'DL', 'DR'], 13, 11, 5);
+    s += stick(152, 97, 'RS', 17, 12);
+    s += face(186, 61, 17, 8, 'xb');
     s += '</svg>';
     return s;
   }
