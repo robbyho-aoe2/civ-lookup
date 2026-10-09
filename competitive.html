@@ -81,6 +81,8 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .sched-match span{display:block;font-size:12px;color:var(--text2);margin-top:2px;}
 .sched-cast{font-size:12px;color:var(--text2);}
 .sched-cast b{color:var(--text);}
+.sched-cast a{color:var(--amberL);font-weight:700;text-decoration:none;}
+.sched-cast a:hover{text-decoration:underline;}
 .standings-note{font-size:12px;color:var(--text2);margin:0 0 14px;line-height:1.6;}
 table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;}
 th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
@@ -644,7 +646,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.73</div>
+    <div class="version">v0.74</div>
   </div>
 </div>
 
@@ -791,7 +793,7 @@ document.getElementById('fixture-count').textContent = FIXTURES.length;
 
 // Games that have a date and time. `games` lists which formats are played in that slot.
 const SCHEDULED_GAMES = [
-  { date: 'Fri, Oct 9', short: 'Oct 9', time: '4:00 pm PT', teams: ['canada', 'ps5'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
+  { date: 'Fri, Oct 9', short: 'Oct 9', time: '4:00 pm PT', teams: ['canada', 'ps5'], games: ['1v1', '2v2'], caster: 'Old Peenuts', watch: 'https://www.twitch.tv/worst_underwear' },
 ];
 const teamName = id => (ALL_TEAMS.find(t => t.id === id) || { name: id }).name;
 function scheduledFor(a, b, fmt) {
@@ -802,7 +804,7 @@ document.getElementById('sched-list').innerHTML = SCHEDULED_GAMES.length
     <div class="sched-item">
       <div class="sched-when"><b>${g.date}</b><span>${g.time}</span></div>
       <div class="sched-match"><b>${teamName(g.teams[0])} vs ${teamName(g.teams[1])}</b><span>${g.games.join(' and ')}</span></div>
-      <div class="sched-cast">Casted by <b>${g.caster}</b></div>
+      <div class="sched-cast">Casted by <b>${g.caster}</b>${g.watch ? ` &middot; <a href="${g.watch}" target="_blank" rel="noopener">Watch on Twitch</a>` : ''}</div>
     </div>`).join('')
   : '<p class="desc">No games scheduled yet.</p>';
 
