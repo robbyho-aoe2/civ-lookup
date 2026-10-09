@@ -81,8 +81,12 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .sched-match span{display:block;font-size:12px;color:var(--text2);margin-top:2px;}
 .sched-cast{font-size:12px;color:var(--text2);}
 .sched-cast b{color:var(--text);}
-.sched-cast a{color:var(--amberL);font-weight:700;text-decoration:none;}
-.sched-cast a:hover{text-decoration:underline;}
+.sched-when a{display:block;color:inherit;text-decoration:none;}
+.sched-when a:hover b,.sched-when a:hover span{text-decoration:underline;}
+.caster-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.caster{display:inline-flex;align-items:center;gap:8px;background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 12px;text-decoration:none;color:var(--text);font-size:13px;font-weight:700;}
+.caster span{font-size:11px;font-weight:600;color:var(--amberL);}
+.caster:hover{border-color:var(--amber);}
 .standings-note{font-size:12px;color:var(--text2);margin:0 0 14px;line-height:1.6;}
 table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;}
 th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
@@ -213,6 +217,11 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
       <span class="pill date">Start: October 10th</span>
       <span class="pill org">Organized by <a href="player.html?id=12637242" style="color:inherit;">Worst Underwear</a></span>
     </div>
+  </div>
+
+  <div class="card" id="casters-card">
+    <h2>Casters</h2>
+    <div class="caster-list" id="caster-list"></div>
   </div>
 
   <div class="card" id="scheduled-card">
@@ -646,7 +655,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.74</div>
+    <div class="version">v0.75</div>
   </div>
 </div>
 
@@ -792,9 +801,15 @@ const FIXTURES = roundRobinPairs(TEAMS);
 document.getElementById('fixture-count').textContent = FIXTURES.length;
 
 // Games that have a date and time. `games` lists which formats are played in that slot.
-const SCHEDULED_GAMES = [
-  { date: 'Fri, Oct 9', short: 'Oct 9', time: '4:00 pm PT', teams: ['canada', 'ps5'], games: ['1v1', '2v2'], caster: 'Old Peenuts', watch: 'https://www.twitch.tv/worst_underwear' },
+const CASTERS = [
+  { name: 'Old Peenuts', twitch: 'https://www.twitch.tv/worst_underwear' },
 ];
+document.getElementById('caster-list').innerHTML = CASTERS.map(c =>
+  `<a class="caster" href="${c.twitch}" target="_blank" rel="noopener">${c.name}<span>Twitch</span></a>`).join('');
+const SCHEDULED_GAMES = [
+  { date: 'Fri, Oct 9', short: 'Oct 9', time: '4:00 pm PT', teams: ['canada', 'ps5'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
+];
+const casterLink = name => (CASTERS.find(c => c.name === name) || {}).twitch;
 const teamName = id => (ALL_TEAMS.find(t => t.id === id) || { name: id }).name;
 function scheduledFor(a, b, fmt) {
   return SCHEDULED_GAMES.find(g => g.games.includes(fmt) && ((g.teams[0] === a.id && g.teams[1] === b.id) || (g.teams[0] === b.id && g.teams[1] === a.id)));
@@ -802,9 +817,9 @@ function scheduledFor(a, b, fmt) {
 document.getElementById('sched-list').innerHTML = SCHEDULED_GAMES.length
   ? SCHEDULED_GAMES.map(g => `
     <div class="sched-item">
-      <div class="sched-when"><b>${g.date}</b><span>${g.time}</span></div>
+      <div class="sched-when">${casterLink(g.caster) ? `<a href="${casterLink(g.caster)}" target="_blank" rel="noopener" title="Watch on Twitch">` : ''}<b>${g.date}</b><span>${g.time}</span>${casterLink(g.caster) ? '</a>' : ''}</div>
       <div class="sched-match"><b>${teamName(g.teams[0])} vs ${teamName(g.teams[1])}</b><span>${g.games.join(' and ')}</span></div>
-      <div class="sched-cast">Casted by <b>${g.caster}</b>${g.watch ? ` &middot; <a href="${g.watch}" target="_blank" rel="noopener">Watch on Twitch</a>` : ''}</div>
+      <div class="sched-cast">Casted by <b>${g.caster}</b></div>
     </div>`).join('')
   : '<p class="desc">No games scheduled yet.</p>';
 
