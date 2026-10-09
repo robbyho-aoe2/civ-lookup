@@ -229,7 +229,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 
   <div class="card" id="scheduled-card">
     <h2>Scheduled Games</h2>
-    <p class="desc">Times are Pacific. Games not listed here are still to be scheduled.</p>
+    <p class="desc">Times are Eastern. Games not listed here are still to be scheduled.</p>
     <div class="sched-list" id="sched-list"></div>
   </div>
 
@@ -658,7 +658,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.77</div>
+    <div class="version">v0.78</div>
   </div>
 </div>
 
@@ -812,7 +812,7 @@ const CASTERS = [
 document.getElementById('caster-list').innerHTML = CASTERS.map(c =>
   `<div class="caster">${c.name}${c.links.map(([label, url]) => `<a href="${url}" target="_blank" rel="noopener">${label}</a>`).join('')}</div>`).join('');
 const SCHEDULED_GAMES = [
-  { date: 'Fri, Oct 9', short: 'Oct 9', time: '4:00 pm PT', teams: ['canada', 'ps5'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
+  { date: 'Fri, Oct 9', short: 'Oct 9', time: '7:00 pm ET', teams: ['canada', 'ps5'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
 ];
 const casterLink = name => { const c = CASTERS.find(c => c.name === name); const t = c && c.links.find(l => l[0] === 'Twitch'); return t ? t[1] : null; };
 const teamName = id => (ALL_TEAMS.find(t => t.id === id) || { name: id }).name;
