@@ -658,7 +658,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.78</div>
+    <div class="version">v0.79</div>
   </div>
 </div>
 
@@ -808,6 +808,7 @@ const CASTERS = [
   { name: 'Old Peenuts', links: [['Twitch', 'https://www.twitch.tv/worst_underwear']] },
   { name: 'Fast Castle and Chill', links: [['Twitch', 'https://www.twitch.tv/fastcastleandchill'], ['YouTube', 'https://www.youtube.com/@fastcastleandchill']] },
   { name: 'Ole Crooked Woody', links: [['Twitch', 'https://www.twitch.tv/olecrookedwoody']] },
+  { name: 'Sammy Diamonds', links: [['Twitch', 'https://www.twitch.tv/sammydiamonds']] },
 ];
 document.getElementById('caster-list').innerHTML = CASTERS.map(c =>
   `<div class="caster">${c.name}${c.links.map(([label, url]) => `<a href="${url}" target="_blank" rel="noopener">${label}</a>`).join('')}</div>`).join('');
