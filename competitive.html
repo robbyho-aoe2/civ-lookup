@@ -84,9 +84,9 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .sched-when a{display:block;color:inherit;text-decoration:none;}
 .sched-when a:hover b,.sched-when a:hover span{text-decoration:underline;}
 .caster-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
-.caster{display:inline-flex;align-items:center;gap:8px;background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 12px;text-decoration:none;color:var(--text);font-size:13px;font-weight:700;}
-.caster span{font-size:11px;font-weight:600;color:var(--amberL);}
-.caster:hover{border-color:var(--amber);}
+.caster{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 12px;color:var(--text);font-size:13px;font-weight:700;}
+.caster a{font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;border:1px solid var(--border2);border-radius:20px;padding:2px 9px;background:var(--surf);}
+.caster a:hover{border-color:var(--amber);}
 .standings-note{font-size:12px;color:var(--text2);margin:0 0 14px;line-height:1.6;}
 table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;}
 th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
@@ -655,7 +655,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.75</div>
+    <div class="version">v0.76</div>
   </div>
 </div>
 
@@ -802,14 +802,16 @@ document.getElementById('fixture-count').textContent = FIXTURES.length;
 
 // Games that have a date and time. `games` lists which formats are played in that slot.
 const CASTERS = [
-  { name: 'Old Peenuts', twitch: 'https://www.twitch.tv/worst_underwear' },
+  { name: 'Old Peenuts', links: [['Twitch', 'https://www.twitch.tv/worst_underwear']] },
+  { name: 'Fast Castle and Chill', links: [['Twitch', 'https://www.twitch.tv/fastcastleandchill'], ['YouTube', 'https://www.youtube.com/@fastcastleandchill']] },
+  { name: 'Ole Crooked Woody', links: [['Twitch', 'https://www.twitch.tv/olecrookedwoody']] },
 ];
 document.getElementById('caster-list').innerHTML = CASTERS.map(c =>
-  `<a class="caster" href="${c.twitch}" target="_blank" rel="noopener">${c.name}<span>Twitch</span></a>`).join('');
+  `<div class="caster">${c.name}${c.links.map(([label, url]) => `<a href="${url}" target="_blank" rel="noopener">${label}</a>`).join('')}</div>`).join('');
 const SCHEDULED_GAMES = [
   { date: 'Fri, Oct 9', short: 'Oct 9', time: '4:00 pm PT', teams: ['canada', 'ps5'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
 ];
-const casterLink = name => (CASTERS.find(c => c.name === name) || {}).twitch;
+const casterLink = name => { const c = CASTERS.find(c => c.name === name); const t = c && c.links.find(l => l[0] === 'Twitch'); return t ? t[1] : null; };
 const teamName = id => (ALL_TEAMS.find(t => t.id === id) || { name: id }).name;
 function scheduledFor(a, b, fmt) {
   return SCHEDULED_GAMES.find(g => g.games.includes(fmt) && ((g.teams[0] === a.id && g.teams[1] === b.id) || (g.teams[0] === b.id && g.teams[1] === a.id)));
