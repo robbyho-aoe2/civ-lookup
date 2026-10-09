@@ -74,6 +74,8 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .set-detail{font-size:11px;color:var(--text2);padding:0 0 5px;line-height:1.4;}
 .set-detail a{color:var(--text);text-decoration:none;font-weight:600;}
 .set-detail a:hover{text-decoration:underline;}
+.draft-link{display:inline-block;margin-top:10px;background:var(--amberBg);border:1px solid var(--amber);color:var(--amberL);font-size:12px;font-weight:700;padding:6px 14px;border-radius:20px;text-decoration:none;}
+.draft-link:hover{background:var(--amber);color:#100E0C;}
 .fx-watch{display:inline-block;margin:2px 0 6px;font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;}
 .fx-watch:hover{text-decoration:underline;}
 a.set-status{text-decoration:none;}
@@ -234,6 +236,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
   <div class="card" id="scheduled-card">
     <h2>Scheduled Games</h2>
     <p class="desc">Times are Eastern. Games not listed here are still to be scheduled.</p>
+    <a class="draft-link" href="https://aoe2cm.net/preset/BsDTE" target="_blank" rel="noopener">Open the draft on aoe2cm.net</a>
     <div class="sched-list" id="sched-list"></div>
   </div>
 
@@ -526,6 +529,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
   <div class="card">
     <h2>Maps</h2>
     <p class="desc">The eight-map pool. Bans happen in the map draft, 1 per team. Games go 1v1, 4v4, 3v3, 2v2: the 1v1 map is picked at random from the maps left, then the loser of each game picks the next map.</p>
+    <a class="draft-link" href="https://aoe2cm.net/preset/BsDTE" target="_blank" rel="noopener">Open the map draft on aoe2cm.net</a>
     <div class="map-grid">
       <div class="map-tile"><img src="img/maps/arabia.jpg" alt="" width="56" height="56" loading="lazy"><span>Arabia</span></div>
       <div class="map-tile"><img src="img/maps/arena.jpg" alt="" width="56" height="56" loading="lazy"><span>Arena</span></div>
@@ -662,7 +666,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.80</div>
+    <div class="version">v0.81</div>
   </div>
 </div>
 
