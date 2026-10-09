@@ -666,7 +666,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.83</div>
+    <div class="version">v0.84</div>
   </div>
 </div>
 
@@ -821,7 +821,7 @@ const CASTERS = [
 document.getElementById('caster-list').innerHTML = CASTERS.map(c =>
   `<div class="caster">${c.name}${c.links.map(([label, url]) => `<a href="${url}" target="_blank" rel="noopener">${label}</a>`).join('')}</div>`).join('');
 const SCHEDULED_GAMES = [
-  { date: 'Fri, Oct 9', short: 'Oct 9', time: '7:00 pm ET', teams: ['canada', 'ps5'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
+  // { date: 'Sat, Oct 10', short: 'Oct 10', time: '3:00 pm ET', teams: ['usa', 'mexico'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
 ];
 // Finished games. points = the set's worth (1v1 = 1 ... 4v4 = 4); winner/loser are the players who played.
 const SET_POINTS = { '1v1': 1, '2v2': 2, '3v3': 3, '4v4': 4 };
@@ -846,7 +846,7 @@ document.getElementById('sched-list').innerHTML = SCHEDULED_GAMES.length
       <div class="sched-match"><b>${teamName(g.teams[0])} vs ${teamName(g.teams[1])}</b><span>${g.games.join(' and ')}</span></div>
       <div class="sched-cast">Casted by <b>${g.caster}</b></div>
     </div>`).join('')
-  : '<p class="desc">No games scheduled yet.</p>';
+  : '<p class="desc">No games are scheduled right now. New games will be listed here.</p>';
 
 function fixtureCardHtml([a, b]) {
   return `
