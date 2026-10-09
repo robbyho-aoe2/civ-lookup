@@ -70,6 +70,10 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .set-row:first-of-type{border-top:none;}
 .set-row .set-label{color:var(--text2);font-weight:600;}
 .set-status{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--surf);border:1px solid var(--border2);color:var(--text3);text-transform:uppercase;letter-spacing:.03em;}
+.set-status.won{color:var(--green,#4ade80);border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.08);}
+.set-detail{font-size:11px;color:var(--text2);padding:0 0 5px;line-height:1.4;}
+.set-detail a{color:var(--text);text-decoration:none;font-weight:600;}
+.set-detail a:hover{text-decoration:underline;}
 .fx-watch{display:inline-block;margin:2px 0 6px;font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;}
 .fx-watch:hover{text-decoration:underline;}
 a.set-status{text-decoration:none;}
@@ -542,7 +546,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 
   <div class="card">
     <h2>Standings</h2>
-    <p class="standings-note">Series record by nation, updated as results come in.</p>
+    <p class="standings-note">Teams are ranked by points: 1v1 = 1, 2v2 = 2, 3v3 = 3, 4v4 = 4. Played, won and lost count finished series.</p>
     <div class="overflow-x">
       <table id="standings-table"></table>
     </div>
@@ -658,7 +662,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.79</div>
+    <div class="version">v0.80</div>
   </div>
 </div>
 
@@ -815,6 +819,14 @@ document.getElementById('caster-list').innerHTML = CASTERS.map(c =>
 const SCHEDULED_GAMES = [
   { date: 'Fri, Oct 9', short: 'Oct 9', time: '7:00 pm ET', teams: ['canada', 'ps5'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
 ];
+// Finished games. points = the set's worth (1v1 = 1 ... 4v4 = 4); winner/loser are the players who played.
+const SET_POINTS = { '1v1': 1, '2v2': 2, '3v3': 3, '4v4': 4 };
+const SET_RESULTS = [
+  { teams: ['canada', 'ps5'], fmt: '1v1', winner: 'canada', map: 'Oasis',
+    winners: [{ name: 'volcanloup', id: 12893749 }], losers: [{ name: 'ItsGutsAoE', id: 23477132 }] },
+];
+const resultFor = (a, b, fmt) => SET_RESULTS.find(r => r.fmt === fmt && ((r.teams[0] === a.id && r.teams[1] === b.id) || (r.teams[0] === b.id && r.teams[1] === a.id)));
+const plink = p => `<a href="player.html?id=${p.id}">${p.name}</a>`;
 const casterLink = name => { const c = CASTERS.find(c => c.name === name); const t = c && c.links.find(l => l[0] === 'Twitch'); return t ? t[1] : null; };
 const teamName = id => (ALL_TEAMS.find(t => t.id === id) || { name: id }).name;
 function scheduledFor(a, b, fmt) {
@@ -841,8 +853,9 @@ function fixtureCardHtml([a, b]) {
       ${SET_FORMATS.map(fmt => `
         <div class="set-row">
           <span class="set-label">${fmt}</span>
-          ${(sg => sg ? (casterLink(sg.caster) ? `<a class="set-status sched" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">${sg.short} · ${sg.time.replace(':00', '')}</a>` : `<span class="set-status sched">${sg.short} · ${sg.time.replace(':00', '')}</span>`) : '<span class="set-status">Not Played</span>')(scheduledFor(a, b, fmt))}
+          ${(rs => rs ? `<span class="set-status won">${teamName(rs.winner)} +${SET_POINTS[fmt]}</span>` : '')(resultFor(a, b, fmt)) || (sg => sg ? (casterLink(sg.caster) ? `<a class="set-status sched" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">${sg.short} · ${sg.time.replace(':00', '')}</a>` : `<span class="set-status sched">${sg.short} · ${sg.time.replace(':00', '')}</span>`) : '<span class="set-status">Not Played</span>')(scheduledFor(a, b, fmt))}
         </div>
+        ${(rs => rs ? `<div class="set-detail">${rs.winners.map(plink).join(' + ')} beat ${rs.losers.map(plink).join(' + ')} on ${rs.map}</div>` : '')(resultFor(a, b, fmt))}
       `).join('')}
     </div>
   `;
@@ -874,20 +887,22 @@ document.getElementById('fixtures-grid').innerHTML = fixtureGroups
 const SERIES_RESULTS = []; // { teamA: 'usa', teamB: 'mexico', winner: 'usa' }
 function standingsRows() {
   const rec = {};
-  TEAMS.forEach(t => rec[t.id] = { played: 0, won: 0, lost: 0 });
+  TEAMS.forEach(t => rec[t.id] = { played: 0, won: 0, lost: 0, pts: 0 });
+  SET_RESULTS.forEach(r => { if (rec[r.winner]) rec[r.winner].pts += SET_POINTS[r.fmt]; });
   SERIES_RESULTS.forEach(r => {
     rec[r.teamA].played++; rec[r.teamB].played++;
     if (r.winner) { rec[r.winner].won++; rec[r.winner === r.teamA ? r.teamB : r.teamA].lost++; }
   });
   return TEAMS.map(t => ({ team: t, ...rec[t.id] }))
-    .sort((x, y) => y.won - x.won || x.lost - y.lost);
+    .sort((x, y) => y.pts - x.pts || y.won - x.won || x.lost - y.lost);
 }
 document.getElementById('standings-table').innerHTML = `
-  <thead><tr><th>Nation</th><th class="num">Played</th><th class="num">Won</th><th class="num">Lost</th></tr></thead>
+  <thead><tr><th>Nation</th><th class="num">Points</th><th class="num">Played</th><th class="num">Won</th><th class="num">Lost</th></tr></thead>
   <tbody>
     ${standingsRows().map(r => `
       <tr>
         <td>${r.team.name}</td>
+        <td class="num">${r.pts}</td>
         <td class="num">${r.played}</td>
         <td class="num">${r.won}</td>
         <td class="num">${r.lost}</td>
