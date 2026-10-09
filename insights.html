@@ -216,6 +216,72 @@ th.num,td.num{text-align:center;font-family:var(--font-mono);}
 .alt-group-member.kept{color:var(--amberL);font-weight:600;}
 .alt-group-sep{color:var(--text3);margin:0 8px;}
 .alt-group-hint{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-left:auto;padding-left:10px;}
+
+/* Advanced controls (collapsible section at the top) */
+details.ctl-wrap{background:var(--surf);border:1px solid var(--border);border-radius:12px;margin-bottom:22px;}
+details.ctl-wrap > summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:16px 22px;font-family:var(--font-display);font-weight:600;font-size:16px;color:var(--amberL);}
+details.ctl-wrap > summary::-webkit-details-marker{display:none;}
+details.ctl-wrap > summary::before{content:'\25B8';color:var(--text3);font-size:12px;transition:transform .15s;}
+details.ctl-wrap[open] > summary::before{transform:rotate(90deg);}
+details.ctl-wrap > summary .hint{margin-left:auto;font-family:var(--font-body);font-weight:400;font-size:12px;color:var(--text3);}
+#controls-body{padding:0 22px 20px;}
+.ctl-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+.ctl-seg{display:flex;border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden;}
+.ctl-seg button,.ctl-pills button{font:inherit;font-size:12px;font-weight:600;color:var(--text2);background:var(--bg);border:0;padding:7px 14px;cursor:pointer;}
+.ctl-seg button.on{background:var(--amber);color:#100E0C;}
+#ctl-search{flex:1;min-width:160px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font:inherit;font-size:13px;padding:7px 10px;}
+.ctl-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
+.ctl-pills button{border:1px solid var(--border);border-radius:20px;padding:5px 12px;}
+.ctl-pills button.on{background:var(--amberBg);color:var(--amberL);border-color:var(--amber);}
+.ctl-h{font-size:13px;font-weight:700;color:var(--text);margin:18px 0 8px;padding-top:14px;border-top:1px solid var(--border);}
+.ctl-h small{color:var(--text3);font-weight:400;margin-left:4px;}
+.ctl-list{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));}
+.ctl{display:grid;grid-template-columns:minmax(0,1fr) 132px;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;}
+.ctl-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.ctl-head b{font-size:14px;color:var(--text);}
+.lvl{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;border:1px solid var(--border2);color:var(--text2);}
+.lvl.l3{border-color:var(--amber);color:var(--amberL);}
+.ctl-from{font-size:11.5px;color:var(--text3);margin-top:2px;}
+.ctl-combos{margin:12px 0 6px;}
+.combo{display:flex;align-items:center;flex-wrap:wrap;gap:4px 0;padding-top:8px;}
+.or{font-size:10px;text-transform:uppercase;color:var(--text3);padding:4px 0 0;}
+.step{display:inline-flex;align-items:center;}
+.plus{color:var(--text3);margin:0 4px;font-size:12px;}
+.then{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);margin:0 7px;}
+.cb{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 9px;border-radius:8px;background:var(--surf2);border:1px solid var(--border2);color:var(--text);font-size:12px;font-weight:700;font-family:var(--font-mono);white-space:nowrap;}
+.cb i{position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-style:normal;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--amberL);background:var(--bg);padding:0 3px;line-height:1.1;}
+.cb.face{border-radius:50%;width:28px;padding:0;border:0;color:#100E0C;}
+.cb.g{background:#4ade80;}.cb.r{background:#f87171;}.cb.b{background:#60a5fa;}.cb.y{background:#fbbf24;}.cb.p{background:#f472b6;}
+.cb.dp{border-radius:5px;}
+.cb.st{border-radius:14px;}
+.cb-text{font-size:12px;color:var(--text2);border:1px dashed var(--border2);border-radius:8px;padding:5px 9px;}
+.ctl-desc{font-size:12.5px;color:var(--text2);margin:6px 0 0;line-height:1.5;}
+.ctl-note{font-size:11.5px;color:var(--text3);margin:4px 0 0;font-style:italic;}
+.ctl-pad{align-self:center;}
+svg.pad{width:100%;height:auto;display:block;}
+.pad .p-body{fill:var(--surf2);stroke:var(--text3);stroke-width:1.6;}
+.pad .p-trig,.pad .p-bump,.pad .p-stick,.pad .p-dp,.pad .p-face,.pad .p-small{fill:var(--surf);stroke:var(--text3);stroke-width:1.3;}
+.pad .on{fill:var(--amberL);stroke:var(--amberL);}
+.pad .p-t{fill:var(--text3);font-size:8px;font-family:var(--font-mono);pointer-events:none;}
+.pad .p-face.on + .p-t{fill:#100E0C;}
+.set-grid,.todo-list{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));}
+.set-row{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;}
+.set-row div{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.set-row b{font-size:13px;color:var(--text);}
+.set-row span,.set-row em{font-size:11.5px;color:var(--text3);font-style:normal;}
+.set-row strong{font-family:var(--font-mono);font-size:13px;color:var(--amberL);white-space:nowrap;}
+.set-row strong i{color:var(--text3);font-weight:400;}
+.todo{background:var(--bg);border:1px dashed var(--border2);border-radius:var(--radius);padding:10px 12px;display:flex;flex-direction:column;gap:2px;}
+.todo b{font-size:13px;color:var(--text);}
+.todo span{font-size:11.5px;color:var(--text3);}
+.ctl-foot,.ctl-empty{font-size:11.5px;color:var(--text3);margin:14px 0 0;}
+@media (max-width:700px){
+  details.ctl-wrap > summary{padding:14px 12px;}
+  details.ctl-wrap > summary .hint{display:none;}
+  #controls-body{padding:0 12px 16px;}
+  .ctl-list,.set-grid,.todo-list{grid-template-columns:minmax(0,1fr);}
+  .ctl{grid-template-columns:minmax(0,1fr) 104px;padding:10px;}
+}
 </style>
 <script data-goatcounter="https://robbyho.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
@@ -260,6 +326,7 @@ th.num,td.num{text-align:center;font-family:var(--font-mono);}
   </nav>
 
   <nav class="insights-nav">
+    <a href="#controls">🎮 Advanced Controls</a>
     <a href="#weekly">📅 Weekly Recap</a>
     <a href="#snl">🌙 Saturday Night Live</a>
     <a href="#distribution">Rating Distribution</a>
@@ -272,6 +339,11 @@ th.num,td.num{text-align:center;font-family:var(--font-mono);}
     <a href="#console-vs-pc">Console vs PC</a>
     <a href="#regions">🌍 Top Players by Region</a>
   </nav>
+
+  <details class="ctl-wrap" id="controls">
+    <summary>🎮 Advanced Controls <span class="hint">button combos, from settings to pro tricks</span></summary>
+    <div id="controls-body"></div>
+  </details>
 
   <div id="content">
     <div class="loading">Loading player data…</div>
@@ -2016,6 +2088,257 @@ async function loadAndRenderSnl() {
 }
 
 loadAndRender();
+</script>
+<script>
+(function () {
+  var root = document.getElementById('controls-body');
+  if (!root) return;
+
+  /* Notation used below: tokens in a step are joined with " + " (pressed together), steps with " > " (then).
+     "hold:X" = hold X, "dbl:X" = double press, "rep:X" = press repeatedly, "t:Text" = a plain label.
+     DU/DD/DL/DR = D-pad directions, DPAD = any D-pad direction, LS/RS = move the stick, LSl/RSd etc = push in a direction,
+     LS3/RS3 = click the stick in, MAP = the map (view) button. */
+  var SETTINGS = [
+    ['Terrain grid', 'Settings - Interface', '50% black', ''],
+    ['Small trees', 'Settings - Game', 'On', ''],
+    ['Default zoom', 'Settings', '70%', ''],
+    ['Enable attraction', 'Settings', 'On, 7%', ''],
+    ['Small reticle', 'Settings', 'On', ''],
+    ['Range indicators', 'Settings', 'On', ''],
+    ['Quick select navy units', 'Settings', 'On', 'Lets you find naval units quickly (see Advanced).'],
+    ['Interface', 'Settings - Interface', 'Advanced', ''],
+    ['Remaining population alert', 'Settings - Game', 'On', ''],
+    ['A button customization', 'Settings', '', 'Idle villagers and similar. Still to fill in.']
+  ];
+
+  var TECH = [
+    ['Select idle villagers', 1, '', ['DU', 'hold:DU'], 'Jump to the next idle villager. Hold to grab all of them.', ''],
+    ['View minimap', 1, '', ['hold:RT + RB'], 'Pull up the minimap to see and jump around the whole map.', ''],
+    ['Customize the Y button', 1, 'Select a building or villager', ['hold:Y + DPAD'], 'Change what Y does for the selected villager or building. Scroll the D-pad while holding Y.', ''],
+    ['Rotate gate', 1, 'Select a gate', ['X'], 'Turn the gate to face the other way.', ''],
+    ['Delete', 1, 'Select a unit or building', ['hold:LB + RB'], 'Delete the selected unit or building.', ''],
+    ['Garrison / ungarrison', 1, 'Select a unit or building', ['hold:RT + LS', 'X'], 'Send units inside a building, or take them back out.', 'Rams are the exception: use X.'],
+    ['Auto eco setting', 1, '', ['RSd'], 'Open the auto-economy options.', 'Depends on the RS behavior setting.'],
+    ['Select all TCs', 1, '', ['hold:DD'], 'Select every Town Center at once.', ''],
+    ['Build villagers', 1, 'Select a TC', ['Y'], 'Queue a villager from the selected Town Center.', ''],
+    ['Send villagers back to work', 1, 'Select a TC', ['hold:RT + LS'], 'Choose "Send villagers back to work" so garrisoned villagers return to their jobs.', ''],
+    ['Gather points', 1, 'Select a building', ['hold:LT > X'], 'Set where new villagers, fishing ships or traders go when they come out.', ''],
+    ['Auto scout', 1, 'Select a scout', ['Y'], 'Send the scout exploring on its own.', ''],
+    ['Quick build house', 1, 'Select a villager', ['Y > A'], 'Build a house in two presses.', 'The Y choice can be changed.'],
+    ['Call herdables', 1, 'Hover over the TC', ['hold:RT + LSl'], 'Call sheep and other herdables back to the Town Center.', ''],
+    ['Select one unit or several', 1, '', ['A', 'hold:A'], 'Press A to pick one unit. Hold A to pick several.', 'Related setting: Priorities.'],
+    ['Select all military', 1, '', ['hold:DL'], 'Select every military unit.', ''],
+
+    ['Find units', 2, '', ['hold:LT + hold:RT > Y > A', 'hold:LT + hold:RT > Y > X'], 'Open the finder and jump to any of your units. Y switches the list to units. A selects, X selects and moves the camera there.', ''],
+    ['Find buildings', 2, '', ['hold:LT + hold:RT > A', 'hold:LT + hold:RT > X'], 'Open the finder and jump to any of your buildings. A selects, X selects and moves the camera there.', ''],
+    ['Send flares', 2, '', ['hold:RT + DU'], 'Ping a spot on the map for your team.', ''],
+    ['Lock gates', 2, 'Select a gate', ['Y'], 'Lock or unlock the gate.', ''],
+    ['Shift queuing', 2, 'Select a unit', ['hold:LT'], 'Line up several commands in a row, like move then attack.', 'Keep holding LT and choose each action.'],
+    ['View score', 2, '', ['hold:RB + MAP'], 'Open the live score screen.', ''],
+    ['Quick place farms', 2, 'Select villagers, pick Farm', ['hold:LT > rep:A'], 'Drop farm after farm quickly around a TC, farm or mill.', 'Keep LT over the TC, farm or mill and press A repeatedly.'],
+    ['Auto lure', 2, 'Hover over a boar', ['hold:RT > t:Lure'], 'Lure the boar to the TC without clicking each time.', ''],
+    ['Mass delete', 2, '', ['hold:LT + hold:LB + hold:RB'], 'Delete many things at once.', ''],
+    ['Control groups', 2, 'Select units', ['hold:LB + LS > X'], 'Save the selected units as a group, then call them back quickly.', 'Pick the group with LS, confirm with X.'],
+    ['Force drop off', 2, 'Hover over the TC', ['hold:RT + DPAD'], 'Make villagers drop off what they carry right now.', ''],
+    ['Attack ground', 2, '', ['dbl:A'], 'Attack a spot on the ground, useful for siege. Can be shift queued.', ''],
+    ['Auto queue trade between markets', 2, 'Select your market(s)', ['hold:LT > X'], 'Press X on the other market to set trade between the two automatically.', ''],
+    ['D-pad military controls', 2, '', ['hold:LT + DPAD'], 'Quick commands for military units from the D-pad.', ''],
+    ['Patrol vs move', 2, 'Select military unit(s)', ['A', 'X'], 'A goes straight to the spot. X attacks anything it meets on the way.', ''],
+    ['Send villagers to an eco building', 2, 'Hover the eco building', ['hold:RT > rep:A'], 'Send villagers to a mill, camp or other eco building. Press A more times to send more.', ''],
+    ['Send units', 2, 'Hover the target', ['hold:RT > rep:A'], 'Send military, villagers or other units to a spot. Press A more times to send more.', ''],
+    ['Select all production buildings', 2, '', ['hold:LT + hold:RB > DPAD'], 'Select every building of one type.', 'Up: barracks. Left: siege workshops. Down: stables. Right: archery ranges. Related setting: selection filters (none).'],
+
+    ['Queue inside a building', 3, 'Select a building', ['hold:LT + A'], 'Queue units inside the production building.', ''],
+    ['Attack stances', 3, 'Select unit(s)', ['hold:RT + LS'], 'Set how units behave in a fight.', ''],
+    ['Minimap waypoints', 3, '', ['hold:LT + RS3', 'hold:LT + RS'], 'Save a spot on the minimap, then cycle back to it later.', 'Click RS in to set. Hold LT and move RS to cycle.'],
+    ['Remove / separate units', 3, 'Select units', ['hold:B + DD'], 'Take chosen units out of the selection so you can command them separately.', ''],
+    ['Deselect villagers', 3, 'Select units', ['hold:B + DU'], 'Take villagers out of a mixed selection.', ''],
+    ['Quick select navy units', 3, '', ['hold:LT + RB'], 'Select your ships fast.', 'Needs the quick select navy units setting.'],
+    ['Control group units before they are built', 3, 'Select a building', ['hold:RT + LB'], 'Set a control group on the building so new units join it as they appear.', ''],
+    ['Select injured', 3, 'Units selected', ['DU'], 'Narrow the selection to injured units.', ''],
+    ['Select siege', 3, 'Units selected', ['DR'], 'Narrow the selection to siege units.', ''],
+    ['Switch between eco and military units', 3, '', ['DL', 'DU'], 'D-pad left selects military units. D-pad up selects economic units.', ''],
+    ['Convert unit', 3, 'Select the unit to convert', ['hold:RT'], 'Hover over the target and use RT to convert it.', '']
+  ];
+
+  var TODO = [
+    ['Way points', 'Was listed at Level 2 with no steps yet.'],
+    ['Multi queue', 'LT + A in a production building. Needs a description.'],
+    ['Guard, follow and similar commands', 'No steps yet.'],
+    ['Eject from ram', 'Wheel, or X for villagers. Needs the exact steps.'],
+    ['Add multiple units', 'LT + A. Needs the exact steps.']
+  ];
+
+  var LEVELS = [['all', 'All'], ['0', 'Settings'], ['1', 'Basic'], ['2', 'Intermediate'], ['3', 'Advanced'], ['todo', 'To finish']];
+  var LEVEL_NAME = { 1: 'Basic', 2: 'Intermediate', 3: 'Advanced' };
+
+  var LABELS = {
+    xbox: { A: 'A', B: 'B', X: 'X', Y: 'Y', LB: 'LB', RB: 'RB', LT: 'LT', RT: 'RT', LS: 'LS', RS: 'RS', LS3: 'LS click', RS3: 'RS click', MAP: 'Map' },
+    ps: { A: '✕', B: '○', X: '□', Y: '△', LB: 'L1', RB: 'R1', LT: 'L2', RT: 'R2', LS: 'LS', RS: 'RS', LS3: 'L3', RS3: 'R3', MAP: 'Map' }
+  };
+  var FACE = { A: 'g', B: 'r', X: 'b', Y: 'y' };
+  var FACE_PS = { A: 'b', B: 'r', X: 'p', Y: 'g' };
+  var ARROW = { U: 'up', D: 'down', L: 'left', R: 'right' };
+
+  var state = { platform: 'xbox', level: 'all', q: '' };
+  try { var sp = localStorage.getItem('controls-platform'); if (sp === 'ps' || sp === 'xbox') state.platform = sp; } catch (e) {}
+
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  function parseTok(t) {
+    var mod = '', code = t;
+    var m = /^(hold|dbl|rep|t):(.*)$/.exec(t);
+    if (m) { mod = m[1]; code = m[2]; }
+    return { mod: mod, code: code };
+  }
+
+  function chip(tok, plat) {
+    var p = parseTok(tok), c = p.code, cls = 'cb', label = '';
+    if (p.mod === 't') return '<span class="cb-text">' + esc(c) + '</span>';
+    var tag = p.mod === 'hold' ? 'hold' : p.mod === 'dbl' ? 'x2' : p.mod === 'rep' ? 'repeat' : '';
+    if (/^D[UDLR]$/.test(c)) { cls += ' dp'; label = 'D-pad ' + ARROW[c.charAt(1)]; }
+    else if (c === 'DPAD') { cls += ' dp'; label = 'D-pad'; }
+    else if (/^(LS|RS)[udlr]$/.test(c)) { cls += ' st'; label = c.slice(0, 2) + ' ' + ARROW[c.charAt(2).toUpperCase()]; }
+    else if (c === 'LS' || c === 'RS') { cls += ' st'; label = LABELS[plat][c]; }
+    else if (FACE[c]) { cls += ' face ' + (plat === 'ps' ? FACE_PS[c] : FACE[c]); label = LABELS[plat][c]; }
+    else if (c === 'MAP') { cls += ' sm'; label = LABELS[plat][c]; }
+    else { cls += /^[LR][BT]$/.test(c) ? ' bump' : ' st'; label = LABELS[plat][c] || c; }
+    return '<span class="' + cls + (tag ? ' has-tag' : '') + '">' + (tag ? '<i>' + tag + '</i>' : '') + esc(label) + '</span>';
+  }
+
+  function comboHtml(dsl, plat) {
+    return dsl.split(' > ').map(function (step) {
+      return '<span class="step">' + step.split(' + ').map(function (t) { return chip(t, plat); }).join('<span class="plus">+</span>') + '</span>';
+    }).join('<span class="then">then</span>');
+  }
+
+  function used(combos) {
+    var u = {};
+    combos.forEach(function (d) {
+      d.split(' > ').forEach(function (s) {
+        s.split(' + ').forEach(function (t) {
+          var p = parseTok(t);
+          if (p.mod === 't') return;
+          var c = p.code;
+          if (/^D[UDLR]$/.test(c)) u['D' + c.charAt(1)] = 1;
+          else if (c === 'DPAD') { u.DU = u.DD = u.DL = u.DR = 1; }
+          else if (/^(LS|RS)[udlr]$/.test(c)) u[c.slice(0, 2)] = 1;
+          else if (c === 'LS3' || c === 'RS3') u[c.slice(0, 2)] = 1;
+          else u[c] = 1;
+        });
+      });
+    });
+    return u;
+  }
+
+  function pad(u, plat) {
+    var ps = plat === 'ps';
+    var L = LABELS[plat];
+    var dp = ps ? [52, 52] : [84, 80], ls = ps ? [84, 80] : [52, 50], rs = [116, 80], fc = [150, 52];
+    function on(k) { return u[k] ? ' on' : ''; }
+    var s = '<svg viewBox="0 0 200 124" class="pad" aria-hidden="true">';
+    s += '<rect class="p-trig' + on('LT') + '" x="22" y="2" width="36" height="10" rx="4"/><rect class="p-trig' + on('RT') + '" x="142" y="2" width="36" height="10" rx="4"/>';
+    s += '<rect class="p-bump' + on('LB') + '" x="18" y="14" width="44" height="9" rx="4"/><rect class="p-bump' + on('RB') + '" x="138" y="14" width="44" height="9" rx="4"/>';
+    s += '<path class="p-body" d="M40 28 H160 Q190 28 192 58 L186 104 Q182 116 168 110 L148 92 H52 L32 110 Q18 116 14 104 L8 58 Q10 28 40 28 Z"/>';
+    s += '<circle class="p-stick' + on('LS') + '" cx="' + ls[0] + '" cy="' + ls[1] + '" r="13"/><circle class="p-stick' + on('RS') + '" cx="' + rs[0] + '" cy="' + rs[1] + '" r="13"/>';
+    var x = dp[0], y = dp[1];
+    s += '<rect class="p-dp' + on('DU') + '" x="' + (x - 5) + '" y="' + (y - 16) + '" width="10" height="14" rx="2"/>';
+    s += '<rect class="p-dp' + on('DD') + '" x="' + (x - 5) + '" y="' + (y + 2) + '" width="10" height="14" rx="2"/>';
+    s += '<rect class="p-dp' + on('DL') + '" x="' + (x - 16) + '" y="' + (y - 5) + '" width="14" height="10" rx="2"/>';
+    s += '<rect class="p-dp' + on('DR') + '" x="' + (x + 2) + '" y="' + (y - 5) + '" width="14" height="10" rx="2"/>';
+    var fx = fc[0], fy = fc[1];
+    var face = [['Y', fx, fy - 13], ['A', fx, fy + 13], ['X', fx - 13, fy], ['B', fx + 13, fy]];
+    face.forEach(function (f) {
+      s += '<circle class="p-face' + on(f[0]) + '" cx="' + f[1] + '" cy="' + f[2] + '" r="7"/><text class="p-t" x="' + f[1] + '" y="' + (f[2] + 3.5) + '" text-anchor="middle">' + esc(L[f[0]]) + '</text>';
+    });
+    s += '<circle class="p-small' + on('MAP') + '" cx="90" cy="46" r="4.5"/><circle class="p-small" cx="110" cy="46" r="4.5"/>';
+    s += '<text class="p-t" x="22" y="9" font-size="7">' + esc(L.LT) + '</text><text class="p-t" x="178" y="9" font-size="7" text-anchor="end">' + esc(L.RT) + '</text>';
+    s += '</svg>';
+    return s;
+  }
+
+  function card(t, plat) {
+    var u = used(t[3]);
+    return '<article class="ctl">' +
+      '<div class="ctl-main"><div class="ctl-head"><b>' + esc(t[0]) + '</b><span class="lvl l' + t[1] + '">' + LEVEL_NAME[t[1]] + '</span></div>' +
+      (t[2] ? '<div class="ctl-from">' + esc(t[2]) + '</div>' : '') +
+      '<div class="ctl-combos">' + t[3].map(function (d) { return '<div class="combo">' + comboHtml(d, plat) + '</div>'; }).join('<div class="or">or</div>') + '</div>' +
+      '<p class="ctl-desc">' + esc(t[4]) + '</p>' +
+      (t[5] ? '<p class="ctl-note">' + esc(t[5]) + '</p>' : '') + '</div>' +
+      '<div class="ctl-pad">' + pad(u, plat) + '</div></article>';
+  }
+
+  function settingsHtml() {
+    return '<div class="set-grid">' + SETTINGS.map(function (s) {
+      return '<div class="set-row"><div><b>' + esc(s[0]) + '</b><span>' + esc(s[1]) + '</span>' + (s[3] ? '<em>' + esc(s[3]) + '</em>' : '') + '</div><strong>' + (s[2] ? esc(s[2]) : '<i>to fill in</i>') + '</strong></div>';
+    }).join('') + '</div>';
+  }
+
+  function render() {
+    var q = state.q.trim().toLowerCase(), plat = state.platform, out = '';
+    function match(text) { return !q || text.toLowerCase().indexOf(q) >= 0; }
+    var anyShown = false;
+    if (state.level === 'all' || state.level === '0') {
+      var sRows = SETTINGS.filter(function (s) { return match(s.join(' ')); });
+      if (sRows.length) {
+        anyShown = true;
+        out += '<h4 class="ctl-h">Settings to change first</h4><div class="set-grid">' + sRows.map(function (s) {
+          return '<div class="set-row"><div><b>' + esc(s[0]) + '</b><span>' + esc(s[1]) + '</span>' + (s[3] ? '<em>' + esc(s[3]) + '</em>' : '') + '</div><strong>' + (s[2] ? esc(s[2]) : '<i>to fill in</i>') + '</strong></div>';
+        }).join('') + '</div>';
+      }
+    }
+    [1, 2, 3].forEach(function (lv) {
+      if (state.level !== 'all' && state.level !== String(lv)) return;
+      var rows = TECH.filter(function (t) { return t[1] === lv && match(t[0] + ' ' + t[2] + ' ' + t[4] + ' ' + t[5]); });
+      if (!rows.length) return;
+      anyShown = true;
+      out += '<h4 class="ctl-h">' + LEVEL_NAME[lv] + ' <small>' + rows.length + '</small></h4><div class="ctl-list">' + rows.map(function (t) { return card(t, plat); }).join('') + '</div>';
+    });
+    if (state.level === 'all' || state.level === 'todo') {
+      var td = TODO.filter(function (t) { return match(t.join(' ')); });
+      if (td.length) {
+        anyShown = true;
+        out += '<h4 class="ctl-h">To finish <small>' + td.length + '</small></h4><div class="todo-list">' + td.map(function (t) {
+          return '<div class="todo"><b>' + esc(t[0]) + '</b><span>' + esc(t[1]) + '</span></div>';
+        }).join('') + '</div>';
+      }
+    }
+    if (!anyShown) out = '<p class="ctl-empty">Nothing matches that search.</p>';
+    document.getElementById('controls-list').innerHTML = out;
+  }
+
+  root.innerHTML =
+    '<div class="ctl-bar">' +
+    '<div class="ctl-seg" id="ctl-plat"><button data-p="xbox" type="button">Xbox</button><button data-p="ps" type="button">PlayStation</button></div>' +
+    '<input id="ctl-search" type="search" placeholder="Search a technique" aria-label="Search controls">' +
+    '</div>' +
+    '<div class="ctl-pills" id="ctl-levels">' + LEVELS.map(function (l) { return '<button data-l="' + l[0] + '" type="button">' + l[1] + '</button>'; }).join('') + '</div>' +
+    '<div id="controls-list"></div>' +
+    '<p class="ctl-foot">Hold means keep the button held while you press the next one. D-pad and stick moves are named by direction.</p>';
+
+  function sync() {
+    [].forEach.call(document.querySelectorAll('#ctl-plat button'), function (b) { b.classList.toggle('on', b.dataset.p === state.platform); });
+    [].forEach.call(document.querySelectorAll('#ctl-levels button'), function (b) { b.classList.toggle('on', b.dataset.l === state.level); });
+  }
+  document.getElementById('ctl-plat').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    state.platform = b.dataset.p;
+    try { localStorage.setItem('controls-platform', state.platform); } catch (er) {}
+    sync(); render();
+  });
+  document.getElementById('ctl-levels').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    state.level = b.dataset.l; sync(); render();
+  });
+  document.getElementById('ctl-search').addEventListener('input', function (e) { state.q = e.target.value; render(); });
+  sync(); render();
+
+  var det = document.getElementById('controls');
+  function openIfHash() { if (location.hash === '#controls' && det) det.open = true; }
+  window.addEventListener('hashchange', openIfHash); openIfHash();
+  var navLink = document.querySelector('.insights-nav a[href="#controls"]');
+  if (navLink && det) navLink.addEventListener('click', function () { det.open = true; });
+})();
 </script>
 </body>
 </html>
