@@ -71,9 +71,15 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .set-row .set-label{color:var(--text2);font-weight:600;}
 .set-status{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--surf);border:1px solid var(--border2);color:var(--text3);text-transform:uppercase;letter-spacing:.03em;}
 .set-status.won{color:var(--green,#4ade80);border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.08);}
-.set-detail{font-size:11px;color:var(--text2);padding:0 0 5px;line-height:1.4;}
-.set-detail a{color:var(--text);text-decoration:none;font-weight:600;}
-.set-detail a:hover{text-decoration:underline;}
+.set-detail{display:flex;align-items:center;gap:10px;padding:2px 0 8px;font-size:11.5px;line-height:1.35;}
+.sd-col{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.sd-col a{text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sd-col a:hover{text-decoration:underline;}
+.sd-win a{color:var(--text);font-weight:700;}
+.sd-lose a{color:var(--text2);font-weight:500;}
+.sd-vs{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);}
+.sd-map{margin-left:auto;display:flex;align-items:center;gap:5px;color:var(--text2);font-size:11px;white-space:nowrap;}
+.sd-map .mi{width:22px;height:22px;margin:0;}
 .draft-link{display:inline-block;margin-top:10px;background:var(--amberBg);border:1px solid var(--amber);color:var(--amberL);font-size:12px;font-weight:700;padding:6px 14px;border-radius:20px;text-decoration:none;}
 .draft-link:hover{background:var(--amber);color:#100E0C;}
 .draft-block{margin:4px 0 8px;padding:8px 0 4px;border-top:1px solid var(--border);}
@@ -682,7 +688,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.87</div>
+    <div class="version">v0.88</div>
   </div>
 </div>
 
@@ -903,7 +909,7 @@ function fixtureCardHtml([a, b]) {
           <span class="set-label">${fmt}</span>
           ${(rs => rs ? `<span class="set-status won">${teamName(rs.winner)} +${SET_POINTS[fmt]}</span>` : '')(resultFor(a, b, fmt)) || (sg => sg ? (casterLink(sg.caster) ? `<a class="set-status sched" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">${sg.short} · ${sg.time.replace(':00', '')}</a>` : `<span class="set-status sched">${sg.short} · ${sg.time.replace(':00', '')}</span>`) : '<span class="set-status">Not Played</span>')(scheduledFor(a, b, fmt))}
         </div>
-        ${(rs => rs ? `<div class="set-detail">${rs.winners.map(plink).join(' + ')} beat ${rs.losers.map(plink).join(' + ')} on ${mapIcon(rs.map)}${rs.map}</div>` : '')(resultFor(a, b, fmt))}
+        ${(rs => rs ? `<div class="set-detail"><div class="sd-col sd-win">${rs.winners.map(plink).join('')}</div><span class="sd-vs">beat</span><div class="sd-col sd-lose">${rs.losers.map(plink).join('')}</div><span class="sd-map">${mapIcon(rs.map)}${rs.map}</span></div>` : '')(resultFor(a, b, fmt))}
       `).join('')}
     </div>
   `;
