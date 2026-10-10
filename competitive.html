@@ -76,6 +76,22 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .set-detail a:hover{text-decoration:underline;}
 .draft-link{display:inline-block;margin-top:10px;background:var(--amberBg);border:1px solid var(--amber);color:var(--amberL);font-size:12px;font-weight:700;padding:6px 14px;border-radius:20px;text-decoration:none;}
 .draft-link:hover{background:var(--amber);color:#100E0C;}
+.draft-block{margin:4px 0 8px;padding:8px 0 4px;border-top:1px solid var(--border);}
+.draft-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);}
+.draft-head a{color:var(--amberL);text-decoration:none;text-transform:none;letter-spacing:0;font-size:11px;}
+.draft-chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:5px;}
+.dchip{display:flex;align-items:center;gap:6px;background:var(--surf);border:1px solid var(--border2);border-radius:7px;padding:3px 7px 3px 4px;min-width:0;}
+.dchip img{width:24px;height:24px;border-radius:5px;flex:none;object-fit:cover;}
+.dchip span{display:flex;flex-direction:column;min-width:0;line-height:1.2;}
+.dchip b{font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dchip i{font-style:normal;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--text3);white-space:nowrap;}
+.dchip.ban{opacity:.6;border-style:dashed;}
+.dchip.ban img{filter:grayscale(1);}
+.dchip.ban b{text-decoration:line-through;}
+.dchip.ban i{color:var(--red,#f87171);}
+.dchip.pick i{color:var(--tc,var(--amberL));}
+.dchip.used{border-color:var(--amber);background:var(--amberBg);}
+.mi{width:16px;height:16px;border-radius:4px;vertical-align:-3px;margin:0 2px;object-fit:cover;}
 .fx-watch{display:inline-block;margin:2px 0 6px;font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;}
 .fx-watch:hover{text-decoration:underline;}
 a.set-status{text-decoration:none;}
@@ -666,7 +682,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.86</div>
+    <div class="version">v0.87</div>
   </div>
 </div>
 
@@ -833,6 +849,29 @@ const SET_RESULTS = [
     winners: [{ name: 'CrustyPotato313', id: 23147426 }, { name: 'ItsGutsAoE', id: 23477132 }],
     losers: [{ name: 'volcanloup', id: 12893749 }, { name: 'Dbs Elm', id: 14276793 }] },
 ];
+// Map drafts from aoe2cm.net. Each event is [who, action, map id]: who is 'host', 'guest' or 'none' (the admin map).
+const MAP_NAMES = { 'african-clearing': 'African Clearing', arena: 'Arena', arabia: 'Arabia', 'black-forest': 'Black Forest', glade: 'Glade', oasis: 'Oasis', pilgrims: 'Pilgrims', 'team-islands': 'Team Islands' };
+const mapSlug = name => String(name).toLowerCase().replace(/ /g, '-');
+const mapIcon = name => `<img class="mi" src="img/maps/${mapSlug(name)}.jpg" alt="" width="16" height="16" loading="lazy">`;
+const DRAFTS = [
+  { teams: ['canada', 'ps5'], host: 'canada', guest: 'ps5', url: 'https://aoe2cm.net/draft/LlPvR',
+    events: [['host', 'ban', 'black-forest'], ['guest', 'ban', 'team-islands'], ['none', 'pick', 'oasis'], ['host', 'pick', 'arabia'], ['guest', 'pick', 'arena'], ['host', 'pick', 'african-clearing'], ['guest', 'pick', 'glade']] },
+];
+const draftFor = (a, b) => DRAFTS.find(d => (d.teams[0] === a.id && d.teams[1] === b.id) || (d.teams[0] === b.id && d.teams[1] === a.id));
+function draftHtml(a, b) {
+  const d = draftFor(a, b);
+  if (!d) return '';
+  const used = {};
+  SET_RESULTS.filter(r => (r.teams[0] === d.teams[0] && r.teams[1] === d.teams[1]) || (r.teams[0] === d.teams[1] && r.teams[1] === d.teams[0]))
+    .forEach(r => { used[mapSlug(r.map)] = r.fmt; });
+  const chips = d.events.map(([who, act, id]) => {
+    const team = who === 'host' ? d.host : who === 'guest' ? d.guest : null;
+    const label = team ? `${teamName(team)} ${act}` : 'Admin map';
+    const tag = label + (used[id] ? ` · ${used[id]}` : '');
+    return `<div class="dchip ${act}${used[id] ? ' used' : ''}" style="--tc:${who === 'host' ? '#5FB88C' : who === 'guest' ? '#fbbf24' : '#a8a095'}"><img src="img/maps/${id}.jpg" alt="" width="24" height="24" loading="lazy"><span><b>${MAP_NAMES[id] || id}</b><i>${tag}</i></span></div>`;
+  }).join('');
+  return `<div class="draft-block"><div class="draft-head"><span>Map draft</span><a href="${d.url}" target="_blank" rel="noopener">View on aoe2cm.net</a></div><div class="draft-chips">${chips}</div></div>`;
+}
 const resultFor = (a, b, fmt) => SET_RESULTS.find(r => r.fmt === fmt && ((r.teams[0] === a.id && r.teams[1] === b.id) || (r.teams[0] === b.id && r.teams[1] === a.id)));
 const plink = p => `<a href="player.html?id=${p.id}">${p.name}</a>`;
 const casterLink = name => { const c = CASTERS.find(c => c.name === name); const t = c && c.links.find(l => l[0] === 'Twitch'); return t ? t[1] : null; };
@@ -858,12 +897,13 @@ function fixtureCardHtml([a, b]) {
         <span class="fv-team">${b.name}</span>
       </div>
       ${(sg => sg && casterLink(sg.caster) ? `<a class="fx-watch" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">Watch on Twitch with ${sg.caster}</a>` : '')(SET_FORMATS.map(f => scheduledFor(a, b, f)).find(Boolean))}
+      ${draftHtml(a, b)}
       ${SET_FORMATS.map(fmt => `
         <div class="set-row">
           <span class="set-label">${fmt}</span>
           ${(rs => rs ? `<span class="set-status won">${teamName(rs.winner)} +${SET_POINTS[fmt]}</span>` : '')(resultFor(a, b, fmt)) || (sg => sg ? (casterLink(sg.caster) ? `<a class="set-status sched" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">${sg.short} · ${sg.time.replace(':00', '')}</a>` : `<span class="set-status sched">${sg.short} · ${sg.time.replace(':00', '')}</span>`) : '<span class="set-status">Not Played</span>')(scheduledFor(a, b, fmt))}
         </div>
-        ${(rs => rs ? `<div class="set-detail">${rs.winners.map(plink).join(' + ')} beat ${rs.losers.map(plink).join(' + ')} on ${rs.map}</div>` : '')(resultFor(a, b, fmt))}
+        ${(rs => rs ? `<div class="set-detail">${rs.winners.map(plink).join(' + ')} beat ${rs.losers.map(plink).join(' + ')} on ${mapIcon(rs.map)}${rs.map}</div>` : '')(resultFor(a, b, fmt))}
       `).join('')}
     </div>
   `;
