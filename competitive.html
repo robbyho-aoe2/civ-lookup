@@ -101,6 +101,9 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .fx-watch{display:inline-block;margin:2px 0 6px;font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;}
 .fx-watch:hover{text-decoration:underline;}
 a.set-status{text-decoration:none;}
+.set-status.odds{color:var(--text2);}
+.sd-odds{font-size:10.5px;color:var(--text3);padding:0 0 8px;}
+.sd-odds b{color:var(--text2);font-weight:600;}
 .set-status.sched{color:var(--amberL);border-color:var(--amber);background:var(--amberBg);}
 .sched-list{display:grid;gap:10px;margin-top:10px;}
 .sched-item{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 14px;}
@@ -688,7 +691,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.88</div>
+    <div class="version">v0.89</div>
   </div>
 </div>
 
@@ -894,6 +897,28 @@ document.getElementById('sched-list').innerHTML = SCHEDULED_GAMES.length
     </div>`).join('')
   : '<p class="desc">No games are scheduled right now. New games will be listed here.</p>';
 
+// BEGIN ODDS (generated from the scouting simulation; chance that the first team in each key wins)
+const PREGAME = {
+  pairs: {"mexico|usa": [0.41, 0.38, 0.37, 0.37], "mexico|france": [0.84, 0.46, 0.48, 0.51], "mexico|canada": [0.43, 0.44, 0.47, 0.5], "mexico|uk": [0.55, 0.5, 0.53, 0.54], "mexico|ps5": [0.7, 0.61, 0.64, 0.66], "usa|france": [0.88, 0.59, 0.61, 0.63], "usa|canada": [0.52, 0.56, 0.6, 0.62], "usa|uk": [0.64, 0.64, 0.66, 0.66], "usa|ps5": [0.77, 0.72, 0.75, 0.76], "france|canada": [0.12, 0.47, 0.49, 0.49], "france|uk": [0.19, 0.54, 0.56, 0.54], "france|ps5": [0.31, 0.64, 0.66, 0.65], "canada|uk": [0.62, 0.57, 0.57, 0.55], "canada|ps5": [0.76, 0.66, 0.67, 0.66], "uk|ps5": [0.66, 0.59, 0.61, 0.62]},
+  played: {"canada|ps5|1v1": 0.756, "canada|ps5|2v2": 0.586}
+};
+// END ODDS
+// Chance that team a wins the game of this format, from the scouting simulation (null if unknown).
+function pregameP(a, b, fmt) {
+  const i = SET_FORMATS.indexOf(fmt);
+  let p = PREGAME.pairs[a.id + '|' + b.id];
+  if (p) return p[i];
+  p = PREGAME.pairs[b.id + '|' + a.id];
+  return p ? 1 - p[i] : null;
+}
+// Odds for a game that was played, using the players and the map that were actually used.
+function playedP(a, b, fmt) {
+  let p = PREGAME.played[a.id + '|' + b.id + '|' + fmt];
+  if (p != null) return p;
+  p = PREGAME.played[b.id + '|' + a.id + '|' + fmt];
+  return p != null ? 1 - p : null;
+}
+const favText = (a, b, p) => { const fav = p >= 0.5 ? a : b; return fav.name + ' ' + Math.round(100 * Math.max(p, 1 - p)) + '% favorite'; };
 function fixtureCardHtml([a, b]) {
   return `
     <div class="fixture-card">
@@ -907,9 +932,9 @@ function fixtureCardHtml([a, b]) {
       ${SET_FORMATS.map(fmt => `
         <div class="set-row">
           <span class="set-label">${fmt}</span>
-          ${(rs => rs ? `<span class="set-status won">${teamName(rs.winner)} +${SET_POINTS[fmt]}</span>` : '')(resultFor(a, b, fmt)) || (sg => sg ? (casterLink(sg.caster) ? `<a class="set-status sched" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">${sg.short} · ${sg.time.replace(':00', '')}</a>` : `<span class="set-status sched">${sg.short} · ${sg.time.replace(':00', '')}</span>`) : '<span class="set-status">Not Played</span>')(scheduledFor(a, b, fmt))}
+          ${(rs => rs ? `<span class="set-status won">${teamName(rs.winner)} +${SET_POINTS[fmt]}</span>` : '')(resultFor(a, b, fmt)) || (sg => sg ? (casterLink(sg.caster) ? `<a class="set-status sched" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">${sg.short} · ${sg.time.replace(':00', '')}</a>` : `<span class="set-status sched">${sg.short} · ${sg.time.replace(':00', '')}</span>`) : (pp => pp == null ? '<span class="set-status">Not Played</span>' : `<span class="set-status odds" title="Pregame odds from the scouting simulation">${favText(a, b, pp)}</span>`)(pregameP(a, b, fmt)))(scheduledFor(a, b, fmt))}
         </div>
-        ${(rs => rs ? `<div class="set-detail"><div class="sd-col sd-win">${rs.winners.map(plink).join('')}</div><span class="sd-vs">beat</span><div class="sd-col sd-lose">${rs.losers.map(plink).join('')}</div><span class="sd-map">${mapIcon(rs.map)}${rs.map}</span></div>` : '')(resultFor(a, b, fmt))}
+        ${(rs => rs ? `<div class="set-detail"><div class="sd-col sd-win">${rs.winners.map(plink).join('')}</div><span class="sd-vs">beat</span><div class="sd-col sd-lose">${rs.losers.map(plink).join('')}</div><span class="sd-map">${mapIcon(rs.map)}${rs.map}</span></div>${(pp => { if (pp == null) return ''; const favA = pp >= 0.5; const upset = (rs.winner === a.id) !== favA; return `<div class="sd-odds">Pregame odds with these players on ${rs.map}: <b>${favText(a, b, pp)}</b>${upset ? ' &middot; upset' : ''}</div>`; })(playedP(a, b, fmt))}` : '')(resultFor(a, b, fmt))}
       `).join('')}
     </div>
   `;
