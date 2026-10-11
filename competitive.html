@@ -106,6 +106,8 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .pill.liqui:hover{background:var(--amberBg);}
 .fx-video{display:inline-block;margin:0 10px 6px 0;font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;}
 .fx-video:hover{text-decoration:underline;}
+.sd-watch{display:inline-block;margin:0 0 8px;font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;}
+.sd-watch:hover{text-decoration:underline;}
 .fx-watch{display:inline-block;margin:2px 0 6px;font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;}
 .fx-watch:hover{text-decoration:underline;}
 a.set-status{text-decoration:none;}
@@ -707,7 +709,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.93</div>
+    <div class="version">v0.94</div>
   </div>
 </div>
 
@@ -868,9 +870,9 @@ const SCHEDULED_GAMES = [
 // Finished games. points = the set's worth (1v1 = 1 ... 4v4 = 4); winner/loser are the players who played.
 const SET_POINTS = { '1v1': 1, '2v2': 2, '3v3': 3, '4v4': 4 };
 const SET_RESULTS = [
-  { teams: ['canada', 'ps5'], fmt: '1v1', winner: 'canada', map: 'Oasis',
+  { teams: ['canada', 'ps5'], fmt: '1v1', winner: 'canada', map: 'Oasis', video: 'eP0A-9gBucM', t: 0,
     winners: [{ name: 'volcanloup', id: 12893749 }], losers: [{ name: 'ItsGutsAoE', id: 23477132 }] },
-  { teams: ['canada', 'ps5'], fmt: '2v2', winner: 'ps5', map: 'Arena',
+  { teams: ['canada', 'ps5'], fmt: '2v2', winner: 'ps5', map: 'Arena', video: 'eP0A-9gBucM', t: 1078,
     winners: [{ name: 'CrustyPotato313', id: 23147426 }, { name: 'ItsGutsAoE', id: 23477132 }],
     losers: [{ name: 'volcanloup', id: 12893749 }, { name: 'Dbs Elm', id: 14276793 }] },
   { teams: ['usa', 'mexico'], fmt: '1v1', winner: 'usa', map: 'Oasis',
@@ -963,7 +965,7 @@ function fixtureCardHtml([a, b]) {
           <span class="set-label">${fmt}</span>
           ${(rs => rs ? `<span class="set-status won">${teamName(rs.winner)} +${SET_POINTS[fmt]}</span>` : '')(resultFor(a, b, fmt)) || (sg => sg ? (casterLink(sg.caster) ? `<a class="set-status sched" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">${sg.short} · ${sg.time.replace(':00', '')}</a>` : `<span class="set-status sched">${sg.short} · ${sg.time.replace(':00', '')}</span>`) : (pp => pp == null ? '<span class="set-status">Not Played</span>' : `<span class="set-status odds" title="Pregame odds from the scouting simulation">${favText(a, b, pp)}</span>`)(pregameP(a, b, fmt)))(scheduledFor(a, b, fmt))}
         </div>
-        ${(rs => rs ? `<div class="set-detail"><div class="sd-col sd-win">${rs.winners.map(plink).join('')}</div><span class="sd-vs">beat</span><div class="sd-col sd-lose">${rs.losers.map(plink).join('')}</div><span class="sd-map">${mapIcon(rs.map)}${rs.map}</span></div>${(pp => { if (pp == null) return ''; const favA = pp >= 0.5; const upset = (rs.winner === a.id) !== favA; return `<div class="sd-odds">Pregame odds with these players on ${rs.map}: <b>${favText(a, b, pp)}</b>${upset ? ' &middot; upset' : ''}</div>`; })(playedP(a, b, fmt))}` : '')(resultFor(a, b, fmt))}
+        ${(rs => rs ? `<div class="set-detail"><div class="sd-col sd-win">${rs.winners.map(plink).join('')}</div><span class="sd-vs">beat</span><div class="sd-col sd-lose">${rs.losers.map(plink).join('')}</div><span class="sd-map">${mapIcon(rs.map)}${rs.map}</span></div>${(pp => { if (pp == null) return ''; const favA = pp >= 0.5; const upset = (rs.winner === a.id) !== favA; return `<div class="sd-odds">Pregame odds with these players on ${rs.map}: <b>${favText(a, b, pp)}</b>${upset ? ' &middot; upset' : ''}</div>`; })(playedP(a, b, fmt))}${rs.video ? `<a class="sd-watch" href="https://www.youtube.com/watch?v=${rs.video}${rs.t ? '&t=' + rs.t + 's' : ''}" target="_blank" rel="noopener">Watch this game${rs.t ? ' (starts at ' + Math.floor(rs.t / 60) + ':' + String(rs.t % 60).padStart(2, '0') + ')' : ''}</a>` : ''}` : '')(resultFor(a, b, fmt))}
       `).join('')}
     </div>
   `;
