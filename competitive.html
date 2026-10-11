@@ -104,6 +104,8 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .yt-link:hover{text-decoration:underline;}
 .pill.liqui{color:var(--amberL);border-color:var(--amber);text-decoration:none;}
 .pill.liqui:hover{background:var(--amberBg);}
+.fx-video{display:inline-block;margin:0 10px 6px 0;font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;}
+.fx-video:hover{text-decoration:underline;}
 .fx-watch{display:inline-block;margin:2px 0 6px;font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;}
 .fx-watch:hover{text-decoration:underline;}
 a.set-status{text-decoration:none;}
@@ -705,7 +707,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.92</div>
+    <div class="version">v0.93</div>
   </div>
 </div>
 
@@ -905,6 +907,11 @@ function draftHtml(a, b) {
 const resultFor = (a, b, fmt) => SET_RESULTS.find(r => r.fmt === fmt && ((r.teams[0] === a.id && r.teams[1] === b.id) || (r.teams[0] === b.id && r.teams[1] === a.id)));
 const plink = p => `<a href="player.html?id=${p.id}">${p.name}</a>`;
 const casterLink = name => { const c = CASTERS.find(c => c.name === name); const t = c && c.links.find(l => l[0] === 'Twitch'); return t ? t[1] : null; };
+// YouTube videos of finished games (one video can cover several games).
+const GAME_VIDEOS = [
+  { teams: ['canada', 'ps5'], id: 'eP0A-9gBucM', title: 'Canada v PS5, 1v1 and 2v2' },
+];
+const videosFor = (a, b) => GAME_VIDEOS.filter(v => (v.teams[0] === a.id && v.teams[1] === b.id) || (v.teams[0] === b.id && v.teams[1] === a.id));
 const teamName = id => (ALL_TEAMS.find(t => t.id === id) || { name: id }).name;
 function scheduledFor(a, b, fmt) {
   return SCHEDULED_GAMES.find(g => g.games.includes(fmt) && ((g.teams[0] === a.id && g.teams[1] === b.id) || (g.teams[0] === b.id && g.teams[1] === a.id)));
@@ -949,6 +956,7 @@ function fixtureCardHtml([a, b]) {
         <span class="fv-team">${b.name}</span>
       </div>
       ${(sg => sg && casterLink(sg.caster) ? `<a class="fx-watch" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">Watch on Twitch with ${sg.caster}</a>` : '')(SET_FORMATS.map(f => scheduledFor(a, b, f)).find(Boolean))}
+      ${videosFor(a, b).map(v => `<a class="fx-video" href="https://www.youtube.com/watch?v=${v.id}&list=PLBNXOMprMKPI" target="_blank" rel="noopener">Watch on YouTube: ${v.title}</a>`).join('')}
       ${draftHtml(a, b)}
       ${SET_FORMATS.map(fmt => `
         <div class="set-row">
