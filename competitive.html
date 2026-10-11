@@ -74,6 +74,8 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .set-detail{display:flex;align-items:center;gap:10px;padding:2px 0 8px;font-size:11.5px;line-height:1.35;}
 .sd-col{display:flex;flex-direction:column;gap:1px;min-width:0;}
 .sd-col a{text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sd-col a .ci{vertical-align:-2px;margin-right:4px;object-fit:contain;width:12px;height:12px;}
+.sd-civ{display:block;overflow:hidden;text-overflow:ellipsis;font-weight:500;font-size:10px;color:var(--text2);}
 .sd-col a:hover{text-decoration:underline;}
 .sd-win a{color:var(--text);font-weight:700;}
 .sd-lose a{color:var(--text2);font-weight:500;}
@@ -709,7 +711,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.94</div>
+    <div class="version">v0.95</div>
   </div>
 </div>
 
@@ -871,10 +873,10 @@ const SCHEDULED_GAMES = [
 const SET_POINTS = { '1v1': 1, '2v2': 2, '3v3': 3, '4v4': 4 };
 const SET_RESULTS = [
   { teams: ['canada', 'ps5'], fmt: '1v1', winner: 'canada', map: 'Oasis', video: 'eP0A-9gBucM', t: 0,
-    winners: [{ name: 'volcanloup', id: 12893749 }], losers: [{ name: 'ItsGutsAoE', id: 23477132 }] },
+    winners: [{ name: 'volcanloup', id: 12893749, civ: 'Khmer' }], losers: [{ name: 'ItsGutsAoE', id: 23477132, civ: 'Japanese' }] },
   { teams: ['canada', 'ps5'], fmt: '2v2', winner: 'ps5', map: 'Arena', video: 'eP0A-9gBucM', t: 1078,
-    winners: [{ name: 'CrustyPotato313', id: 23147426 }, { name: 'ItsGutsAoE', id: 23477132 }],
-    losers: [{ name: 'volcanloup', id: 12893749 }, { name: 'Dbs Elm', id: 14276793 }] },
+    winners: [{ name: 'CrustyPotato313', id: 23147426, civ: 'Burmese' }, { name: 'ItsGutsAoE', id: 23477132, civ: 'Khmer' }],
+    losers: [{ name: 'volcanloup', id: 12893749, civ: 'Vietnamese' }, { name: 'Dbs Elm', id: 14276793, civ: 'Turks' }] },
   { teams: ['usa', 'mexico'], fmt: '1v1', winner: 'usa', map: 'Oasis',
     winners: [{ name: 'Faith2Adventure', id: 12527010 }], losers: [{ name: 'UxLiho', id: 12459914 }] },
   { teams: ['usa', 'mexico'], fmt: '2v2', winner: 'usa', map: 'Arena',
@@ -907,7 +909,9 @@ function draftHtml(a, b) {
   return `<div class="draft-block"><div class="draft-head"><span>Map draft</span><a href="${d.url}" target="_blank" rel="noopener">View on aoe2cm.net</a></div><div class="draft-chips">${chips}</div></div>`;
 }
 const resultFor = (a, b, fmt) => SET_RESULTS.find(r => r.fmt === fmt && ((r.teams[0] === a.id && r.teams[1] === b.id) || (r.teams[0] === b.id && r.teams[1] === a.id)));
-const plink = p => `<a href="player.html?id=${p.id}">${p.name}</a>`;
+const CIV_ICON_BASE = 'https://raw.githubusercontent.com/SiegeEngineers/aoe2techtree/master/img/Civs';
+const civIcon = c => `<img class="ci" src="${CIV_ICON_BASE}/${c === 'Maya' ? 'mayans' : c.toLowerCase()}.png" alt="" title="${c}" width="14" height="14" loading="lazy" onerror="this.style.display='none'">`;
+const plink = p => `<a href="player.html?id=${p.id}">${p.name}${p.civ ? `<span class="sd-civ">${civIcon(p.civ)}${p.civ}</span>` : ''}</a>`;
 const casterLink = name => { const c = CASTERS.find(c => c.name === name); const t = c && c.links.find(l => l[0] === 'Twitch'); return t ? t[1] : null; };
 // YouTube videos of finished games (one video can cover several games).
 const GAME_VIDEOS = [
