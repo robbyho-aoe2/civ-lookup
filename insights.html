@@ -347,7 +347,7 @@ svg.pad{width:100%;height:auto;display:block;}
     <a href="#regions">🌍 Top Players by Region</a>
   </nav>
 
-  <details class="ctl-wrap" id="controls">
+  <details class="ctl-wrap" id="controls" hidden>
     <summary>🎮 Advanced Controls <span class="hint">button combos, from settings to pro tricks</span></summary>
     <div id="controls-body"></div>
   </details>
@@ -633,9 +633,13 @@ async function loadAndRender() {
     };
 
     render(content, binEntries, stats, bracketAgg, civsData, crossplayRows, squads, meta.lastUpdated, squadsData.lastUpdated, consolePlayers, regionDropIds);
+    // The Advanced Controls box lives just below the Saturday Night Live card (it is a static element, so move it in after the cards render).
+    const ctl = document.getElementById('controls'), snl = document.getElementById('snl');
+    if (ctl && snl) { snl.after(ctl); ctl.hidden = false; if (location.hash === '#controls') ctl.scrollIntoView(); }
   } catch (e) {
     content.innerHTML = `<div class="error">Could not load player data: ${e.message}</div>`;
   }
+  const ctlBox = document.getElementById('controls'); if (ctlBox) ctlBox.hidden = false;
 }
 
 // Country is a 2-letter code from the player's AoE2Companion profile
