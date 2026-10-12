@@ -711,7 +711,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.98</div>
+    <div class="version">v0.99</div>
   </div>
 </div>
 
@@ -885,6 +885,9 @@ const SET_RESULTS = [
   { teams: ['usa', 'mexico'], fmt: '4v4', winner: 'mexico', map: 'Glade',
     winners: [{ name: 'UxLiho', id: 12459914, civ: 'Slavs' }, { name: 'MORIS0202', id: 12868111, civ: 'Britons' }, { name: 'RKs Raggz', id: 12478121, civ: 'Cumans' }, { name: 'UxDora', id: 25013161, civ: 'Saracens' }],
     losers: [{ name: 'Faith2Adventure', id: 12527010, civ: 'Turks' }, { name: 'sologhost', id: 12484696, civ: 'Wei' }, { name: 'Cain2point0', id: 13479761, civ: 'Tatars' }, { name: 'PrEyOnU1', id: 13467931, civ: 'Vietnamese' }] },
+  { teams: ['usa', 'mexico'], fmt: '3v3', winner: 'usa', map: 'African Clearing',
+    winners: [{ name: 'Faith2Adventure', id: 12527010, civ: 'Chinese' }, { name: 'sologhost', id: 12484696, civ: 'Berbers' }, { name: 'Cain2point0', id: 13479761, civ: 'Gurjaras' }],
+    losers: [{ name: 'MORIS0202', id: 12868111, civ: 'Japanese' }, { name: 'UxLiho', id: 12459914, civ: 'Mapuche' }, { name: 'UxDora', id: 25013161, civ: 'Vietnamese' }] },
 ];
 // Map drafts from aoe2cm.net. Each event is [who, action, map id]: who is 'host', 'guest' or 'none' (the admin map).
 const MAP_NAMES = { 'african-clearing': 'African Clearing', arena: 'Arena', arabia: 'Arabia', 'black-forest': 'Black Forest', glade: 'Glade', oasis: 'Oasis', pilgrims: 'Pilgrims', 'team-islands': 'Team Islands' };
@@ -938,7 +941,7 @@ document.getElementById('sched-list').innerHTML = SCHEDULED_GAMES.length
 // BEGIN ODDS (generated from the scouting simulation; chance that the first team in each key wins)
 const PREGAME = {
   pairs: {"mexico|usa": [0.41, 0.38, 0.37, 0.37], "mexico|france": [0.84, 0.46, 0.48, 0.51], "mexico|canada": [0.43, 0.44, 0.47, 0.5], "mexico|uk": [0.55, 0.5, 0.53, 0.54], "mexico|ps5": [0.7, 0.61, 0.64, 0.66], "usa|france": [0.88, 0.59, 0.61, 0.63], "usa|canada": [0.52, 0.56, 0.6, 0.62], "usa|uk": [0.64, 0.64, 0.66, 0.66], "usa|ps5": [0.77, 0.72, 0.75, 0.76], "france|canada": [0.12, 0.47, 0.49, 0.49], "france|uk": [0.19, 0.54, 0.56, 0.54], "france|ps5": [0.31, 0.64, 0.66, 0.65], "canada|uk": [0.62, 0.57, 0.57, 0.55], "canada|ps5": [0.76, 0.66, 0.67, 0.66], "uk|ps5": [0.66, 0.59, 0.61, 0.62]},
-  played: {"canada|ps5|1v1": 0.756, "canada|ps5|2v2": 0.586, "usa|mexico|1v1": 0.666, "usa|mexico|2v2": 0.706, "usa|mexico|4v4": 0.648}
+  played: {"canada|ps5|1v1": 0.756, "canada|ps5|2v2": 0.586, "usa|mexico|1v1": 0.666, "usa|mexico|2v2": 0.706, "usa|mexico|4v4": 0.648, "usa|mexico|3v3": 0.674}
 };
 // END ODDS
 // Chance that team a wins the game of this format, from the scouting simulation (null if unknown).
@@ -1002,7 +1005,9 @@ document.getElementById('fixtures-grid').innerHTML = fixtureGroups
 // 1v1/2v2/3v3/4v4 block against one opponent, not an individual set).
 // Everyone starts at 0-0 until results are entered below; SERIES_RESULTS
 // stays empty until matches are actually played.
-const SERIES_RESULTS = []; // { teamA: 'usa', teamB: 'mexico', winner: 'usa' }
+const SERIES_RESULTS = [
+  { teamA: 'usa', teamB: 'mexico', winner: 'usa' }, // 6-4 on points
+]; // { teamA: 'usa', teamB: 'mexico', winner: 'usa' }
 function standingsRows() {
   const rec = {};
   TEAMS.forEach(t => rec[t.id] = { played: 0, won: 0, lost: 0, pts: 0 });
