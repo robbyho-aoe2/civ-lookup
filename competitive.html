@@ -65,6 +65,8 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .fixture-card{background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 14px;}
 .fixture-vs{display:flex;align-items:center;justify-content:center;gap:10px;font-size:13px;font-weight:700;margin-bottom:10px;}
 .fixture-vs .fv-team{display:flex;align-items:center;gap:6px;}
+.fx-score{text-align:center;font-size:12px;font-weight:700;color:var(--green,#4ade80);margin:-4px 0 8px;}
+.fx-score.live{color:var(--amberL);}
 .fixture-vs .fv-sep{color:var(--text3);font-weight:400;font-size:11px;}
 .set-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;padding:4px 0;border-top:1px solid var(--border);}
 .set-row:first-of-type{border-top:none;}
@@ -711,7 +713,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v1.03</div>
+    <div class="version">v1.04</div>
   </div>
 </div>
 
@@ -925,6 +927,17 @@ const GAME_VIDEOS = [
   { teams: ['usa', 'mexico'], id: 'nMK7JPSzLJY', title: 'USA v Mexico, 1v1 and 2v2' },
 ];
 const videosFor = (a, b) => GAME_VIDEOS.filter(v => (v.teams[0] === a.id && v.teams[1] === b.id) || (v.teams[0] === b.id && v.teams[1] === a.id));
+const scoreHtml = (a, b) => {
+  const played = SET_FORMATS.map(f => resultFor(a, b, f)).filter(Boolean);
+  if (!played.length) return '';
+  const pa = played.filter(r => r.winner === a.id).reduce((n, r) => n + SET_POINTS[r.fmt], 0);
+  const pb = played.filter(r => r.winner === b.id).reduce((n, r) => n + SET_POINTS[r.fmt], 0);
+  const done = played.length === SET_FORMATS.length;
+  const cls = done ? 'fx-score' : 'fx-score live';
+  if (pa === pb) return `<div class="${cls}">Tied ${pa}-${pb}</div>`;
+  const lead = pa > pb ? a : b;
+  return `<div class="${cls}">${lead.name} ${done ? 'won' : 'leads'} ${Math.max(pa, pb)}-${Math.min(pa, pb)}</div>`;
+};
 const teamName = id => (ALL_TEAMS.find(t => t.id === id) || { name: id }).name;
 function scheduledFor(a, b, fmt) {
   return SCHEDULED_GAMES.find(g => g.games.includes(fmt) && ((g.teams[0] === a.id && g.teams[1] === b.id) || (g.teams[0] === b.id && g.teams[1] === a.id)));
@@ -968,6 +981,7 @@ function fixtureCardHtml([a, b]) {
         <span class="fv-sep">vs</span>
         <span class="fv-team">${b.name}</span>
       </div>
+      ${scoreHtml(a, b)}
       ${(sg => sg && casterLink(sg.caster) ? `<a class="fx-watch" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">Watch on Twitch with ${sg.caster}</a>` : '')(SET_FORMATS.map(f => scheduledFor(a, b, f)).find(Boolean))}
       ${videosFor(a, b).map(v => `<a class="fx-video" href="https://www.youtube.com/watch?v=${v.id}&list=PLBNXOMprMKPI" target="_blank" rel="noopener">Watch on YouTube: ${v.title}</a>`).join('')}
       ${draftHtml(a, b)}
