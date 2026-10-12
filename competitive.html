@@ -376,7 +376,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 
       <h3 class="sub-heading">6) Maps &amp; Civilizations</h3>
       <ul class="rules-list">
-        <li>Map pool: Arabia, Arena, African Clearing, Pilgrims, Oasis, Team Islands, Glade, Black Forest.</li>
+        <li>Map pool: Arabia, Arena, African Clearing, Pilgrims, Oasis, Team Islands, Glade, Black Forest. Team Islands is being removed from the pool; its replacement is not decided yet.</li>
         <li>A set is the full 1v1, 2v2, 3v3 and 4v4 against one opponent. Each of the four is a single game on one map.</li>
         <li>Bans happen in the map draft: each team bans 1 map.</li>
         <li>Game 1 is a 1v1 on the admin map, picked at random from the maps left in the draft after the bans. After that, the loser of each game chooses the team size and the map for the next game.</li>
@@ -514,7 +514,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 
       <h3 class="sub-heading">6) Mapas y civilizaciones</h3>
       <ul class="rules-list">
-        <li>Mapas: Arabia, Arena, African Clearing, Pilgrims, Oasis, Team Islands, Glade, Black Forest.</li>
+        <li>Mapas: Arabia, Arena, African Clearing, Pilgrims, Oasis, Team Islands, Glade, Black Forest. Team Islands se va a quitar del pool; todavía no se decide cuál mapa la reemplaza.</li>
         <li>Una serie (set) es el conjunto completo de 1v1, 2v2, 3v3 y 4v4 contra un rival. Cada una de las cuatro es una sola partida en un solo mapa.</li>
         <li>Los vetos se hacen en el draft de mapas: cada equipo veta 1 mapa.</li>
         <li>La partida 1 es un 1v1 en el mapa de los administradores, elegido al azar entre los mapas que quedan en el draft tras los vetos. Después, el perdedor de cada partida elige el tamaño de equipo y el mapa de la siguiente.</li>
@@ -573,7 +573,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 
   <div class="card">
     <h2>Maps</h2>
-    <p class="desc">The eight-map pool. Bans happen in the map draft, 1 per team. The 1v1 map is picked at random from the maps left, then the loser of each game chooses the team size and the next map.</p>
+    <p class="desc">The eight-map pool (Team Islands is being removed; its replacement is not decided yet). Bans happen in the map draft, 1 per team. The 1v1 map is picked at random from the maps left, then the loser of each game chooses the team size and the next map.</p>
     <a class="draft-link" href="https://aoe2cm.net/preset/BsDTE" target="_blank" rel="noopener">Open the map draft on aoe2cm.net</a>
     <div class="map-grid">
       <div class="map-tile"><img src="img/maps/arabia.jpg" alt="" width="56" height="56" loading="lazy"><span>Arabia</span></div>
@@ -581,7 +581,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
       <div class="map-tile"><img src="img/maps/african-clearing.jpg" alt="" width="56" height="56" loading="lazy"><span>African Clearing</span></div>
       <div class="map-tile"><img src="img/maps/pilgrims.jpg" alt="" width="56" height="56" loading="lazy"><span>Pilgrims</span></div>
       <div class="map-tile"><img src="img/maps/oasis.jpg" alt="" width="56" height="56" loading="lazy"><span>Oasis</span></div>
-      <div class="map-tile"><img src="img/maps/team-islands.jpg" alt="" width="56" height="56" loading="lazy"><span>Team Islands</span></div>
+      <div class="map-tile" style="opacity:.55"><img src="img/maps/team-islands.jpg" alt="" width="56" height="56" loading="lazy"><span>Team Islands (being removed)</span></div>
       <div class="map-tile"><img src="img/maps/glade.jpg" alt="" width="56" height="56" loading="lazy"><span>Glade</span></div>
       <div class="map-tile"><img src="img/maps/black-forest.jpg" alt="" width="56" height="56" loading="lazy"><span>Black Forest</span></div>
     </div>
@@ -711,7 +711,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.97</div>
+    <div class="version">v0.98</div>
   </div>
 </div>
 
@@ -882,6 +882,9 @@ const SET_RESULTS = [
   { teams: ['usa', 'mexico'], fmt: '2v2', winner: 'usa', map: 'Arena', video: 'nMK7JPSzLJY', t: 1525,
     winners: [{ name: 'Faith2Adventure', id: 12527010, civ: 'Spanish' }, { name: 'Donald2O16Trump', id: 12554124, civ: 'Cumans' }],
     losers: [{ name: 'UxLiho', id: 12459914, civ: 'Burmese' }, { name: 'MORIS0202', id: 12868111, civ: 'Hindustanis' }] },
+  { teams: ['usa', 'mexico'], fmt: '4v4', winner: 'mexico', map: 'Glade',
+    winners: [{ name: 'UxLiho', id: 12459914, civ: 'Slavs' }, { name: 'MORIS0202', id: 12868111, civ: 'Britons' }, { name: 'RKs Raggz', id: 12478121, civ: 'Cumans' }, { name: 'UxDora', id: 25013161, civ: 'Saracens' }],
+    losers: [{ name: 'Faith2Adventure', id: 12527010, civ: 'Turks' }, { name: 'sologhost', id: 12484696, civ: 'Wei' }, { name: 'Cain2point0', id: 13479761, civ: 'Tatars' }, { name: 'PrEyOnU1', id: 13467931, civ: 'Vietnamese' }] },
 ];
 // Map drafts from aoe2cm.net. Each event is [who, action, map id]: who is 'host', 'guest' or 'none' (the admin map).
 const MAP_NAMES = { 'african-clearing': 'African Clearing', arena: 'Arena', arabia: 'Arabia', 'black-forest': 'Black Forest', glade: 'Glade', oasis: 'Oasis', pilgrims: 'Pilgrims', 'team-islands': 'Team Islands' };
@@ -935,7 +938,7 @@ document.getElementById('sched-list').innerHTML = SCHEDULED_GAMES.length
 // BEGIN ODDS (generated from the scouting simulation; chance that the first team in each key wins)
 const PREGAME = {
   pairs: {"mexico|usa": [0.41, 0.38, 0.37, 0.37], "mexico|france": [0.84, 0.46, 0.48, 0.51], "mexico|canada": [0.43, 0.44, 0.47, 0.5], "mexico|uk": [0.55, 0.5, 0.53, 0.54], "mexico|ps5": [0.7, 0.61, 0.64, 0.66], "usa|france": [0.88, 0.59, 0.61, 0.63], "usa|canada": [0.52, 0.56, 0.6, 0.62], "usa|uk": [0.64, 0.64, 0.66, 0.66], "usa|ps5": [0.77, 0.72, 0.75, 0.76], "france|canada": [0.12, 0.47, 0.49, 0.49], "france|uk": [0.19, 0.54, 0.56, 0.54], "france|ps5": [0.31, 0.64, 0.66, 0.65], "canada|uk": [0.62, 0.57, 0.57, 0.55], "canada|ps5": [0.76, 0.66, 0.67, 0.66], "uk|ps5": [0.66, 0.59, 0.61, 0.62]},
-  played: {"canada|ps5|1v1": 0.756, "canada|ps5|2v2": 0.586, "usa|mexico|1v1": 0.666, "usa|mexico|2v2": 0.706}
+  played: {"canada|ps5|1v1": 0.756, "canada|ps5|2v2": 0.586, "usa|mexico|1v1": 0.666, "usa|mexico|2v2": 0.706, "usa|mexico|4v4": 0.648}
 };
 // END ODDS
 // Chance that team a wins the game of this format, from the scouting simulation (null if unknown).
