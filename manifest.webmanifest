@@ -15,6 +15,7 @@
     { "src": "app-icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
+    { "name": "Following", "short_name": "Following", "url": "live.html", "icons": [{ "src": "app-icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Player Spotlight", "short_name": "Players", "url": "player.html", "icons": [{ "src": "app-icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Console Insights", "short_name": "Insights", "url": "insights.html", "icons": [{ "src": "app-icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Nations Cup", "short_name": "Nations Cup", "url": "competitive.html", "icons": [{ "src": "app-icons/icon-192.png", "sizes": "192x192" }] },
