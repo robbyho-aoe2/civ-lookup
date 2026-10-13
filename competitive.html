@@ -712,7 +712,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v1.10</div>
+    <div class="version">v1.11</div>
   </div>
 </div>
 
@@ -900,6 +900,8 @@ const DRAFTS = [
     events: [['host', 'ban', 'black-forest'], ['guest', 'ban', 'team-islands'], ['none', 'pick', 'oasis'], ['host', 'pick', 'arabia'], ['guest', 'pick', 'arena'], ['host', 'pick', 'african-clearing'], ['guest', 'pick', 'glade']] },
   { teams: ['usa', 'mexico'], host: 'mexico', guest: 'usa', url: 'https://aoe2cm.net/draft/IBdwO',
     events: [['host', 'ban', 'pilgrims'], ['guest', 'ban', 'arabia'], ['none', 'pick', 'oasis'], ['host', 'pick', 'arena'], ['guest', 'pick', 'african-clearing'], ['host', 'pick', 'glade'], ['guest', 'pick', 'team-islands']] },
+  { teams: ['uk', 'france'], host: 'france', guest: 'uk', url: 'https://aoe2cm.net/draft/RZfWb',
+    events: [['host', 'ban', 'black-forest'], ['guest', 'ban', 'arabia'], ['none', 'pick', 'glade'], ['host', 'pick', 'steppe'], ['guest', 'pick', 'african-clearing'], ['host', 'pick', 'oasis'], ['guest', 'pick', 'arena']] },
 ];
 const draftFor = (a, b) => DRAFTS.find(d => (d.teams[0] === a.id && d.teams[1] === b.id) || (d.teams[0] === b.id && d.teams[1] === a.id));
 function draftHtml(a, b) {
@@ -956,7 +958,8 @@ document.getElementById('sched-list').innerHTML = SCHEDULED_GAMES.length
 // BEGIN ODDS (generated from the scouting simulation; chance that the first team in each key wins)
 const PREGAME = {
   pairs: {"mexico|usa": [0.41, 0.38, 0.37, 0.37], "mexico|france": [0.84, 0.46, 0.48, 0.51], "mexico|canada": [0.43, 0.44, 0.47, 0.5], "mexico|uk": [0.55, 0.5, 0.53, 0.54], "mexico|ps5": [0.7, 0.61, 0.64, 0.66], "usa|france": [0.88, 0.59, 0.6, 0.63], "usa|canada": [0.52, 0.56, 0.6, 0.62], "usa|uk": [0.64, 0.64, 0.66, 0.66], "usa|ps5": [0.77, 0.72, 0.75, 0.76], "france|canada": [0.13, 0.47, 0.49, 0.49], "france|uk": [0.19, 0.54, 0.56, 0.54], "france|ps5": [0.31, 0.64, 0.66, 0.66], "canada|uk": [0.62, 0.57, 0.57, 0.55], "canada|ps5": [0.76, 0.66, 0.67, 0.66], "uk|ps5": [0.66, 0.6, 0.61, 0.62]},
-  played: {"canada|ps5|1v1": 0.756, "canada|ps5|2v2": 0.586, "usa|mexico|1v1": 0.666, "usa|mexico|2v2": 0.706, "usa|mexico|4v4": 0.648, "usa|mexico|3v3": 0.674}
+  played: {"canada|ps5|1v1": 0.756, "canada|ps5|2v2": 0.586, "usa|mexico|1v1": 0.666, "usa|mexico|2v2": 0.706, "usa|mexico|4v4": 0.648, "usa|mexico|3v3": 0.674},
+  planned: {"uk|france|1v1": {"p": 0.818, "map": "Glade"}}
 };
 // END ODDS
 // Chance that team a wins the game of this format, from the scouting simulation (null if unknown).
@@ -973,6 +976,13 @@ function playedP(a, b, fmt) {
   if (p != null) return p;
   p = PREGAME.played[b.id + '|' + a.id + '|' + fmt];
   return p != null ? 1 - p : null;
+}
+// Odds for a scheduled game whose map is already known (the 1v1 map comes out of the draft), using the likely lineup.
+function plannedP(a, b, fmt) {
+  let x = PREGAME.planned && PREGAME.planned[a.id + '|' + b.id + '|' + fmt];
+  if (x) return { p: x.p, map: x.map };
+  x = PREGAME.planned && PREGAME.planned[b.id + '|' + a.id + '|' + fmt];
+  return x ? { p: 1 - x.p, map: x.map } : null;
 }
 const favText = (a, b, p) => { const fav = p >= 0.5 ? a : b; return fav.name + ' ' + Math.round(100 * Math.max(p, 1 - p)) + '% favorite'; };
 function fixtureCardHtml([a, b]) {
@@ -993,6 +1003,7 @@ function fixtureCardHtml([a, b]) {
           ${(rs => rs && rs.video ? `<a class="sd-watch" href="https://www.youtube.com/watch?v=${rs.video}${rs.t ? '&t=' + rs.t + 's' : ''}" target="_blank" rel="noopener"${rs.t ? ` title="Starts at ${Math.floor(rs.t / 60)}:${String(rs.t % 60).padStart(2, '0')}"` : ''}>Watch this game</a>` : '')(resultFor(a, b, fmt))}
           ${(rs => rs ? `<span class="set-status won">${teamName(rs.winner)} +${SET_POINTS[fmt]}</span>` : '')(resultFor(a, b, fmt)) || (sg => sg ? (casterLink(sg.caster) ? `<a class="set-status sched" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">${sg.short} · ${sg.time.replace(':00', '')}</a>` : `<span class="set-status sched">${sg.short} · ${sg.time.replace(':00', '')}</span>`) : (pp => pp == null ? '<span class="set-status">Not Played</span>' : `<span class="set-status odds" title="Pregame odds from the scouting simulation">${favText(a, b, pp)}</span>`)(pregameP(a, b, fmt)))(scheduledFor(a, b, fmt))}
         </div>
+        ${(sg => { if (!sg || resultFor(a, b, fmt)) return ''; const pl = plannedP(a, b, fmt); if (pl) return `<div class="sd-odds">Pregame odds on ${pl.map} with the likely lineup: <b>${favText(a, b, pl.p)}</b></div>`; const pp = pregameP(a, b, fmt); return pp == null ? '' : `<div class="sd-odds">Pregame odds: <b>${favText(a, b, pp)}</b></div>`; })(scheduledFor(a, b, fmt))}
         ${(rs => rs ? `<div class="set-detail"><div class="sd-col sd-win">${rs.winners.map(plink).join('')}</div><span class="sd-vs">beat</span><div class="sd-col sd-lose">${rs.losers.map(plink).join('')}</div><span class="sd-map">${mapIcon(rs.map)}${rs.map}</span></div>${(pp => { if (pp == null) return ''; const favA = pp >= 0.5; const upset = (rs.winner === a.id) !== favA; return `<div class="sd-odds">Pregame odds with these players on ${rs.map}: <b>${favText(a, b, pp)}</b>${upset ? ' &middot; upset' : ''}</div>`; })(playedP(a, b, fmt))}` : '')(resultFor(a, b, fmt))}
       `).join('')}
     </div>
