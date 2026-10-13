@@ -713,7 +713,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v1.19</div>
+    <div class="version">v1.20</div>
   </div>
 </div>
 
@@ -888,6 +888,9 @@ const SET_RESULTS = [
   { teams: ['uk', 'france'], fmt: '3v3', winner: 'uk', map: 'Oasis',
     winners: [{ name: 'Fiz 98', id: 12710758, civ: 'Persians' }, { name: 'DarK Slaayer', id: 13107937, civ: 'Britons' }, { name: 'Calum1Ltv', id: 16972769, civ: 'Inca' }],
     losers: [{ name: 'Saymyname3451', id: 8363994, civ: 'Ethiopians' }, { name: 'supercharlie12', id: 12507343, civ: 'Britons' }, { name: 'MeliodasAoe2', id: 25476302, civ: 'Varangians' }] },
+  { teams: ['uk', 'france'], fmt: '4v4', winner: 'uk', map: 'African Clearing',
+    winners: [{ name: 'Fiz 98', id: 12710758, civ: 'Berbers' }, { name: 'DarK Slaayer', id: 13107937, civ: 'Chinese' }, { name: 'ALPO4769', id: 13623295, civ: 'Huns' }, { name: 'Calum1Ltv', id: 16972769, civ: 'Koreans' }],
+    losers: [{ name: 'Saymyname3451', id: 8363994, civ: 'Vietnamese' }, { name: 'supercharlie12', id: 12507343, civ: 'Berbers' }, { name: 'x FalKo i', id: 13394271, civ: 'Persians' }, { name: 'vN eRaaz', id: 14065945, civ: 'Magyars' }] },
   { teams: ['usa', 'mexico'], fmt: '1v1', winner: 'usa', map: 'Oasis', video: 'nMK7JPSzLJY', t: 0,
     winners: [{ name: 'Faith2Adventure', id: 12527010, civ: 'Britons' }], losers: [{ name: 'UxLiho', id: 12459914, civ: 'Berbers' }] },
   { teams: ['usa', 'mexico'], fmt: '2v2', winner: 'usa', map: 'Arena', video: 'nMK7JPSzLJY', t: 1525,
@@ -967,8 +970,8 @@ document.getElementById('sched-list').innerHTML = SCHEDULED_GAMES.length
 // BEGIN ODDS (generated from the scouting simulation; chance that the first team in each key wins)
 const PREGAME = {
   pairs: {"mexico|usa": [0.41, 0.38, 0.37, 0.37], "mexico|france": [0.84, 0.46, 0.48, 0.51], "mexico|canada": [0.43, 0.44, 0.47, 0.5], "mexico|uk": [0.55, 0.5, 0.53, 0.54], "mexico|ps5": [0.7, 0.61, 0.64, 0.66], "usa|france": [0.88, 0.59, 0.6, 0.63], "usa|canada": [0.52, 0.56, 0.6, 0.62], "usa|uk": [0.64, 0.64, 0.66, 0.66], "usa|ps5": [0.77, 0.72, 0.75, 0.76], "france|canada": [0.13, 0.47, 0.49, 0.49], "france|uk": [0.19, 0.54, 0.56, 0.54], "france|ps5": [0.31, 0.64, 0.66, 0.66], "canada|uk": [0.62, 0.57, 0.57, 0.55], "canada|ps5": [0.76, 0.66, 0.67, 0.66], "uk|ps5": [0.66, 0.6, 0.61, 0.62]},
-  played: {"canada|ps5|1v1": 0.756, "canada|ps5|2v2": 0.586, "usa|mexico|1v1": 0.666, "usa|mexico|2v2": 0.706, "usa|mexico|4v4": 0.648, "usa|mexico|3v3": 0.674, "uk|france|1v1": 0.818, "uk|france|2v2": 0.365, "uk|france|3v3": 0.482},
-  planned: {"uk|france|4v4": {"p": 0.449, "map": "African Clearing", "confirmed": true, "players": {"uk": ["Fiz 98", "DarK Slaayer", "ALPO4769", "Calum1Ltv"], "france": ["Saymyname3451", "supercharlie12", "x FalKo i", "vN eRaaz"]}}}
+  played: {"canada|ps5|1v1": 0.756, "canada|ps5|2v2": 0.586, "usa|mexico|1v1": 0.666, "usa|mexico|2v2": 0.706, "usa|mexico|4v4": 0.648, "usa|mexico|3v3": 0.674, "uk|france|1v1": 0.818, "uk|france|2v2": 0.365, "uk|france|3v3": 0.482, "uk|france|4v4": 0.449},
+  planned: {}
 };
 // END ODDS
 // Chance that team a wins the game of this format, from the scouting simulation (null if unknown).
@@ -1045,6 +1048,7 @@ document.getElementById('fixtures-grid').innerHTML = fixtureGroups
 // stays empty until matches are actually played.
 const SERIES_RESULTS = [
   { teamA: 'usa', teamB: 'mexico', winner: 'usa' }, // 6-4 on points
+  { teamA: 'uk', teamB: 'france', winner: 'uk' }, // 10-0 on points
 ]; // { teamA: 'usa', teamB: 'mexico', winner: 'usa' }
 function standingsRows() {
   const rec = {};
