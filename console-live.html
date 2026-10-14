@@ -40,9 +40,19 @@ input[type=number]{width:86px;}
 input[type=number]:focus,select:focus{border-color:var(--amber);}
 .opts{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;font-size:12px;color:var(--text2);}
 .opts label{display:flex;align-items:center;gap:6px;cursor:pointer;}
-.me-row{display:flex;gap:8px;align-items:center;margin:0 0 12px;font-size:12px;color:var(--text2);}
+.me-row{display:flex;gap:8px;align-items:center;margin:0 0 8px;font-size:12px;color:var(--text2);flex-wrap:wrap;}
 .me-row[hidden]{display:none;}
-.me-row input{height:32px;width:200px;padding:0 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;outline:none;}
+#me-results{display:flex;flex-direction:column;gap:4px;margin:0 0 12px;}
+#me-results:empty{margin:0;}
+.sr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;background:var(--surf2);border:1px solid var(--border2);border-radius:8px;font-size:13px;cursor:pointer;}
+.sr:hover{border-color:var(--amber);}
+.sr .sr-name{font-weight:700;}
+.sr .sr-meta{color:var(--text3);font-size:11px;margin-left:8px;}
+.sr .sr-tag{font-size:10px;font-weight:700;color:var(--amberL);}
+.hint{font-size:12px;color:var(--text3);padding:4px 2px;}
+.me-line{font-size:12px;color:var(--text2);margin:-4px 0 12px;}
+.me-line a{color:var(--amberL);cursor:pointer;margin-left:6px;}
+.me-row input{height:32px;width:260px;max-width:100%;padding:0 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;outline:none;}
 
 /* status */
 .statusbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:12px;color:var(--text2);margin-bottom:14px;}
@@ -138,11 +148,12 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
       <button class="btn" data-preset="all" type="button">Everyone</button>
     </div>
     <div class="me-row" id="me-row" hidden>
-      <span>Your profile ID or name:</span>
-      <input type="text" id="me-input" placeholder="e.g. 12527010" autocomplete="off">
-      <button class="btn" id="me-go" type="button">Use it</button>
+      <span>Find your player:</span>
+      <input type="text" id="me-input" placeholder="Search by name or profile ID…" autocomplete="off">
       <span id="me-msg"></span>
     </div>
+    <div id="me-results"></div>
+    <div class="me-line" id="me-line" hidden></div>
     <div class="ranges">
       <div class="range"><label>1v1 Console rating</label><div class="pair"><input type="number" id="min1" min="0" max="4000" step="25"> to <input type="number" id="max1" min="0" max="4000" step="25"></div></div>
       <div class="range"><label>Team Console rating</label><div class="pair"><input type="number" id="minT" min="0" max="4000" step="25"> to <input type="number" id="maxT" min="0" max="4000" step="25"></div></div>
@@ -169,7 +180,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.01</div>
+    <div class="version">v0.02</div>
   </div>
 </div>
 
@@ -411,32 +422,76 @@ function changed(preset) {
 $('plat').addEventListener('change', () => { cfg.plat = $('plat').value; changed(cfg.preset); });
 $('opt-lobbies').addEventListener('change', () => { cfg.lobbies = $('opt-lobbies').checked; save(); connect(); });
 $('opt-pc').addEventListener('change', () => { cfg.pc = $('opt-pc').checked; save(); render(); });
-function myRatings() {
-  let id = null;
-  try { const api = window.autoScoutStart; const me = api && api.get && api.get().me; if (me && me.id) id = Number(me.id); } catch (e) {}
-  if (!id) { try { id = Number(localStorage.getItem(ME_KEY)) || null; } catch (e) {} }
-  const p = id && byId.get(id);
-  return p || null;
+// ---- "My level": search for your player like Player Spotlight does, then use your live console ratings ----
+const loadMe = () => { try { const v = JSON.parse(localStorage.getItem(ME_KEY) || 'null'); return v && v.id ? v : null; } catch (e) { return null; } };
+const saveMe = me => { try { localStorage.setItem(ME_KEY, JSON.stringify(me)); } catch (e) {} };
+async function ratingsFor(id, name) {
+  const r = await fetch(`${API}/profiles/${id}`);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json(), lb = {};
+  (j.leaderboards || []).forEach(l => { lb[l.leaderboardId] = l.rating; });
+  return { id: Number(id), name: j.name || name || String(id), r1: lb.rm_1v1_console || 0, rt: lb.rm_team_console || 0 };
 }
-document.querySelectorAll('#presets .btn').forEach(b => b.addEventListener('click', () => {
+function paintMe() {
+  const me = loadMe(), el = $('me-line');
+  el.hidden = !me;
+  if (me) el.innerHTML = `Your level: <b>${esc(me.name)}</b> · 1v1 ${me.r1 || '–'} · Team ${me.rt || '–'} <a id="me-change">change</a>`;
+  const ch = $('me-change'); if (ch) ch.addEventListener('click', () => { openMeSearch(); });
+}
+function openMeSearch() { $('me-row').hidden = false; $('me-input').value = ''; $('me-results').innerHTML = ''; $('me-msg').textContent = ''; $('me-input').focus(); }
+function applyMy(me) {
+  if (!me.r1 && !me.rt) { $('me-msg').textContent = `${me.name} has no console rating yet. Pick another player.`; return false; }
+  const r1 = me.r1 || me.rt, rt = me.rt || me.r1;
+  Object.assign(cfg, { min1: Math.max(0, r1 - 150), max1: r1 + 150, minT: Math.max(0, rt - 150), maxT: rt + 150 });
+  changed('my');
+  return true;
+}
+async function chooseMe(id, name) {
+  $('me-msg').textContent = 'Looking up your console ratings…';
+  try {
+    const me = await ratingsFor(id, name);
+    if (applyMy(me)) { saveMe(me); $('me-row').hidden = true; $('me-results').innerHTML = ''; $('me-msg').textContent = ''; paintMe(); }
+  } catch (e) { $('me-msg').textContent = 'Could not load that profile. Try again.'; }
+}
+document.querySelectorAll('#presets .btn').forEach(b => b.addEventListener('click', async () => {
   const k = b.dataset.preset;
-  if (k === 'my') {
-    const me = myRatings();
-    if (!me) { $('me-row').hidden = false; $('me-input').focus(); return; }
-    const r1 = me.r1 || me.rt, rt = me.rt || me.r1;
-    Object.assign(cfg, { min1: Math.max(0, r1 - 150), max1: r1 + 150, minT: Math.max(0, rt - 150), maxT: rt + 150 });
-    changed('my');
-  } else { Object.assign(cfg, PRESETS[k]); changed(k); }
+  if (k !== 'my') { Object.assign(cfg, PRESETS[k]); changed(k); return; }
+  let me = loadMe();
+  if (!me) {   // the installed app may already know your player (Make this my player)
+    try { const s = window.autoScoutStart && window.autoScoutStart.get && window.autoScoutStart.get().me; if (s && s.id) { me = await ratingsFor(s.id, s.name); saveMe(me); } } catch (e) {}
+  }
+  if (!me) { openMeSearch(); return; }
+  paintMe(); applyMy(me);
 }));
-$('me-go').addEventListener('click', () => {
+let meDebounce = null;
+$('me-input').addEventListener('input', () => {
+  clearTimeout(meDebounce);
   const q = $('me-input').value.trim();
-  let p = /^\d+$/.test(q) ? byId.get(Number(q)) : roster.find(x => x.name.toLowerCase() === q.toLowerCase());
-  if (!p) { $('me-msg').textContent = 'Not found in the tracked console players.'; return; }
-  try { localStorage.setItem(ME_KEY, String(p.id)); } catch (e) {}
-  $('me-row').hidden = true; $('me-msg').textContent = '';
-  document.querySelector('#presets [data-preset="my"]').click();
+  if (q.length < 2) { $('me-results').innerHTML = ''; return; }
+  meDebounce = setTimeout(() => runMeSearch(q), 300);
 });
-$('me-input').addEventListener('keydown', e => { if (e.key === 'Enter') $('me-go').click(); });
+async function runMeSearch(q) {
+  const el = $('me-results'), ql = q.toLowerCase();
+  const seen = new Set();
+  const local = roster.filter(p => p.name.toLowerCase().includes(ql) || String(p.id) === q).sort((a, b) => Math.max(b.r1, b.rt) - Math.max(a.r1, a.rt)).slice(0, 6);
+  local.forEach(p => seen.add(p.id));
+  const row = (id, name, meta, tag) => `<div class="sr" data-id="${id}" data-name="${esc(name)}"><span><span class="sr-name">${platIcon(id)}${esc(name)}</span><span class="sr-meta">${esc(meta)}</span></span><span class="sr-tag">${tag}</span></div>`;
+  const localHtml = local.map(p => row(p.id, p.name, `1v1 ${p.r1 || '–'} · Team ${p.rt || '–'}`, 'tracked')).join('');
+  el.innerHTML = localHtml + '<div class="hint">Searching AoE2Companion for more…</div>';
+  const live = [];
+  try {
+    if (/^\d+$/.test(q)) {
+      if (!seen.has(Number(q))) { const r = await fetch(`${API}/profiles/${q}`); if (r.ok) { const j = await r.json(); if (j && j.name) live.push({ id: Number(q), name: j.name, games: j.games }); } }
+    } else if (q.length >= 3) {
+      const r = await fetch(`${API}/profiles?search=${encodeURIComponent(q)}`);
+      if (r.ok) { const j = await r.json(); (j.profiles || []).forEach(p => { if (!seen.has(p.profileId) && live.length < 6) { seen.add(p.profileId); live.push({ id: p.profileId, name: p.name, games: p.games }); } }); }
+    }
+  } catch (e) { /* best effort */ }
+  if ($('me-input').value.trim() !== q) return;
+  const liveHtml = live.map(p => row(p.id, p.name, p.games != null ? `${Number(p.games).toLocaleString()} games` : '', 'live lookup')).join('');
+  el.innerHTML = (localHtml + liveHtml) || '<div class="hint">No matches.</div>';
+}
+$('me-results').addEventListener('click', e => { const r = e.target.closest('.sr'); if (r) chooseMe(r.dataset.id, r.dataset.name); });
 document.addEventListener('click', e => {
   const b = e.target.closest('.p-add'); if (!b) return;
   addFollow(b.dataset.id, b.dataset.name); b.remove();
@@ -451,7 +506,7 @@ document.addEventListener('click', e => {
     roster = (j.players || []).map(a => ({ id: a[0], name: a[1], plat: a[2], r1: a[3], rt: a[4], l1: a[5], lt: a[6] }));
     roster.forEach(p => byId.set(p.id, p));
   } catch (e) { $('status').innerHTML = '<span class="dot wait"></span>Could not load the console player list.'; return; }
-  recompute(); connect();
+  recompute(); connect(); paintMe();
 })();
 </script>
 </body>
