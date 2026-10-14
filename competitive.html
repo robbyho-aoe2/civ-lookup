@@ -713,7 +713,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v1.26</div>
+    <div class="version">v1.27</div>
   </div>
 </div>
 
@@ -1026,7 +1026,10 @@ function fixtureCardHtml([a, b]) {
 // Scheduled weeks, in the order the matches are listed. Everything else stays under "Not yet scheduled".
 const SCHEDULE = [
   { label: 'Week 1 · Oct 9-16', matches: [['uk', 'france'], ['usa', 'mexico'], ['canada', 'ps5']] },
-  { label: 'Week 2 · Oct 17-23', matches: [['usa', 'france'], ['uk', 'ps5'], ['canada', 'mexico']] },
+  { label: 'Week 2 · Oct 17-23', matches: [['uk', 'ps5'], ['usa', 'france'], ['canada', 'mexico']] },
+  { label: 'Week 3 · Oct 24-30', matches: [['uk', 'usa'], ['mexico', 'ps5'], ['canada', 'france']] },
+  { label: 'Week 4 · Oct 31-Nov 6', matches: [['uk', 'mexico'], ['usa', 'canada'], ['ps5', 'france']] },
+  { label: 'Week 5 · Nov 7-13', matches: [['uk', 'canada'], ['usa', 'ps5'], ['mexico', 'france']] },
 ];
 const samePair = (f, [x, y]) => (f[0].id === x && f[1].id === y) || (f[0].id === y && f[1].id === x);
 const scheduled = new Set();
