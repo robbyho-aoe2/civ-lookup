@@ -42,6 +42,35 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
 .opts label{display:flex;align-items:center;gap:6px;cursor:pointer;}
 .me-row{display:flex;gap:8px;align-items:center;margin:0 0 8px;font-size:12px;color:var(--text2);flex-wrap:wrap;}
 .me-row[hidden]{display:none;}
+#follow-search{width:100%;height:36px;padding:0 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;outline:none;}
+#follow-search:focus{border-color:var(--amber);}
+#follow-results{margin-top:10px;display:flex;flex-direction:column;gap:4px;}
+#follow-results:empty{margin-top:0;}
+.preset-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:center;}
+.presets .lbl,.preset-row .lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-right:2px;}
+.btn[disabled]{opacity:.45;cursor:default;}
+.f-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--border);font-size:13px;}
+.f-row:first-child{border-top:none;}
+.f-row .f-name{font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.f-row .f-name a{color:inherit;text-decoration:none;}
+.f-row .f-name a:hover{color:var(--amberL);}
+.f-row .f-state{flex:1;min-width:0;font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.f-row .f-state.live{color:var(--green);font-weight:600;}
+.f-row .f-state.lobby{color:var(--gold);font-weight:600;}
+.f-row .f-state .w{color:var(--green);}
+.f-row .f-state .l{color:var(--red);}
+.f-x{background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;padding:2px 6px;}
+.f-x:hover{color:var(--red);}
+.share-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px;font-size:11px;color:var(--text3);}
+.sugg-cols{display:grid;grid-template-columns:1fr 1fr;gap:6px 22px;}
+.sg{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--border);font-size:13px;}
+.sg:first-child{border-top:none;}
+.sg .sg-main{min-width:0;display:flex;flex-direction:column;line-height:1.35;}
+.sg .sg-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sg .sg-name a{color:inherit;text-decoration:none;}
+.sg .sg-name a:hover{color:var(--amberL);}
+.sg .sg-why{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+@media (max-width:760px){.sugg-cols{grid-template-columns:1fr;}}
 #me-results{display:flex;flex-direction:column;gap:4px;margin:0 0 12px;}
 #me-results:empty{margin:0;}
 .sr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;background:var(--surf2);border:1px solid var(--border2);border-radius:8px;font-size:13px;cursor:pointer;}
@@ -115,7 +144,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Auto Scout">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<script src="pwa.js?v=311" defer></script>
+<script src="pwa.js?v=312" defer></script>
 <meta name="description" content="Console AoE2 games and lobbies happening right now, filtered to top players or your own rating range.">
 </head>
 <body>
@@ -123,13 +152,12 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
   <header>
     <div>
       <h1>🎮 Console Live</h1>
-      <p class="subtitle">Console games and lobbies happening right now, filtered to the rating range you care about.</p>
+      <p class="subtitle">Console games and lobbies happening right now, filtered to a rating range, or switch to the players you follow.</p>
     </div>
   </header>
 
   <nav class="page-tabs">
     <a href="index.html">🏠 Auto Scout</a>
-    <a href="live.html">📡 Following</a>
     <a href="console-live.html" class="on">🎮 Console Live</a>
     <a href="player.html">🔎 Player Spotlight</a>
     <a href="competitive.html">Nations Cup</a>
@@ -146,7 +174,15 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
       <button class="btn" data-preset="top" type="button">Top players</button>
       <button class="btn" data-preset="my" type="button">My level</button>
       <button class="btn" data-preset="all" type="button">Everyone</button>
+      <button class="btn" data-preset="followed" type="button">★ Followed players <span id="follow-count"></span></button>
     </div>
+    <div class="presets" id="kinds">
+      <span class="lbl">Show games</span>
+      <button class="btn" data-kind="c1" type="button">1v1 Console</button>
+      <button class="btn" data-kind="ct" type="button">Team Console</button>
+      <button class="btn" data-kind="pc" type="button">PC</button>
+    </div>
+    <div id="filters">
     <div class="me-row" id="me-row" hidden>
       <span>Find your player:</span>
       <input type="text" id="me-input" placeholder="Search by name or profile ID…" autocomplete="off">
@@ -158,11 +194,36 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
       <div class="range"><label>1v1 Console rating</label><div class="pair"><input type="number" id="min1" min="0" max="4000" step="25"> to <input type="number" id="max1" min="0" max="4000" step="25"></div></div>
       <div class="range"><label>Team Console rating</label><div class="pair"><input type="number" id="minT" min="0" max="4000" step="25"> to <input type="number" id="maxT" min="0" max="4000" step="25"></div></div>
     </div>
-    <div class="opts">
-      <label>Platform <select id="plat"><option value="all">Xbox and PlayStation</option><option value="X">Xbox only</option><option value="P">PlayStation only</option></select></label>
-      <label><input type="checkbox" id="opt-lobbies"> Show lobbies</label>
-      <label><input type="checkbox" id="opt-pc"> Include PC-ladder games</label>
     </div>
+    <div class="opts">
+      <label id="lab-plat">Platform <select id="plat"><option value="all">Xbox and PlayStation</option><option value="X">Xbox only</option><option value="P">PlayStation only</option></select></label>
+      <label><input type="checkbox" id="opt-lobbies"> Show lobbies</label>
+    </div>
+  </div>
+
+  <div class="card" id="follow-card" hidden>
+    <h2>Followed players</h2>
+    <p class="desc">Follow any players, console or PC, and see their games and lobbies here as they happen. Your list stays on this device. Up to <span id="max-n">20</span> players.</p>
+    <input type="text" id="follow-search" placeholder="Search by name, profile ID or link…" autocomplete="off">
+    <div id="follow-results"></div>
+    <div class="preset-row" id="nc-presets"><span class="lbl">Nations Cup</span></div>
+    <div class="sec-title" id="following-title" style="margin-top:18px" hidden>Following</div>
+    <div id="following"></div>
+    <div class="share-row" id="share-row" hidden>
+      <button class="btn" id="copy-link" type="button">Copy a link to this list</button>
+      <span id="copy-msg"></span>
+    </div>
+  </div>
+
+  <div class="card" id="sugg-card" hidden>
+    <h2>Suggestions</h2>
+    <p class="desc">Players your follows play with and against most, from each follow's last 60 games. Tap + to follow.</p>
+    <div id="sugg-status" class="desc" style="margin:0 0 10px"></div>
+    <div class="sugg-cols">
+      <div><div class="sec-title">Plays with</div><div id="sugg-mates"></div></div>
+      <div><div class="sec-title">Plays against</div><div id="sugg-opps"></div></div>
+    </div>
+    <div style="margin-top:14px"><button class="btn" id="sugg-more" type="button" hidden>Look at more of my follows</button></div>
   </div>
 
   <div class="card">
@@ -180,7 +241,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.02</div>
+    <div class="version">v0.03</div>
   </div>
 </div>
 
@@ -198,7 +259,7 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&a
 const $ = id => document.getElementById(id);
 
 let roster = [], byId = new Map();
-let cfg = Object.assign({ preset: 'top', plat: 'all', lobbies: true, pc: false }, PRESETS.top);
+let cfg = Object.assign({ preset: 'top', plat: 'all', lobbies: true, kinds: { c1: true, ct: true, pc: false }, fkinds: { c1: true, ct: true, pc: true } }, PRESETS.top);
 try { Object.assign(cfg, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) {} };
 
@@ -217,6 +278,11 @@ function selectedPlayers() {
 }
 let watched = [], watchedSet = new Set(), capped = 0;
 function recompute() {
+  if (cfg.preset === 'followed') {
+    watched = follows.map(f => ({ id: f.id, name: f.name })); capped = 0;
+    watchedSet = new Set(watched.map(p => p.id));
+    return;
+  }
   const all = selectedPlayers();
   capped = Math.max(0, all.length - MAX_IDS);
   watched = all.slice(0, MAX_IDS);
@@ -232,16 +298,20 @@ const platIcon = id => { const p = byId.get(Number(id)); return p ? (PLAT_ICON[p
 const COLOR_NAMES = { 1: 'Blue', 2: 'Red', 3: 'Green', 4: 'Yellow', 5: 'Cyan', 6: 'Pink', 7: 'Gray', 8: 'Orange' };
 function clock(ms) { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sc = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(sc).padStart(2, '0'); }
 
-// ---- follow list shared with the Following page ----
-const readFollow = () => { try { const v = JSON.parse(localStorage.getItem(FOLLOW_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
-const isFollowed = id => readFollow().some(f => Number(f.id) === Number(id));
+// ---- follow list (kept on this device; the same list the profile pages' Follow button edits) ----
+const MAX_FOLLOW = 20;
+let follows = [];
+const loadFollows = () => { try { const v = JSON.parse(localStorage.getItem(FOLLOW_KEY) || '[]'); follows = Array.isArray(v) ? v.filter(x => x && Number(x.id)).map(x => ({ id: Number(x.id), name: x.name || String(x.id) })) : []; } catch (e) { follows = []; } };
+const saveFollows = () => { try { localStorage.setItem(FOLLOW_KEY, JSON.stringify(follows)); } catch (e) {} };
+const isFollowed = id => follows.some(f => f.id === Number(id));
 function addFollow(id, name) {
-  const list = readFollow();
-  if (list.some(f => Number(f.id) === Number(id))) return;
-  if (list.length >= 20) { showNotice('Your Following list is full (20). Remove someone on the Following page first.'); return; }
-  list.push({ id: Number(id), name });
-  try { localStorage.setItem(FOLLOW_KEY, JSON.stringify(list)); } catch (e) {}
+  id = Number(id);
+  if (!id || isFollowed(id)) return false;
+  if (follows.length >= MAX_FOLLOW) { showNotice(`Your list is full (${MAX_FOLLOW} players). Remove someone first.`); return false; }
+  follows.push({ id, name: name || String(id) });
+  saveFollows(); return true;
 }
+function removeFollow(id) { follows = follows.filter(f => f.id !== Number(id)); delete lastGame[id]; saveFollows(); }
 function showNotice(msg) { $('notice').innerHTML = msg ? `<div class="notice">${esc(msg)}</div>` : ''; }
 
 // ---- live state ----
@@ -306,11 +376,11 @@ function queueRender() { if (renderQueued) return; renderQueued = true; setTimeo
 function render() {
   const games = [...matches.values()].filter(m => {
     if (m.finished || !m.started || Date.now() - Date.parse(m.started) > STALE_LIVE_MS) return false;
-    if (!cfg.pc && !isConsoleLb(m) && m.leaderboardId !== 'unranked' && m.leaderboardId !== 'unknown' ) return false;
+    if (!kindsOf()[gameKind(m)]) return false;
     return matchPlayers(m).some(p => watchedSet.has(p.profileId));
   }).sort((a, b) => (avgRating(matchPlayers(b)) || 0) - (avgRating(matchPlayers(a)) || 0));
   $('games').innerHTML = games.length ? games.map(gameCard).join('') :
-    `<div class="empty">No games right now with players in your range. ${watched.length ? `Watching ${watched.length} players.` : 'No players match these filters.'}</div>`;
+    `<div class="empty">${cfg.preset === 'followed' ? (watched.length ? 'Nobody you follow is in a game right now.' : 'Follow some players above, or tap a Nations Cup team, and their games show up here as they happen.') : `No games right now with players in your range. ${watched.length ? `Watching ${watched.length} players.` : 'No players match these filters.'}`}</div>`;
   $('games-title').textContent = `Games right now (${games.length})`;
 
   $('lobbies-wrap').hidden = !cfg.lobbies;
@@ -320,12 +390,15 @@ function render() {
     $('lobbies-title').textContent = `Open lobbies (${ids.length})`;
   }
   updateStatus();
+  if (cfg.preset === 'followed') renderFollowing();
 }
 let conn = { games: 'connecting', lobbies: 'connecting' };
 function updateStatus() {
   const ok = conn.games === 'open';
   const range = `1v1 ${cfg.min1}${cfg.max1 >= 4000 ? '+' : '–' + cfg.max1} · Team ${cfg.minT}${cfg.maxT >= 4000 ? '+' : '–' + cfg.maxT}`;
-  $('status').innerHTML = `<span class="dot ${ok ? 'live' : 'wait'}"></span>${ok ? 'Live' : (conn.games === 'closed' ? 'Disconnected, retrying…' : 'Connecting…')} · watching ${watched.length} console players (${esc(range)})${capped ? ` · showing the top ${MAX_IDS} of ${watched.length + capped}` : ''}`;
+  const state = `<span class="dot ${ok ? 'live' : 'wait'}"></span>${ok ? 'Live' : (conn.games === 'closed' ? 'Disconnected, retrying…' : 'Connecting…')}`;
+  if (cfg.preset === 'followed') { $('status').innerHTML = `${state} · watching ${watched.length} followed player${watched.length !== 1 ? 's' : ''}`; return; }
+  $('status').innerHTML = `${state} · watching ${watched.length} console players (${esc(range)})${capped ? ` · showing the top ${MAX_IDS} of ${watched.length + capped}` : ''}`;
 }
 setInterval(() => { document.querySelectorAll('.game[data-started]').forEach(g => { const t = g.querySelector('.g-timer'); if (t) t.textContent = clock(Date.now() - Date.parse(g.dataset.started)); }); }, 1000);
 
@@ -406,8 +479,13 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { gam
 // ---- controls ----
 function syncInputs() {
   ['min1', 'max1', 'minT', 'maxT'].forEach(k => { $(k).value = cfg[k]; });
-  $('plat').value = cfg.plat; $('opt-lobbies').checked = cfg.lobbies; $('opt-pc').checked = cfg.pc;
+  $('plat').value = cfg.plat; $('opt-lobbies').checked = cfg.lobbies;
   document.querySelectorAll('#presets .btn').forEach(b => b.classList.toggle('on', b.dataset.preset === cfg.preset));
+  document.querySelectorAll('#kinds .btn').forEach(b => b.classList.toggle('on', !!kindsOf()[b.dataset.kind]));
+  const f = cfg.preset === 'followed';
+  $('filters').hidden = f; $('lab-plat').hidden = f; $('follow-card').hidden = !f;
+  $('sugg-card').hidden = !f || !follows.length;
+  $('follow-count').textContent = follows.length ? `(${follows.length})` : '';
 }
 let applyTimer = null;
 function changed(preset) {
@@ -421,7 +499,6 @@ function changed(preset) {
 }));
 $('plat').addEventListener('change', () => { cfg.plat = $('plat').value; changed(cfg.preset); });
 $('opt-lobbies').addEventListener('change', () => { cfg.lobbies = $('opt-lobbies').checked; save(); connect(); });
-$('opt-pc').addEventListener('change', () => { cfg.pc = $('opt-pc').checked; save(); render(); });
 // ---- "My level": search for your player like Player Spotlight does, then use your live console ratings ----
 const loadMe = () => { try { const v = JSON.parse(localStorage.getItem(ME_KEY) || 'null'); return v && v.id ? v : null; } catch (e) { return null; } };
 const saveMe = me => { try { localStorage.setItem(ME_KEY, JSON.stringify(me)); } catch (e) {} };
@@ -455,6 +532,10 @@ async function chooseMe(id, name) {
 }
 document.querySelectorAll('#presets .btn').forEach(b => b.addEventListener('click', async () => {
   const k = b.dataset.preset;
+  if (k === 'followed') {
+    cfg.preset = 'followed'; save(); syncInputs(); recompute(); connect(); renderFollowing(); fetchLast(); runSuggestions(true);
+    return;
+  }
   if (k !== 'my') { Object.assign(cfg, PRESETS[k]); changed(k); return; }
   let me = loadMe();
   if (!me) {   // the installed app may already know your player (Make this my player)
@@ -494,19 +575,283 @@ async function runMeSearch(q) {
 $('me-results').addEventListener('click', e => { const r = e.target.closest('.sr'); if (r) chooseMe(r.dataset.id, r.dataset.name); });
 document.addEventListener('click', e => {
   const b = e.target.closest('.p-add'); if (!b) return;
-  addFollow(b.dataset.id, b.dataset.name); b.remove();
+  if (b.closest('#sugg-card')) { if (addFollow(b.dataset.id, b.dataset.name)) afterFollowChange(); return; }
+  if (addFollow(b.dataset.id, b.dataset.name)) { b.remove(); afterFollowChange(); }
 });
+
+// ---- ladder filter pills: 1v1 Console, Team Console, PC ----
+const kindsOf = () => (cfg.preset === 'followed' ? cfg.fkinds : cfg.kinds);
+function gameKind(m) {
+  if (m.leaderboardId === 'rm_1v1_console') return 'c1';
+  if (m.leaderboardId === 'rm_team_console') return 'ct';
+  if (!isConsoleLb(m) && m.leaderboardId !== 'unranked' && m.leaderboardId !== 'unknown') return 'pc';
+  const teams = groupTeams(matchPlayers(m));
+  return teams.length === 2 && teams.every(t => t.length === 1) ? 'c1' : 'ct';   // custom games count by size
+}
+$('kinds').addEventListener('click', e => {
+  const b = e.target.closest('button[data-kind]'); if (!b) return;
+  const k = kindsOf(); k[b.dataset.kind] = !k[b.dataset.kind];
+  save(); syncInputs(); render();
+});
+
+// ---- followed players: list, search, team presets, share link, last games, suggestions ----
+const lastGame = {};   // id -> { finished, mapName, won }
+function afterFollowChange() {
+  syncInputs();
+  if (cfg.preset === 'followed') { recompute(); connect(); fetchLast(); runSuggestions(false); }
+  renderFollowing();
+  renderNcPresets();
+}
+function renderFollowing() {
+  if (cfg.preset !== 'followed') return;
+  $('following-title').hidden = !follows.length;
+  $('share-row').hidden = !follows.length;
+  const gameIds = new Set();
+  matches.forEach(m => { if (!m.finished) matchPlayers(m).forEach(p => gameIds.add(p.profileId)); });
+  const lobbyIds = new Set();
+  lobbySlots.forEach((slots, mid) => { if (!matches.has(mid)) slots.forEach(sl => lobbyIds.add(sl.profileId)); });
+  $('following').innerHTML = follows.map(f => {
+    let state = lastGame[f.id] === undefined ? 'Loading…' : 'No recent games found.', cls = '';
+    const g = [...matches.values()].find(m => !m.finished && matchPlayers(m).some(p => p.profileId === f.id));
+    if (g) { state = `In a game · ${esc(g.mapName || '')}`; cls = ' live'; }
+    else if (lobbyIds.has(f.id)) { state = 'In a lobby'; cls = ' lobby'; }
+    else if (lastGame[f.id]) {
+      const l = lastGame[f.id];
+      const res = l.won === true ? '<span class="w">won</span>' : l.won === false ? '<span class="l">lost</span>' : '';
+      state = `Last game ${esc(agoText(l.finished))}${res ? ' · ' + res : ''} on ${esc(l.mapName || '')}`;
+    }
+    return `<div class="f-row"><span class="f-name">${platIcon(f.id)}<a href="player.html?id=${f.id}">${esc(f.name)}</a></span><span class="f-state${cls}">${state}</span><button class="f-x" data-id="${f.id}" title="Unfollow" aria-label="Unfollow ${esc(f.name)}">×</button></div>`;
+  }).join('');
+}
+function agoText(iso) {
+  const t = iso ? Date.parse(iso) : NaN;
+  if (isNaN(t)) return '';
+  const sec = Math.max(0, Math.round((Date.now() - t) / 1000));
+  if (sec < 90) return 'just now';
+  if (sec < 3600) return Math.round(sec / 60) + ' min ago';
+  if (sec < 86400) { const h = Math.round(sec / 3600); return h + ' hour' + (h !== 1 ? 's' : '') + ' ago'; }
+  const d = Math.round(sec / 86400); return d + ' day' + (d !== 1 ? 's' : '') + ' ago';
+}
+$('following').addEventListener('click', e => {
+  const x = e.target.closest('.f-x'); if (!x) return;
+  removeFollow(x.dataset.id); afterFollowChange();
+});
+
+// last finished game per followed player, from the match history (one request per 20 players)
+let lastFetchAt = 0;
+async function fetchLast() {
+  if (document.hidden || cfg.preset !== 'followed' || !follows.length) return;
+  lastFetchAt = Date.now();
+  const ids = follows.map(f => f.id);
+  for (let i = 0; i < ids.length; i += 20) {
+    const chunk = ids.slice(i, i + 20), need = new Set(chunk);
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 15000);
+    try {
+      const r = await fetch(`${API}/matches?profile_ids=${chunk.join(',')}&page=1&per_page=40`, { cache: 'no-store', signal: ctl.signal });
+      if (!r.ok) continue;
+      const j = await r.json();
+      (Array.isArray(j) ? j : (j.matches || [])).forEach(m => {
+        if (!m.finished) return;
+        (m.teams || []).forEach(t => (t.players || []).forEach(p => {
+          if (need.has(p.profileId) && !lastGame[p.profileId]) {
+            lastGame[p.profileId] = { finished: m.finished, mapName: m.mapName, won: p.won };
+            const f = follows.find(x => x.id === p.profileId); if (f && p.name && f.name !== p.name) { f.name = p.name; saveFollows(); }
+          }
+        }));
+      });
+    } catch (e) { /* best effort */ } finally { clearTimeout(to); }
+    // anyone not in the newest 40 games of the group gets their own small lookup
+    for (const id of chunk.filter(x => lastGame[x] === undefined).slice(0, 8)) {
+      const c2 = new AbortController(), t2 = setTimeout(() => c2.abort(), 12000);
+      try {
+        const r = await fetch(`${API}/matches?profile_ids=${id}&page=1&per_page=3`, { cache: 'no-store', signal: c2.signal });
+        if (r.ok) { const j = await r.json(); const m = (Array.isArray(j) ? j : (j.matches || [])).find(x => x.finished); if (m) { const p = (m.teams || []).flatMap(t => t.players || []).find(q => q.profileId === id); lastGame[id] = { finished: m.finished, mapName: m.mapName, won: p ? p.won : null }; } }
+      } catch (e) { /* best effort */ } finally { clearTimeout(t2); }
+    }
+    chunk.forEach(id => { if (lastGame[id] === undefined) lastGame[id] = null; });
+    renderFollowing();
+  }
+}
+setInterval(() => { if (!document.hidden && cfg.preset === 'followed' && Date.now() - lastFetchAt > 300000) fetchLast(); }, 30000);
+
+// ---- search / add ----
+let fsDebounce = null;
+const idFromInput = q => { const m = q.match(/(?:profile\/|profileId=|id=|^)(\d{4,})/i); return m ? Number(m[1]) : null; };
+$('follow-search').addEventListener('input', e => {
+  clearTimeout(fsDebounce);
+  const q = e.target.value.trim();
+  if (q.length < 2) { $('follow-results').innerHTML = ''; return; }
+  fsDebounce = setTimeout(() => runFollowSearch(q), 300);
+});
+async function runFollowSearch(q) {
+  const el = $('follow-results'), found = [], seen = new Set();
+  const ql = q.toLowerCase();
+  roster.filter(p => p.name.toLowerCase().includes(ql)).sort((a, b) => Math.max(b.r1, b.rt) - Math.max(a.r1, a.rt)).slice(0, 5).forEach(p => { seen.add(p.id); found.push({ id: p.id, name: p.name, meta: `1v1 ${p.r1 || '–'} · Team ${p.rt || '–'}` }); });
+  el.innerHTML = '<div class="hint">Searching…</div>';
+  try {
+    const id = idFromInput(q);
+    if (id) {
+      if (!seen.has(id)) { const r = await fetch(`${API}/profiles/${id}`); if (r.ok) { const p = await r.json(); if (p && p.name) found.push({ id, name: p.name, meta: p.games != null ? `${Number(p.games).toLocaleString()} games` : '' }); } }
+    } else if (q.length >= 3) {
+      const r = await fetch(`${API}/profiles?search=${encodeURIComponent(q)}`);
+      if (r.ok) { const j = await r.json(); (j.profiles || []).slice(0, 8).forEach(p => { if (!seen.has(p.profileId) && found.length < 10) { seen.add(p.profileId); found.push({ id: p.profileId, name: p.name, meta: p.games != null ? `${Number(p.games).toLocaleString()} games` : '' }); } }); }
+    }
+  } catch (e) { /* best effort */ }
+  if ($('follow-search').value.trim() !== q) return;
+  el.innerHTML = found.length ? found.map(p => `<div class="sr" style="cursor:default" data-id="${p.id}" data-name="${esc(p.name)}"><span><span class="sr-name">${platIcon(p.id)}${esc(p.name)}</span><span class="sr-meta">${esc(p.meta)}</span></span>` +
+    `<button class="btn" data-fid="${p.id}" data-name="${esc(p.name)}" ${isFollowed(p.id) ? 'disabled' : ''}>${isFollowed(p.id) ? 'Following' : '+ Follow'}</button></div>`).join('') : '<div class="hint">No matches.</div>';
+}
+$('follow-results').addEventListener('click', e => {
+  const b = e.target.closest('button[data-fid]'); if (!b || b.disabled) return;
+  if (addFollow(b.dataset.fid, b.dataset.name)) { b.textContent = 'Following'; b.disabled = true; afterFollowChange(); }
+});
+
+// ---- Nations Cup team presets ----
+let ncTeams = [];
+async function loadNc() {
+  try {
+    const j = await (await fetch('nc-players.json')).json();
+    const by = {};
+    Object.values(j.players || {}).forEach(p => { if (!p.team) return; (by[p.team.id] = by[p.team.id] || { id: p.team.id, name: p.team.name, flag: p.team.flag, players: [] }).players.push({ id: p.id, name: p.name }); });
+    ncTeams = Object.values(by);
+  } catch (e) { ncTeams = []; }
+  renderNcPresets();
+}
+function renderNcPresets() {
+  const row = $('nc-presets');
+  row.innerHTML = '<span class="lbl">Nations Cup</span>' + ncTeams.map(t => {
+    const missing = t.players.filter(p => !isFollowed(p.id)).length;
+    return `<button class="btn${missing ? '' : ' on'}" data-team="${esc(t.id)}" ${missing ? '' : 'disabled'} title="Follow ${t.players.length} ${esc(t.name)} players">${t.flag || ''} ${esc(t.name)}${missing ? ` (+${missing})` : ' ✓'}</button>`;
+  }).join('');
+}
+$('nc-presets').addEventListener('click', e => {
+  const b = e.target.closest('button[data-team]'); if (!b || b.disabled) return;
+  const t = ncTeams.find(x => x.id === b.dataset.team); if (!t) return;
+  let added = 0, skipped = 0;
+  t.players.forEach(p => { if (isFollowed(p.id)) return; if (follows.length >= MAX_FOLLOW) { skipped++; return; } if (addFollow(p.id, p.name)) added++; });
+  if (skipped) showNotice(`Followed ${added} of ${t.name}'s players. The list is full (${MAX_FOLLOW}); remove some to add the rest.`);
+  afterFollowChange();
+});
+
+// ---- share link ----
+$('copy-link').addEventListener('click', async () => {
+  const url = location.origin + location.pathname + '?follow=' + follows.map(f => f.id).join(',');
+  const msg = $('copy-msg');
+  try { await navigator.clipboard.writeText(url); msg.textContent = 'Link copied.'; } catch (e) { msg.textContent = url; }
+  setTimeout(() => { msg.textContent = ''; }, 5000);
+});
+
+// ---- suggestions: who each follow plays with and against most (last 60 games) ----
+const CONN_KEY = 'autoscout-follow-conn-1', CONN_TTL_MS = 12 * 3600 * 1000, CONN_PAGES = 3, CONN_PER_RUN = 5, CONN_KEEP = 30;
+let connCache = {}, connBusy = false, connRunLeft = CONN_PER_RUN;
+try { connCache = JSON.parse(localStorage.getItem(CONN_KEY) || '{}') || {}; } catch (e) { connCache = {}; }
+const saveConn = () => { try { localStorage.setItem(CONN_KEY, JSON.stringify(connCache)); } catch (e) {} };
+const connFresh = id => connCache[id] && Date.now() - connCache[id].at < CONN_TTL_MS;
+async function analyzeFollower(id) {
+  const mates = {}, opps = {}; let games = 0, ok = 0;
+  for (let page = 1; page <= CONN_PAGES; page++) {
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 12000);
+    let res;
+    try { res = await fetch(`${API}/matches?profile_ids=${id}&page=${page}&per_page=20`, { cache: 'no-store', signal: ctl.signal }); }
+    catch (e) { clearTimeout(to); break; }
+    clearTimeout(to);
+    if (res.status === 429) { const e = new Error('rate'); e.rate = true; throw e; }
+    if (!res.ok) break;
+    const j = await res.json(), ms = Array.isArray(j) ? j : (j.matches || []);
+    ok++;
+    ms.forEach(m => {
+      const teams = (m.teams || []).filter(t => (t.players || []).length);
+      const myTeam = teams.find(t => t.players.some(p => p.profileId === id));
+      if (!myTeam) return;
+      games++;
+      teams.forEach(t => t.players.forEach(p => {
+        if (p.profileId === id || !p.profileId) return;
+        const bag = t === myTeam ? mates : opps;
+        (bag[p.profileId] = bag[p.profileId] || [0, p.name])[0]++;
+      }));
+    });
+    if (ms.length < 20) break;
+    await new Promise(r => setTimeout(r, 500));
+  }
+  if (!ok) throw new Error('no data');
+  const top = bag => Object.fromEntries(Object.entries(bag).sort((a, b) => b[1][0] - a[1][0]).slice(0, CONN_KEEP));
+  connCache[id] = { at: Date.now(), mates: top(mates), opps: top(opps), games };
+  saveConn();
+}
+async function runSuggestions(fresh) {
+  if (cfg.preset !== 'followed') return;
+  if (connBusy || document.hidden || !follows.length) { renderSuggestions(); return; }
+  if (fresh) connRunLeft = CONN_PER_RUN;
+  connBusy = true;
+  try {
+    for (const f of follows) {
+      if (connFresh(f.id)) continue;
+      if (connRunLeft <= 0) break;
+      connRunLeft--;
+      renderSuggestions(`Looking at ${f.name}'s recent games…`);
+      try { await analyzeFollower(f.id); }
+      catch (e) { if (e.rate) { showNotice('aoe2companion asked us to slow down. Suggestions will continue later.'); break; } }
+      renderSuggestions();
+      await new Promise(r => setTimeout(r, 700));
+    }
+  } finally { connBusy = false; }
+  renderSuggestions();
+}
+function suggestionRows(kind) {
+  const agg = {};
+  follows.forEach(f => {
+    const c = connCache[f.id]; if (!c) return;
+    Object.entries(c[kind]).forEach(([pid, [n, name]]) => {
+      if (isFollowed(pid) || n < 2) return;
+      const a = agg[pid] = agg[pid] || { id: Number(pid), name, n: 0, via: [] };
+      a.n += n; a.via.push([n, f.name]);
+    });
+  });
+  return Object.values(agg).sort((a, b) => b.n - a.n).slice(0, 6);
+}
+function renderSuggestions(busyMsg) {
+  const card = $('sugg-card');
+  card.hidden = cfg.preset !== 'followed' || !follows.length;
+  if (card.hidden) return;
+  const row = (r, verb) => {
+    r.via.sort((a, b) => b[0] - a[0]);
+    const why = r.via.slice(0, 2).map(([n, nm]) => `${n} ${verb} ${esc(nm)}`).join(', ');
+    return `<div class="sg"><span class="sg-main"><span class="sg-name">${platIcon(r.id)}<a href="player.html?id=${r.id}">${esc(r.name)}</a></span><span class="sg-why">${why}${r.via.length > 2 ? ` +${r.via.length - 2} more` : ''}</span></span>` +
+      `<button class="p-add" type="button" data-id="${r.id}" data-name="${esc(r.name)}" title="Follow ${esc(r.name)}" aria-label="Follow ${esc(r.name)}">+</button></div>`;
+  };
+  const mates = suggestionRows('mates'), opps = suggestionRows('opps'), done = follows.filter(f => connFresh(f.id)).length;
+  $('sugg-mates').innerHTML = mates.map(r => row(r, 'games with')).join('') || '<div class="hint">Nothing yet.</div>';
+  $('sugg-opps').innerHTML = opps.map(r => row(r, 'games vs')).join('') || '<div class="hint">Nothing yet.</div>';
+  $('sugg-status').textContent = busyMsg || (done < follows.length ? `Looked at ${done} of ${follows.length} follows.` : `Based on all ${follows.length} of your follows.`);
+  $('sugg-more').hidden = connBusy || done >= follows.length;
+}
+$('sugg-more').addEventListener('click', () => runSuggestions(true));
+document.addEventListener('visibilitychange', () => { if (!document.hidden && cfg.preset === 'followed') { fetchLast(); runSuggestions(false); } });
 
 // ---- start ----
 (async function init() {
+  $('max-n').textContent = MAX_FOLLOW;
+  loadFollows();
+  const m = location.search.match(/[?&]follow=([\d,]+)/);
+  if (m) {   // a shared list (?follow=1,2,3) is merged into yours and opens the followed view
+    let n = 0;
+    m[1].split(',').map(Number).filter(Boolean).forEach(id => { if (follows.length < MAX_FOLLOW && !isFollowed(id)) { follows.push({ id, name: String(id) }); n++; } });
+    if (n) saveFollows();
+    cfg.preset = 'followed'; save();
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+  } else if (location.hash === '#followed') { cfg.preset = 'followed'; save(); }
   syncInputs();
+  loadNc();
   try {
     const r = await fetch(ROSTER_URL + '?t=' + Math.floor(Date.now() / 600000));
     const j = await r.json();
     roster = (j.players || []).map(a => ({ id: a[0], name: a[1], plat: a[2], r1: a[3], rt: a[4], l1: a[5], lt: a[6] }));
     roster.forEach(p => byId.set(p.id, p));
-  } catch (e) { $('status').innerHTML = '<span class="dot wait"></span>Could not load the console player list.'; return; }
-  recompute(); connect(); paintMe();
+  } catch (e) {
+    if (cfg.preset !== 'followed') { $('status').innerHTML = '<span class="dot wait"></span>Could not load the console player list.'; return; }
+  }
+  recompute(); connect(); paintMe(); renderFollowing();
+  if (cfg.preset === 'followed') { fetchLast(); runSuggestions(true); }
 })();
 </script>
 </body>

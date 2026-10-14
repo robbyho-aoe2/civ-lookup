@@ -211,7 +211,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Auto Scout">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<script src="pwa.js?v=311" defer></script>
+<script src="pwa.js?v=312" defer></script>
 <meta name="description" content="Nations Cup: the tournament, teams, fixtures and a full scouting report.">
 <link rel="canonical" href="https://aoe2autoscout.com/competitive.html">
 <meta property="og:site_name" content="AoE2 Auto Scout">
@@ -235,7 +235,6 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 
   <nav class="page-tabs">
     <a href="index.html">🏠 Auto Scout</a>
-    <a href="live.html">📡 Following</a>
     <a href="console-live.html">🎮 Console Live</a>
     <a href="player.html">🔎 Player Spotlight</a>
     <a href="competitive.html" class="on">Nations Cup</a>
@@ -281,13 +280,6 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <p class="desc">Every Nations Cup game is on the Fast Castle and Chill YouTube channel.</p>
     <div class="yt-embed"><iframe src="https://www.youtube-nocookie.com/embed/videoseries?list=PLBNXOMprMKPI" title="Nations Cup Games playlist" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
     <a class="yt-link" href="https://www.youtube.com/playlist?list=PLBNXOMprMKPI" target="_blank" rel="noopener">Open the playlist on YouTube</a>
-  </div>
-
-  <div class="card" id="scheduled-card">
-    <h2>Scheduled Games</h2>
-    <p class="desc">Times are Eastern. Games not listed here are still to be scheduled.</p>
-    <a class="draft-link" href="https://aoe2cm.net/preset/nySjm" target="_blank" rel="noopener">Open the draft on aoe2cm.net</a>
-    <div class="sched-list" id="sched-list"></div>
   </div>
 
   <details class="section">
@@ -571,6 +563,14 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
   </details>
 
   <div class="card">
+    <h2>Standings</h2>
+    <p class="standings-note">Teams are ranked by points: 1v1 = 1, 2v2 = 2, 3v3 = 3, 4v4 = 4. Played, won and lost count finished series.</p>
+    <div class="overflow-x">
+      <table id="standings-table"></table>
+    </div>
+  </div>
+
+  <div class="card">
     <h2>Teams</h2>
     <p class="desc">Rosters go up here as players are confirmed for each region.</p>
     <div class="teams-grid" id="teams-grid"></div>
@@ -595,14 +595,6 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <h2>Round Robin Fixtures</h2>
     <p class="desc">Every nation plays every other nation once — <span id="fixture-count"></span> series total, each made up of the 4 set formats below. Results get filled in here as matches are played.</p>
     <div class="fixtures-grid" id="fixtures-grid"></div>
-  </div>
-
-  <div class="card">
-    <h2>Standings</h2>
-    <p class="standings-note">Teams are ranked by points: 1v1 = 1, 2v2 = 2, 3v3 = 3, 4v4 = 4. Played, won and lost count finished series.</p>
-    <div class="overflow-x">
-      <table id="standings-table"></table>
-    </div>
   </div>
 
   </div>
@@ -715,7 +707,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v1.22</div>
+    <div class="version">v1.24</div>
   </div>
 </div>
 
@@ -872,7 +864,7 @@ document.getElementById('caster-list').innerHTML = CASTERS.map(c =>
   `<div class="caster">${c.name}${c.links.map(([label, url]) => `<a href="${url}" target="_blank" rel="noopener">${label}</a>`).join('')}</div>`).join('');
 const SCHEDULED_GAMES = [
   // { date: 'Sat, Oct 10', short: 'Oct 10', time: '3:00 pm ET', teams: ['usa', 'mexico'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
-  { date: 'Tue, Oct 13', short: 'Oct 13', time: '2:00 pm ET', teams: ['uk', 'france'], games: ['1v1', '2v2', '3v3', '4v4'], caster: 'Sammy Diamonds' }, // 7 pm UK time
+  // (past) { date: 'Tue, Oct 13', short: 'Oct 13', time: '2:00 pm ET', teams: ['uk', 'france'], games: ['1v1', '2v2', '3v3', '4v4'], caster: 'Sammy Diamonds' }, // 7 pm UK time
 ];
 // Finished games. points = the set's worth (1v1 = 1 ... 4v4 = 4); winner/loser are the players who played.
 const SET_POINTS = { '1v1': 1, '2v2': 2, '3v3': 3, '4v4': 4 };
@@ -961,7 +953,8 @@ const teamName = id => (ALL_TEAMS.find(t => t.id === id) || { name: id }).name;
 function scheduledFor(a, b, fmt) {
   return SCHEDULED_GAMES.find(g => g.games.includes(fmt) && ((g.teams[0] === a.id && g.teams[1] === b.id) || (g.teams[0] === b.id && g.teams[1] === a.id)));
 }
-document.getElementById('sched-list').innerHTML = SCHEDULED_GAMES.length
+const schedEl = document.getElementById('sched-list');
+if (schedEl) schedEl.innerHTML = SCHEDULED_GAMES.length
   ? SCHEDULED_GAMES.map(g => `
     <div class="sched-item">
       <div class="sched-when">${casterLink(g.caster) ? `<a href="${casterLink(g.caster)}" target="_blank" rel="noopener" title="Watch on Twitch">` : ''}<b>${g.date}</b><span>${g.time}</span>${casterLink(g.caster) ? '</a>' : ''}</div>
