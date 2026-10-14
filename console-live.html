@@ -42,6 +42,18 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
 .opts label{display:flex;align-items:center;gap:6px;cursor:pointer;}
 .me-row{display:flex;gap:8px;align-items:center;margin:0 0 8px;font-size:12px;color:var(--text2);flex-wrap:wrap;}
 .me-row[hidden]{display:none;}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;}
+.act{display:flex;align-items:center;gap:7px;padding:6px 12px;border:1px solid var(--border2);background:var(--surf2);border-radius:20px;font-size:12px;text-decoration:none;color:var(--text);}
+.act:hover{border-color:var(--amber);}
+.act b{font-weight:700;}
+.act .rt{color:var(--text2);font-variant-numeric:tabular-nums;}
+.act .ago{color:var(--text3);}
+.act .w{color:var(--green);}
+.act .l{color:var(--red);}
+.active-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:6px 0 4px;}
+.active-head .sec-title{margin:0;}
+.active-head select{height:28px;font-size:12px;padding:0 8px;}
+.active-note{font-size:11px;color:var(--text3);margin:0 0 10px;line-height:1.5;}
 #follow-search{width:100%;height:36px;padding:0 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;outline:none;}
 #follow-search:focus{border-color:var(--amber);}
 #follow-results{margin-top:10px;display:flex;flex-direction:column;gap:4px;}
@@ -231,6 +243,12 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
   <div class="card">
     <div class="statusbar"><span id="status"><span class="dot"></span>Loading…</span></div>
     <div id="notice"></div>
+    <div id="active-wrap">
+      <div class="active-head"><div class="sec-title" id="active-title">Active players now</div>
+        <label style="font-size:11px;color:var(--text3)">finished a game in the last <select id="active-min"><option value="10">10 min</option><option value="15">15 min</option><option value="30">30 min</option><option value="60">60 min</option></select></label></div>
+      <div class="active-note">Players who just finished a game and are not in one now, so they may be searching for the next. It is a guess from recent games, not the matchmaking queue.</div>
+      <div class="chips" id="active"></div>
+    </div>
     <div class="sec-title" id="games-title">Games right now</div>
     <div id="games"></div>
     <div id="lobbies-wrap">
@@ -243,7 +261,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.06</div>
+    <div class="version">v0.07</div>
   </div>
 </div>
 
@@ -392,6 +410,7 @@ function render() {
     $('lobbies-title').textContent = `Open lobbies (${ids.length})`;
   }
   updateStatus();
+  renderActive();
   if (cfg.preset === 'followed') renderFollowing();
 }
 let conn = { games: 'connecting', lobbies: 'connecting' };
@@ -447,11 +466,11 @@ class Feed {
 const gamesFeed = new Feed('ongoing-matches', events => {
   events.forEach(e => {
     const d = e.data || {};
-    if (e.type === 'matchRemoved') { matches.delete(d.matchId); return; }
+    if (e.type === 'matchRemoved') { const was = matches.get(d.matchId); if (was) noteFinish(was, Date.now()); matches.delete(d.matchId); return; }
     if (e.type !== 'matchAdded' && e.type !== 'matchUpdated') return;
     const old = matches.get(d.matchId) || {};
     const next = Object.assign({}, old, d);
-    if (next.finished) { matches.delete(d.matchId); return; }
+    if (next.finished) { noteFinish(next, Date.parse(next.finished) || Date.now()); matches.delete(d.matchId); return; }
     matches.set(d.matchId, next);
     lobbySlots.delete(d.matchId); lobbyInfo.delete(d.matchId);   // the lobby became a game
   });
@@ -496,6 +515,7 @@ function connect() {
   gamesFeed.open(ids);
   if (cfg.lobbies) lobbiesFeed.open(ids); else lobbiesFeed.close();
   render();
+  backfillRecent();
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) { gamesFeed.close(); lobbiesFeed.close(); } else if (roster.length) connect(); });
 
@@ -603,6 +623,68 @@ document.addEventListener('click', e => {
   if (b.closest('#sugg-card')) { if (addFollow(b.dataset.id, b.dataset.name)) afterFollowChange(); return; }
   if (addFollow(b.dataset.id, b.dataset.name)) { b.remove(); afterFollowChange(); }
 });
+
+
+// ---- active players: finished a game recently and not in one now (so possibly searching) ----
+const recent = new Map();      // profileId -> { t, kind, mapName, won, name }
+const backfilled = new Set();
+const RECENT_KEEP_MS = 60 * 60 * 1000, BACKFILL_MAX = 150;
+function noteFinish(m, t) {
+  if (!t || Date.now() - t > RECENT_KEEP_MS) return;
+  const kind = gameKind(m);
+  matchPlayers(m).forEach(pl => {
+    if (!(pl.profileId > 0) || !watchedSet.has(pl.profileId)) return;
+    const old = recent.get(pl.profileId);
+    if (!old || t >= old.t) recent.set(pl.profileId, { t, kind, mapName: m.mapName, won: pl.won == null ? null : pl.won, name: pl.name });
+  });
+}
+async function backfillRecent() {
+  // one pass over the most recent games of the top watched players, so the list is not empty right after opening the page
+  const ids = watched.map(x => x.id).filter(id => !backfilled.has(id)).slice(0, BACKFILL_MAX);
+  ids.forEach(id => backfilled.add(id));
+  for (let i = 0; i < ids.length; i += 20) {
+    if (document.hidden) { ids.slice(i).forEach(id => backfilled.delete(id)); return; }
+    const chunk = ids.slice(i, i + 20), need = new Set(chunk);
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 15000);
+    try {
+      const r = await fetch(`${API}/matches?profile_ids=${chunk.join(',')}&page=1&per_page=40`, { cache: 'no-store', signal: ctl.signal });
+      if (r.ok) {
+        const j = await r.json();
+        (Array.isArray(j) ? j : (j.matches || [])).forEach(m => {
+          if (!m.finished) return;
+          const t = Date.parse(m.finished);
+          if (!t || Date.now() - t > RECENT_KEEP_MS) return;
+          const kind = gameKind(m);
+          (m.teams || []).forEach(tm => (tm.players || []).forEach(pl => {
+            if (!need.has(pl.profileId)) return;
+            const old = recent.get(pl.profileId);
+            if (!old || t > old.t) recent.set(pl.profileId, { t, kind, mapName: m.mapName, won: pl.won == null ? null : pl.won, name: pl.name });
+          }));
+        });
+      }
+    } catch (e) { /* best effort */ } finally { clearTimeout(to); }
+    renderActive();
+    await new Promise(r => setTimeout(r, 400));
+  }
+}
+function renderActive() {
+  const win = (cfg.activeMin || 15) * 60000, now = Date.now();
+  const inGame = new Set();
+  matches.forEach(m => { if (!m.finished) matchPlayers(m).forEach(pl => inGame.add(pl.profileId)); });
+  const rows = [...recent.entries()]
+    .filter(([id, e]) => now - e.t <= win && !inGame.has(id) && watchedSet.has(id) && kindsOf()[e.kind] !== false)
+    .sort((a, b) => b[1].t - a[1].t);
+  $('active-title').textContent = `Active players now (${rows.length})`;
+  $('active-min').value = String(cfg.activeMin || 15);
+  $('active').innerHTML = rows.length ? rows.slice(0, 40).map(([id, e]) => {
+    const p = byId.get(id), rating = p ? (e.kind === 'ct' ? p.rt : e.kind === 'c1' ? p.r1 : Math.max(p.r1, p.rt)) : 0;
+    const mins = Math.max(0, Math.round((now - e.t) / 60000));
+    const res = e.won === true ? ' · <span class="w">won</span>' : e.won === false ? ' · <span class="l">lost</span>' : '';
+    return `<a class="act" href="player.html?id=${id}" title="${esc(e.mapName || '')}">${platIcon(id)}<b>${esc((p && p.name) || e.name || id)}</b>${rating ? `<span class="rt">${rating}</span>` : ''}<span class="ago">${mins < 1 ? 'just now' : mins + ' min ago'}${res}</span></a>`;
+  }).join('') : '<div class="hint">Nobody has just finished a game. Check back in a few minutes.</div>';
+}
+$('active-min').addEventListener('change', () => { cfg.activeMin = Number($('active-min').value); save(); renderActive(); });
+setInterval(() => { if (!document.hidden) renderActive(); }, 15000);
 
 // ---- ladder filter pills: 1v1 Console, Team Console, PC ----
 const kindsOf = () => (cfg.preset === 'followed' ? cfg.fkinds : cfg.kinds);
