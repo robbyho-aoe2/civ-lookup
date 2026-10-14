@@ -183,7 +183,6 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
       <button class="btn" data-kind="pc" type="button">PC</button>
       <button class="btn" data-kind="cu" type="button">Custom games</button>
     </div>
-    <div id="filters">
     <div class="me-row" id="me-row" hidden>
       <span>Find your player:</span>
       <input type="text" id="me-input" placeholder="Search by name or profile ID…" autocomplete="off">
@@ -191,6 +190,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     </div>
     <div id="me-results"></div>
     <div class="me-line" id="me-line" hidden></div>
+    <div id="filters">
     <div class="ranges">
       <div class="range"><label>1v1 Console rating</label><div class="pair"><input type="number" id="min1" min="0" max="4000" step="25"> to <input type="number" id="max1" min="0" max="4000" step="25"></div></div>
       <div class="range"><label>Team Console rating</label><div class="pair"><input type="number" id="minT" min="0" max="4000" step="25"> to <input type="number" id="maxT" min="0" max="4000" step="25"></div></div>
@@ -218,8 +218,9 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
 
   <div class="card" id="sugg-card" hidden>
     <h2>Suggestions</h2>
-    <p class="desc">Players your follows play with and against most, from each follow's last 60 games. Tap + to follow.</p>
+    <p class="desc">Players you and your follows play with and against most, from the last 60 games of each. Tap + to follow.</p>
     <div id="sugg-status" class="desc" style="margin:0 0 10px"></div>
+    <div class="hint" id="sugg-me-hint" hidden>Want suggestions from your own games too? <button class="btn" id="sugg-setme" type="button" style="margin-left:6px">Set my player</button></div>
     <div class="sugg-cols">
       <div><div class="sec-title">Plays with</div><div id="sugg-mates"></div></div>
       <div><div class="sec-title">Plays against</div><div id="sugg-opps"></div></div>
@@ -242,7 +243,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.05</div>
+    <div class="version">v0.06</div>
   </div>
 </div>
 
@@ -506,7 +507,7 @@ function syncInputs() {
   document.querySelectorAll('#kinds .btn').forEach(b => b.classList.toggle('on', kindsOf()[b.dataset.kind] !== false));
   const f = cfg.preset === 'followed';
   $('filters').hidden = f; $('lab-plat').hidden = f; $('follow-card').hidden = !f;
-  $('sugg-card').hidden = !f || !follows.length;
+  $('sugg-card').hidden = !f || !sources().length;
   $('follow-count').textContent = follows.length ? `(${follows.length})` : '';
 }
 let applyTimer = null;
@@ -537,7 +538,8 @@ function paintMe() {
   if (me) el.innerHTML = `Your level: <b>${esc(me.name)}</b> · 1v1 ${me.r1 || '–'} · Team ${me.rt || '–'} <a id="me-change">change</a>`;
   const ch = $('me-change'); if (ch) ch.addEventListener('click', () => { openMeSearch(); });
 }
-function openMeSearch() { $('me-row').hidden = false; $('me-input').value = ''; $('me-results').innerHTML = ''; $('me-msg').textContent = ''; $('me-input').focus(); }
+let meMode = 'level';
+function openMeSearch(mode) { meMode = mode || 'level'; $('me-row').hidden = false; $('me-input').value = ''; $('me-results').innerHTML = ''; $('me-msg').textContent = ''; $('me-input').focus(); }
 function applyMy(me) {
   if (!me.r1 && !me.rt) { $('me-msg').textContent = `${me.name} has no console rating yet. Pick another player.`; return false; }
   const r1 = me.r1 || me.rt, rt = me.rt || me.r1;
@@ -549,7 +551,8 @@ async function chooseMe(id, name) {
   $('me-msg').textContent = 'Looking up your console ratings…';
   try {
     const me = await ratingsFor(id, name);
-    if (applyMy(me)) { saveMe(me); $('me-row').hidden = true; $('me-results').innerHTML = ''; $('me-msg').textContent = ''; paintMe(); }
+    if (meMode === 'sugg') { saveMe(me); $('me-row').hidden = true; $('me-results').innerHTML = ''; $('me-msg').textContent = ''; paintMe(); renderSuggestions(); runSuggestions(true); }
+    else if (applyMy(me)) { saveMe(me); $('me-row').hidden = true; $('me-results').innerHTML = ''; $('me-msg').textContent = ''; paintMe(); }
   } catch (e) { $('me-msg').textContent = 'Could not load that profile. Try again.'; }
 }
 document.querySelectorAll('#presets .btn').forEach(b => b.addEventListener('click', async () => {
@@ -786,7 +789,7 @@ async function analyzeFollower(id) {
       if (!myTeam) return;
       games++;
       teams.forEach(t => t.players.forEach(p => {
-        if (p.profileId === id || !p.profileId) return;
+        if (p.profileId === id || !(p.profileId > 0)) return;
         const bag = t === myTeam ? mates : opps;
         (bag[p.profileId] = bag[p.profileId] || [0, p.name])[0]++;
       }));
@@ -801,15 +804,15 @@ async function analyzeFollower(id) {
 }
 async function runSuggestions(fresh) {
   if (cfg.preset !== 'followed') return;
-  if (connBusy || document.hidden || !follows.length) { renderSuggestions(); return; }
+  if (connBusy || document.hidden || !sources().length) { renderSuggestions(); return; }
   if (fresh) connRunLeft = CONN_PER_RUN;
   connBusy = true;
   try {
-    for (const f of follows) {
+    for (const f of sources()) {
       if (connFresh(f.id)) continue;
       if (connRunLeft <= 0) break;
       connRunLeft--;
-      renderSuggestions(`Looking at ${f.name}'s recent games…`);
+      renderSuggestions(f.isMe ? 'Looking at your recent games…' : `Looking at ${f.name}'s recent games…`);
       try { await analyzeFollower(f.id); }
       catch (e) { if (e.rate) { showNotice('aoe2companion asked us to slow down. Suggestions will continue later.'); break; } }
       renderSuggestions();
@@ -818,12 +821,25 @@ async function runSuggestions(fresh) {
   } finally { connBusy = false; }
   renderSuggestions();
 }
+// who the suggestions are based on: you (if your player is set) and everyone you follow
+function getMe() {
+  const m = loadMe();
+  if (m && m.id) return { id: Number(m.id), name: m.name };
+  try { const st = window.autoScoutStart && window.autoScoutStart.get && window.autoScoutStart.get().me; if (st && st.id) return { id: Number(st.id), name: st.name || String(st.id) }; } catch (e) {}
+  return null;
+}
+function sources() {
+  const out = [], me = getMe();
+  if (me) out.push({ id: me.id, name: 'you', isMe: true });
+  follows.forEach(f => { if (!me || f.id !== me.id) out.push({ id: f.id, name: f.name }); });
+  return out;
+}
 function suggestionRows(kind) {
-  const agg = {};
-  follows.forEach(f => {
+  const agg = {}, me = getMe();
+  sources().forEach(f => {
     const c = connCache[f.id]; if (!c) return;
     Object.entries(c[kind]).forEach(([pid, [n, name]]) => {
-      if (isFollowed(pid) || n < 2) return;
+      if (Number(pid) <= 0 || isFollowed(pid) || (me && Number(pid) === me.id) || n < 2) return;
       const a = agg[pid] = agg[pid] || { id: Number(pid), name, n: 0, via: [] };
       a.n += n; a.via.push([n, f.name]);
     });
@@ -831,21 +847,24 @@ function suggestionRows(kind) {
   return Object.values(agg).sort((a, b) => b.n - a.n).slice(0, 6);
 }
 function renderSuggestions(busyMsg) {
-  const card = $('sugg-card');
-  card.hidden = cfg.preset !== 'followed' || !follows.length;
+  const card = $('sugg-card'), src = sources();
+  card.hidden = cfg.preset !== 'followed' || !src.length;
   if (card.hidden) return;
+  $('sugg-me-hint').hidden = !!getMe();
   const row = (r, verb) => {
     r.via.sort((a, b) => b[0] - a[0]);
     const why = r.via.slice(0, 2).map(([n, nm]) => `${n} ${verb} ${esc(nm)}`).join(', ');
     return `<div class="sg"><span class="sg-main"><span class="sg-name">${platIcon(r.id)}<a href="player.html?id=${r.id}">${esc(r.name)}</a></span><span class="sg-why">${why}${r.via.length > 2 ? ` +${r.via.length - 2} more` : ''}</span></span>` +
       `<button class="p-add" type="button" data-id="${r.id}" data-name="${esc(r.name)}" title="Follow ${esc(r.name)}" aria-label="Follow ${esc(r.name)}">+</button></div>`;
   };
-  const mates = suggestionRows('mates'), opps = suggestionRows('opps'), done = follows.filter(f => connFresh(f.id)).length;
+  const mates = suggestionRows('mates'), opps = suggestionRows('opps'), done = src.filter(f => connFresh(f.id)).length;
   $('sugg-mates').innerHTML = mates.map(r => row(r, 'games with')).join('') || '<div class="hint">Nothing yet.</div>';
   $('sugg-opps').innerHTML = opps.map(r => row(r, 'games vs')).join('') || '<div class="hint">Nothing yet.</div>';
-  $('sugg-status').textContent = busyMsg || (done < follows.length ? `Looked at ${done} of ${follows.length} follows.` : `Based on all ${follows.length} of your follows.`);
-  $('sugg-more').hidden = connBusy || done >= follows.length;
+  const fl = `${follows.length} follow${follows.length !== 1 ? 's' : ''}`, base = getMe() ? (follows.length ? `Based on you and your ${fl}.` : 'Based on you.') : `Based on your ${fl}.`;
+  $('sugg-status').textContent = busyMsg || (done < src.length ? `Looked at ${done} of ${src.length}.` : base);
+  $('sugg-more').hidden = connBusy || done >= src.length;
 }
+$('sugg-setme').addEventListener('click', () => openMeSearch('sugg'));
 $('sugg-more').addEventListener('click', () => runSuggestions(true));
 document.addEventListener('visibilitychange', () => { if (!document.hidden && cfg.preset === 'followed') { fetchLast(); runSuggestions(false); } });
 
