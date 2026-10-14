@@ -75,6 +75,8 @@ header .subtitle{font-size:12px;color:var(--text3);margin-top:2px;}
 .p .nm a:hover{color:var(--amberL);}
 .p .cn{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .p .rt{font-size:11px;color:var(--text2);}
+.p-add{flex:none;width:22px;height:22px;border-radius:50%;border:1px solid var(--border2);background:var(--surf2);color:var(--amberL);font:inherit;font-size:15px;line-height:1;font-weight:700;cursor:pointer;padding:0;}
+.p-add:hover{border-color:var(--amber);background:var(--amberBg);}
 .plat{display:inline-block;width:13px;height:13px;vertical-align:-2px;margin-right:4px;}
 .g-links{font-size:11px;margin-top:3px;}
 .g-links a{color:var(--text2);text-decoration:none;}
@@ -168,7 +170,7 @@ header .subtitle{font-size:12px;color:var(--text3);margin-top:2px;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.01</div>
+    <div class="version">v0.02</div>
   </div>
 </div>
 
@@ -252,7 +254,8 @@ function playerRow(p) {
   return `<div class="p${isFollowed(p.profileId) ? ' me' : ''}">${hex}` +
     (p.civImageUrl ? `<img class="civ" src="${esc(p.civImageUrl)}" alt="" title="${esc(p.civName || '')}" loading="lazy" onerror="this.style.visibility='hidden'">` : '') +
     `<span class="idc"><span class="nm">${platIcon(p.profileId)}<a href="player.html?id=${p.profileId}">${esc(p.name)}</a></span><span class="cn">${esc(p.civName || '')}</span></span>` +
-    `<span class="rt">${p.rating != null ? p.rating : ''}</span></div>`;
+    `<span class="rt">${p.rating != null ? p.rating : ''}</span>` +
+    (isFollowed(p.profileId) ? '' : `<button class="p-add" type="button" data-id="${p.profileId}" data-name="${esc(p.name)}" title="Follow ${esc(p.name)}" aria-label="Follow ${esc(p.name)}">+</button>`) + `</div>`;
 }
 function gameCard(m) {
   const teams = (m.teams || []).filter(t => (t.players || []).length);
@@ -382,6 +385,13 @@ document.getElementById('refresh-now').addEventListener('click', () => {
   lastRefreshClick = now;
   const b = document.getElementById('refresh-now'); b.disabled = true; setTimeout(() => { b.disabled = false; }, COOLDOWN_MS);
   backoffUntil = 0; refreshAll(true);
+});
+
+// ---- follow straight from a live game: tap + on any player who is not followed yet ----
+document.getElementById('live-games').addEventListener('click', e => {
+  const b = e.target.closest('.p-add');
+  if (!b) return;
+  if (addFollow(b.dataset.id, b.dataset.name)) afterListChange();
 });
 
 // ---- search / add ----
