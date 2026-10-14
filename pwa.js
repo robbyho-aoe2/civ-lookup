@@ -16,6 +16,16 @@
     clearMe: function () { var p = load(); delete p.me; if (p.page === 'me') p.page = 'home'; save(p); },
   };
 
+  // Safety net for visitor counting: every page carries its own GoatCounter snippet, but if a page is ever
+  // added without it, this loads the same counter (never twice, since it checks for an existing one first).
+  if (!document.querySelector('script[data-goatcounter]') && !window.goatcounter) {
+    var gc = document.createElement('script');
+    gc.async = true;
+    gc.setAttribute('data-goatcounter', 'https://robbyho.goatcounter.com/count');
+    gc.src = '//gc.zgo.at/count.js';
+    document.head.appendChild(gc);
+  }
+
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     window.addEventListener('load', function () {
       navigator.serviceWorker.register('sw.js').catch(function () {});
