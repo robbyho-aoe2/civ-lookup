@@ -42,7 +42,7 @@
 
   // Inside the installed app only: show the current start page with a link to change it.
   if (standalone) {
-    var NAMES = { home: 'Home', following: 'Following', spotlight: 'Player Spotlight', insights: 'Console Insights', competitive: 'Nations Cup',
+    var NAMES = { home: 'Home', following: 'Following', consolelive: 'Console Live', spotlight: 'Player Spotlight', insights: 'Console Insights', competitive: 'Nations Cup',
       civ: 'Civ Insights', build: 'Build Order', investigations: 'Investigations' };
     var addStart = function () {
       var p = load();

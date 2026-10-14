@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Console Live — AoE2 Auto Scout</title>
+<style>
+:root{
+  --bg:#100E0C;--surf:#17130F;--surf2:#1F1A15;--border:#241F1A;--border2:#362E24;
+  --amber:#3F9B72;--amberL:#5FB88C;--amberBg:rgba(63,155,114,.12);
+  --text:#EDE8DD;--text2:#8F8578;--text3:#5C544A;
+  --green:#4ade80;--red:#f87171;--gold:#fbbf24;
+  --radius:9px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px;}
+header{display:flex;align-items:center;gap:14px;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+header h1{font-size:20px;margin:0;}
+header .subtitle{font-size:12px;color:var(--text3);margin-top:2px;}
+.page-tabs{display:flex;gap:6px;margin:0 0 22px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.page-tabs a{padding:10px 16px;font-size:13px;font-weight:600;color:var(--text2);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.page-tabs a:hover{color:var(--text);}
+.page-tabs a.on{color:var(--amberL);border-bottom-color:var(--amber);}
+.card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
+.card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
+.card .desc{font-size:12px;color:var(--text2);margin:0 0 14px;line-height:1.6;}
+
+/* filters */
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center;}
+.btn{font:inherit;font-size:12px;font-weight:700;padding:6px 13px;border-radius:20px;border:1px solid var(--border2);background:var(--surf2);color:var(--text2);cursor:pointer;white-space:nowrap;}
+.btn:hover{border-color:var(--amber);color:var(--text);}
+.btn.on{color:var(--amberL);border-color:var(--amber);background:var(--amberBg);}
+.ranges{display:grid;grid-template-columns:1fr 1fr;gap:12px 22px;margin-bottom:12px;}
+.range{display:flex;flex-direction:column;gap:5px;}
+.range label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;}
+.range .pair{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text3);}
+input[type=number],select{height:34px;padding:0 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;outline:none;font-family:inherit;}
+input[type=number]{width:86px;}
+input[type=number]:focus,select:focus{border-color:var(--amber);}
+.opts{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;font-size:12px;color:var(--text2);}
+.opts label{display:flex;align-items:center;gap:6px;cursor:pointer;}
+.me-row{display:flex;gap:8px;align-items:center;margin:0 0 12px;font-size:12px;color:var(--text2);}
+.me-row[hidden]{display:none;}
+.me-row input{height:32px;width:200px;padding:0 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;outline:none;}
+
+/* status */
+.statusbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:12px;color:var(--text2);margin-bottom:14px;}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text3);margin-right:6px;}
+.dot.live{background:var(--green);box-shadow:0 0 0 3px rgba(74,222,128,.18);}
+.dot.wait{background:var(--gold);}
+.notice{font-size:12px;color:var(--gold);background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:7px 11px;margin-bottom:12px;}
+.sec-title{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin:6px 0 10px;}
+.empty{font-size:13px;color:var(--text2);line-height:1.7;padding:4px 2px 14px;}
+
+/* games + lobbies */
+.game{background:var(--surf2);border:1px solid var(--border2);border-left:3px solid var(--green);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;display:grid;grid-template-columns:210px 1fr;gap:14px;align-items:center;}
+.game.lobby{border-left-color:var(--gold);}
+.g-info{display:flex;gap:10px;align-items:center;min-width:0;}
+.g-map{width:48px;height:48px;border-radius:6px;object-fit:cover;flex:none;background:var(--bg);}
+.g-title{min-width:0;line-height:1.35;}
+.g-title b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.g-title span{display:block;font-size:11px;color:var(--text2);}
+.g-badge{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;border:1px solid var(--border2);color:var(--amberL);margin-top:2px;}
+.g-timer{font-variant-numeric:tabular-nums;color:var(--green);font-weight:700;}
+.g-teams{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;min-width:0;}
+.g-vs{font-size:10px;font-weight:700;color:var(--text3);}
+.g-team{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.p{display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:7px;border:1px solid var(--border2);background:var(--surf);font-size:12px;min-width:0;}
+.p.hit{box-shadow:inset 0 0 0 1px var(--amberL);}
+.p .col{width:5px;align-self:stretch;flex:none;border-radius:3px;margin:-2px 0;}
+.p .civ{width:22px;height:22px;flex:none;border-radius:4px;object-fit:contain;}
+.p .idc{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25;}
+.p .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.p .nm a{color:inherit;text-decoration:none;}
+.p .nm a:hover{color:var(--amberL);}
+.p .cn{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.p .rt{font-size:11px;color:var(--text2);font-variant-numeric:tabular-nums;}
+.p-add{flex:none;width:22px;height:22px;border-radius:50%;border:1px solid var(--border2);background:var(--surf2);color:var(--amberL);font:inherit;font-size:15px;line-height:1;font-weight:700;cursor:pointer;padding:0;}
+.p-add:hover{border-color:var(--amber);background:var(--amberBg);}
+.plat{display:inline-block;width:13px;height:13px;vertical-align:-2px;margin-right:4px;}
+.g-links{font-size:11px;margin-top:3px;}
+.g-links a{color:var(--text2);text-decoration:none;}
+.g-links a:hover{color:var(--amberL);}
+
+@media (max-width:760px){
+  .wrap{padding:20px 16px 50px;}
+  .game{grid-template-columns:1fr;}
+  .g-teams{grid-template-columns:1fr;}
+  .g-vs{text-align:center;}
+  .card{padding:18px 16px 14px;}
+  .ranges{grid-template-columns:1fr;}
+}
+.footer{font-size:11px;color:var(--text3);text-align:center;margin-top:30px;padding-top:16px;border-top:1px solid var(--border);}
+.footer a{color:var(--text2);text-decoration:none;}
+.footer a:hover{color:var(--amberL);}
+.version{font-size:10px;color:var(--text3);margin-top:6px;}
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#100E0C">
+<link rel="icon" type="image/svg+xml" href="app-icons/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="app-icons/favicon-32.png">
+<link rel="apple-touch-icon" href="app-icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Auto Scout">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<script src="pwa.js?v=311" defer></script>
+<meta name="description" content="Console AoE2 games and lobbies happening right now, filtered to top players or your own rating range.">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>🎮 Console Live</h1>
+      <p class="subtitle">Console games and lobbies happening right now, filtered to the rating range you care about.</p>
+    </div>
+  </header>
+
+  <nav class="page-tabs">
+    <a href="index.html">🏠 Auto Scout</a>
+    <a href="live.html">📡 Following</a>
+    <a href="console-live.html" class="on">🎮 Console Live</a>
+    <a href="player.html">🔎 Player Spotlight</a>
+    <a href="competitive.html">Nations Cup</a>
+    <a href="insights.html">📊 Console Insights</a>
+    <a href="civ-insights.html">🧮 Civ Insights</a>
+    <a href="build-order.html">🛠️ Build Order</a>
+    <a href="investigations.html">🕵️ Investigations</a>
+  </nav>
+
+  <div class="card">
+    <h2>Who to watch</h2>
+    <p class="desc">Shows games and lobbies with at least one console player in your rating range. Ratings are each player's current console rating; "Top players" starts at 1800 for 1v1 and 1600 for team games, roughly the same top slice of the ladder.</p>
+    <div class="presets" id="presets">
+      <button class="btn" data-preset="top" type="button">Top players</button>
+      <button class="btn" data-preset="my" type="button">My level</button>
+      <button class="btn" data-preset="all" type="button">Everyone</button>
+    </div>
+    <div class="me-row" id="me-row" hidden>
+      <span>Your profile ID or name:</span>
+      <input type="text" id="me-input" placeholder="e.g. 12527010" autocomplete="off">
+      <button class="btn" id="me-go" type="button">Use it</button>
+      <span id="me-msg"></span>
+    </div>
+    <div class="ranges">
+      <div class="range"><label>1v1 Console rating</label><div class="pair"><input type="number" id="min1" min="0" max="4000" step="25"> to <input type="number" id="max1" min="0" max="4000" step="25"></div></div>
+      <div class="range"><label>Team Console rating</label><div class="pair"><input type="number" id="minT" min="0" max="4000" step="25"> to <input type="number" id="maxT" min="0" max="4000" step="25"></div></div>
+    </div>
+    <div class="opts">
+      <label>Platform <select id="plat"><option value="all">Xbox and PlayStation</option><option value="X">Xbox only</option><option value="P">PlayStation only</option></select></label>
+      <label><input type="checkbox" id="opt-lobbies"> Show lobbies</label>
+      <label><input type="checkbox" id="opt-pc"> Include PC-ladder games</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="statusbar"><span id="status"><span class="dot"></span>Loading…</span></div>
+    <div id="notice"></div>
+    <div class="sec-title" id="games-title">Games right now</div>
+    <div id="games"></div>
+    <div id="lobbies-wrap">
+      <div class="sec-title" id="lobbies-title">Open lobbies</div>
+      <div id="lobbies"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
+    <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
+    <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
+    <div class="version">v0.01</div>
+  </div>
+</div>
+
+<script>
+// Self-contained per this site's convention. A tracked list of console players (data/console-roster.json) decides
+// who to watch from the rating filter; aoe2companion's live socket is then asked only for those players' games and
+// lobbies (a few KB, pushed as they happen). The connection is open only while this page is visible.
+const API = 'https://data.aoe2companion.com/api';
+const SOCKET = 'wss://socket.aoe2companion.com/listen';
+const ROSTER_URL = 'https://raw.githubusercontent.com/robbyho-aoe2/player-data/main/data/console-roster.json';
+const KEY = 'autoscout-cl-1', ME_KEY = 'autoscout-cl-me', FOLLOW_KEY = 'autoscout-follow-1';
+const MAX_IDS = 400, ACTIVE_DAYS = 180, STALE_LIVE_MS = 4 * 3600 * 1000;
+const PRESETS = { top: { min1: 1800, max1: 4000, minT: 1600, maxT: 4000 }, all: { min1: 0, max1: 4000, minT: 0, maxT: 4000 } };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const $ = id => document.getElementById(id);
+
+let roster = [], byId = new Map();
+let cfg = Object.assign({ preset: 'top', plat: 'all', lobbies: true, pc: false }, PRESETS.top);
+try { Object.assign(cfg, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) {} };
+
+// ---- selecting who to watch ----
+const daysAgo = d => d ? (Date.now() - Date.parse(d)) / 86400000 : Infinity;
+function selectedPlayers() {
+  const out = [];
+  roster.forEach(p => {
+    if (cfg.plat !== 'all' && p.plat !== cfg.plat) return;
+    const a = p.r1 >= cfg.min1 && p.r1 <= cfg.max1 && daysAgo(p.l1) <= ACTIVE_DAYS;
+    const b = p.rt >= cfg.minT && p.rt <= cfg.maxT && daysAgo(p.lt) <= ACTIVE_DAYS;
+    if (a || b) out.push(p);
+  });
+  out.sort((x, y) => Math.max(y.r1, y.rt) - Math.max(x.r1, x.rt));
+  return out;
+}
+let watched = [], watchedSet = new Set(), capped = 0;
+function recompute() {
+  const all = selectedPlayers();
+  capped = Math.max(0, all.length - MAX_IDS);
+  watched = all.slice(0, MAX_IDS);
+  watchedSet = new Set(watched.map(p => p.id));
+}
+
+// ---- platform logos ----
+const PLAT_ICON = {
+  X: '<svg class="plat" viewBox="0 0 16 16" role="img" aria-label="Xbox"><title>Xbox</title><circle cx="8" cy="8" r="8" fill="#107C10"/><path d="M4.6 4.2 11.4 11.8M11.4 4.2 4.6 11.8" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/></svg>',
+  P: '<svg class="plat" viewBox="0 0 16 16" role="img" aria-label="PlayStation"><title>PlayStation</title><rect width="16" height="16" rx="4" fill="#0070D1"/><text x="8" y="11.2" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="8.5" fill="#fff">PS</text></svg>',
+};
+const platIcon = id => { const p = byId.get(Number(id)); return p ? (PLAT_ICON[p.plat] || '') : ''; };
+const COLOR_NAMES = { 1: 'Blue', 2: 'Red', 3: 'Green', 4: 'Yellow', 5: 'Cyan', 6: 'Pink', 7: 'Gray', 8: 'Orange' };
+function clock(ms) { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sc = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(sc).padStart(2, '0'); }
+
+// ---- follow list shared with the Following page ----
+const readFollow = () => { try { const v = JSON.parse(localStorage.getItem(FOLLOW_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
+const isFollowed = id => readFollow().some(f => Number(f.id) === Number(id));
+function addFollow(id, name) {
+  const list = readFollow();
+  if (list.some(f => Number(f.id) === Number(id))) return;
+  if (list.length >= 20) { showNotice('Your Following list is full (20). Remove someone on the Following page first.'); return; }
+  list.push({ id: Number(id), name });
+  try { localStorage.setItem(FOLLOW_KEY, JSON.stringify(list)); } catch (e) {}
+}
+function showNotice(msg) { $('notice').innerHTML = msg ? `<div class="notice">${esc(msg)}</div>` : ''; }
+
+// ---- live state ----
+const matches = new Map();        // matchId -> match (with players)
+const lobbySlots = new Map();     // matchId -> Map(slot -> slot data)
+const lobbyInfo = new Map();      // matchId -> REST match (lobby details + current players)
+const lobbyFetchAt = new Map();
+
+function ladderLabel(m) {
+  if (m.leaderboardId === 'rm_1v1_console') return '1v1 Console ranked';
+  if (m.leaderboardId === 'rm_team_console') return 'Team Console ranked';
+  if (m.leaderboardId === 'unranked') return 'Custom game';
+  return m.leaderboardName || m.leaderboardId || '';
+}
+const isConsoleLb = m => /console/.test(m.leaderboardId || '');
+function matchPlayers(m) { return m.players || (m.teams ? m.teams.flatMap(t => t.players || []) : []); }
+function groupTeams(players) {
+  const by = new Map();
+  players.forEach(p => { const k = p.team == null || p.team < 0 ? 'p' + p.profileId : 't' + p.team; (by.get(k) || by.set(k, []).get(k)).push(p); });
+  return [...by.values()];
+}
+function playerRow(p, canFollow) {
+  const hex = /^#[0-9a-fA-F]{6}$/.test(p.colorHex || '') ? `<span class="col" style="background:${p.colorHex}" title="${esc(COLOR_NAMES[p.color] || 'Player')} player"></span>` : '';
+  const hit = watchedSet.has(p.profileId);
+  return `<div class="p${hit ? ' hit' : ''}">${hex}` +
+    (p.civImageUrl ? `<img class="civ" src="${esc(p.civImageUrl)}" alt="" title="${esc(p.civName || '')}" loading="lazy" onerror="this.style.visibility='hidden'">` : '') +
+    `<span class="idc"><span class="nm">${platIcon(p.profileId)}<a href="player.html?id=${p.profileId}">${esc(p.name || '')}</a></span><span class="cn">${esc(p.civName || '')}</span></span>` +
+    `<span class="rt">${p.rating != null && p.rating > 0 ? p.rating : ''}</span>` +
+    (canFollow && p.profileId > 0 && !isFollowed(p.profileId) ? `<button class="p-add" type="button" data-id="${p.profileId}" data-name="${esc(p.name || '')}" title="Follow ${esc(p.name || '')}" aria-label="Follow ${esc(p.name || '')}">+</button>` : '') + `</div>`;
+}
+function sidesHtml(players) {
+  const teams = groupTeams(players);
+  const side = t => `<div class="g-team">${t.map(p => playerRow(p, true)).join('')}</div>`;
+  if (teams.length <= 2) return `<div class="g-teams">${teams[0] ? side(teams[0]) : ''}<span class="g-vs">VS</span>${teams[1] ? side(teams[1]) : '<div></div>'}</div>`;
+  return `<div class="g-teams" style="grid-template-columns:1fr">${teams.map(side).join('')}</div>`;
+}
+function avgRating(players) { const r = players.map(p => p.rating).filter(x => x > 0); return r.length ? Math.round(r.reduce((a, b) => a + b, 0) / r.length) : null; }
+function gameCard(m) {
+  const pl = matchPlayers(m), size = groupTeams(pl).map(t => t.length).join('v'), avg = avgRating(pl);
+  return `<div class="game" data-started="${esc(m.started)}"><div class="g-info">${m.mapImageUrl ? `<img class="g-map" src="${esc(m.mapImageUrl)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<div class="g-map"></div>'}` +
+    `<div class="g-title"><b>${esc(m.mapName || 'Unknown map')}</b><span>${esc(size)}${avg ? ' · avg ' + avg : ''}</span><span class="g-badge">${esc(ladderLabel(m))}</span>` +
+    `<span><span class="g-timer">${clock(Date.now() - Date.parse(m.started))}</span> into the game</span>` +
+    `<span class="g-links"><a href="https://www.aoe2insights.com/match/${m.matchId}/" target="_blank" rel="noopener">↗ Insights</a></span></div></div>${sidesHtml(pl)}</div>`;
+}
+function lobbyPlayers(id) {
+  const info = lobbyInfo.get(id);
+  if (info) return matchPlayers(info);
+  return [...(lobbySlots.get(id) || new Map()).values()];
+}
+function lobbyCard(id) {
+  const info = lobbyInfo.get(id) || {}, pl = lobbyPlayers(id), avg = avgRating(pl);
+  const total = info.totalSlotCount != null ? info.totalSlotCount - (info.blockedSlotCount || 0) : null;
+  return `<div class="game lobby"><div class="g-info">${info.mapImageUrl ? `<img class="g-map" src="${esc(info.mapImageUrl)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<div class="g-map"></div>'}` +
+    `<div class="g-title"><b title="${esc(info.name || '')}">${esc(info.name || 'Lobby')}</b><span>${esc(info.mapName || '')}${avg ? ' · avg ' + avg : ''}</span>` +
+    `<span class="g-badge">Lobby · ${pl.length}${total ? '/' + total : ''} players</span>` +
+    `<span>${esc(info.gameModeName || '')}${info.server ? ' · ' + esc(info.server) : ''}</span></div></div>${sidesHtml(pl)}</div>`;
+}
+
+// ---- rendering ----
+let renderQueued = false;
+function queueRender() { if (renderQueued) return; renderQueued = true; setTimeout(() => { renderQueued = false; render(); }, 250); }
+function render() {
+  const games = [...matches.values()].filter(m => {
+    if (m.finished || !m.started || Date.now() - Date.parse(m.started) > STALE_LIVE_MS) return false;
+    if (!cfg.pc && !isConsoleLb(m) && m.leaderboardId !== 'unranked' && m.leaderboardId !== 'unknown' ) return false;
+    return matchPlayers(m).some(p => watchedSet.has(p.profileId));
+  }).sort((a, b) => (avgRating(matchPlayers(b)) || 0) - (avgRating(matchPlayers(a)) || 0));
+  $('games').innerHTML = games.length ? games.map(gameCard).join('') :
+    `<div class="empty">No games right now with players in your range. ${watched.length ? `Watching ${watched.length} players.` : 'No players match these filters.'}</div>`;
+  $('games-title').textContent = `Games right now (${games.length})`;
+
+  $('lobbies-wrap').hidden = !cfg.lobbies;
+  if (cfg.lobbies) {
+    const ids = [...lobbySlots.keys()].filter(id => !matches.has(id) && lobbySlots.get(id).size && (!lobbyInfo.get(id) || !lobbyInfo.get(id).started));
+    $('lobbies').innerHTML = ids.length ? ids.map(lobbyCard).join('') : '<div class="empty">No open lobbies with players in your range. Console lobbies often do not show up in aoe2companion\'s lobby list, so this stays empty most of the time.</div>';
+    $('lobbies-title').textContent = `Open lobbies (${ids.length})`;
+  }
+  updateStatus();
+}
+let conn = { games: 'connecting', lobbies: 'connecting' };
+function updateStatus() {
+  const ok = conn.games === 'open';
+  const range = `1v1 ${cfg.min1}${cfg.max1 >= 4000 ? '+' : '–' + cfg.max1} · Team ${cfg.minT}${cfg.maxT >= 4000 ? '+' : '–' + cfg.maxT}`;
+  $('status').innerHTML = `<span class="dot ${ok ? 'live' : 'wait'}"></span>${ok ? 'Live' : (conn.games === 'closed' ? 'Disconnected, retrying…' : 'Connecting…')} · watching ${watched.length} console players (${esc(range)})${capped ? ` · showing the top ${MAX_IDS} of ${watched.length + capped}` : ''}`;
+}
+setInterval(() => { document.querySelectorAll('.game[data-started]').forEach(g => { const t = g.querySelector('.g-timer'); if (t) t.textContent = clock(Date.now() - Date.parse(g.dataset.started)); }); }, 1000);
+
+// ---- sockets ----
+class Feed {
+  constructor(handler, onEvents, key) { this.handler = handler; this.onEvents = onEvents; this.key = key; this.ws = null; this.tries = 0; this.timer = null; this.wanted = false; this.ids = ''; }
+  open(ids) {
+    this.close(true);
+    this.ids = ids; this.wanted = true;
+    if (!ids) { conn[this.key] = 'open'; return; }
+    conn[this.key] = 'connecting';
+    let ws;
+    try { ws = new WebSocket(`${SOCKET}?handler=${this.handler}&profile_ids=${ids}`); } catch (e) { return this.retry(); }
+    this.ws = ws;
+    ws.onopen = () => { this.tries = 0; conn[this.key] = 'open'; updateStatus(); };
+    ws.onmessage = m => { try { const arr = JSON.parse(m.data); if (Array.isArray(arr)) this.onEvents(arr); } catch (e) {} };
+    ws.onclose = () => { if (this.ws !== ws) return; this.ws = null; conn[this.key] = 'closed'; updateStatus(); if (this.wanted) this.retry(); };
+    ws.onerror = () => {};
+  }
+  retry() { clearTimeout(this.timer); const wait = [1000, 2000, 5000, 10000, 30000][Math.min(this.tries++, 4)]; this.timer = setTimeout(() => { if (this.wanted && !document.hidden) this.open(this.ids); }, wait); }
+  close(keepWanted) { if (!keepWanted) this.wanted = false; clearTimeout(this.timer); const ws = this.ws; this.ws = null; if (ws) { try { ws.close(); } catch (e) {} } }
+}
+const gamesFeed = new Feed('ongoing-matches', events => {
+  events.forEach(e => {
+    const d = e.data || {};
+    if (e.type === 'matchRemoved') { matches.delete(d.matchId); return; }
+    if (e.type !== 'matchAdded' && e.type !== 'matchUpdated') return;
+    const old = matches.get(d.matchId) || {};
+    const next = Object.assign({}, old, d);
+    if (next.finished) { matches.delete(d.matchId); return; }
+    matches.set(d.matchId, next);
+    lobbySlots.delete(d.matchId); lobbyInfo.delete(d.matchId);   // the lobby became a game
+  });
+  queueRender();
+}, 'games');
+
+async function fetchLobby(id) {
+  const last = lobbyFetchAt.get(id) || 0;
+  if (Date.now() - last < 4000) return;
+  lobbyFetchAt.set(id, Date.now());
+  try {
+    const r = await fetch(`${API}/matches/${id}`, { cache: 'no-store' });
+    if (!r.ok) return;
+    const j = await r.json();
+    if (j.started) { lobbySlots.delete(id); lobbyInfo.delete(id); }
+    else lobbyInfo.set(id, j);
+  } catch (e) {}
+  queueRender();
+}
+const lobbiesFeed = new Feed('lobbies', events => {
+  const touched = new Set();
+  events.forEach(e => {
+    const d = e.data || {};
+    if (e.type === 'lobbyRemoved') { lobbySlots.delete(d.matchId); lobbyInfo.delete(d.matchId); return; }
+    if (e.type === 'slotAdded' || e.type === 'slotUpdated') {
+      const m = lobbySlots.get(d.matchId) || lobbySlots.set(d.matchId, new Map()).get(d.matchId);
+      m.set(d.slot, Object.assign({}, m.get(d.slot) || {}, d));
+      touched.add(d.matchId);
+    } else if (e.type === 'slotRemoved') {
+      const m = lobbySlots.get(d.matchId);
+      if (m) { m.delete(d.slot); if (![...m.values()].some(s => watchedSet.has(s.profileId))) { lobbySlots.delete(d.matchId); lobbyInfo.delete(d.matchId); } else touched.add(d.matchId); }
+    }
+  });
+  touched.forEach(fetchLobby);
+  queueRender();
+}, 'lobbies');
+
+function connect() {
+  const ids = watched.map(p => p.id).join(',');
+  matches.clear(); lobbySlots.clear(); lobbyInfo.clear();
+  if (document.hidden) { gamesFeed.close(); lobbiesFeed.close(); return; }
+  gamesFeed.open(ids);
+  if (cfg.lobbies) lobbiesFeed.open(ids); else lobbiesFeed.close();
+  render();
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) { gamesFeed.close(); lobbiesFeed.close(); } else if (roster.length) connect(); });
+
+// ---- controls ----
+function syncInputs() {
+  ['min1', 'max1', 'minT', 'maxT'].forEach(k => { $(k).value = cfg[k]; });
+  $('plat').value = cfg.plat; $('opt-lobbies').checked = cfg.lobbies; $('opt-pc').checked = cfg.pc;
+  document.querySelectorAll('#presets .btn').forEach(b => b.classList.toggle('on', b.dataset.preset === cfg.preset));
+}
+let applyTimer = null;
+function changed(preset) {
+  cfg.preset = preset || 'custom'; save(); syncInputs(); recompute();
+  clearTimeout(applyTimer); applyTimer = setTimeout(connect, 500);
+  updateStatus();
+}
+['min1', 'max1', 'minT', 'maxT'].forEach(k => $(k).addEventListener('input', () => {
+  const v = Number($(k).value);
+  if (!isNaN(v)) { cfg[k] = Math.max(0, Math.min(4000, v)); changed('custom'); }
+}));
+$('plat').addEventListener('change', () => { cfg.plat = $('plat').value; changed(cfg.preset); });
+$('opt-lobbies').addEventListener('change', () => { cfg.lobbies = $('opt-lobbies').checked; save(); connect(); });
+$('opt-pc').addEventListener('change', () => { cfg.pc = $('opt-pc').checked; save(); render(); });
+function myRatings() {
+  let id = null;
+  try { const api = window.autoScoutStart; const me = api && api.get && api.get().me; if (me && me.id) id = Number(me.id); } catch (e) {}
+  if (!id) { try { id = Number(localStorage.getItem(ME_KEY)) || null; } catch (e) {} }
+  const p = id && byId.get(id);
+  return p || null;
+}
+document.querySelectorAll('#presets .btn').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.preset;
+  if (k === 'my') {
+    const me = myRatings();
+    if (!me) { $('me-row').hidden = false; $('me-input').focus(); return; }
+    const r1 = me.r1 || me.rt, rt = me.rt || me.r1;
+    Object.assign(cfg, { min1: Math.max(0, r1 - 150), max1: r1 + 150, minT: Math.max(0, rt - 150), maxT: rt + 150 });
+    changed('my');
+  } else { Object.assign(cfg, PRESETS[k]); changed(k); }
+}));
+$('me-go').addEventListener('click', () => {
+  const q = $('me-input').value.trim();
+  let p = /^\d+$/.test(q) ? byId.get(Number(q)) : roster.find(x => x.name.toLowerCase() === q.toLowerCase());
+  if (!p) { $('me-msg').textContent = 'Not found in the tracked console players.'; return; }
+  try { localStorage.setItem(ME_KEY, String(p.id)); } catch (e) {}
+  $('me-row').hidden = true; $('me-msg').textContent = '';
+  document.querySelector('#presets [data-preset="my"]').click();
+});
+$('me-input').addEventListener('keydown', e => { if (e.key === 'Enter') $('me-go').click(); });
+document.addEventListener('click', e => {
+  const b = e.target.closest('.p-add'); if (!b) return;
+  addFollow(b.dataset.id, b.dataset.name); b.remove();
+});
+
+// ---- start ----
+(async function init() {
+  syncInputs();
+  try {
+    const r = await fetch(ROSTER_URL + '?t=' + Math.floor(Date.now() / 600000));
+    const j = await r.json();
+    roster = (j.players || []).map(a => ({ id: a[0], name: a[1], plat: a[2], r1: a[3], rt: a[4], l1: a[5], lt: a[6] }));
+    roster.forEach(p => byId.set(p.id, p));
+  } catch (e) { $('status').innerHTML = '<span class="dot wait"></span>Could not load the console player list.'; return; }
+  recompute(); connect();
+})();
+</script>
+</body>
+</html>
