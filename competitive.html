@@ -110,6 +110,7 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .pill.liqui:hover{background:var(--amberBg);}
 .fx-video{display:inline-block;margin:0 10px 6px 0;font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;}
 .fx-video:hover{text-decoration:underline;}
+.fx-pick{display:block;margin:2px 0 8px;color:#fbbf24;}
 .sd-watch{margin:0 auto 0 8px;font-size:10px;font-weight:700;color:var(--amberL);text-decoration:none;white-space:nowrap;}
 .sd-watch:hover{text-decoration:underline;}
 .fx-watch{display:inline-block;margin:2px 0 6px;font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;}
@@ -713,7 +714,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v1.20</div>
+    <div class="version">v1.21</div>
   </div>
 </div>
 
@@ -941,6 +942,7 @@ const GAME_VIDEOS = [
   { teams: ['usa', 'mexico'], id: 'nMK7JPSzLJY', title: 'USA v Mexico, 1v1 and 2v2' },
   { teams: ['usa', 'mexico'], id: 'BN-Ex5cx9ik', title: 'USA v Mexico, 3v3' },
   { teams: ['usa', 'mexico'], id: 'mzEpfOyBHOM', title: 'USA v Mexico, 4v4' },
+  { teams: ['usa', 'mexico'], id: 'K3gkFWVbHSI', title: "Trump's Towers - Nations Cup Overreaction", featured: true, label: 'Week 1 pick' },
 ];
 const videosFor = (a, b) => GAME_VIDEOS.filter(v => (v.teams[0] === a.id && v.teams[1] === b.id) || (v.teams[0] === b.id && v.teams[1] === a.id));
 const scoreHtml = (a, b) => {
@@ -1007,7 +1009,7 @@ function fixtureCardHtml([a, b]) {
       </div>
       ${scoreHtml(a, b)}
       ${(sg => sg && casterLink(sg.caster) ? `<a class="fx-watch" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">Watch on Twitch with ${sg.caster}</a>` : '')(SET_FORMATS.map(f => scheduledFor(a, b, f)).find(Boolean))}
-      ${videosFor(a, b).map(v => `<a class="fx-video" href="https://www.youtube.com/watch?v=${v.id}&list=PLBNXOMprMKPI" target="_blank" rel="noopener">Watch on YouTube: ${v.title}</a>`).join('')}
+      ${videosFor(a, b).map(v => `<a class="fx-video${v.featured ? ' fx-pick' : ''}" href="https://www.youtube.com/watch?v=${v.id}&list=PLBNXOMprMKPI" target="_blank" rel="noopener">${v.featured ? '&#11088; ' + (v.label || 'Video pick') + ': ' : 'Watch on YouTube: '}${v.title}</a>`).join('')}
       ${draftHtml(a, b)}
       ${SET_FORMATS.map(fmt => `
         <div class="set-row">
