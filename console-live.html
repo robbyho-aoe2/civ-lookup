@@ -241,7 +241,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.03</div>
+    <div class="version">v0.04</div>
   </div>
 </div>
 
@@ -253,7 +253,7 @@ const API = 'https://data.aoe2companion.com/api';
 const SOCKET = 'wss://socket.aoe2companion.com/listen';
 const ROSTER_URL = 'https://raw.githubusercontent.com/robbyho-aoe2/player-data/main/data/console-roster.json';
 const KEY = 'autoscout-cl-1', ME_KEY = 'autoscout-cl-me', FOLLOW_KEY = 'autoscout-follow-1';
-const MAX_IDS = 400, ACTIVE_DAYS = 180, STALE_LIVE_MS = 4 * 3600 * 1000;
+const MAX_IDS = 4500, ACTIVE_DAYS = 180, STALE_LIVE_MS = 4 * 3600 * 1000;
 const PRESETS = { top: { min1: 1800, max1: 4000, minT: 1600, maxT: 4000 }, all: { min1: 0, max1: 4000, minT: 0, maxT: 4000 } };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const $ = id => document.getElementById(id);
@@ -403,23 +403,44 @@ function updateStatus() {
 setInterval(() => { document.querySelectorAll('.game[data-started]').forEach(g => { const t = g.querySelector('.g-timer'); if (t) t.textContent = clock(Date.now() - Date.parse(g.dataset.started)); }); }, 1000);
 
 // ---- sockets ----
-class Feed {
-  constructor(handler, onEvents, key) { this.handler = handler; this.onEvents = onEvents; this.key = key; this.ws = null; this.tries = 0; this.timer = null; this.wanted = false; this.ids = ''; }
+// One live connection takes about 1,600 player ids (a longer address is refused), so a long list is split across
+// several connections that share the same handlers.
+const SOCK_CHUNK = 1500;
+class Sock {
+  constructor(handler, onEvents, parent) { this.handler = handler; this.onEvents = onEvents; this.parent = parent; this.ws = null; this.tries = 0; this.timer = null; this.wanted = false; this.ids = ''; this.state = 'connecting'; }
   open(ids) {
     this.close(true);
-    this.ids = ids; this.wanted = true;
-    if (!ids) { conn[this.key] = 'open'; return; }
-    conn[this.key] = 'connecting';
+    this.ids = ids; this.wanted = true; this.state = 'connecting';
     let ws;
     try { ws = new WebSocket(`${SOCKET}?handler=${this.handler}&profile_ids=${ids}`); } catch (e) { return this.retry(); }
     this.ws = ws;
-    ws.onopen = () => { this.tries = 0; conn[this.key] = 'open'; updateStatus(); };
+    ws.onopen = () => { this.tries = 0; this.state = 'open'; this.parent.refresh(); };
     ws.onmessage = m => { try { const arr = JSON.parse(m.data); if (Array.isArray(arr)) this.onEvents(arr); } catch (e) {} };
-    ws.onclose = () => { if (this.ws !== ws) return; this.ws = null; conn[this.key] = 'closed'; updateStatus(); if (this.wanted) this.retry(); };
+    ws.onclose = () => { if (this.ws !== ws) return; this.ws = null; this.state = 'closed'; this.parent.refresh(); if (this.wanted) this.retry(); };
     ws.onerror = () => {};
   }
   retry() { clearTimeout(this.timer); const wait = [1000, 2000, 5000, 10000, 30000][Math.min(this.tries++, 4)]; this.timer = setTimeout(() => { if (this.wanted && !document.hidden) this.open(this.ids); }, wait); }
   close(keepWanted) { if (!keepWanted) this.wanted = false; clearTimeout(this.timer); const ws = this.ws; this.ws = null; if (ws) { try { ws.close(); } catch (e) {} } }
+}
+class Feed {
+  constructor(handler, onEvents, key) { this.handler = handler; this.onEvents = onEvents; this.key = key; this.socks = []; }
+  open(ids) {
+    this.close();
+    const list = ids ? ids.split(',') : [];
+    if (!list.length) { conn[this.key] = 'open'; updateStatus(); return; }
+    conn[this.key] = 'connecting';
+    for (let k = 0; k < list.length; k += SOCK_CHUNK) {
+      const sk = new Sock(this.handler, this.onEvents, this);
+      this.socks.push(sk);
+      sk.open(list.slice(k, k + SOCK_CHUNK).join(','));
+    }
+  }
+  refresh() {
+    const st = this.socks.map(x => x.state);
+    conn[this.key] = st.length && st.every(x => x === 'open') ? 'open' : (st.includes('closed') ? 'closed' : 'connecting');
+    updateStatus();
+  }
+  close() { this.socks.forEach(x => x.close()); this.socks = []; }
 }
 const gamesFeed = new Feed('ongoing-matches', events => {
   events.forEach(e => {
