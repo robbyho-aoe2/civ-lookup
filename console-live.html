@@ -181,6 +181,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
       <button class="btn" data-kind="c1" type="button">1v1 Console</button>
       <button class="btn" data-kind="ct" type="button">Team Console</button>
       <button class="btn" data-kind="pc" type="button">PC</button>
+      <button class="btn" data-kind="cu" type="button">Custom games</button>
     </div>
     <div id="filters">
     <div class="me-row" id="me-row" hidden>
@@ -241,7 +242,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.04</div>
+    <div class="version">v0.05</div>
   </div>
 </div>
 
@@ -259,7 +260,7 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&a
 const $ = id => document.getElementById(id);
 
 let roster = [], byId = new Map();
-let cfg = Object.assign({ preset: 'top', plat: 'all', lobbies: true, kinds: { c1: true, ct: true, pc: false }, fkinds: { c1: true, ct: true, pc: true } }, PRESETS.top);
+let cfg = Object.assign({ preset: 'top', plat: 'all', lobbies: true, kinds: { c1: true, ct: true, pc: false, cu: true }, fkinds: { c1: true, ct: true, pc: true, cu: true } }, PRESETS.top);
 try { Object.assign(cfg, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) {} };
 
@@ -376,7 +377,7 @@ function queueRender() { if (renderQueued) return; renderQueued = true; setTimeo
 function render() {
   const games = [...matches.values()].filter(m => {
     if (m.finished || !m.started || Date.now() - Date.parse(m.started) > STALE_LIVE_MS) return false;
-    if (!kindsOf()[gameKind(m)]) return false;
+    if (kindsOf()[gameKind(m)] === false) return false;   // a setting saved before a pill existed counts as on
     return matchPlayers(m).some(p => watchedSet.has(p.profileId));
   }).sort((a, b) => (avgRating(matchPlayers(b)) || 0) - (avgRating(matchPlayers(a)) || 0));
   $('games').innerHTML = games.length ? games.map(gameCard).join('') :
@@ -502,7 +503,7 @@ function syncInputs() {
   ['min1', 'max1', 'minT', 'maxT'].forEach(k => { $(k).value = cfg[k]; });
   $('plat').value = cfg.plat; $('opt-lobbies').checked = cfg.lobbies;
   document.querySelectorAll('#presets .btn').forEach(b => b.classList.toggle('on', b.dataset.preset === cfg.preset));
-  document.querySelectorAll('#kinds .btn').forEach(b => b.classList.toggle('on', !!kindsOf()[b.dataset.kind]));
+  document.querySelectorAll('#kinds .btn').forEach(b => b.classList.toggle('on', kindsOf()[b.dataset.kind] !== false));
   const f = cfg.preset === 'followed';
   $('filters').hidden = f; $('lab-plat').hidden = f; $('follow-card').hidden = !f;
   $('sugg-card').hidden = !f || !follows.length;
@@ -606,12 +607,11 @@ function gameKind(m) {
   if (m.leaderboardId === 'rm_1v1_console') return 'c1';
   if (m.leaderboardId === 'rm_team_console') return 'ct';
   if (!isConsoleLb(m) && m.leaderboardId !== 'unranked' && m.leaderboardId !== 'unknown') return 'pc';
-  const teams = groupTeams(matchPlayers(m));
-  return teams.length === 2 && teams.every(t => t.length === 1) ? 'c1' : 'ct';   // custom games count by size
+  return 'cu';   // custom / lobby games (no ladder)
 }
 $('kinds').addEventListener('click', e => {
   const b = e.target.closest('button[data-kind]'); if (!b) return;
-  const k = kindsOf(); k[b.dataset.kind] = !k[b.dataset.kind];
+  const k = kindsOf(); k[b.dataset.kind] = k[b.dataset.kind] === false;
   save(); syncInputs(); render();
 });
 
