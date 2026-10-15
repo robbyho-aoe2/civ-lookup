@@ -48,6 +48,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
 .act b{font-weight:700;}
 .act .rt{color:var(--text2);font-variant-numeric:tabular-nums;}
 .act .ago{color:var(--text3);}
+.act .atag{font-size:10px;font-weight:700;color:var(--text2);border:1px solid var(--border2);border-radius:20px;padding:0 6px;line-height:16px;white-space:nowrap;}
 .act .w{color:var(--green);}
 .act .l{color:var(--red);}
 .active-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:6px 0 4px;}
@@ -263,7 +264,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.08</div>
+    <div class="version">v0.09</div>
   </div>
 </div>
 
@@ -631,13 +632,22 @@ document.addEventListener('click', e => {
 const recent = new Map();      // profileId -> { t, kind, mapName, won, name }
 const backfilled = new Set();
 const RECENT_KEEP_MS = 60 * 60 * 1000, BACKFILL_MAX = 150;
+function sizeLabel(m) {
+  const t = groupTeams(matchPlayers(m));
+  return t.length >= 2 ? t.map(x => x.length).join('v') : '';
+}
+// the small tag on an active player: what kind of lobby they just played in
+function lobbyTag(e) {
+  const sz = e.size ? ' ' + e.size : '';
+  return e.kind === 'c1' ? '1v1 ranked' : e.kind === 'ct' ? 'Team ranked' + sz : e.kind === 'pc' ? 'PC' + sz : 'Custom' + sz;
+}
 function noteFinish(m, t) {
   if (!t || Date.now() - t > RECENT_KEEP_MS) return;
   const kind = gameKind(m);
   matchPlayers(m).forEach(pl => {
     if (!(pl.profileId > 0) || !watchedSet.has(pl.profileId)) return;
     const old = recent.get(pl.profileId);
-    if (!old || t >= old.t) recent.set(pl.profileId, { t, kind, mapName: m.mapName, won: pl.won == null ? null : pl.won, name: pl.name });
+    if (!old || t >= old.t) recent.set(pl.profileId, { t, kind, size: sizeLabel(m), mapName: m.mapName, won: pl.won == null ? null : pl.won, name: pl.name });
   });
 }
 async function backfillRecent() {
@@ -660,7 +670,7 @@ async function backfillRecent() {
           (m.teams || []).forEach(tm => (tm.players || []).forEach(pl => {
             if (!need.has(pl.profileId)) return;
             const old = recent.get(pl.profileId);
-            if (!old || t > old.t) recent.set(pl.profileId, { t, kind, mapName: m.mapName, won: pl.won == null ? null : pl.won, name: pl.name });
+            if (!old || t > old.t) recent.set(pl.profileId, { t, kind, size: sizeLabel(m), mapName: m.mapName, won: pl.won == null ? null : pl.won, name: pl.name });
           }));
         });
       }
@@ -682,7 +692,7 @@ function renderActive() {
     const p = byId.get(id), rating = p ? (e.kind === 'ct' ? p.rt : e.kind === 'c1' ? p.r1 : Math.max(p.r1, p.rt)) : 0;
     const mins = Math.max(0, Math.round((now - e.t) / 60000));
     const res = e.won === true ? ' · <span class="w">won</span>' : e.won === false ? ' · <span class="l">lost</span>' : '';
-    return `<a class="act" href="player.html?id=${id}" title="${esc(e.mapName || '')}">${platIcon(id)}<b>${esc((p && p.name) || e.name || id)}</b>${rating ? `<span class="rt">${rating}</span>` : ''}<span class="ago">${mins < 1 ? 'just now' : mins + ' min ago'}${res}</span></a>`;
+    return `<a class="act" href="player.html?id=${id}" title="${esc(lobbyTag(e) + (e.mapName ? ' on ' + e.mapName : ''))}">${platIcon(id)}<b>${esc((p && p.name) || e.name || id)}</b>${rating ? `<span class="rt">${rating}</span>` : ''}<span class="atag">${esc(lobbyTag(e))}</span><span class="ago">${mins < 1 ? 'just now' : mins + ' min ago'}${res}</span></a>`;
   }).join('') : '<div class="hint">Nobody has just finished a game. Check back in a few minutes.</div>';
 }
 $('active-min').addEventListener('change', () => { cfg.activeMin = Number($('active-min').value); save(); renderActive(); });
