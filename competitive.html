@@ -286,6 +286,13 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a class="yt-link" href="https://www.youtube.com/playlist?list=PLBNXOMprMKPI" target="_blank" rel="noopener">Open the playlist on YouTube</a>
   </div>
 
+  <div class="card" id="scheduled-card">
+    <h2>Scheduled Games</h2>
+    <p class="desc">Times are Eastern. Games not listed here are still to be scheduled.</p>
+    <a class="draft-link" href="https://aoe2cm.net/preset/nySjm" target="_blank" rel="noopener">Open the draft on aoe2cm.net</a>
+    <div class="sched-list" id="sched-list"></div>
+  </div>
+
   <details class="section">
     <summary>📜 Nations Cup Handbook <span class="summary-hint">start Oct 10 &middot; in English and Spanish</span></summary>
     <div class="card">
@@ -717,7 +724,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v1.33</div>
+    <div class="version">v1.34</div>
   </div>
 </div>
 
@@ -875,6 +882,7 @@ document.getElementById('caster-list').innerHTML = CASTERS.map(c =>
 const SCHEDULED_GAMES = [
   // { date: 'Sat, Oct 10', short: 'Oct 10', time: '3:00 pm ET', teams: ['usa', 'mexico'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
   // (past) { date: 'Tue, Oct 13', short: 'Oct 13', time: '2:00 pm ET', teams: ['uk', 'france'], games: ['1v1', '2v2', '3v3', '4v4'], caster: 'Sammy Diamonds' }, // 7 pm UK time
+  { date: 'Thu, Oct 15', short: 'Oct 15', time: '7:00 pm ET', teams: ['canada', 'ps5'], games: ['3v3'] },
 ];
 // Finished games. points = the set's worth (1v1 = 1 ... 4v4 = 4); winner/loser are the players who played.
 const SET_POINTS = { '1v1': 1, '2v2': 2, '3v3': 3, '4v4': 4 };
@@ -966,6 +974,7 @@ const teamName = id => (ALL_TEAMS.find(t => t.id === id) || { name: id }).name;
 function scheduledFor(a, b, fmt) {
   return SCHEDULED_GAMES.find(g => g.games.includes(fmt) && ((g.teams[0] === a.id && g.teams[1] === b.id) || (g.teams[0] === b.id && g.teams[1] === a.id)));
 }
+{ const sc = document.getElementById('scheduled-card'); if (sc) sc.hidden = !SCHEDULED_GAMES.length; }
 const schedEl = document.getElementById('sched-list');
 if (schedEl) schedEl.innerHTML = SCHEDULED_GAMES.length
   ? SCHEDULED_GAMES.map(g => `
