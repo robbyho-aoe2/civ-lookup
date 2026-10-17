@@ -113,6 +113,8 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
 .g-title{min-width:0;line-height:1.35;}
 .g-title b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .g-title span{display:block;font-size:11px;color:var(--text2);}
+.game .g-h2h{grid-column:1/-1;font-size:11px;color:var(--text2);border-top:1px solid var(--border2);padding-top:7px;}
+.g-h2h .h2h-rec{color:var(--text);font-weight:700;}
 .g-badge{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;border:1px solid var(--border2);color:var(--amberL);margin-top:2px;}
 .g-timer{font-variant-numeric:tabular-nums;color:var(--green);font-weight:700;}
 .g-teams{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;min-width:0;}
@@ -213,6 +215,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     </div>
     <div class="opts">
       <label id="lab-plat">Platform <select id="plat"><option value="all">Xbox and PlayStation</option><option value="X">Xbox only</option><option value="P">PlayStation only</option></select></label>
+      <label>Map <select id="map-sel"></select></label>
       <label><input type="checkbox" id="opt-lobbies"> Show lobbies</label>
     </div>
   </div>
@@ -264,7 +267,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.09</div>
+    <div class="version">v0.10</div>
   </div>
 </div>
 
@@ -343,6 +346,14 @@ const lobbySlots = new Map();     // matchId -> Map(slot -> slot data)
 const lobbyInfo = new Map();      // matchId -> REST match (lobby details + current players)
 const lobbyFetchAt = new Map();
 
+// Maps in the console ranked pools (1v1 and team) as of Oct 2026, from what ranked games actually used over the last week.
+// Everything else (custom games, and maps no longer in a ranked pool) counts as "Other". Update when the pools change.
+const MAP_POOL = ['Arabia', 'Arena', 'Glade', 'Scandinavia', 'Fortress', 'Arabian Desert', 'Northern Isles', 'Black Forest', 'African Clearing', 'Nomad', 'MegaRandom', 'Baltic', 'Coastal Forest', 'Yucatan'];
+const MAP_OTHER = '__other';
+const isRankedLb = m => m.leaderboardId === 'rm_1v1_console' || m.leaderboardId === 'rm_team_console';
+const mapGroup = m => (isRankedLb(m) && MAP_POOL.includes(m.mapName) ? m.mapName : MAP_OTHER);
+const mapOk = group => !cfg.map || cfg.map === 'all' || cfg.map === group;
+
 function ladderLabel(m) {
   if (m.leaderboardId === 'rm_1v1_console') return '1v1 Console ranked';
   if (m.leaderboardId === 'rm_team_console') return 'Team Console ranked';
@@ -372,12 +383,56 @@ function sidesHtml(players) {
   return `<div class="g-teams" style="grid-template-columns:1fr">${teams.map(side).join('')}</div>`;
 }
 function avgRating(players) { const r = players.map(p => p.rating).filter(x => x > 0); return r.length ? Math.round(r.reduce((a, b) => a + b, 0) / r.length) : null; }
+// Head-to-head for 1v1 games: the two players' record against each other in their recent ranked console 1v1s.
+// Scans up to H2H_PAGES pages of the first player's ranked 1v1 history and keeps the games against the other one.
+const H2H_PAGES = 3, H2H_PER_PAGE = 100;
+const h2h = new Map();   // 'lowId-highId' -> { done, scanned, w (wins of the lower id), l } | 'loading'
+let h2hActive = 0; const h2hQueue = [];
+function h2hKey(a, b) { return a < b ? a + '-' + b : b + '-' + a; }
+function h2hWant(a, b) {
+  const k = h2hKey(a, b);
+  if (h2h.has(k)) return h2h.get(k);
+  h2h.set(k, 'loading'); h2hQueue.push([a, b, k]); h2hPump();
+  return 'loading';
+}
+function h2hPump() {
+  while (h2hActive < 2 && h2hQueue.length) {
+    const [a, b, k] = h2hQueue.shift(); h2hActive++;
+    h2hFetch(a, b).then(r => h2h.set(k, r), () => h2h.set(k, 'err')).finally(() => { h2hActive--; h2hPump(); queueRender(); });
+  }
+}
+async function h2hFetch(a, b) {
+  const lo = Math.min(a, b); let w = 0, l = 0, scanned = 0;
+  for (let page = 1; page <= H2H_PAGES; page++) {
+    const r = await fetch(`${API}/matches?profile_ids=${a}&leaderboard_ids=rm_1v1_console&per_page=${H2H_PER_PAGE}&page=${page}`);
+    if (!r.ok) throw new Error('h2h ' + r.status);
+    const j = await r.json(), ms = Array.isArray(j) ? j : (j.matches || []);
+    ms.forEach(m => {
+      scanned++;
+      const ps = (m.teams || []).flatMap(t => t.players || []);
+      const pa = ps.find(x => x.profileId === a), pb = ps.find(x => x.profileId === b);
+      if (!pa || !pb || pa.won == null || pb.won == null || pa.won === pb.won) return;
+      if ((pa.profileId === lo ? pa : pb).won) w++; else l++;
+    });
+    if (ms.length < H2H_PER_PAGE) break;
+  }
+  return { scanned, w, l };
+}
+function h2hHtml(m, pl) {
+  if (pl.length !== 2 || groupTeams(pl).length !== 2 || pl.some(p => !(p.profileId > 0))) return '';
+  const [p1, p2] = pl, r = h2hWant(p1.profileId, p2.profileId);
+  if (r === 'err') return '';
+  if (r === 'loading') return '<span class="g-h2h">Head-to-head: checking…</span>';
+  const lo = Math.min(p1.profileId, p2.profileId), a1 = p1.profileId === lo ? r.w : r.l, a2 = p1.profileId === lo ? r.l : r.w;
+  if (!a1 && !a2) return `<span class="g-h2h" title="Searched ${r.scanned} recent ranked 1v1s of ${esc(p1.name || '')}">Head-to-head: no ranked meetings yet</span>`;
+  return `<span class="g-h2h" title="Ranked console 1v1s between them, from ${esc(p1.name || '')}'s last ${r.scanned} games">Head-to-head: <span class="h2h-rec">${esc(p1.name || '')} ${a1}–${a2} ${esc(p2.name || '')}</span></span>`;
+}
 function gameCard(m) {
   const pl = matchPlayers(m), size = groupTeams(pl).map(t => t.length).join('v'), avg = avgRating(pl);
   return `<div class="game" data-started="${esc(m.started)}"><div class="g-info">${m.mapImageUrl ? `<img class="g-map" src="${esc(m.mapImageUrl)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<div class="g-map"></div>'}` +
     `<div class="g-title"><b>${esc(m.mapName || 'Unknown map')}</b><span>${esc(size)}${avg ? ' · avg ' + avg : ''}</span><span class="g-badge">${esc(ladderLabel(m))}</span>` +
     `<span><span class="g-timer">${clock(Date.now() - Date.parse(m.started))}</span> into the game</span>` +
-    `<span class="g-links"><a href="https://www.aoe2insights.com/match/${m.matchId}/" target="_blank" rel="noopener">↗ Insights</a></span></div></div>${sidesHtml(pl)}</div>`;
+    `<span class="g-links"><a href="https://www.aoe2insights.com/match/${m.matchId}/" target="_blank" rel="noopener">↗ Insights</a></span></div></div>${sidesHtml(pl)}${h2hHtml(m, pl)}</div>`;
 }
 function lobbyPlayers(id) {
   const info = lobbyInfo.get(id);
@@ -400,6 +455,7 @@ function render() {
   const games = [...matches.values()].filter(m => {
     if (m.finished || !m.started || Date.now() - Date.parse(m.started) > STALE_LIVE_MS) return false;
     if (kindsOf()[gameKind(m)] === false) return false;   // a setting saved before a pill existed counts as on
+    if (!mapOk(mapGroup(m))) return false;
     return matchPlayers(m).some(p => watchedSet.has(p.profileId));
   }).sort((a, b) => (avgRating(matchPlayers(b)) || 0) - (avgRating(matchPlayers(a)) || 0));
   $('games').innerHTML = games.length ? games.map(gameCard).join('') :
@@ -408,7 +464,7 @@ function render() {
 
   $('lobbies-wrap').hidden = !cfg.lobbies;
   if (cfg.lobbies) {
-    const ids = [...lobbySlots.keys()].filter(id => !matches.has(id) && lobbySlots.get(id).size && (!lobbyInfo.get(id) || !lobbyInfo.get(id).started));
+    const ids = [...lobbySlots.keys()].filter(id => !matches.has(id) && lobbySlots.get(id).size && (!lobbyInfo.get(id) || !lobbyInfo.get(id).started) && mapOk(MAP_OTHER));   // lobbies are custom games
     $('lobbies').innerHTML = ids.length ? ids.map(lobbyCard).join('') : '<div class="empty">No open lobbies with players in your range. Console lobbies often do not show up in aoe2companion\'s lobby list, so this stays empty most of the time.</div>';
     $('lobbies-title').textContent = `Open lobbies (${ids.length})`;
   }
@@ -525,7 +581,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { gam
 // ---- controls ----
 function syncInputs() {
   ['min1', 'max1', 'minT', 'maxT'].forEach(k => { $(k).value = cfg[k]; });
-  $('plat').value = cfg.plat; $('opt-lobbies').checked = cfg.lobbies;
+  $('plat').value = cfg.plat; $('opt-lobbies').checked = cfg.lobbies; $('map-sel').value = cfg.map || 'all';
   document.querySelectorAll('#presets .btn').forEach(b => b.classList.toggle('on', b.dataset.preset === cfg.preset));
   document.querySelectorAll('#kinds .btn').forEach(b => b.classList.toggle('on', kindsOf()[b.dataset.kind] !== false));
   const f = cfg.preset === 'followed';
@@ -544,6 +600,9 @@ function changed(preset) {
   if (!isNaN(v)) { cfg[k] = Math.max(0, Math.min(4000, v)); changed('custom'); }
 }));
 $('plat').addEventListener('change', () => { cfg.plat = $('plat').value; changed(cfg.preset); });
+$('map-sel').innerHTML = '<option value="all">All maps</option>' + MAP_POOL.map(n => `<option value="${n}">${n}</option>`).join('') + `<option value="${MAP_OTHER}">Other (customs)</option>`;
+$('map-sel').value = cfg.map || 'all';
+$('map-sel').addEventListener('change', () => { cfg.map = $('map-sel').value; save(); render(); });
 $('opt-lobbies').addEventListener('change', () => { cfg.lobbies = $('opt-lobbies').checked; save(); connect(); });
 // ---- "My level": search for your player like Player Spotlight does, then use your live console ratings ----
 const loadMe = () => { try { const v = JSON.parse(localStorage.getItem(ME_KEY) || 'null'); return v && v.id ? v : null; } catch (e) { return null; } };
