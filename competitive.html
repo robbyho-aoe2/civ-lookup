@@ -606,7 +606,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 
   <div class="card">
     <h2>Standings</h2>
-    <p class="standings-note">Teams are ranked by points: 1v1 = 1, 2v2 = 2, 3v3 = 3, 4v4 = 4. Played, won and lost count finished series.</p>
+    <p class="standings-note">Teams are ranked by points: 1v1 = 1, 2v2 = 2, 3v3 = 3, 4v4 = 4. Wins and losses count every finished game (1v1, 2v2, 3v3 and 4v4 each count once).</p>
     <div class="overflow-x">
       <table id="standings-table"></table>
     </div>
@@ -759,7 +759,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
-    <div class="version">v1.59</div>
+    <div class="version">v1.60</div>
   </div>
 </div>
 
@@ -1129,33 +1129,27 @@ if (unscheduled.length) fixtureGroups.push({ label: 'Not yet scheduled', list: u
 document.getElementById('fixtures-grid').innerHTML = fixtureGroups
   .map(g => `<h3 class="fixture-week">${g.label}</h3>${g.list.map(fixtureCardHtml).join('')}`).join('');
 
-// Standings -- pure series win/loss record (a "series" is the full
-// 1v1/2v2/3v3/4v4 block against one opponent, not an individual set).
-// Everyone starts at 0-0 until results are entered below; SERIES_RESULTS
-// stays empty until matches are actually played.
-const SERIES_RESULTS = [
-  { teamA: 'usa', teamB: 'mexico', winner: 'usa' }, // 6-4 on points
-  { teamA: 'uk', teamB: 'france', winner: 'uk' }, // 10-0 on points
-]; // { teamA: 'usa', teamB: 'mexico', winner: 'usa' }
+// Standings -- points plus a win/loss record that counts every finished game
+// (each 1v1, 2v2, 3v3 and 4v4 is one win for one team and one loss for the other).
+// Everything comes from SET_RESULTS, so entering a result there updates this table.
 function standingsRows() {
   const rec = {};
-  TEAMS.forEach(t => rec[t.id] = { played: 0, won: 0, lost: 0, pts: 0 });
-  SET_RESULTS.forEach(r => { if (rec[r.winner]) rec[r.winner].pts += SET_POINTS[r.fmt]; });
-  SERIES_RESULTS.forEach(r => {
-    rec[r.teamA].played++; rec[r.teamB].played++;
-    if (r.winner) { rec[r.winner].won++; rec[r.winner === r.teamA ? r.teamB : r.teamA].lost++; }
+  TEAMS.forEach(t => rec[t.id] = { won: 0, lost: 0, pts: 0 });
+  SET_RESULTS.forEach(r => {
+    const loser = r.teams.find(id => id !== r.winner);
+    if (rec[r.winner]) { rec[r.winner].pts += SET_POINTS[r.fmt]; rec[r.winner].won++; }
+    if (rec[loser]) rec[loser].lost++;
   });
   return TEAMS.map(t => ({ team: t, ...rec[t.id] }))
     .sort((x, y) => y.pts - x.pts || y.won - x.won || x.lost - y.lost);
 }
 document.getElementById('standings-table').innerHTML = `
-  <thead><tr><th>Nation</th><th class="num">Points</th><th class="num">Played</th><th class="num">Won</th><th class="num">Lost</th></tr></thead>
+  <thead><tr><th>Nation</th><th class="num">Points</th><th class="num">Wins</th><th class="num">Losses</th></tr></thead>
   <tbody>
     ${standingsRows().map(r => `
       <tr>
         <td>${r.team.name}</td>
         <td class="num">${r.pts}</td>
-        <td class="num">${r.played}</td>
         <td class="num">${r.won}</td>
         <td class="num">${r.lost}</td>
       </tr>
