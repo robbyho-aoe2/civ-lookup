@@ -735,7 +735,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v1.53</div>
+    <div class="version">v1.54</div>
   </div>
 </div>
 
@@ -959,6 +959,10 @@ const DRAFTS = [
     events: [['host', 'ban', 'pilgrims'], ['guest', 'ban', 'arabia'], ['none', 'pick', 'oasis'], ['host', 'pick', 'arena'], ['guest', 'pick', 'african-clearing'], ['host', 'pick', 'glade'], ['guest', 'pick', 'team-islands']] },
   { teams: ['uk', 'france'], host: 'france', guest: 'uk', url: 'https://aoe2cm.net/draft/RZfWb',
     events: [['host', 'ban', 'black-forest'], ['guest', 'ban', 'arabia'], ['none', 'pick', 'glade'], ['host', 'pick', 'steppe'], ['guest', 'pick', 'african-clearing'], ['host', 'pick', 'oasis'], ['guest', 'pick', 'arena']] },
+  { teams: ['usa', 'france'], host: 'france', guest: 'usa', url: 'https://aoe2cm.net/draft/rJvxx',
+    events: [['host', 'ban', 'black-forest'], ['guest', 'ban', 'arabia'], ['none', 'pick', 'oasis'], ['host', 'pick', 'steppe'], ['guest', 'pick', 'african-clearing'], ['host', 'pick', 'arena'], ['guest', 'pick', 'glade']] },
+  { teams: ['canada', 'mexico'], host: 'canada', guest: 'mexico', url: 'https://aoe2cm.net/draft/jYgUP',
+    events: [['host', 'ban', 'arabia'], ['guest', 'ban', 'african-clearing'], ['none', 'pick', 'oasis'], ['host', 'pick', 'arena'], ['guest', 'pick', 'steppe'], ['host', 'pick', 'glade'], ['guest', 'pick', 'black-forest']] },
 ];
 const draftFor = (a, b) => DRAFTS.find(d => (d.teams[0] === a.id && d.teams[1] === b.id) || (d.teams[0] === b.id && d.teams[1] === a.id));
 function draftHtml(a, b) {
