@@ -113,7 +113,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
 .g-title{min-width:0;line-height:1.35;}
 .g-title b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .g-title span{display:block;font-size:11px;color:var(--text2);}
-.game .g-h2h{grid-column:1/-1;font-size:11px;color:var(--text2);border-top:1px solid var(--border2);padding-top:7px;}
+.game .g-h2h{grid-column:1/-1;font-size:11px;line-height:1.6;color:var(--text2);border-top:1px solid var(--border2);padding-top:7px;}
 .g-h2h .h2h-rec{color:var(--text);font-weight:700;}
 .g-badge{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;border:1px solid var(--border2);color:var(--amberL);margin-top:2px;}
 .g-timer{font-variant-numeric:tabular-nums;color:var(--green);font-weight:700;}
@@ -267,7 +267,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v0.10</div>
+    <div class="version">v0.11</div>
   </div>
 </div>
 
@@ -383,49 +383,78 @@ function sidesHtml(players) {
   return `<div class="g-teams" style="grid-template-columns:1fr">${teams.map(side).join('')}</div>`;
 }
 function avgRating(players) { const r = players.map(p => p.rating).filter(x => x > 0); return r.length ? Math.round(r.reduce((a, b) => a + b, 0) / r.length) : null; }
-// Head-to-head for 1v1 games: the two players' record against each other in their recent ranked console 1v1s.
-// Scans up to H2H_PAGES pages of the first player's ranked 1v1 history and keeps the games against the other one.
-const H2H_PAGES = 3, H2H_PER_PAGE = 100;
-const h2h = new Map();   // 'lowId-highId' -> { done, scanned, w (wins of the lower id), l } | 'loading'
-let h2hActive = 0; const h2hQueue = [];
-function h2hKey(a, b) { return a < b ? a + '-' + b : b + '-' + a; }
-function h2hWant(a, b) {
-  const k = h2hKey(a, b);
-  if (h2h.has(k)) return h2h.get(k);
-  h2h.set(k, 'loading'); h2hQueue.push([a, b, k]); h2hPump();
+// Historical form for 1v1 games: each player's recent ranked console 1v1s (up to HIST_PAGES pages of 100), kept in a small
+// cache, give their win rate overall and on this map, and the two players' record against each other.
+const HIST_PAGES = 3, HIST_PER_PAGE = 100;
+const hist = new Map();   // profileId -> { games: [{ map, won, opps: [ids] }] } | 'loading' | 'err'
+let histActive = 0; const histQueue = []; let histLastReq = 0;
+function histWant(id) {
+  const h = hist.get(id);
+  if (h === 'err') { if (!histRetryAt.has(id) || Date.now() < histRetryAt.get(id)) return 'err'; hist.delete(id); histRetryAt.delete(id); }
+  else if (h) return h;
+  hist.set(id, 'loading'); histQueue.push(id); histPump();
   return 'loading';
 }
-function h2hPump() {
-  while (h2hActive < 2 && h2hQueue.length) {
-    const [a, b, k] = h2hQueue.shift(); h2hActive++;
-    h2hFetch(a, b).then(r => h2h.set(k, r), () => h2h.set(k, 'err')).finally(() => { h2hActive--; h2hPump(); queueRender(); });
+const histRetryAt = new Map();   // players whose lookup failed are tried again after a minute
+function histPump() {
+  while (histActive < 2 && histQueue.length) {
+    const id = histQueue.shift(); histActive++;
+    histFetch(id).then(r => hist.set(id, r), () => { hist.set(id, 'err'); histRetryAt.set(id, Date.now() + 60000); }).finally(() => { histActive--; histPump(); queueRender(); });
   }
 }
-async function h2hFetch(a, b) {
-  const lo = Math.min(a, b); let w = 0, l = 0, scanned = 0;
-  for (let page = 1; page <= H2H_PAGES; page++) {
-    const r = await fetch(`${API}/matches?profile_ids=${a}&leaderboard_ids=rm_1v1_console&per_page=${H2H_PER_PAGE}&page=${page}`);
-    if (!r.ok) throw new Error('h2h ' + r.status);
+// The data API answers 429 when asked too fast, so requests are spaced out and a refused page is retried after a pause.
+async function histGet(url) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const wait = histLastReq + 200 - Date.now(); histLastReq = Math.max(Date.now(), histLastReq) + 200;
+    if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    const r = await fetch(url);
+    if (r.status !== 429) return r;
+    await new Promise(r2 => setTimeout(r2, 1500 * (attempt + 1)));
+  }
+  return null;
+}
+async function histFetch(id) {
+  const games = [];
+  for (let page = 1; page <= HIST_PAGES; page++) {
+    const r = await histGet(`${API}/matches?profile_ids=${id}&leaderboard_ids=rm_1v1_console&per_page=${HIST_PER_PAGE}&page=${page}`);
+    if (!r || !r.ok) { if (page === 1) throw new Error('hist'); break; }   // keep what was read if a later page is refused
     const j = await r.json(), ms = Array.isArray(j) ? j : (j.matches || []);
     ms.forEach(m => {
-      scanned++;
-      const ps = (m.teams || []).flatMap(t => t.players || []);
-      const pa = ps.find(x => x.profileId === a), pb = ps.find(x => x.profileId === b);
-      if (!pa || !pb || pa.won == null || pb.won == null || pa.won === pb.won) return;
-      if ((pa.profileId === lo ? pa : pb).won) w++; else l++;
+      const ps = (m.teams || []).flatMap(t => t.players || []), me = ps.find(x => x.profileId === id);
+      if (!me || me.won == null) return;
+      games.push({ map: m.mapName, won: !!me.won, opps: ps.filter(x => x.profileId !== id).map(x => x.profileId) });
     });
-    if (ms.length < H2H_PER_PAGE) break;
+    if (ms.length < HIST_PER_PAGE) break;
   }
-  return { scanned, w, l };
+  return { games };
+}
+function wrText(games) {
+  if (!games.length) return 'no games';
+  const w = games.filter(g => g.won).length;
+  return `${Math.round(w / games.length * 100)}% (${games.length})`;
 }
 function h2hHtml(m, pl) {
   if (pl.length !== 2 || groupTeams(pl).length !== 2 || pl.some(p => !(p.profileId > 0))) return '';
-  const [p1, p2] = pl, r = h2hWant(p1.profileId, p2.profileId);
-  if (r === 'err') return '';
-  if (r === 'loading') return '<span class="g-h2h">Head-to-head: checking…</span>';
-  const lo = Math.min(p1.profileId, p2.profileId), a1 = p1.profileId === lo ? r.w : r.l, a2 = p1.profileId === lo ? r.l : r.w;
-  if (!a1 && !a2) return `<span class="g-h2h" title="Searched ${r.scanned} recent ranked 1v1s of ${esc(p1.name || '')}">Head-to-head: no ranked meetings yet</span>`;
-  return `<span class="g-h2h" title="Ranked console 1v1s between them, from ${esc(p1.name || '')}'s last ${r.scanned} games">Head-to-head: <span class="h2h-rec">${esc(p1.name || '')} ${a1}–${a2} ${esc(p2.name || '')}</span></span>`;
+  const [p1, p2] = pl, h1 = histWant(p1.profileId), h2 = histWant(p2.profileId);
+  if (h1 === 'loading' || h2 === 'loading') return '<span class="g-h2h">Ranked 1v1 form: checking…</span>';
+  const n1 = esc(p1.name || ''), n2 = esc(p2.name || '');
+  const lines = [];
+  const src = h1 !== 'err' ? h1.games.filter(g => g.opps.includes(p2.profileId)) : (h2 !== 'err' ? h2.games.filter(g => g.opps.includes(p1.profileId)) : null);
+  if (src) {
+    let a = src.filter(g => g.won).length, b = src.length - a;
+    if (h1 === 'err') { const t = a; a = b; b = t; }
+    lines.push(src.length
+      ? `Head-to-head: <span class="h2h-rec">${n1} ${a}–${b} ${n2}</span>`
+      : 'Head-to-head: First Match');
+  }
+  if (h1 !== 'err' && h2 !== 'err') {
+    const map = m.mapName || '';
+    const onMap = h => h.games.filter(g => g.map === map);
+    lines.push(`Ranked 1v1 win rate: <span class="h2h-rec">${n1} ${wrText(h1.games)}</span> · <span class="h2h-rec">${n2} ${wrText(h2.games)}</span>`);
+    if (map) lines.push(`On ${esc(map)}: <span class="h2h-rec">${n1} ${wrText(onMap(h1))}</span> · <span class="h2h-rec">${n2} ${wrText(onMap(h2))}</span>`);
+  }
+  if (!lines.length) return '';
+  return `<span class="g-h2h" title="From each player's recent ranked console 1v1s (up to ${HIST_PAGES * HIST_PER_PAGE})">${lines.join('<br>')}</span>`;
 }
 function gameCard(m) {
   const pl = matchPlayers(m), size = groupTeams(pl).map(t => t.length).join('v'), avg = avgRating(pl);
