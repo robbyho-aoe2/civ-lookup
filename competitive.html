@@ -132,6 +132,15 @@ a.set-status{text-decoration:none;}
 .sched-cast b{color:var(--text);}
 .sched-when a{display:block;color:inherit;text-decoration:none;}
 .sched-when a:hover b,.sched-when a:hover span{text-decoration:underline;}
+.dubby-card{display:flex;gap:16px;align-items:center;flex-wrap:wrap;}
+.dubby-img{flex:0 0 auto;width:220px;max-width:100%;background:#fff;border-radius:var(--radius);overflow:hidden;}
+.dubby-img img{display:block;width:100%;height:auto;}
+.dubby-body{flex:1 1 240px;min-width:0;}
+.dubby-body h2{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.dubby-body h2 img{height:26px;width:auto;}
+.dubby-btn{display:inline-block;margin-top:10px;padding:8px 16px;border-radius:var(--radius);background:var(--amber);color:#111;font-weight:700;font-size:13px;text-decoration:none;}
+.dubby-btn:hover{filter:brightness(1.1);}
+.dubby-note{font-size:11px;color:var(--text3);margin-top:8px;}
 .caster-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
 .caster{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 12px;color:var(--text);font-size:13px;font-weight:700;}
 .caster a{font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;border:1px solid var(--border2);border-radius:20px;padding:2px 9px;background:var(--surf);}
@@ -277,6 +286,18 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
   <div class="card" id="casters-card">
     <h2>Casters</h2>
     <div class="caster-list" id="caster-list"></div>
+  </div>
+
+  <div class="card" id="dubby-card">
+    <div class="dubby-card">
+      <div class="dubby-img"><img src="img/dubby/dubby-tubs.jpg" alt="Five tubs of Dubby focus drink in different flavors" width="1030" height="370" loading="lazy"></div>
+      <div class="dubby-body">
+        <h2><img src="img/dubby/dubby-logo.png" alt="Dubby" width="78" height="26"> Fuel your games</h2>
+        <p class="desc">Dubby is a powdered energy drink built for focus. Mix a scoop with water for smooth energy and sharper concentration, with no sugar, artificial dyes, jitters or crash. Not sure on a flavor? You do not have to commit to a full tub up front.</p>
+        <a class="dubby-btn" href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener">Get 10% off Dubby</a>
+        <div class="dubby-note">Affiliate link: I earn a commission if you order, and it helps keep Fast Castle and Chill and this site going.</div>
+      </div>
+    </div>
   </div>
 
   <div class="card" id="watch-card">
@@ -734,8 +755,9 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
   <div class="footer">
     <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
-    <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a>
-    <div class="version">v1.57</div>
+    <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
+    <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
+    <div class="version">v1.58</div>
   </div>
 </div>
 
