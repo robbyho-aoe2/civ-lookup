@@ -183,6 +183,10 @@ th.num,td.num{text-align:center;font-family:var(--font-mono);}
 .weekly-section h3{font-family:var(--font-display);font-weight:600;font-size:15px;margin:0 0 4px;color:var(--text);}
 .weekly-section .sub-desc{font-size:11px;color:var(--text3);margin:0 0 8px;}
 .weekly-empty{font-size:12px;color:var(--text3);font-style:italic;}
+.weekly-toggle{margin-top:0;}
+.weekly-toggle>summary{font-size:12px;font-weight:600;color:var(--text2);padding:2px 0;}
+.weekly-toggle>summary:hover{color:var(--amberL);}
+.weekly-toggle[open]>summary{margin-bottom:8px;}
 .updated-label{display:block;font-size:10px;color:var(--text3);margin-top:2px;}
 .weekly-highlight{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;font-size:13px;}
 .weekly-highlight b{color:var(--amberL);}
@@ -1794,10 +1798,13 @@ function renderWeeklyReport(report, prevReport) {
   const newPlayers = `
     <div class="weekly-section">
       <h3>New/Returning Players</h3>
-      ${weeklyTable(
-        [{ label: 'Player' }, { label: 'Games', num: true }, { label: 'Rating', num: true }, { label: 'First 10 WR', num: true }, { label: 'Day Span', num: true }],
-        report.newPlayers.map(p => [wLink(p.name, p.profileId), p.totalGames.toLocaleString(), p.rating ?? '—', weeklyPct(p.firstTenWinRate), p.daySpan == null ? '—' : p.daySpan.toLocaleString()])
-      )}
+      <details class="table-toggle weekly-toggle">
+        <summary>${report.newPlayers.length.toLocaleString()} player${report.newPlayers.length === 1 ? '' : 's'} — click to expand</summary>
+        ${weeklyTable(
+          [{ label: 'Player' }, { label: 'Games', num: true }, { label: 'Rating', num: true }, { label: 'First 10 WR', num: true }, { label: 'Day Span', num: true }],
+          report.newPlayers.map(p => [wLink(p.name, p.profileId), p.totalGames.toLocaleString(), p.rating ?? '—', weeklyPct(p.firstTenWinRate), p.daySpan == null ? '—' : p.daySpan.toLocaleString()])
+        )}
+      </details>
     </div>`;
 
   const cp = report.civPopularity;
