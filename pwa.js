@@ -13,7 +13,7 @@
   window.autoScoutStart = {
     get: load,
     setMe: function (id, name) { var p = load(); p.me = { id: String(id), name: name || String(id) }; p.page = 'me'; save(p); },
-    clearMe: function () { var p = load(); delete p.me; if (p.page === 'me') p.page = 'home'; save(p); },
+    clearMe: function () { var p = load(); delete p.me; if (p.page === 'me') p.page = 'consolelive'; save(p); },
   };
 
   // Safety net for visitor counting: every page carries its own GoatCounter snippet, but if a page is ever
@@ -56,7 +56,7 @@
       civ: 'Civ Insights', build: 'Build Order', investigations: 'Investigations' };
     var addStart = function () {
       var p = load();
-      var name = p.page === 'me' && p.me && p.me.id ? 'My player (' + (p.me.name || p.me.id) + ')' : (NAMES[p.page] || 'Home');
+      var name = p.page === 'me' && p.me && p.me.id ? 'My player (' + (p.me.name || p.me.id) + ')' : (p.page === 'home' && !p.explicit ? 'Console Live' : (NAMES[p.page] || 'Console Live'));
       var line = document.createElement('div');
       line.className = 'pwa-start-line';
       line.style.cssText = 'margin-top:8px;font-size:11px;';
