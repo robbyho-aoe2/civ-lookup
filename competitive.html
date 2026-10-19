@@ -142,6 +142,11 @@ a.set-status{text-decoration:none;}
 .dubby-btn:hover{filter:brightness(1.1);}
 .dubby-note{font-size:11px;color:var(--text3);margin-top:8px;}
 .caster-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+#winrates-table th[data-k]{cursor:pointer;user-select:none;}
+#winrates-table th.sorted{color:var(--amberL);}
+#winrates-table td.dim{color:var(--text3);}
+#winrates-table a{color:var(--text);text-decoration:none;border-bottom:1px solid var(--border2);}
+#winrates-table a:hover{color:var(--amberL);border-color:var(--amberL);}
 .caster{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 12px;color:var(--text);font-size:13px;font-weight:700;}
 .caster a{font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;border:1px solid var(--border2);border-radius:20px;padding:2px 9px;background:var(--surf);}
 .caster a:hover{border-color:var(--amber);}
@@ -612,6 +617,16 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     </div>
   </div>
 
+  <details class="section" id="winrates-section">
+    <summary>📈 Player win rates <span class="summary-hint" id="winrates-hint"></span></summary>
+    <div class="card">
+      <p class="standings-note">Every finished game counts once, whatever its size. Click a column to sort. Small samples swing a lot, so a perfect record after one or two games says little yet.</p>
+      <div class="overflow-x">
+        <table id="winrates-table"></table>
+      </div>
+    </div>
+  </details>
+
   <details class="section" id="teams-section">
     <summary>👥 Teams <span class="summary-hint">6 teams &middot; rosters and ratings</span></summary>
     <div class="card">
@@ -759,7 +774,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
-    <div class="version">v1.66</div>
+    <div class="version">v1.67</div>
   </div>
 </div>
 
@@ -1171,6 +1186,45 @@ document.getElementById('standings-table').innerHTML = `
     `).join('')}
   </tbody>
 `;
+
+// ---- Player win rates (every finished game counts once; built from SET_RESULTS) ----
+(function () {
+  const rec = new Map();
+  SET_RESULTS.forEach(r => {
+    const loserTeam = r.teams.find(id => id !== r.winner);
+    [[r.winners, true, r.winner], [r.losers, false, loserTeam]].forEach(([list, won, team]) => {
+      list.forEach(p => {
+        let x = rec.get(p.name);
+        if (!x) { x = { name: p.name, id: p.id, team, w: 0, l: 0, fm: {} }; rec.set(p.name, x); }
+        if (won) x.w++; else x.l++;
+        const f = x.fm[r.fmt] || (x.fm[r.fmt] = [0, 0]);
+        f[won ? 0 : 1]++;
+      });
+    });
+  });
+  const rows = [...rec.values()].map(x => ({ ...x, g: x.w + x.l, pct: x.w / (x.w + x.l) }));
+  const order = id => TEAMS.findIndex(t => t.id === id);
+  let key = 'pct', dir = -1;
+  const val = (r, k) => k === 'name' ? r.name.toLowerCase() : k === 'team' ? order(r.team) : r[k];
+  function draw() {
+    rows.sort((a, b) => {
+      const va = val(a, key), vb = val(b, key);
+      return (va < vb ? -1 : va > vb ? 1 : 0) * dir || b.pct - a.pct || b.g - a.g || a.name.localeCompare(b.name);
+    });
+    const th = (k, label, num) => `<th data-k="${k}" class="${num ? 'num' : ''}${key === k ? ' sorted' : ''}">${label}${key === k ? (dir < 0 ? ' ▾' : ' ▴') : ''}</th>`;
+    const cell = (r, f) => { const v = r.fm[f]; return v ? `<td class="num">${v[0]}–${v[1]}</td>` : '<td class="num dim">–</td>'; };
+    document.getElementById('winrates-table').innerHTML =
+      `<thead><tr>${th('name', 'Player')}${th('team', 'Team')}${th('w', 'Wins', 1)}${th('l', 'Losses', 1)}${th('pct', 'Win %', 1)}<th class="num">1v1</th><th class="num">2v2</th><th class="num">3v3</th><th class="num">4v4</th></tr></thead><tbody>` +
+      rows.map(r => `<tr><td><a href="tournament-player.html?id=${r.id}">${r.name}</a></td><td>${teamName(r.team)}</td><td class="num">${r.w}</td><td class="num">${r.l}</td><td class="num">${Math.round(r.pct * 100)}%</td>${['1v1', '2v2', '3v3', '4v4'].map(f => cell(r, f)).join('')}</tr>`).join('') + '</tbody>';
+    document.querySelectorAll('#winrates-table th[data-k]').forEach(h => h.addEventListener('click', () => {
+      const k = h.dataset.k;
+      if (key === k) dir = -dir; else { key = k; dir = (k === 'name' || k === 'team') ? 1 : -1; }
+      draw();
+    }));
+  }
+  document.getElementById('winrates-hint').textContent = rows.length + ' players · ' + SET_RESULTS.length + ' games';
+  draw();
+})();
 
 // ---- Rules language switch (English / Español) ----
 (function () {
