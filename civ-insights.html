@@ -710,7 +710,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.83</div>
+    <div class="version">v1.84</div>
   </div>
 </div>
 
@@ -4509,6 +4509,24 @@ document.getElementById('castle-table-status').textContent = 'Temporarily disabl
 })();
 </script>
 <script>
+// Deep links from Console Insights: civ-insights.html#changelog-<Civ> opens the Sept 22 changelog at that civ.
+(function () {
+  document.querySelectorAll('.changelog-list > li > b').forEach(b => {
+    if (b.parentElement.querySelector('ul.civ-changes')) b.parentElement.id = 'changelog-' + b.textContent.trim();
+  });
+  function openHash() {
+    const m = /^#changelog-(.+)$/.exec(decodeURIComponent(location.hash || ''));
+    if (!m) return;
+    const li = document.getElementById('changelog-' + m[1]);
+    if (!li) return;
+    const det = li.closest('details'); if (det) det.open = true;
+    li.scrollIntoView({ block: 'center' });
+    li.style.transition = 'background .4s'; li.style.background = 'rgba(95,184,140,.18)';
+    setTimeout(() => { li.style.background = ''; }, 2200);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', openHash); else openHash();
+  window.addEventListener('hashchange', openHash);
+})();
 // Console win rate since the Sept 22 update, appended to each civ's changelog entry. Read from
 // player-data's data/civ-patch-change.json (refreshed weekly by civ_patch_change.py); if the fetch
 // fails the changelog simply renders without it.

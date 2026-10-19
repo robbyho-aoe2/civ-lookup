@@ -152,6 +152,15 @@ th.num,td.num{text-align:center;font-family:var(--font-mono);}
   .snl-delta{margin-left:4px;}
 }
 .civ-table th.civ-col,.civ-table td.civ-col{position:sticky;left:0;background:var(--surf);}
+#civ-dlc-table td.civ-col{cursor:pointer;}
+#civ-dlc-table td.civ-col .civ-chg-caret{color:var(--text3);font-size:10px;width:10px;display:inline-block;transition:transform .15s;}
+#civ-dlc-table tr.open td.civ-col .civ-chg-caret{transform:rotate(90deg);color:var(--amberL);}
+#civ-dlc-table td.civ-col:hover{color:var(--amberL);}
+#civ-dlc-table tr.civ-chg-row td{background:var(--surf2);white-space:normal;padding:10px 14px;font-size:12px;line-height:1.7;color:var(--text2);}
+#civ-dlc-table tr.civ-chg-row ul{margin:0 0 6px;padding-left:18px;}
+#civ-dlc-table tr.civ-chg-row li{margin-bottom:3px;}
+#civ-dlc-table tr.civ-chg-row a{color:var(--amberL);font-weight:700;text-decoration:none;}
+
 .civ-table th{cursor:pointer;user-select:none;white-space:nowrap;}
 .civ-table th:hover{color:var(--amberL);}
 .civ-table th.sorted::after{content:' ▾';color:var(--amber);}
@@ -1270,6 +1279,32 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
   let dlcLadder = '1v1 Console';
   let dlcData = DLC_CIV_WR; // embedded snapshot until data/civ-patch-change.json (refreshed weekly) loads
   let dlcSort = { key: 'change', dir: 'desc' };
+  // Click a civ to expand what changed for it in the Sept 22 patch. The text is read from the changelog on
+  // civ-insights.html (fetched once), so there is only one copy of it to keep up to date.
+  const dlcOpen = new Set();
+  let dlcNotes = null;   // civ -> inner HTML of its change list, or {} when the changelog could not be read
+  function loadDlcNotes() {
+    if (dlcNotes) return Promise.resolve(dlcNotes);
+    return fetch('civ-insights.html').then(r => r.ok ? r.text() : '').then(html => {
+      const doc = new DOMParser().parseFromString(html, 'text/html'), out = {};
+      doc.querySelectorAll('.changelog-list > li > b').forEach(b => {
+        const ul = b.parentElement.querySelector('ul.civ-changes');
+        if (ul) out[b.textContent.trim()] = ul.innerHTML;
+      });
+      dlcNotes = out;
+      return out;
+    }).catch(() => (dlcNotes = {}));
+  }
+  function dlcNoteRow(civ, notes) {
+    const body = notes[civ] ? `<ul>${notes[civ]}</ul>` : '<div>No separate Sept 22 changes are listed for this civ.</div>';
+    return `<tr class="civ-chg-row" data-for="${civ}"><td colspan="4">${body}<a href="civ-insights.html#changelog-${encodeURIComponent(civ)}">Open the full Sept 22 changelog &rarr;</a></td></tr>`;
+  }
+  function showDlcNotes(tr, civ) {
+    loadDlcNotes().then(notes => {
+      if (!tr.isConnected || !dlcOpen.has(civ) || tr.nextElementSibling && tr.nextElementSibling.dataset.for === civ) return;
+      tr.insertAdjacentHTML('afterend', dlcNoteRow(civ, notes));
+    });
+  }
   function renderDlcCivs() {
     const d = dlcData[dlcLadder];
     const fmtDate = iso => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -1293,17 +1328,26 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       : `<span class="snl-delta ${v > 0 ? 'up' : 'down'}">${v > 0 ? '&#9650; +' : '&#9660; &minus;'}${Math.abs(v).toFixed(1)}</span>`;
     const tableEl = document.getElementById('civ-dlc-table');
     tableEl.innerHTML = '<thead><tr>' + th('name', 'Civ', 'civ-col') + th('before', 'Before') + th('after', 'After') + th('change', 'Change (pts)') + '</tr></thead><tbody>' +
-      rows.map(r => `<tr><td class="civ-col"><div style="display:flex;align-items:center;gap:6px;white-space:nowrap"><img src="${civIconUrl(r.name)}" alt="" style="height:18px;width:18px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">${r.name}</div></td>` +
+      rows.map(r => `<tr data-civ="${r.name}"${dlcOpen.has(r.name) ? ' class="open"' : ''}><td class="civ-col" title="Show what changed for ${r.name} in the Sept 22 patch"><div style="display:flex;align-items:center;gap:6px;white-space:nowrap"><span class="civ-chg-caret">&#9656;</span><img src="${civIconUrl(r.name)}" alt="" style="height:18px;width:18px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'">${r.name}</div></td>` +
         (r.wrB == null ? '<td class="wr-cell">&mdash;</td>' : `<td class="wr-cell">${r.wrB.toFixed(1)}%<div class="pr-sub">${r.gB.toLocaleString()}g</div></td>`) +
         `<td class="wr-cell${r.low ? ' low-sample' : ''}">${r.wrA.toFixed(1)}%<div class="pr-sub">${r.gA.toLocaleString()}g${r.low ? ' &middot; low sample' : ''}</div></td>` +
         `<td class="num${r.low ? ' low-sample' : ''}">${r.change == null ? '&mdash;' : chg(r.change)}</td></tr>`).join('') + '</tbody>';
+    tableEl.querySelectorAll('tbody tr[data-civ]').forEach(tr => {
+      const civ = tr.dataset.civ;
+      tr.querySelector('td.civ-col').addEventListener('click', () => {
+        const nxt = tr.nextElementSibling;
+        if (dlcOpen.has(civ)) { dlcOpen.delete(civ); tr.classList.remove('open'); if (nxt && nxt.dataset.for === civ) nxt.remove(); }
+        else { dlcOpen.add(civ); tr.classList.add('open'); showDlcNotes(tr, civ); }
+      });
+      if (dlcOpen.has(civ)) showDlcNotes(tr, civ);
+    });
     tableEl.querySelectorAll('th[data-key]').forEach(h => h.addEventListener('click', () => {
       const key = h.dataset.key;
       dlcSort = dlcSort.key === key ? { key, dir: dlcSort.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' ? 'asc' : 'desc' };
       renderDlcCivs();
     }));
     document.getElementById('civ-dlc-note').textContent = (d.newOnly && d.newOnly.length
-      ? 'The new civs have no "before", so they show a dash. ' : '') + `Dimmed rows have under ${lowBelow} games since the update, so their win rate is mostly noise.`;
+      ? 'The new civs have no "before", so they show a dash. ' : '') + `Dimmed rows have under ${lowBelow} games since the update, so their win rate is mostly noise. Click a civ to see what changed for it in the Sept 22 patch.`;
   }
   renderDlcCivs();
   fetch(`${PLAYER_DATA_BASE}/civ-patch-change.json?t=${Date.now()}`, { cache: 'no-store' })
