@@ -268,7 +268,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
-    <div class="version">v0.11</div>
+    <div class="version">v0.12</div>
   </div>
 </div>
 
@@ -349,7 +349,7 @@ const lobbyFetchAt = new Map();
 
 // Maps in the console ranked pools (1v1 and team) as of Oct 2026, from what ranked games actually used over the last week.
 // Everything else (custom games, and maps no longer in a ranked pool) counts as "Other". Update when the pools change.
-const MAP_POOL = ['Arabia', 'Arena', 'Glade', 'Scandinavia', 'Fortress', 'Arabian Desert', 'Northern Isles', 'Black Forest', 'African Clearing', 'Nomad', 'MegaRandom', 'Baltic', 'Coastal Forest', 'Yucatan'];
+const MAP_POOL = ['Arabia', 'Arena', 'Glade', 'Scandinavia', 'Fortress', 'Arabian Desert', 'Northern Isles', 'Michi', 'Black Forest', 'African Clearing', 'Nomad', 'MegaRandom', 'Baltic', 'Coastal Forest', 'Yucatan'];
 const MAP_OTHER = '__other';
 const isRankedLb = m => m.leaderboardId === 'rm_1v1_console' || m.leaderboardId === 'rm_team_console';
 const mapGroup = m => (isRankedLb(m) && MAP_POOL.includes(m.mapName) ? m.mapName : MAP_OTHER);
