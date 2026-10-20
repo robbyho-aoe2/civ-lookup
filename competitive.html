@@ -142,6 +142,8 @@ a.set-status{text-decoration:none;}
 .dubby-btn:hover{filter:brightness(1.1);}
 .dubby-note{font-size:11px;color:var(--text3);margin-top:8px;}
 .caster-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.caster-sub{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-top:16px;}
+.caster-sub + .caster-list{margin-top:8px;}
 #winrates-table th[data-k]{cursor:pointer;user-select:none;}
 #winrates-table th.sorted{color:var(--amberL);}
 #winrates-table td.dim{color:var(--text3);}
@@ -291,6 +293,8 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
   <div class="card" id="casters-card">
     <h2>Casters</h2>
     <div class="caster-list" id="caster-list"></div>
+    <div class="caster-sub">Player casters</div>
+    <div class="caster-list" id="player-caster-list"></div>
   </div>
 
   <div class="card" id="dubby-card">
@@ -774,7 +778,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
-    <div class="version">v1.72</div>
+    <div class="version">v1.73</div>
   </div>
 </div>
 
@@ -927,9 +931,15 @@ const CASTERS = [
   { name: 'Fast Castle and Chill', links: [['Twitch', 'https://www.twitch.tv/fastcastleandchill'], ['YouTube', 'https://www.youtube.com/@fastcastleandchill']] },
   { name: 'Ole Crooked Woody', links: [['Twitch', 'https://www.twitch.tv/olecrookedwoody']] },
   { name: 'Sammy Diamonds', links: [['Twitch', 'https://www.twitch.tv/sammydiamonds']] },
+  // Player casters: Nations Cup players who also stream and cast.
+  { name: 'Donald2O16Trump', player: true, links: [['Twitch', 'https://www.twitch.tv/donald2016trump']] },
+  { name: 'MORIS0202', player: true, links: [['Twitch', 'https://www.twitch.tv/moris02002']] },
+  { name: 'GOAT Gobz', player: true, links: [['Twitch', 'https://www.twitch.tv/goat_gobz']] },
+  { name: 'D0cTOrSniper', player: true, links: [['Twitch', 'https://www.twitch.tv/d0cotrsniper100']] },
 ];
-document.getElementById('caster-list').innerHTML = CASTERS.map(c =>
-  `<div class="caster">${c.name}${c.links.map(([label, url]) => `<a href="${url}" target="_blank" rel="noopener">${label}</a>`).join('')}</div>`).join('');
+const casterHtml = c => `<div class="caster">${c.name}${c.links.map(([label, url]) => `<a href="${url}" target="_blank" rel="noopener">${label}</a>`).join('')}</div>`;
+document.getElementById('caster-list').innerHTML = CASTERS.filter(c => !c.player).map(casterHtml).join('');
+document.getElementById('player-caster-list').innerHTML = CASTERS.filter(c => c.player).map(casterHtml).join('');
 const SCHEDULED_GAMES = [
   // { date: 'Sat, Oct 10', short: 'Oct 10', time: '3:00 pm ET', teams: ['usa', 'mexico'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
   // (past) { date: 'Tue, Oct 13', short: 'Oct 13', time: '2:00 pm ET', teams: ['uk', 'france'], games: ['1v1', '2v2', '3v3', '4v4'], caster: 'Sammy Diamonds' }, // 7 pm UK time
