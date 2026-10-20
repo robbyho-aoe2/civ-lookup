@@ -103,6 +103,8 @@ header .back:hover{color:var(--amberL);}
 .mc-d.dn{color:var(--red);}
 .mc-more{display:block;margin:6px auto 0;padding:8px 18px;background:var(--surf2);border:1px solid var(--border2);border-radius:20px;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;}
 .mc-more:hover{color:var(--amberL);border-color:var(--amber);}
+.rows-more{display:block;margin:8px auto 0;padding:6px 16px;background:var(--surf2);border:1px solid var(--border2);border-radius:20px;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;}
+.rows-more:hover{color:var(--amberL);border-color:var(--amber);}
 .mc-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:6px;}
 .mc-btns .mc-more{margin:0;}
 .mc-month{margin-bottom:10px;}
@@ -1665,6 +1667,40 @@ function render(content, entry, player) {
 
   renderLadder(activeLadder);
 }
+
+// The long tables on a player's page show their first 4 rows, with a button to show the rest. The tables re-render
+// when you sort a column, so this watches the page and re-applies the limit (and keeps a table expanded once you
+// have opened it).
+(function () {
+  const ROWS_SHOWN = 4;
+  const TABLES = ['civ-table', 'map-table', 'civ-arabia-table', 'civ-arena-table', 'opponents-table', 'teammates-table'];
+  const expanded = new Set();
+  function apply(id) {
+    const table = document.getElementById(id);
+    if (!table) return;
+    const rows = [...table.querySelectorAll('tbody tr')];
+    const host = table.closest('.table-scroll') || table;
+    let btn = host.nextElementSibling && host.nextElementSibling.classList.contains('rows-more') && host.nextElementSibling.dataset.for === id ? host.nextElementSibling : null;
+    if (rows.length <= ROWS_SHOWN) { if (btn) btn.remove(); return; }
+    const open = expanded.has(id);
+    rows.forEach((tr, i) => { const hide = !open && i >= ROWS_SHOWN; if (tr.hidden !== hide) tr.hidden = hide; });
+    const label = open ? 'Show fewer rows' : `Show all ${rows.length} rows`;
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'rows-more'; btn.dataset.for = id;
+      btn.addEventListener('click', () => { if (expanded.has(id)) expanded.delete(id); else expanded.add(id); apply(id); });
+      host.insertAdjacentElement('afterend', btn);
+    }
+    if (btn.textContent !== label) btn.textContent = label;
+  }
+  let queued = false;
+  const target = document.getElementById('content') || document.body;
+  new MutationObserver(() => {
+    if (queued) return;
+    queued = true;
+    setTimeout(() => { queued = false; TABLES.forEach(apply); }, 50);
+  }).observe(target, { childList: true, subtree: true });
+})();
 
 loadAndRender();
 </script>
