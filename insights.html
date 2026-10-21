@@ -1781,6 +1781,18 @@ function renderWeeklyReport(report, prevReport) {
       )}
     </div>`;
 
+  // Custom (unranked lobby) games: not in the ladder data at all, so the report writer pulls them separately with
+  // weekly_customs.py. Reports before 2026-10-12 don't carry the field and just skip the section.
+  const customs = (report.mostCustoms && report.mostCustoms.length) ? `
+    <div class="weekly-section">
+      <h3>Most Custom Games This Week</h3>
+      <p class="sub-desc">Lobby games between players (scrims, Nations Cup sets, team games with friends)${report.totalCustomGames != null ? ` — ${report.totalCustomGames.toLocaleString()} custom games across ${report.playersWithCustoms.toLocaleString()} console players this window` : ''}. Record counts games with a recorded result.</p>
+      ${weeklyTable(
+        [{ label: 'Player' }, { label: 'Games', num: true }, { label: 'Record', num: true }, { label: 'Win Rate', num: true }],
+        report.mostCustoms.map(p => [wLink(p.name, p.profileId), p.games.toLocaleString(), `${p.wins}-${p.losses}`, (p.wins + p.losses) ? weeklyPct(p.wins / (p.wins + p.losses)) : '—'])
+      )}
+    </div>` : '';
+
   // Schema changed 2026-09-07: older reports carry "rivalries" with a
   // per-pair recordThisWeek/gamesThisWeek; newer ones carry "rivalryUpdates"
   // (gamesThisWindow only, no per-pair W-L split) plus a standalone
@@ -1912,7 +1924,7 @@ function renderWeeklyReport(report, prevReport) {
   // the 2026-09-07 report can show real gainers/losers — bring this section
   // back then instead of showing undated "current standings" in the meantime.
 
-  return headline + playerSearch + mostGames + rivalries + upsets + newPlayers + civPopularity + movers + squads;
+  return headline + playerSearch + mostGames + customs + rivalries + upsets + newPlayers + civPopularity + movers + squads;
 }
 
 function renderPlayerSearchMatches(report, query) {
