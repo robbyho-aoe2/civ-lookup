@@ -542,8 +542,8 @@ select:focus{outline:none;border-color:var(--amber);}
         their real ages for each civ. Thumb Ring makes foot archers fire 15% faster (Chu Ko Nu 20%) and
         sets accuracy to 100%, but does not speed up Skirmishers, Slingers or Guecha Warriors.
         <b>Rank</b> works like the other tables: Defense + Offense per 100 resources (average of real
-        matchup outcomes, both surviving and killing, vs. four reference units at the selected age:
-        Arbalester, Skirmisher, Hussar and Paladin) plus Speed. Skirmishers get their real bonus damage against Archers in the
+        matchup outcomes vs. reference units at the selected age: surviving and killing the Arbalester,
+        Skirmisher, Hussar and Paladin, plus killing the Militia-line) plus Speed. Skirmishers get their real bonus damage against Archers in the
         "Surv v. Skirmisher" matchup, and Chu Ko Nu's extra arrows are cut down by armor one arrow at a
         time. <b>Cost Efficient</b> (default) divides each matchup outcome by cost first; <b>Pop
         Efficient</b> ignores cost. Switch the other pill to "Matchup" to see Defense/Offense/Speed as
@@ -771,7 +771,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.87</div>
+    <div class="version">v1.88</div>
   </div>
 </div>
 
@@ -4526,6 +4526,7 @@ function archerMatchupFields(row, refs) {
     killSkirmisher: kill(refs.skirmisher, v.arch || 0),
     killScout: kill(refs.scout, v.cav || 0),
     killKnight: kill(refs.knight, v.cav || 0),
+    killMilitia: kill(refs.militia, v.inf || 0),
   };
 }
 // Feudal-safe column headers: at Feudal there is no Scout/Knight reference yet
@@ -4541,12 +4542,14 @@ function buildArcherMatchupCols(refs) {
     ['killScout', `Kill<br>${nm(refs.scout, 'Scout-line')}`, true],
     ['survKnight', `Surv v.<br>${nm(refs.knight, 'Knight-line')}`, true],
     ['killKnight', `Kill<br>${nm(refs.knight, 'Knight-line')}`, true],
+    ['killMilitia', `Kill<br>${nm(refs.militia, 'Militia-line')}`, true],
   ];
 }
-// Archers are measured against exactly four threats (site owner, 2026-10-21: "for archers, what matters is skirmishers,
-// arbalesters, hussar, and paladin"): no Camel, Spearman, Militia, Mangonel or Scorpion references on this table.
+// Archers are measured against four threats (site owner, 2026-10-21: "for archers, what matters is skirmishers,
+// arbalesters, hussar, and paladin"), plus a Militia-line kill reference ("we should have kill militia line"). No Camel,
+// Spearman, Mangonel or Scorpion references on this table.
 const ARCHER_SURV_KEYS = ['survArcher', 'survSkirmisher', 'survScout', 'survKnight'];
-const ARCHER_KILL_KEYS = ['killArcher', 'killSkirmisher', 'killScout', 'killKnight'];
+const ARCHER_KILL_KEYS = ['killArcher', 'killSkirmisher', 'killScout', 'killKnight', 'killMilitia'];
 const ARCHER_WEIGHTED_CATEGORIES = [
   ['avgDefPer100', 'Defense / 100 res', 1.0],
   ['avgOffPer100', 'Offense / 100 res', 1.0],
