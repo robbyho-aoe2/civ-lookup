@@ -542,8 +542,8 @@ select:focus{outline:none;border-color:var(--amber);}
         their real ages for each civ. Thumb Ring makes foot archers fire 15% faster (Chu Ko Nu 20%) and
         sets accuracy to 100%, but does not speed up Skirmishers, Slingers or Guecha Warriors.
         <b>Rank</b> works like the other tables: Defense + Offense per 100 resources (average of real
-        matchup outcomes vs. reference Archer/Skirmisher/Scout/Knight/Scorpion-line units, plus Camel/
-        Spearman/Militia/Mangonel-line kills) plus Speed. Skirmishers get their real bonus damage against Archers in the
+        matchup outcomes, both surviving and killing, vs. four reference units at the selected age:
+        Arbalester, Skirmisher, Hussar and Paladin) plus Speed. Skirmishers get their real bonus damage against Archers in the
         "Surv v. Skirmisher" matchup, and Chu Ko Nu's extra arrows are cut down by armor one arrow at a
         time. <b>Cost Efficient</b> (default) divides each matchup outcome by cost first; <b>Pop
         Efficient</b> ignores cost. Switch the other pill to "Matchup" to see Defense/Offense/Speed as
@@ -771,7 +771,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.86</div>
+    <div class="version">v1.87</div>
   </div>
 </div>
 
@@ -4522,29 +4522,14 @@ function archerMatchupFields(row, refs) {
     survSkirmisher: survive(refs.skirmisher, 'pierceArmor', skirmBonus),
     survScout: survive(refs.scout, 'meleeArmor'),
     survKnight: survive(refs.knight, 'meleeArmor'),
-    survScorpion: survive(refs.scorpion, 'pierceArmor'),
-    killSpearman: kill(refs.spearman, v.spear || 0),
-    killMilitia: kill(refs.militia, v.inf || 0),
     killArcher: kill(refs.archer, v.arch || 0),
     killSkirmisher: kill(refs.skirmisher, v.arch || 0),
-    killCamel: kill(refs.camel, v.camel || 0),
+    killScout: kill(refs.scout, v.cav || 0),
     killKnight: kill(refs.knight, v.cav || 0),
-    killMangonel: kill(refs.mangonel, v.siege || 0, true),
   };
 }
-// Scorpion-line reference (site owner, 2026-10-21: "surv v siege onager can be replaced by heavy scorpion") — a Scorpion's
-// pierce bolt is the siege weapon that actually hits archers; the Siege Onager's melee-class shot was a poor stand-in.
-// data.json ids 279/542: Scorpion (Castle) hp40/atk11/pierce armor 7, Heavy Scorpion (Imperial) hp60/atk14/melee armor 1/
-// pierce armor 8, reload 3.6s. No Feudal tier. No attack techs apply to units, and neither has a bonus against Archers.
-const SCORPION_LINE_BASE = {
-  scorpion: { hp: 40, attack: 11, meleeArmor: 0, pierceArmor: 7, reload: 3.6, tierName: 'Scorpion' },
-  heavyScorpion: { hp: 60, attack: 14, meleeArmor: 1, pierceArmor: 8, reload: 3.6, tierName: 'Heavy Scorpion' },
-};
-function scorpionLineRef(ageKey) {
-  return ageKey === 'imperial' ? SCORPION_LINE_BASE.heavyScorpion : ageKey === 'castle' ? SCORPION_LINE_BASE.scorpion : null;
-}
-// Feudal-safe column headers: at Feudal there is no Camel/Knight/Mangonel
-// reference yet, and buildCAMatchupCols (CA table, Castle and up) assumes there is.
+// Feudal-safe column headers: at Feudal there is no Scout/Knight reference yet
+// (Knight needs Castle), and buildCAMatchupCols (CA table, Castle and up) assumes there is.
 function buildArcherMatchupCols(refs) {
   const nm = (ref, fallback) => ref ? ref.tierName : fallback;
   return [
@@ -4553,16 +4538,15 @@ function buildArcherMatchupCols(refs) {
     ['survSkirmisher', `Surv v.<br>${refs.skirmisher.tierName}`, true],
     ['killSkirmisher', `Kill<br>${refs.skirmisher.tierName}`, true],
     ['survScout', `Surv v.<br>${nm(refs.scout, 'Scout-line')}`, true],
-    ['killCamel', `Kill<br>${nm(refs.camel, 'Camel-line')}`, true],
+    ['killScout', `Kill<br>${nm(refs.scout, 'Scout-line')}`, true],
     ['survKnight', `Surv v.<br>${nm(refs.knight, 'Knight-line')}`, true],
     ['killKnight', `Kill<br>${nm(refs.knight, 'Knight-line')}`, true],
-    ['survScorpion', `Surv v.<br>${nm(refs.scorpion, 'Scorpion-line')}`, true],
-    ['killMangonel', `Kill<br>${nm(refs.mangonel, 'Mangonel-line')}`, true],
-    ['killSpearman', `Kill<br>${refs.spearman.tierName}`, true],
-    ['killMilitia', `Kill<br>${refs.militia.tierName}`, true],
   ];
 }
-const ARCHER_SURV_KEYS = ['survArcher', 'survSkirmisher', 'survScout', 'survKnight', 'survScorpion'];
+// Archers are measured against exactly four threats (site owner, 2026-10-21: "for archers, what matters is skirmishers,
+// arbalesters, hussar, and paladin"): no Camel, Spearman, Militia, Mangonel or Scorpion references on this table.
+const ARCHER_SURV_KEYS = ['survArcher', 'survSkirmisher', 'survScout', 'survKnight'];
+const ARCHER_KILL_KEYS = ['killArcher', 'killSkirmisher', 'killScout', 'killKnight'];
 const ARCHER_WEIGHTED_CATEGORIES = [
   ['avgDefPer100', 'Defense / 100 res', 1.0],
   ['avgOffPer100', 'Offense / 100 res', 1.0],
@@ -4584,16 +4568,15 @@ function renderAllMaxedArchersTable() {
   const enabledTypes = new Set([...document.querySelectorAll('.archer-type-toggle.on')].map(b => b.dataset.type));
   const ageLabel = MELEE_AGE_LABEL[archerAgeKey];
   // Hussar (Scout-line) replaces the Heavy Camel Rider as the "Surv v." cavalry reference (site owner, 2026-10-21): a
-  // raiding Hussar is the real cavalry threat to archers, Camels are a niche counter. "Kill Camel" stays, since Genoese
-  // Crossbowmen carry a real bonus against Camels.
-  const refs = { ...computeCAMatchupRefs(archerAgeKey), scout: scoutMaxStats('Generic', GENERIC_SCOUT_CFG, ageLabel), scorpion: scorpionLineRef(archerAgeKey) };
+  // raiding Hussar is the real cavalry threat to archers, Camels are a niche counter.
+  const refs = { ...computeCAMatchupRefs(archerAgeKey), scout: scoutMaxStats('Generic', GENERIC_SCOUT_CFG, ageLabel) };
   let fullRows = buildArcherRows(ageLabel).map(r => ({ ...r, ...archerMatchupFields(r, refs) }));
   const avgSurv = avgNormalized(fullRows, ARCHER_SURV_KEYS, true);
-  const avgKill = avgNormalized(fullRows, CA_KILL_KEYS, false);
+  const avgKill = avgNormalized(fullRows, ARCHER_KILL_KEYS, false);
   fullRows = fullRows.map((r, i) => ({ ...r, avgSurv: avgSurv[i], avgKill: avgKill[i] }));
-  fullRows = attachPer100Fields(fullRows, ARCHER_SURV_KEYS, CA_KILL_KEYS);
+  fullRows = attachPer100Fields(fullRows, ARCHER_SURV_KEYS, ARCHER_KILL_KEYS);
   const avgDefPer100 = avgNormalized(fullRows, ARCHER_SURV_KEYS.map(k => k + 'Per100'), true);
-  const avgOffPer100 = avgNormalized(fullRows, CA_KILL_KEYS.map(k => k + 'Per100'), true);
+  const avgOffPer100 = avgNormalized(fullRows, ARCHER_KILL_KEYS.map(k => k + 'Per100'), true);
   fullRows = fullRows.map((r, i) => ({ ...r, avgDefPer100: avgDefPer100[i], avgOffPer100: avgOffPer100[i] }));
   const categories = archerRankMode === 'pop' ? ARCHER_WEIGHTED_CATEGORIES_POP : ARCHER_WEIGHTED_CATEGORIES;
   const ranked = computeWeightedRanking(fullRows, categories);
