@@ -524,6 +524,67 @@ select:focus{outline:none;border-color:var(--amber);}
     </div>
   </details>
 
+  <details class="section">
+    <summary>🏹 All Maxed Archers <span class="summary-hint">every civ's real Archers, Skirmishers and archer unique units, one sorted list</span></summary>
+    <div class="card">
+      <h2>🏹 All Maxed Archers</h2>
+      <p class="desc">
+        Every civ's real Archer line (Archer/Crossbowman/Arbalester) and Skirmisher line (Skirmisher/Elite
+        Skirmisher, Imperial Skirmisher for Vietnamese), each capped at the civ's own real max tier, plus
+        the unique and regional archery units: Longbowman, Chu Ko Nu, Plumed Archer, Genoese Crossbowman,
+        Rattan Archer, Composite Bowman, Fire Archer, Blackwood Archer, Guecha Warrior and the Slinger.
+        Unique units show their base tier from Castle Age and their Elite tier as a second row at
+        Imperial. Click a column header to sort.
+      </p>
+      <p class="desc" style="color:var(--text3)">
+        Tech access and base stats come from the live aoe2techtree data (Sept 22 patch included). Fletching,
+        Bodkin Arrow, Bracer, Padded/Leather/Ring Archer Armor, Thumb Ring and Chemistry are applied at
+        their real ages for each civ. Thumb Ring makes foot archers fire 15% faster (Chu Ko Nu 20%) and
+        sets accuracy to 100%, but does not speed up Skirmishers, Slingers or Guecha Warriors.
+        <b>Rank</b> works like the other tables: Defense + Offense per 100 resources (average of real
+        matchup outcomes vs. reference Archer/Skirmisher/Camel/Knight/Mangonel-line units and Spearman/
+        Militia-line kills) plus Speed. Skirmishers get their real bonus damage against Archers in the
+        "Surv v. Skirmisher" matchup, and Chu Ko Nu's extra arrows are cut down by armor one arrow at a
+        time. <b>Cost Efficient</b> (default) divides each matchup outcome by cost first; <b>Pop
+        Efficient</b> ignores cost. Switch the other pill to "Matchup" to see Defense/Offense/Speed as
+        columns; <b>Expand</b> breaks those down into the individual matchups.
+      </p>
+      <p class="desc" style="color:var(--text3)">
+        <b>Modeled civ bonuses:</b> Britons' range and Yeomen, Ethiopians' faster Archers, Vietnamese +20% HP,
+        Italians' armor, Muisca's armor and Herbalism, Mayans' discount and Hul'che Javelineers, Aztecs'
+        Atlatl, Lithuanians' speed and Tower Shields, Dravidians' faster Skirmishers, Vikings' Bogsveigar,
+        Mapuche HP, Incas/Muisca/Tupi Slinger techs, and the Korean, Portuguese, Byzantine, Gurjara and
+        Inca cost discounts. <b>Not modeled:</b> Shu's Bolt Magazine, Tupi's Curare poison, Mapuche's Malon,
+        Khitan Lamellar Armor and the Saxon scaling discount. The Fire Archer's three arrows are all
+        counted at full damage, which is an assumption (marked *). Blackwood Archers are shown per
+        archer at half the pair's cost. Gunpowder units and
+        mounted archers are on the other tables.
+      </p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
+        <button class="archer-age-toggle-btn toggle-btn" data-age="feudal">Feudal</button>
+        <button class="archer-age-toggle-btn toggle-btn" data-age="castle">Castle</button>
+        <button class="archer-age-toggle-btn toggle-btn on" data-age="imperial">Imperial</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 0;font-size:0.9em;">
+        <button class="archer-type-toggle toggle-btn on" data-type="archers">🏹 Archer line</button>
+        <button class="archer-type-toggle toggle-btn on" data-type="skirm">🏹 Skirmisher line</button>
+        <button class="archer-type-toggle toggle-btn on" data-type="unique">🏹 Unique and regional units</button>
+      </div>
+      <div class="col-mode-pill archer-col-mode-pill">
+        <button data-mode="stats" class="on">Stats</button>
+        <button data-mode="matchup">Matchup</button>
+      </div>
+      <div class="col-mode-pill archer-rank-mode-pill">
+        <button data-rank="cost" class="on">Cost Efficient</button>
+        <button data-rank="pop">Pop Efficient</button>
+      </div>
+      <button class="toggle-btn archer-matchup-expand-btn" style="margin:10px 0;" hidden>▸ Expand</button>
+      <div class="overflow-x">
+        <table id="all-maxed-archers-table"></table>
+      </div>
+    </div>
+  </details>
+
   <!-- Hidden for now (2026-09-16) — the underlying table computation is still
        disabled pending the iframe-eval freeze fix (see feedback_iframe_load_sync_eval_stall
        memory), so there's nothing useful to show here yet. Remove style="display:none"
@@ -710,7 +771,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.84</div>
+    <div class="version">v1.85</div>
   </div>
 </div>
 
@@ -4217,6 +4278,377 @@ makeMeleeTableRenderer('all-maxed-cavalry-table', '.cavalry-age-toggle-btn', [
 // archerLineRef/skirmisherLineRef, all defined between here and there.
 // Calling it any earlier would hit those consts before initialization.
 renderAllMaxedTable();
+
+// ── All Maxed Archers (2026-10-21, site owner: "all maxed archers ... do the
+// same way as others and make sure you add uus") — same shape as the CA/MCB,
+// Infantry and Cavalry tables above: one row per civ per unit it really has,
+// capped at each civ's own real tier for the age selected, ranked by the same
+// Defense/100res + Offense/100res + Speed matchup system (the reference units
+// come from computeCAMatchupRefs, so Archers are measured against the exact
+// Archer/Skirmisher/Camel/Knight/Mangonel/Spearman/Militia references the CA/
+// MCB table already uses). Three groups: the Archer line (Archer/Crossbowman/
+// Arbalester), the Skirmisher line (Skirmisher/Elite Skirmisher, Imperial
+// Skirmisher for Vietnamese), and unique + regional units (Longbowman, Chu Ko
+// Nu, Plumed Archer, Genoese Crossbowman, Rattan Archer, Composite Bowman,
+// Fire Archer, Blackwood Archer, Guecha Warrior, Slinger), base tier from
+// Castle Age and Elite on top at Imperial, like the Cavalry table's unique
+// units. Gunpowder (Hand Cannoneer, Janissary, Conquistador, Grenadier, Organ
+// Gun) and mounted archers (CA/MCB table) are deliberately NOT in here.
+//
+// Source: tech access and every base stat come straight from the live
+// SiegeEngineers aoe2techtree data.json (the Sept 22 patch is already in it),
+// pulled 2026-10-21: per-civ tech availability from civs[x].Tech (Fletching
+// 199, Bodkin Arrow 200, Bracer 201, Padded 211, Leather 212, Ring Archer
+// Armor 219, Thumb Ring 437), unit stats from data.Unit (Archer 4, Crossbowman
+// 24, Arbalester 492, Skirmisher 7, Elite Skirmisher 6, Imperial Skirmisher
+// 1155, Slinger 185, ...). Civ bonuses and unique techs come from the same
+// repo's civ help text; the multi-arrow mechanics (Chu Ko Nu's secondary
+// arrows, Hul'che Javelineers) are from the AoE2 wiki.
+//
+// Tech ages (same as the CA/MCB table): Fletching/Padded Feudal, Bodkin/
+// Leather/Thumb Ring Castle, Bracer/Ring Archer Armor/Chemistry Imperial.
+// Every tech gives +1 attack and +1 range (Chemistry attack only); Padded/
+// Leather give +1 melee/+1 pierce armor, Ring Archer Armor +1/+2. Thumb Ring
+// sets accuracy to 100% and cuts reload by 15% for foot archers — but, per
+// index.html's own TECH_DESCRIPTIONS[437] note, nets to ZERO reload change for
+// the Skirmisher line, Slingers and Guecha Warriors, and -20% for Chu Ko Nu.
+// Unique techs are gated to their real age (first listed = Castle, second =
+// Imperial). Civ bonuses that change a stat are modeled (see the section's
+// "What's modeled" note); the ones that don't map onto these columns are not.
+const ARCHER_CIVS = {
+  Armenians: { tier: 'arbalest', missing: ['Thumb Ring'] },
+  Aztecs: { tier: 'arbalest', missing: ['Ring Archer Armor', 'Thumb Ring'], atlatl: true },
+  Bengalis: { tier: 'arbalest', missing: ['Thumb Ring'] },
+  Berbers: { tier: 'crossbowman', missing: [] },
+  Bohemians: { tier: 'arbalest', missing: ['Thumb Ring'] },
+  Britons: { tier: 'arbalest', missing: ['Thumb Ring'], yeomen: true, rangeByAge: { Castle: 1, Imperial: 2 } },
+  Bulgarians: { tier: 'archer', missing: ['Ring Archer Armor'] },
+  Burgundians: { tier: 'crossbowman', missing: ['Ring Archer Armor', 'Thumb Ring'] },
+  Burmese: { tier: 'crossbowman', missing: ['Leather Archer Armor', 'Ring Archer Armor', 'Thumb Ring'] },
+  Byzantines: { tier: 'arbalest', missing: [], skirmCostMult: 0.75 },
+  Celts: { tier: 'crossbowman', missing: ['Bracer', 'Thumb Ring'] },
+  Chinese: { tier: 'arbalest', missing: [] },
+  Cumans: { tier: 'crossbowman', missing: ['Bracer'] },
+  Danes: { tier: 'crossbowman', missing: [] },
+  Dravidians: { tier: 'arbalest', missing: [], skirmReloadMult: 0.8 },
+  Ethiopians: { tier: 'arbalest', missing: [], footReloadMult: 1 / 1.18 },
+  Franks: { tier: 'crossbowman', missing: ['Bracer', 'Ring Archer Armor', 'Thumb Ring'] },
+  Georgians: { tier: 'crossbowman', missing: ['Ring Archer Armor', 'Thumb Ring'] },
+  Goths: { tier: 'crossbowman', missing: ['Thumb Ring'] },
+  Gurjaras: { tier: 'crossbowman', missing: ['Ring Archer Armor'], foodCostMult: 0.75 },
+  Hindustanis: { tier: 'crossbowman', missing: [] },
+  Huns: { tier: 'crossbowman', missing: ['Ring Archer Armor'] },
+  Incas: { tier: 'arbalest', missing: [], foodCostByAge: { Feudal: 0.8, Castle: 0.75, Imperial: 0.7 }, slinger: true, andeanSling: true, fabricShields: true },
+  Italians: { tier: 'arbalest', missing: [], footArmor: { melee: 1, pierce: 1 } },
+  Japanese: { tier: 'arbalest', missing: [] },
+  Jurchens: { tier: 'crossbowman', missing: ['Thumb Ring'] },
+  Khitans: { tier: 'crossbowman', missing: [] },
+  Khmer: { tier: 'arbalest', missing: ['Thumb Ring'] },
+  Koreans: { tier: 'arbalest', missing: [], woodCostMult: 0.5 },
+  Lithuanians: { tier: 'crossbowman', missing: [], skirmSpeedMult: 1.1, towerShields: true },
+  Magyars: { tier: 'arbalest', missing: [] },
+  Malay: { tier: 'arbalest', missing: [] },
+  Malians: { tier: 'arbalest', missing: ['Bracer'] },
+  Mapuche: { tier: 'crossbowman', missing: ['Bracer', 'Thumb Ring'], hpByAge: { Feudal: 5, Castle: 10, Imperial: 15 }, slinger: true },
+  Mayans: { tier: 'arbalest', missing: [], footCostByAge: { Feudal: 0.9, Castle: 0.8, Imperial: 0.7 }, hulche: true },
+  Mongols: { tier: 'arbalest', missing: ['Ring Archer Armor'] },
+  Muisca: { tier: 'arbalest', missing: ['Ring Archer Armor'], meleeArmorByAge: { Feudal: 1, Castle: 2, Imperial: 3 }, herbalism: true, slinger: true, huaracas: true },
+  Persians: { tier: 'crossbowman', missing: ['Bracer'] },
+  Poles: { tier: 'arbalest', missing: ['Ring Archer Armor'] },
+  Portuguese: { tier: 'arbalest', missing: [], goldCostMult: 0.8 },
+  Romans: { tier: 'crossbowman', missing: ['Bracer', 'Thumb Ring'] },
+  Saracens: { tier: 'arbalest', missing: [] },
+  Saxons: { tier: 'arbalest', missing: [] },
+  Shu: { tier: 'arbalest', missing: [] },
+  Sicilians: { tier: 'arbalest', missing: ['Ring Archer Armor', 'Thumb Ring'] },
+  Slavs: { tier: 'crossbowman', missing: ['Bracer', 'Thumb Ring'] },
+  Spanish: { tier: 'archer', missing: [] },
+  Tatars: { tier: 'crossbowman', missing: [] },
+  Teutons: { tier: 'crossbowman', missing: ['Bracer', 'Thumb Ring'] },
+  Tupi: { tier: 'arbalest', missing: ['Thumb Ring'], slinger: true, caciques: true },
+  Turks: { tier: 'crossbowman', missing: [], noEliteSkirm: true },
+  Varangians: { tier: 'crossbowman', missing: ['Thumb Ring'] },
+  Vietnamese: { tier: 'arbalest', missing: [], hpMult: 1.2 },
+  Vikings: { tier: 'arbalest', missing: ['Thumb Ring'], bogsveigar: true },
+  Wei: { tier: 'crossbowman', missing: [] },
+  Wu: { tier: 'arbalest', missing: ['Ring Archer Armor', 'Thumb Ring'] },
+};
+// Base stats per tier, all from data.json. `vs` = flat bonus damage against a
+// class, read from the unit's own Attacks array (27 Spearman, 15 Archer, 1
+// Infantry, 8 Cavalry, 30 Camel, 20 Siege). `thumb` = reload multiplier when
+// the civ has Thumb Ring. `cost` is food/wood/gold per unit.
+const ARCH_UNITS = {
+  archer:      { name: 'Archer', cls: 'archer', line: true, hp: 30, atk: 4, range: 4, reload: 2, speed: 0.96, acc: 80, melee: 0, pierce: 0, thumb: 0.85, vs: { spear: 3 }, cost: { w: 25, g: 45 } },
+  crossbowman: { name: 'Crossbowman', cls: 'archer', line: true, hp: 35, atk: 5, range: 5, reload: 2, speed: 0.96, acc: 85, melee: 0, pierce: 0, thumb: 0.85, vs: { spear: 3 }, cost: { w: 25, g: 45 } },
+  arbalest:    { name: 'Arbalester', cls: 'archer', line: true, hp: 40, atk: 6, range: 5, reload: 2, speed: 0.96, acc: 90, melee: 0, pierce: 0, thumb: 0.85, vs: { spear: 3 }, cost: { w: 25, g: 45 } },
+  skirmisher:  { name: 'Skirmisher', cls: 'skirm', line: true, hp: 30, atk: 2, range: 4, reload: 3, speed: 0.96, acc: 90, melee: 0, pierce: 3, thumb: 1, vs: { spear: 3, arch: 3 }, cost: { f: 25, w: 35 } },
+  eliteSkirmisher: { name: 'Elite Skirmisher', cls: 'skirm', line: true, hp: 35, atk: 3, range: 5, reload: 3, speed: 0.96, acc: 90, melee: 0, pierce: 4, thumb: 1, vs: { spear: 4, arch: 4 }, cost: { f: 25, w: 35 } },
+  imperialSkirmisher: { name: 'Imperial Skirmisher', cls: 'skirm', line: true, hp: 35, atk: 4, range: 5, reload: 3, speed: 0.96, acc: 95, melee: 0, pierce: 5, thumb: 1, vs: { spear: 4, arch: 5 }, cost: { f: 25, w: 35 } },
+};
+// Unique + regional units. `tiers` = [base, elite?]; shared fields sit on the
+// civ entry, per-tier stats on each tier.
+const ARCH_UU = {
+  Britons:    [{ cls: 'archer', speed: 0.96, reload: 2, thumb: 0.85, cost: { w: 35, g: 40 }, tiers: [
+    { name: 'Longbowman', hp: 35, atk: 6, range: 5, acc: 70, melee: 0, pierce: 0, vs: { spear: 2 } },
+    { name: 'Elite Longbowman', hp: 40, atk: 7, range: 6, acc: 80, melee: 0, pierce: 1, vs: { spear: 2 } }] }],
+  Chinese:    [{ cls: 'archer', speed: 0.96, reload: 3, thumb: 0.8, cost: { w: 40, g: 35 }, tiers: [
+    // Chu Ko Nu: the first arrow does full damage, the rest 3 pierce each
+    // (2 extra non-Elite, 4 extra Elite — AoE2 wiki). Thumb Ring nets -20%.
+    { name: 'Chu Ko Nu', hp: 45, atk: 8, range: 4, acc: 85, melee: 0, pierce: 0, vs: { spear: 2 }, extra: [{ n: 2, dmg: 3 }] },
+    { name: 'Elite Chu Ko Nu', hp: 50, atk: 10, range: 4, acc: 85, melee: 0, pierce: 0, vs: { spear: 2 }, extra: [{ n: 4, dmg: 3 }] }] }],
+  Mayans:     [{ cls: 'archer', speed: 1.2, reload: 1.9, thumb: 0.85, cost: { w: 55, g: 55 }, tiers: [
+    { name: 'Plumed Archer', hp: 50, atk: 5, range: 4, acc: 80, melee: 0, pierce: 1, vs: { spear: 2, inf: 1 } },
+    { name: 'Elite Plumed Archer', hp: 65, atk: 5, range: 5, acc: 90, melee: 0, pierce: 2, vs: { spear: 2, inf: 2 } }] }],
+  Italians:   [{ cls: 'archer', speed: 0.96, reload: 2, thumb: 0.85, cost: { w: 45, g: 40 }, tiers: [
+    { name: 'Genoese Crossbowman', hp: 45, atk: 6, range: 4, acc: 100, melee: 1, pierce: 0, vs: { cav: 5, camel: 4 } },
+    { name: 'Elite Genoese Crossbowman', hp: 50, atk: 6, range: 4, acc: 100, melee: 1, pierce: 0, vs: { cav: 7, camel: 6 } }] }],
+  Vietnamese: [{ cls: 'archer', speed: 1.1, reload: 2, thumb: 0.85, cost: { w: 50, g: 45 }, tiers: [
+    { name: 'Rattan Archer', hp: 35, atk: 6, range: 4, acc: 80, melee: 0, pierce: 4, vs: { spear: 2 } },
+    { name: 'Elite Rattan Archer', hp: 40, atk: 7, range: 5, acc: 90, melee: 0, pierce: 6, vs: { spear: 2 } }] }],
+  Armenians:  [{ cls: 'archer', speed: 0.96, reload: 2, thumb: 0.85, cost: { w: 35, g: 45 }, ignoresPierceArmor: true, tiers: [
+    // Composite Bowman: attacks ignore the pierce armor of non-siege land units.
+    { name: 'Composite Bowman', hp: 40, atk: 4, range: 4, acc: 100, melee: 1, pierce: 0, vs: { spear: 2 } },
+    { name: 'Elite Composite Bowman', hp: 50, atk: 4, range: 4, acc: 100, melee: 2, pierce: 0, vs: { spear: 2 } }] }],
+  Wu:         [{ cls: 'archer', speed: 0.96, reload: 3.5, thumb: 0.85, cost: { w: 45, g: 45 }, note: 'Fires 3 arrows at units (AoE2 wiki). All 3 are counted at full damage, which is an assumption: the wiki lists the projectile count but not a separate damage for the extra arrows.', tiers: [
+    { name: 'Fire Archer', hp: 35, atk: 5, range: 5, acc: 80, melee: 0, pierce: 0, vs: { spear: 2, siege: 1 }, extra: [{ n: 2, dmg: 'main' }] },
+    { name: 'Elite Fire Archer', hp: 40, atk: 6, range: 6, acc: 85, melee: 0, pierce: 0, vs: { spear: 2, siege: 1 }, extra: [{ n: 2, dmg: 'main' }] }] }],
+  Tupi:       [{ cls: 'archer', speed: 1.1, reload: 1.5, thumb: 0.85, cost: { w: 40, g: 45 }, pairDiv: 2, note: 'Trained in pairs for half population each: stats are per archer, cost is half the pair.', tiers: [
+    { name: 'Blackwood Archer', hp: 20, atk: 4, range: 5, acc: 80, melee: 0, pierce: 0, vs: { spear: 2 } },
+    { name: 'Elite Blackwood Archer', hp: 25, atk: 4, range: 5, acc: 90, melee: 0, pierce: 0, vs: { spear: 2 } }] }],
+  Muisca:     [{ cls: 'skirm', speed: 1.15, reload: 3, thumb: 1, cost: { w: 50, g: 60 }, tiers: [
+    { name: 'Guecha Warrior', hp: 55, atk: 6, range: 3, acc: 90, melee: 0, pierce: 3, vs: { spear: 2, arch: 3 } },
+    { name: 'Elite Guecha Warrior', hp: 60, atk: 8, range: 4, acc: 90, melee: 0, pierce: 5, vs: { spear: 2, arch: 4 } }] }],
+};
+// Slinger: regional (Incas, Mapuche, Muisca, Tupi), single tier, no Elite.
+const ARCH_SLINGER = { name: 'Slinger', cls: 'slinger', hp: 35, atk: 4, range: 5, reload: 2, speed: 0.96, acc: 90, melee: 0, pierce: 0, thumb: 1, vs: { inf: 4, spear: 1, siege: 3 }, cost: { f: 50, w: 25 } };
+
+function archerStatsFor(cfg, u, ageLabel) {
+  const rank = AGE_RANK[ageLabel];
+  const has = t => !cfg.missing.includes(t);
+  const fletching = has('Fletching') && rank >= 1 ? 1 : 0;
+  const bodkin = has('Bodkin Arrow') && rank >= 2 ? 1 : 0;
+  const bracer = has('Bracer') && rank >= 3 ? 1 : 0;
+  const chemistry = rank >= 3 ? 1 : 0; // every civ has it
+  const padded = has('Padded Archer Armor') && rank >= 1 ? 1 : 0;
+  const leather = has('Leather Archer Armor') && rank >= 2 ? 1 : 0;
+  const ring = has('Ring Archer Armor') && rank >= 3 ? 1 : 0;
+  const thumbRing = has('Thumb Ring') && rank >= 2;
+  const archerCls = u.cls === 'archer', skirmCls = u.cls === 'skirm', slinger = u.cls === 'slinger';
+  const castle = rank >= 2, imperial = rank >= 3;
+  // Unique techs (first listed = Castle, second = Imperial) and civ bonuses.
+  const atkBonus = (cfg.bogsveigar && imperial && archerCls && u.line ? 1 : 0)
+    + (cfg.atlatl && castle && skirmCls && u.line ? 1 : 0)
+    + (cfg.andeanSling && castle && slinger ? 1 : 0);
+  const rangeBonus = (cfg.rangeByAge && archerCls ? (cfg.rangeByAge[ageLabel] || 0) : 0)
+    + (cfg.yeomen && castle && (archerCls || (skirmCls && u.line)) ? 1 : 0)
+    + (cfg.atlatl && castle && skirmCls && u.line ? 1 : 0)
+    + (cfg.huaracas && imperial && slinger ? 1 : 0);
+  const attack = u.atk + fletching + bodkin + bracer + chemistry + atkBonus;
+  const extras = (u.extra || []).map(e => ({ n: e.n, dmg: e.dmg === 'main' ? attack : e.dmg })); // dmg 'main' = a full-damage arrow
+  if (cfg.hulche && castle && skirmCls && u.line) extras.push({ n: 1, dmg: 1 }); // Hul'che Javelineers: a second 1-damage projectile, no upgrades
+  const extraTotal = extras.reduce((s, e) => s + e.n * e.dmg, 0);
+  const total = attack + extraTotal;
+  const range = u.range + fletching + bodkin + bracer + rangeBonus;
+  const footArmor = archerCls && cfg.footArmor ? cfg.footArmor : { melee: 0, pierce: 0 };
+  const meleeArmor = u.melee + padded + leather + ring + footArmor.melee + (cfg.meleeArmorByAge ? cfg.meleeArmorByAge[ageLabel] : 0) + (cfg.fabricShields && imperial && slinger ? 1 : 0);
+  const pierceArmor = u.pierce + padded + leather + 2 * ring + footArmor.pierce + (cfg.towerShields && imperial && skirmCls && u.line ? 2 : 0) + (cfg.fabricShields && imperial && slinger ? 1 : 0);
+  const reload = d2(u.reload * (thumbRing ? u.thumb : 1)
+    * (archerCls && cfg.footReloadMult ? cfg.footReloadMult : 1)
+    * (skirmCls && u.line && cfg.skirmReloadMult ? cfg.skirmReloadMult : 1)
+    * (cfg.caciques && castle && slinger ? 0.8 : 1));
+  const speed = d2(u.speed * (cfg.skirmSpeedMult && skirmCls && u.line ? cfg.skirmSpeedMult : 1) * (cfg.herbalism && castle && archerCls && u.line ? 1.15 : 1));
+  const hp = Math.round(u.hp * ((archerCls || skirmCls) && cfg.hpMult ? cfg.hpMult : 1)) + ((skirmCls && u.line) || slinger ? (cfg.hpByAge ? cfg.hpByAge[ageLabel] : 0) : 0);
+  // Cost: Mayans (foot archers, by age), Koreans (-50% wood on archers and
+  // skirmishers), Byzantines (skirmishers -25%), Portuguese (-20% gold),
+  // Gurjaras/Incas (food). Saxons' scaling discount and Persians' Kamandaran
+  // (gold becomes wood) are not modeled; Kamandaran leaves the total unchanged.
+  const all = archerCls && cfg.footCostByAge ? cfg.footCostByAge[ageLabel] : 1;
+  const byz = skirmCls && u.line && cfg.skirmCostMult ? cfg.skirmCostMult : 1;
+  const wood = (u.cost.w || 0) * (cfg.woodCostMult && (archerCls || skirmCls) ? cfg.woodCostMult : 1);
+  const gold = (u.cost.g || 0) * (cfg.goldCostMult || 1);
+  const food = (u.cost.f || 0) * ((skirmCls && u.line) || slinger ? (cfg.foodCostMult || (cfg.foodCostByAge ? cfg.foodCostByAge[ageLabel] : 1)) : 1);
+  const cost = d2((wood + gold + food) * all * byz / (u.pairDiv || 1));
+  const vs = u.vs || {};
+  const dps = d2(total / reload);
+  return {
+    hp, attack: total, attackLabel: extras.length ? `${attack}+${extras.map(e => `${e.n}×${e.dmg}`).join('+')}` : String(attack),
+    mainAttack: attack, extras, range, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps,
+    dpsVsInfantry: d2((total + (vs.inf || 0)) / reload), dpsVsRanged: d2((total + (vs.arch || 0)) / reload),
+    accuracy: thumbRing ? 100 : u.acc, cost, dpsPer100: d2(dps / cost * 100), vs, ignoresPierceArmor: !!u.ignoresPierceArmor,
+    attackVsSpearman: total + (vs.spear || 0), note: u.note || '',
+  };
+}
+function buildArcherRows(ageLabel) {
+  const rank = AGE_RANK[ageLabel];
+  const rows = [];
+  const add = (civ, cfg, u, kind) => rows.push({ line: u.name, civ, kind, ...archerStatsFor(cfg, u, ageLabel) });
+  for (const [civ, cfg] of Object.entries(ARCHER_CIVS)) {
+    const archKey = rank >= 3 ? cfg.tier : (rank >= 2 && cfg.tier !== 'archer' ? 'crossbowman' : 'archer');
+    add(civ, cfg, ARCH_UNITS[archKey], 'archers');
+    const skirmKey = rank <= 1 || cfg.noEliteSkirm ? 'skirmisher' : (rank >= 3 && civ === 'Vietnamese' ? 'imperialSkirmisher' : 'eliteSkirmisher');
+    add(civ, cfg, ARCH_UNITS[skirmKey], 'skirm');
+    if (rank >= 2) {
+      for (const uu of ARCH_UU[civ] || []) {
+        const common = { line: false, cls: uu.cls, speed: uu.speed, reload: uu.reload, thumb: uu.thumb, cost: uu.cost, pairDiv: uu.pairDiv, ignoresPierceArmor: uu.ignoresPierceArmor, note: uu.note };
+        add(civ, cfg, { ...common, ...uu.tiers[0] }, 'unique');
+        if (rank >= 3 && uu.tiers[1]) add(civ, cfg, { ...common, ...uu.tiers[1] }, 'unique');
+      }
+      if (cfg.slinger) add(civ, cfg, { ...ARCH_SLINGER, line: false }, 'unique');
+    }
+  }
+  return rows;
+}
+// Matchup fields. Same reference list as the CA/MCB table, with three
+// differences for foot archers: (1) Skirmishers and Guecha Warriors carry a
+// real bonus against the Archer class (read from data.json), which the
+// "Surv v. Skirmisher" column now includes since every row here is Archer
+// class; (2) damage is worked out arrow by arrow, so Chu Ko Nu's 3-damage extra
+// arrows are cut down by armor to a minimum of 1 each instead of being summed
+// into one big number; (3) per-unit bonus damage (Spearman +3, Genoese vs
+// Cavalry/Camel, Slinger vs Infantry/Siege, Skirmisher vs Archer) is added to
+// the first arrow. Composite Bowman ignores pierce armor on non-siege targets.
+function archerMatchupFields(row, refs) {
+  const hitTaken = (ref, armorKey, bonus = 0) => Math.max(1, ref.attack + bonus - row[armorKey]);
+  const survive = (ref, armorKey, bonus = 0) => ref ? d2(row.hp * ref.reload / hitTaken(ref, armorKey, bonus)) : undefined;
+  const volley = (armor, bonus, siege) => {
+    const a = row.ignoresPierceArmor && !siege ? 0 : armor;
+    return Math.max(1, row.mainAttack + bonus - a) + row.extras.reduce((s, e) => s + e.n * Math.max(1, e.dmg - a), 0);
+  };
+  const kill = (ref, bonus = 0, siege = false) => ref ? d2(ref.hp * row.reload / volley(ref.pierceArmor, bonus, siege)) : undefined;
+  const skirmBonus = refs.skirmisher ? (refs.skirmisher.tierName === 'Skirmisher' ? 3 : 4) : 0;
+  const v = row.vs || {};
+  return {
+    survArcher: survive(refs.archer, 'pierceArmor'),
+    survSkirmisher: survive(refs.skirmisher, 'pierceArmor', skirmBonus),
+    survCamel: survive(refs.camel, 'meleeArmor'),
+    survKnight: survive(refs.knight, 'meleeArmor'),
+    survMangonel: survive(refs.mangonel, 'meleeArmor'),
+    killSpearman: kill(refs.spearman, v.spear || 0),
+    killMilitia: kill(refs.militia, v.inf || 0),
+    killArcher: kill(refs.archer, v.arch || 0),
+    killSkirmisher: kill(refs.skirmisher, v.arch || 0),
+    killCamel: kill(refs.camel, v.camel || 0),
+    killKnight: kill(refs.knight, v.cav || 0),
+    killMangonel: kill(refs.mangonel, v.siege || 0, true),
+  };
+}
+// Feudal-safe column headers: at Feudal there is no Camel/Knight/Mangonel
+// reference yet, and buildCAMatchupCols (CA table, Castle and up) assumes there is.
+function buildArcherMatchupCols(refs) {
+  const nm = (ref, fallback) => ref ? ref.tierName : fallback;
+  return [
+    ['survArcher', `Surv v.<br>${refs.archer.tierName}`, true],
+    ['killArcher', `Kill<br>${refs.archer.tierName}`, true],
+    ['survSkirmisher', `Surv v.<br>${refs.skirmisher.tierName}`, true],
+    ['killSkirmisher', `Kill<br>${refs.skirmisher.tierName}`, true],
+    ['survCamel', `Surv v.<br>${nm(refs.camel, 'Camel-line')}`, true],
+    ['killCamel', `Kill<br>${nm(refs.camel, 'Camel-line')}`, true],
+    ['survKnight', `Surv v.<br>${nm(refs.knight, 'Knight-line')}`, true],
+    ['killKnight', `Kill<br>${nm(refs.knight, 'Knight-line')}`, true],
+    ['survMangonel', `Surv v.<br>${nm(refs.mangonel, 'Mangonel-line')}`, true],
+    ['killMangonel', `Kill<br>${nm(refs.mangonel, 'Mangonel-line')}`, true],
+    ['killSpearman', `Kill<br>${refs.spearman.tierName}`, true],
+    ['killMilitia', `Kill<br>${refs.militia.tierName}`, true],
+  ];
+}
+const ARCHER_WEIGHTED_CATEGORIES = [
+  ['avgDefPer100', 'Defense / 100 res', 1.0],
+  ['avgOffPer100', 'Offense / 100 res', 1.0],
+  ['speed', 'Speed', 0.4],
+];
+const ARCHER_WEIGHTED_CATEGORIES_POP = [
+  ['avgSurv', 'Defense (raw)', 1.0],
+  ['avgKill', 'Offense (raw)', 1.0],
+  ['speed', 'Speed', 0.4],
+];
+let archerSort = { key: 'rankWtd', dir: 1 };
+let archerAgeKey = 'imperial';
+let archerColMode = 'stats';
+let archerRankMode = 'cost';
+let archerMatchupExpanded = false;
+function renderAllMaxedArchersTable() {
+  const tableEl = document.getElementById('all-maxed-archers-table');
+  if (!tableEl) return;
+  const enabledTypes = new Set([...document.querySelectorAll('.archer-type-toggle.on')].map(b => b.dataset.type));
+  const ageLabel = MELEE_AGE_LABEL[archerAgeKey];
+  const refs = computeCAMatchupRefs(archerAgeKey);
+  let fullRows = buildArcherRows(ageLabel).map(r => ({ ...r, ...archerMatchupFields(r, refs) }));
+  const avgSurv = avgNormalized(fullRows, CA_SURV_KEYS, true);
+  const avgKill = avgNormalized(fullRows, CA_KILL_KEYS, false);
+  fullRows = fullRows.map((r, i) => ({ ...r, avgSurv: avgSurv[i], avgKill: avgKill[i] }));
+  fullRows = attachPer100Fields(fullRows, CA_SURV_KEYS, CA_KILL_KEYS);
+  const avgDefPer100 = avgNormalized(fullRows, CA_SURV_KEYS.map(k => k + 'Per100'), true);
+  const avgOffPer100 = avgNormalized(fullRows, CA_KILL_KEYS.map(k => k + 'Per100'), true);
+  fullRows = fullRows.map((r, i) => ({ ...r, avgDefPer100: avgDefPer100[i], avgOffPer100: avgOffPer100[i] }));
+  const categories = archerRankMode === 'pop' ? ARCHER_WEIGHTED_CATEGORIES_POP : ARCHER_WEIGHTED_CATEGORIES;
+  const ranked = computeWeightedRanking(fullRows, categories);
+  const rows = fullRows.map((r, i) => ({ ...r, rankWtd: ranked[i].weightedRank })).filter(r => enabledTypes.has(r.kind));
+  if (!rows.length) {
+    tableEl.innerHTML = `<tbody><tr><td style="padding:14px;color:var(--text3);">Nothing selected: turn on at least one unit group.</td></tr></tbody>`;
+    return;
+  }
+  const { key, dir } = archerSort;
+  rows.sort((a, b) => {
+    if (key === 'civ' || key === 'line') return a[key].localeCompare(b[key]) * dir || a.civ.localeCompare(b.civ);
+    return (a[key] - b[key]) * dir || a.civ.localeCompare(b.civ) || a.line.localeCompare(b.line);
+  });
+  const showStats = archerColMode !== 'matchup';
+  const summaryCols = categories.map(([k, label]) => [k, label, true]);
+  const extraCols = showStats ? [] : (archerMatchupExpanded ? buildArcherMatchupCols(refs) : summaryCols);
+  document.querySelectorAll('.archer-matchup-expand-btn').forEach(btn => { btn.hidden = showStats; });
+  const cols = [...CA_BASE_COLS, CA_RANK_COL, ...(showStats ? CA_STAT_COLS : extraCols)];
+  const thead = `<thead><tr>${cols.map(([k, label, sortable]) => `<th class="${sortable || k === 'civ' || k === 'line' ? 'num sortable' : 'num'}" data-sort-key="${k}">${label}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>`;
+  const pill = { archers: 'wood', skirm: 'food', unique: 'gold' };
+  const tbody = rows.map((r, i) => `<tr>
+    <td class="num">${i + 1}</td>
+    <td>🏹 <span class="res-pill ${pill[r.kind]}">${r.line}</span></td>
+    <td>${r.civ}${r.note ? ` <span title="${r.note}" style="color:var(--text3);cursor:help;">*</span>` : ''}</td>
+    <td class="num" style="font-weight:${key === 'rankWtd' ? 700 : 400};">${r.rankWtd}</td>
+    ${showStats ? `
+    <td class="num">${r.hp}</td><td class="num">${r.attackLabel}</td>
+    <td class="num">${r.meleeArmor}/${r.pierceArmor}</td>
+    <td class="num">${r.range}</td><td class="num">${r.speed}</td>
+    <td class="num">${r.reload}s</td>
+    <td class="num" style="font-weight:${key === 'dps' ? 700 : 400};">${r.dps}</td>
+    <td class="num">${r.dpsVsInfantry}</td>
+    <td class="num">${r.dpsVsRanged}</td>
+    <td class="num">${r.accuracy}%</td>
+    <td class="num">${r.cost}</td>
+    <td class="num" style="font-weight:${key === 'dpsPer100' ? 700 : 400};">${r.dpsPer100}</td>` : ''}
+    ${extraCols.map(([k]) => `<td class="num" style="font-weight:${key === k ? 700 : 400};">${r[k] ?? '—'}</td>`).join('')}
+  </tr>`).join('');
+  tableEl.innerHTML = thead + `<tbody>${tbody}</tbody>`;
+  tableEl.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const k = th.dataset.sortKey;
+      archerSort = { key: k, dir: archerSort.key === k ? -archerSort.dir : (k === 'civ' || k === 'line' ? 1 : -1) };
+      renderAllMaxedArchersTable();
+    });
+  });
+}
+document.querySelectorAll('.archer-type-toggle').forEach(btn => btn.addEventListener('click', () => { btn.classList.toggle('on'); renderAllMaxedArchersTable(); }));
+document.querySelectorAll('.archer-age-toggle-btn').forEach(btn => btn.addEventListener('click', () => {
+  archerAgeKey = btn.dataset.age;
+  document.querySelectorAll('.archer-age-toggle-btn').forEach(b => b.classList.toggle('on', b === btn));
+  renderAllMaxedArchersTable();
+}));
+document.querySelectorAll('.archer-col-mode-pill button').forEach(btn => btn.addEventListener('click', () => {
+  archerColMode = btn.dataset.mode;
+  document.querySelectorAll('.archer-col-mode-pill button').forEach(b => b.classList.toggle('on', b === btn));
+  renderAllMaxedArchersTable();
+}));
+document.querySelectorAll('.archer-rank-mode-pill button').forEach(btn => btn.addEventListener('click', () => {
+  archerRankMode = btn.dataset.rank;
+  document.querySelectorAll('.archer-rank-mode-pill button').forEach(b => b.classList.toggle('on', b === btn));
+  archerSort = { key: 'rankWtd', dir: 1 };
+  renderAllMaxedArchersTable();
+}));
+document.querySelectorAll('.archer-matchup-expand-btn').forEach(btn => btn.addEventListener('click', () => {
+  archerMatchupExpanded = !archerMatchupExpanded;
+  btn.textContent = archerMatchupExpanded ? '▾ Collapse' : '▸ Expand';
+  renderAllMaxedArchersTable();
+}));
+renderAllMaxedArchersTable();
 
 // Unit Stats toggle (2026-09-17, site owner request) — Base/Castle techs/
 // Imperial techs, applying every tech available by that age to a generic
