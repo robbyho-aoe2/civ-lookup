@@ -792,13 +792,17 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
 
     <section id="civs" class="card">
       <h2>Civ Leaderboard by Bracket</h2>
-      <p class="desc">Pick rate and win rate per civ, split by console skill bracket.${updatedLabel(civsData.lastUpdated)}</p>
+      <p class="desc">Pick rate and win rate per civ, split by skill bracket (console players by default; the PC buttons switch to tracked PC players).${updatedLabel(civsData.lastUpdated)}</p>
+      <p class="desc" id="civ-bracket-note" hidden>PC ratings run higher, so the PC brackets use higher cutoffs: Low under 1200, Lo-Mid 1200-1599, Hi-Mid 1600-1999, High 2000+.</p>
       <div class="card-peek" id="civs-peek">
       <div class="civ-controls">
         <div class="civ-ladder-toggle" id="civ-ladder-toggle">
           <button data-ladder="all" class="on">All Console</button>
           <button data-ladder="1v1 Console">1v1</button>
-          <button data-ladder="Team Console">Team</button>
+          <button data-ladder="Team Console">Team</button>${civsData.pc ? `
+          <button data-ladder="pc" class="pc-start">All PC</button>
+          <button data-ladder="1v1 PC">PC 1v1</button>
+          <button data-ladder="Team PC">PC Team</button>` : ''}
         </div>
         <input type="text" class="civ-search" id="civ-search" placeholder="Search civs…">
         <span class="civ-legend">Click a column to sort</span>
@@ -1164,13 +1168,15 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
 
   function civSourceFor(ladder) {
     if (ladder === 'all') return { overall: civsData.overall, brackets: civsData.brackets };
-    const d = civsData.ladders[ladder];
+    if (ladder === 'pc') return { overall: civsData.pc.overall, brackets: civsData.pc.brackets };
+    const d = (ladder.endsWith('PC') ? civsData.pc.ladders : civsData.ladders)[ladder];
     return { overall: d.overall, brackets: d.brackets };
   }
 
   function buildCivRows(ladder) {
     const src = civSourceFor(ladder);
-    return Object.keys(civsData.overall).sort().map(name => {
+    const isPc = ladder === 'pc' || ladder.endsWith('PC');
+    return Object.keys(isPc ? civsData.pc.overall : civsData.overall).sort().map(name => {
       const row = { name, overall: src.overall[name] || { games: 0, wins: 0, pickRate: 0 } };
       bracketKeys.forEach(k => {
         const d = (src.brackets[k] || {})[name] || { games: 0, wins: 0, pickRate: 0 };
@@ -1281,6 +1287,8 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       civLadder = btn.dataset.ladder;
       document.querySelectorAll('#civ-ladder-toggle button').forEach(b => b.classList.toggle('on', b === btn));
       civRows = buildCivRows(civLadder);
+      const note = document.getElementById('civ-bracket-note');
+      if (note) note.hidden = !(civLadder === 'pc' || civLadder.endsWith('PC'));
       renderCivTable();
     });
   });
