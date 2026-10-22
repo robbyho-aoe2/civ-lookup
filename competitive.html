@@ -672,7 +672,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
         Rosters can be any size, four play at a time, and players can play every set.
       </p>
       <p class="standings-note" style="margin:6px 0 12px">
-        <b>This report updates to current records.</b> The title odds (reach the final, then win it), series odds and each player's rating adjustment include every game played so far (26 games, through Oct 20, 2026). Finished games show their real result in the series table below.
+        <b>This report updates to current records.</b> The title odds (reach the final, then win it), series odds and each player's rating adjustment include every game played so far (26 games, through Oct 22, 2026). Finished games show their real result in the series table below.
       </p>
       <h3 class="sub-heading">Title odds</h3>
       <p class="desc">The two teams with the most points after the round robin meet in the final, so the title is won in two steps: finish top two, then win the final. A tied final is counted as a coin flip.</p>
@@ -778,7 +778,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
-    <div class="version">v1.79</div>
+    <div class="version">v1.80</div>
   </div>
 </div>
 
@@ -1121,7 +1121,7 @@ if (schedEl) schedEl.innerHTML = SCHEDULED_GAMES.length
 const PREGAME = {
   pairs: {"mexico|usa": [0.39, 0.25, 0.24, 0.24], "mexico|france": [0.91, 0.5, 0.46, 0.5], "mexico|canada": [0.46, 0.38, 0.39, 0.42], "mexico|uk": [0.56, 0.43, 0.4, 0.42], "mexico|ps5": [0.8, 0.65, 0.67, 0.69], "usa|france": [0.94, 0.75, 0.74, 0.75], "usa|canada": [0.57, 0.65, 0.67, 0.69], "usa|uk": [0.66, 0.7, 0.68, 0.69], "usa|ps5": [0.86, 0.86, 0.87, 0.87], "france|canada": [0.07, 0.4, 0.43, 0.41], "france|uk": [0.11, 0.44, 0.44, 0.41], "france|ps5": [0.27, 0.66, 0.7, 0.68], "canada|uk": [0.6, 0.56, 0.52, 0.5], "canada|ps5": [0.82, 0.76, 0.76, 0.74], "uk|ps5": [0.76, 0.72, 0.75, 0.76]},
   played: {"canada|ps5|1v1": 0.81, "canada|ps5|2v2": 0.679, "usa|mexico|1v1": 0.728, "usa|mexico|2v2": 0.838, "usa|mexico|4v4": 0.749, "usa|mexico|3v3": 0.755, "uk|france|1v1": 0.871, "uk|france|2v2": 0.364, "uk|france|3v3": 0.577, "uk|france|4v4": 0.502, "canada|ps5|3v3": 0.672, "canada|ps5|4v4": 0.718, "usa|france|1v1": 0.851, "usa|france|2v2": 0.723, "usa|france|3v3": 0.754, "usa|france|4v4": 0.622, "canada|mexico|1v1": 0.545, "uk|ps5|1v1": 0.836, "uk|ps5|2v2": 0.501, "uk|ps5|3v3": 0.676, "uk|ps5|4v4": 0.666, "canada|mexico|2v2": 0.783, "canada|mexico|3v3": 0.653, "canada|mexico|4v4": 0.707, "mexico|ps5|1v1": 0.752, "mexico|ps5|2v2": 0.412},
-  planned: {}
+  planned: {"mexico|ps5|3v3": {"p": 0.666, "map": "Arena", "confirmed": false, "players": {"mexico": ["UxLiho", "UxDora", "RKs Raggz"], "ps5": ["ItsGutsAoE", "CrustyPotato313", "Prop1aNea"]}}, "mexico|ps5|4v4": {"p": 0.688, "map": "Steppe", "confirmed": false, "players": {"mexico": ["UxLiho", "UxDora", "RKs Raggz", "Cristiano102277"], "ps5": ["BillieDown", "ItsGutsAoE", "CrustyPotato313", "Prop1aNea"]}}}
 };
 // END ODDS
 // Chance that team a wins the game of this format, from the scouting simulation (null if unknown).
