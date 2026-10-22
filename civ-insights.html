@@ -471,7 +471,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <div class="card">
       <h2><img class="arch-icon" src="img/icons/archer.png" alt="" style="width:24px;height:24px"> All Maxed Archers</h2>
       <p class="desc">Every civ's Archer and Skirmisher lines at their max tier, plus unique and regional archers (Elite as a second row at Imperial). Click a header to sort.</p>
-      <p class="desc" style="color:var(--text3)"><b>Rank</b>: matchup Defense + Offense (weight 1 each) + Range edge over the Arbalester (0.5, capped at ±2 tiles) + Speed (0.2), against the Arbalester, Skirmisher, Hussar and Paladin (survive and kill) and the Militia-line (kill). Cost Efficient (default) divides by cost; Pop Efficient ignores it. Matchup shows the breakdown, Expand each matchup.</p>
+      <p class="desc" style="color:var(--text3)"><b>Rank</b>: matchup Defense + Offense (weight 1 each) + Range, scored as the edge over the Arbalester (0.5, capped at ±2 tiles) + Speed (0.2), against the Arbalester, Skirmisher, Hussar and Paladin (survive and kill) and the Militia-line (kill). Cost Efficient (default) divides by cost; Pop Efficient ignores it. Matchup shows the breakdown, Expand each matchup.</p>
       <p class="desc" style="color:var(--text3)">Civ bonuses are modeled except Bolt Magazine, Curare, Malon, Lamellar Armor and the Saxon discount. * marks an assumption: the Fire Archer's 3 arrows count at full damage, Blackwood Archers are per archer at half the pair's cost.</p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
         <button class="archer-age-toggle-btn toggle-btn" data-age="feudal">Feudal</button>
@@ -684,7 +684,7 @@ select:focus{outline:none;border-color:var(--amber);}
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span> &nbsp;·&nbsp;
     Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
     <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
-    <div class="version">v1.92</div>
+    <div class="version">v1.93</div>
   </div>
 </div>
 
@@ -4524,7 +4524,8 @@ function renderAllMaxedArchersTable() {
     return (a[key] - b[key]) * dir || a.civ.localeCompare(b.civ) || a.line.localeCompare(b.line);
   });
   const showStats = archerColMode !== 'matchup';
-  const summaryCols = categories.map(([k, label]) => [k, label, true]);
+  // The ranking scores the capped range EDGE, but the table shows the actual range.
+  const summaryCols = categories.map(([k, label]) => k === 'rangeEdge' ? ['range', 'Range', true] : [k, label, true]);
   const extraCols = showStats ? [] : (archerMatchupExpanded ? buildArcherMatchupCols(refs) : summaryCols);
   document.querySelectorAll('.archer-matchup-expand-btn').forEach(btn => { btn.hidden = showStats; });
   const cols = [...CA_BASE_COLS, CA_RANK_COL, ...(showStats ? CA_STAT_COLS : extraCols)];
