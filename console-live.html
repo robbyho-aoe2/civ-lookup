@@ -282,6 +282,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
       <label id="lab-plat">Platform <select id="plat"><option value="all">Xbox and PlayStation</option><option value="X">Xbox only</option><option value="P">PlayStation only</option></select></label>
       <label>Map <select id="map-sel"></select></label>
       <label><input type="checkbox" id="opt-lobbies"> Show lobbies</label>
+      <label title="Games and lobbies where the two sides' average ratings are nearest each other come first"><input type="checkbox" id="opt-closest"> Sort by closest</label>
     </div>
   </div>
 
@@ -334,7 +335,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
-    <div class="version">v0.19</div>
+    <div class="version">v0.20</div>
   </div>
 </div>
 
@@ -805,6 +806,13 @@ function renderScout() {
   const html = scoutCard();
   el.hidden = !html; el.innerHTML = html;
 }
+// How uneven a game is: the rating gap between the two sides' averages (1v1: the two players). With more than two sides it is
+// the gap between the highest and lowest side, and a game with no ratings or only one side sorts last.
+function ratingGap(pl) {
+  const avgs = groupTeams(pl).map(t => t.filter(p => p.rating > 0)).filter(t => t.length).map(t => t.reduce((a, p) => a + p.rating, 0) / t.length);
+  return avgs.length > 1 ? Math.max(...avgs) - Math.min(...avgs) : Infinity;
+}
+const byClosest = (a, b) => (a.gap === b.gap ? 0 : a.gap - b.gap) || b.avg - a.avg;   // Infinity - Infinity would be NaN
 function gameCard(m) {
   const pl = matchPlayers(m), size = groupTeams(pl).map(t => t.length).join('v'), avg = avgRating(pl);
   return `<div class="game" data-started="${esc(m.started)}"><div class="g-info">${m.mapImageUrl ? `<img class="g-map" src="${esc(m.mapImageUrl)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<div class="g-map"></div>'}` +
@@ -841,7 +849,8 @@ function render() {
     if (kindsOf()[gameKind(m)] === false) return false;   // a setting saved before a pill existed counts as on
     if (!mapOk(mapGroup(m))) return false;
     return matchPlayers(m).some(p => watchedSet.has(p.profileId));
-  }).sort((a, b) => (avgRating(matchPlayers(b)) || 0) - (avgRating(matchPlayers(a)) || 0));
+  }).sort((a, b) => cfg.closest ? byClosest({ gap: ratingGap(matchPlayers(a)), avg: avgRating(matchPlayers(a)) || 0 }, { gap: ratingGap(matchPlayers(b)), avg: avgRating(matchPlayers(b)) || 0 })
+    : (avgRating(matchPlayers(b)) || 0) - (avgRating(matchPlayers(a)) || 0));
   $('games').innerHTML = games.length ? games.map(gameCard).join('') :
     `<div class="empty">${cfg.preset === 'followed' ? (watched.length ? 'Nobody you follow is in a game right now.' : 'Follow some players above, or tap a Nations Cup team, and their games show up here as they happen.') : `No games right now with players in your range. ${watched.length ? `Watching ${watched.length} players.` : 'No players match these filters.'}`}</div>`;
   $('games-title').textContent = `Games right now (${games.length})`;
@@ -849,6 +858,7 @@ function render() {
   $('lobbies-wrap').hidden = !cfg.lobbies;
   if (cfg.lobbies) {
     const ids = [...lobbySlots.keys()].filter(id => !matches.has(id) && lobbySlots.get(id).size && (!lobbyInfo.get(id) || !lobbyInfo.get(id).started) && mapOk(MAP_OTHER));   // lobbies are custom games
+    if (cfg.closest) { const key = id => { const pl = lobbyPlayers(id); return { id, gap: ratingGap(pl), avg: avgRating(pl) || 0 }; }; ids.splice(0, ids.length, ...ids.map(key).sort(byClosest).map(k => k.id)); }
     $('lobbies').innerHTML = ids.length ? ids.map(lobbyCard).join('') : '<div class="empty">No open lobbies with players in your range. Console lobbies often do not show up in aoe2companion\'s lobby list, so this stays empty most of the time.</div>';
     $('lobbies-title').textContent = `Open lobbies (${ids.length})`;
   }
@@ -966,7 +976,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { gam
 // ---- controls ----
 function syncInputs() {
   ['min1', 'max1', 'minT', 'maxT'].forEach(k => { $(k).value = cfg[k]; });
-  $('plat').value = cfg.plat; $('opt-lobbies').checked = cfg.lobbies; $('map-sel').value = cfg.map || 'all';
+  $('plat').value = cfg.plat; $('opt-lobbies').checked = cfg.lobbies; $('opt-closest').checked = !!cfg.closest; $('map-sel').value = cfg.map || 'all';
   document.querySelectorAll('#presets .btn').forEach(b => b.classList.toggle('on', b.dataset.preset === cfg.preset));
   document.querySelectorAll('#kinds .btn').forEach(b => b.classList.toggle('on', kindsOf()[b.dataset.kind] !== false));
   const f = cfg.preset === 'followed';
@@ -988,6 +998,7 @@ $('plat').addEventListener('change', () => { cfg.plat = $('plat').value; changed
 $('map-sel').innerHTML = '<option value="all">All maps</option>' + MAP_POOL.map(n => `<option value="${n}">${n}</option>`).join('') + `<option value="${MAP_OTHER}">Other (customs)</option>`;
 $('map-sel').value = cfg.map || 'all';
 $('map-sel').addEventListener('change', () => { cfg.map = $('map-sel').value; save(); render(); });
+$('opt-closest').addEventListener('change', () => { cfg.closest = $('opt-closest').checked; save(); render(); });
 $('opt-lobbies').addEventListener('change', () => { cfg.lobbies = $('opt-lobbies').checked; save(); connect(); });
 // ---- "My level": search for your player like Player Spotlight does, then use your live console ratings ----
 const loadMe = () => { try { const v = JSON.parse(localStorage.getItem(ME_KEY) || 'null'); return v && v.id ? v : null; } catch (e) { return null; } };
