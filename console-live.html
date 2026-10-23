@@ -151,6 +151,8 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
 .g-links{font-size:11px;margin-top:3px;}
 .g-links a{color:var(--text2);text-decoration:none;}
 .g-links a:hover{color:var(--amberL);}
+.g-links .g-spec{margin-left:10px;}
+@media (pointer:coarse),(max-width:820px){.g-links .g-spec{display:none;}}   /* the link only works on a PC with the game installed */
 
 @media (max-width:760px){
   .wrap{padding:20px 16px 50px;}
@@ -285,11 +287,11 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
-    <div class="version">v0.22</div>
+    <div class="version">v0.23</div>
   </div>
 </div>
 
-<script src="scout.js?v=5"></script>
+<script src="scout.js?v=6"></script>
 <script>
 // Self-contained per this site's convention. A tracked list of console players (data/console-roster.json) decides
 // who to watch from the rating filter; aoe2companion's live socket is then asked only for those players' games and
@@ -480,7 +482,7 @@ function gameCard(m) {
   return `<div class="game" data-started="${esc(m.started)}"><div class="g-info">${m.mapImageUrl ? `<img class="g-map" src="${esc(m.mapImageUrl)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<div class="g-map"></div>'}` +
     `<div class="g-title"><b>${esc(m.mapName || 'Unknown map')}</b><span>${esc(size)}${avg ? ' · avg ' + avg : ''}</span><span class="g-badge">${esc(ladderLabel(m))}</span>` +
     `<span><span class="g-timer">${clock(Date.now() - Date.parse(m.started))}</span> into the game</span>` +
-    `<span class="g-links"><a href="https://www.aoe2insights.com/match/${m.matchId}/" target="_blank" rel="noopener">↗ Insights</a></span></div></div>${sidesHtml(pl)}${cardOdds(m, pl)}${h2hHtml(m, pl)}${cardScout(m, pl)}</div>`;
+    `<span class="g-links"><a href="https://www.aoe2insights.com/match/${m.matchId}/" target="_blank" rel="noopener">↗ Insights</a><a class="g-spec" href="aoe2de://1/${m.matchId}" title="Opens the game to spectate in Age of Empires II on a PC where it is installed (the same link Insights uses)">▶ Spectate on PC</a></span></div></div>${sidesHtml(pl)}${cardOdds(m, pl)}${h2hHtml(m, pl)}${cardScout(m, pl)}</div>`;
 }
 function lobbyPlayers(id) {
   const info = lobbyInfo.get(id);
