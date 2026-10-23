@@ -106,6 +106,9 @@ header .back:hover{color:var(--amberL);}
 .mc-d.dn{color:var(--red);}
 .mc-more{display:block;margin:6px auto 0;padding:8px 18px;background:var(--surf2);border:1px solid var(--border2);border-radius:20px;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;}
 .mc-more:hover{color:var(--amberL);border-color:var(--amber);}
+.mc-scoutrow{grid-column:1/-1;}
+.mc-scoutbtn{font:inherit;font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px;border:1px solid var(--border2);background:var(--surf);color:var(--amberL);cursor:pointer;}
+.mc-scoutbtn:hover{border-color:var(--amber);}
 .rows-more{display:block;margin:8px auto 0;padding:6px 16px;background:var(--surf2);border:1px solid var(--border2);border-radius:20px;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;}
 .rows-more:hover{color:var(--amberL);border-color:var(--amber);}
 .mc-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:6px;}
@@ -272,9 +275,15 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
   </div>
 </div>
 
+<script src="scout.js?v=1"></script>
 <script>
 const PLAYER_DATA_BASE = 'https://raw.githubusercontent.com/robbyho-aoe2/player-data/main/data';
 const svgNS = 'http://www.w3.org/2000/svg';
+// what scout.js (the scouting report engine shared with Console Live) expects from the page
+const API = 'https://data.aoe2companion.com/api';
+const esc = s => escapeHtml(s == null ? '' : s);
+let scoutRedraw = () => {};
+function queueRender() { scoutRedraw(); }
 const params = new URLSearchParams(location.search);
 const profileId = params.get('id'); // null -> landing page instead of a specific player
 let ALL_TRACKED = []; // meta.players, kept around for search + similar-players + the landing page
@@ -1181,7 +1190,7 @@ function render(content, entry, player) {
     });
   });
 
-  const RS = { raws: [], seen: new Set(), page: 0, done: false, failed: false, loading: false, bulk: false, stop: false, ladder: 'All', open: new Set(), expanded: false };
+  const RS = { raws: [], seen: new Set(), page: 0, done: false, failed: false, loading: false, bulk: false, stop: false, ladder: 'All', open: new Set(), expanded: false, scout: new Set() };
   loadRecentPages(2);
 
   function renderLadder(ladderName) {
@@ -1254,28 +1263,11 @@ function render(content, entry, player) {
     PSN: '<svg class="mc-plat" viewBox="0 0 16 16" role="img" aria-label="PlayStation"><title>PlayStation</title><rect width="16" height="16" rx="4" fill="#0070D1"/><text x="8" y="11.2" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="8.5" fill="#fff">PS</text></svg>',
   };
   const platIcon = id => PLATFORM_ICONS[PLATFORMS_MAP[String(id)]] || '';
+  window.platIcon = platIcon;
   const PLAYER_COLOR_NAMES = { 1: 'Blue', 2: 'Red', 3: 'Green', 4: 'Yellow', 5: 'Cyan', 6: 'Pink', 7: 'Gray', 8: 'Orange' };
   // Pre-game win chance for ranked console games, from the ratings each player had when the game started and the civs they
-  // played. Same logistic model as Console Live's scouting report, fitted on 37,908 recent console 1v1s and 25,664 team games:
-  //   1v1:  x = 3.006 * rating gap / 400 + 0.672 * civ strength gap
-  //   team: x = 3.741 * average rating gap / 400 + 1.425 * average civ strength gap + 0.533 * best-player gap / 400
-  // Civ strength is the civ's win rate in the matching rating bracket (Insights data, shrunk toward 50%). Individual form on
-  // the map and civ is left out here (it would need each player's older games), so a Console Live odds figure can differ a bit.
-  let CIV_STATS = null, civStatsBusy = false;
-  function loadCivStats() {
-    if (CIV_STATS || civStatsBusy) return;
-    civStatsBusy = true;
-    fetch(`${PLAYER_DATA_BASE}/insights-console-civs.json`).then(r => r.json()).then(j => { CIV_STATS = j; renderRecentMatches(); })
-      .catch(() => { CIV_STATS = { ladders: {} }; }).finally(() => { civStatsBusy = false; });
-  }
-  const ratingBracket = r => (r >= 1700 ? 'high' : r >= 1300 ? 'himid' : r >= 900 ? 'lomid' : 'low');
-  const CIV_NORM_MAP = { Mayans: 'Maya', Inca: 'Incas', Indians: 'Hindustanis' };
-  function civStrength(civ, rating, ladder) {
-    if (!civ || !CIV_STATS) return null;
-    const d = (((CIV_STATS.ladders || {})[ladder] || {}).brackets || {})[ratingBracket(rating)] || {}, c = d[CIV_NORM_MAP[civ] || civ];
-    return ((c ? c.wins : 0) + 10) / ((c ? c.games : 0) + 20);
-  }
-  const logit = q => Math.log(q / (1 - q));
+  // played, using the model in scout.js (fitted on recent console games, see there). Each player's form on the map and with the
+  // civ is left out here; the scouting report on the card adds it.
   function preGameOdds(raw, me) {
     const lb = raw.leaderboardId;
     if (lb !== 'rm_1v1_console' && lb !== 'rm_team_console') return null;
@@ -1283,24 +1275,14 @@ function render(content, entry, player) {
     if (teams.length !== 2) return null;
     const mine = teams.find(t => t.players.some(p => p.profileId === me)), theirs = teams.find(t => t !== mine);
     if (!mine || !theirs || mine.players.length !== theirs.players.length) return null;
-    const all = mine.players.concat(theirs.players);
-    if (!all.every(p => p.rating > 0)) return null;
+    if (!mine.players.concat(theirs.players).every(p => p.rating > 0)) return null;
     loadCivStats();
-    const avg = a => a.reduce((t, p) => t + p.rating, 0) / a.length, mx = a => Math.max(...a.map(p => p.rating)), mean = all.map(p => p.rating).reduce((a, b) => a + b, 0) / all.length;
-    const ladder = lb === 'rm_1v1_console' ? '1v1 Console' : 'Team Console';
-    let x = lb === 'rm_1v1_console' ? 3.006 * (avg(mine.players) - avg(theirs.players)) / 400
-      : 3.741 * (avg(mine.players) - avg(theirs.players)) / 400 + 0.533 * (mx(mine.players) - mx(theirs.players)) / 400;
-    const sa = mine.players.map(p => civStrength(p.civName, mean, ladder)), sb = theirs.players.map(p => civStrength(p.civName, mean, ladder));
-    if (sa.every(v => v != null) && sb.every(v => v != null)) {
-      const m = a => a.reduce((t, q) => t + logit(q), 0) / a.length;
-      x += (lb === 'rm_1v1_console' ? 0.672 : 1.425) * (m(sa) - m(sb));
-    }
-    return 1 / (1 + Math.exp(-x));
+    return lb === 'rm_1v1_console' ? oddsFor('1v1', mine.players[0], theirs.players[0], null, null, '').p : oddsTeam(mine.players, theirs.players).p;
   }
   function oddsMeta(raw, me, won) {
     const q = preGameOdds(raw, me);
     if (q == null) return '';
-    const pc = Math.round(q * 100);
+    const pc = pctShow(q);
     const tag = won === true && q <= 0.35 ? ' · <b class="mc-up">upset win</b>' : won === false && q >= 0.65 ? ' · <b class="mc-dn">upset loss</b>' : '';
     return `<span class="mc-odds" title="Win chance before the game, from both sides' ratings at the time and the civs played. Fitted on recent console games.">Pre-game odds: ${pc}%${tag}</span>`;
   }
@@ -1339,12 +1321,16 @@ function render(content, entry, player) {
       const w = t.players.some(p => p.won === true) ? 'win' : t.players.some(p => p.won === false) ? 'loss' : '';
       return `<span class="mc-vs" style="grid-column:1/-1;text-align:center">VS</span><div class="mc-team mc-wide ${w}">${t.players.map(playerRow).join('')}</div>`;
     }).join('');
+    const scoutable = mine && (raw.leaderboardId === 'rm_1v1_console' || raw.leaderboardId === 'rm_team_console') && teams.length === 2 && raw.started;
+    const scoutOpen = scoutable && RS.scout.has(raw.matchId);
+    const scoutHtml = !scoutable ? '' : `<div class="mc-scoutrow"><button type="button" class="mc-scoutbtn" data-id="${raw.matchId}">${scoutOpen ? 'Hide scouting report' : 'Scouting report'}</button></div>` +
+      (scoutOpen ? scoutReport({ m: raw, pl: teams.flatMap(t => t.players), mine, asOf: Date.parse(raw.started), subject: true }, false) : '');
     return `<div class="mc ${won === true ? 'win' : won === false ? 'loss' : ''}">` +
       `<div class="mc-info"><div class="mc-mapwrap">` +
       (raw.mapImageUrl ? `<img class="mc-map" src="${escapeHtml(raw.mapImageUrl)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<div class="mc-map"></div>') +
       (won === true ? '<span class="mc-res" title="Win">👑</span>' : won === false ? '<span class="mc-res" title="Loss">💀</span>' : '') +
       `</div><div class="mc-title"><b title="${escapeHtml(mapName)}">${escapeHtml(mapName)}</b><span>${meta.map((x, i) => i === 0 ? escapeHtml(x) : x).join('<br>')}</span></div></div>` +
-      `<div class="mc-teams">${sides[0] || ''}<span class="mc-vs">VS</span>${sides[1] || '<div></div>'}${extra}</div></div>`;
+      `<div class="mc-teams">${sides[0] || ''}<span class="mc-vs">VS</span>${sides[1] || '<div></div>'}${extra}</div>${scoutHtml}</div>`;
   }
 
   const RECENT_PAGE_LIMIT = 400; // safety only; the API runs out well before this (about 160 pages for the heaviest accounts)
@@ -1387,6 +1373,15 @@ function render(content, entry, player) {
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const iWon = r => { const p = (r.teams || []).flatMap(x => x.players || []).find(q => q.profileId === Number(entry.profileId)); return p ? p.won : null; };
 
+  // The report reads each player's history from the API, which arrives piece by piece; redraw (at most every 300 ms) as it does.
+  let scoutTimer = null;
+  scoutRedraw = () => { if (RS.scout.size && !scoutTimer) scoutTimer = setTimeout(() => { scoutTimer = null; renderRecentMatches(); }, 300); };
+  document.addEventListener('click', e => {
+    const b = e.target.closest('.mc-scoutbtn'); if (!b) return;
+    const id = Number(b.dataset.id);
+    if (RS.scout.has(id)) RS.scout.delete(id); else RS.scout.add(id);
+    renderRecentMatches();
+  });
   function renderRecentMatches() {
     const descEl = document.getElementById('recent-desc');
     const toggleEl = document.getElementById('recent-toggle');
