@@ -96,6 +96,15 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
 .me-line a{color:var(--amberL);cursor:pointer;margin-left:6px;}
 .me-row input{height:32px;width:260px;max-width:100%;padding:0 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;outline:none;}
 
+/* odds on every game card */
+.g-odds{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text2);border-top:1px solid var(--border2);padding-top:7px;}
+.g-odds .sc-bar{flex:1;min-width:60px;}
+.g-odds .go-l{font-weight:700;color:var(--green);white-space:nowrap;max-width:36%;overflow:hidden;text-overflow:ellipsis;}
+.g-odds .go-r{white-space:nowrap;max-width:36%;overflow:hidden;text-overflow:ellipsis;}
+.g-scoutrow{grid-column:1/-1;}
+.g-scout{font:inherit;font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px;border:1px solid var(--border2);background:var(--surf);color:var(--amberL);cursor:pointer;}
+.g-scout:hover{border-color:var(--amber);}
+.g-scout-body{grid-column:1/-1;border-top:1px solid var(--border2);padding-top:9px;}
 /* scouting report */
 .scout{background:var(--surf2);border:1px solid var(--border2);border-left:3px solid var(--gold);border-radius:var(--radius);padding:12px 14px;margin:0 0 14px;}
 .sc-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;font-size:12px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;}
@@ -303,7 +312,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
-    <div class="version">v0.14</div>
+    <div class="version">v0.15</div>
   </div>
 </div>
 
@@ -658,15 +667,16 @@ function myLiveGame() {
   }
   return best;
 }
-function scoutCard() {
-  const g = myLiveGame();
-  if (!g) return '';
+// g = { m, pl, mine }: the game, its players and the player the report is written from. For your own game that is you; for any
+// other game it is the first player on the left side, and the labels use their name (or "Left team") instead of "You".
+function scoutReport(g, isMine) {
   const { m, pl, mine } = g, teams = groupTeams(pl);
   const myTeam = teams.find(t => t.some(p => p.profileId === mine.profileId)) || [], opps = pl.filter(p => !myTeam.includes(p));
   if (!opps.length) return '';
   const is1v1 = m.leaderboardId === 'rm_1v1_console' && opps.length === 1 && myTeam.length === 1;
   const mode = is1v1 ? '1v1' : 'team', lb = SCOUT[mode].lb;
-  if (m.leaderboardId !== lb) return `<div class="scout"><div class="sc-head">Scouting your game</div><div class="sc-dim">Scouting works for ranked 1v1 and team games on console. This one is ${esc(ladderLabel(m))}.</div></div>`;
+  const lab = isMine ? 'You' : (is1v1 ? esc(mine.name || 'Left player') : 'Left team'), labTeam = isMine ? 'Your team' : 'Left team';
+  if (m.leaderboardId !== lb) return `<div class="scout"><div class="sc-head">Scouting${isMine ? ' your game' : ''}</div><div class="sc-dim">Scouting works for ranked 1v1 and team games on console. This one is ${esc(ladderLabel(m))}.</div></div>`;
   loadCivStats();
   const map = m.mapName || '', cls = MAP_CLASS[map] || null;
   const hOf = p => histWant(p.profileId, lb);
@@ -678,15 +688,15 @@ function scoutCard() {
     const o = oddsFor('1v1', mine, opps[0], ready ? hMe : null, ready ? hOpps[0] : null, map);
     const pc = Math.round(o.p * 100);
     odds = `<div class="sc-odds" title="Model fitted on 37,908 recent console ranked 1v1s. Rating-only picks the winner 71% of the time; this model 72%."><div class="sc-bar"><i style="width:${pc}%"></i></div>` +
-      `<div class="sc-pc"><b>You ${pc}%</b><span>${100 - pc}% ${esc(opps[0].name || '')}</span></div>` +
+      `<div class="sc-pc"><b>${lab} ${pc}%</b><span>${100 - pc}% ${esc(opps[0].name || '')}</span></div>` +
       `<div class="sc-why">${o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → ')}${ready ? '' : ' (form still loading)'}</div></div>`;
   } else if (!is1v1 && myTeam.every(p => p.rating > 0) && opps.every(p => p.rating > 0)) {
     const o = oddsTeam(myTeam, opps), pc = Math.round(o.p * 100);
-    odds = `<div class="sc-odds" title="Fitted on 25,664 recent console team games. Rating only picks the winner 75.9% of the time; this model 76.1%."><div class="sc-bar"><i style="width:${pc}%"></i></div><div class="sc-pc"><b>Your team ${pc}%</b><span>${100 - pc}% them</span></div><div class="sc-why">${o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → ')}</div></div>`;
+    odds = `<div class="sc-odds" title="Fitted on 25,664 recent console team games. Rating only picks the winner 75.9% of the time; this model 76.1%."><div class="sc-bar"><i style="width:${pc}%"></i></div><div class="sc-pc"><b>${labTeam} ${pc}%</b><span>${100 - pc}% them</span></div><div class="sc-why">${o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → ')}</div></div>`;
   }
   if (mine.rating > 0 && opAvg > 0) {
     const c = eloChange(mode, mine.rating, opAvg);
-    change = `<div class="sc-elo"><span class="sc-k">Rating</span> ${mine.rating} v ${opAvg} (${mine.rating - opAvg >= 0 ? '+' : ''}${mine.rating - opAvg}) · win <b class="up">+${c.win}</b> → ${mine.rating + c.win} · loss <b class="dn">−${c.loss}</b> → ${mine.rating - c.loss}</div>`;
+    change = `<div class="sc-elo"><span class="sc-k">Rating</span> ${mine.rating} v ${opAvg} (${mine.rating - opAvg >= 0 ? '+' : ''}${mine.rating - opAvg}) · win <b class="up">+${c.win}</b> → ${mine.rating + c.win} · loss <b class="dn">−${c.loss}</b> → ${mine.rating - c.loss}${isMine ? '' : ' <span class="sc-dim">(for ' + esc(mine.name || '') + ')</span>'}</div>`;
   }
   const peakBits = opps.length === 1 ? (() => {
     const pe = profileEntry(opps[0].profileId, lb);
@@ -694,14 +704,44 @@ function scoutCard() {
   })() : '';
   const h2h = is1v1 && hMe !== 'loading' && hMe !== 'err' ? (() => {
     const s = hMe.games.filter(x => x.opps.includes(opps[0].profileId)), w = s.filter(x => x.won).length;
-    return `<div class="sc-line"><span class="sc-k">Head-to-head</span> ${s.length ? `you ${w}–${s.length - w}` : 'first match'}</div>`;
+    return `<div class="sc-line"><span class="sc-k">Head-to-head</span> ${s.length ? `${isMine ? 'you' : lab} ${w}–${s.length - w}` : 'first match'}</div>`;
   })() : '';
   const meLine = ready && is1v1 && map ? (() => {
     const onMap = hMe.games.filter(x => x.map === map), inCls = cls ? hMe.games.filter(x => MAP_CLASS[x.map] === cls) : [];
-    return `<div class="sc-line"><span class="sc-k">You on ${esc(map)}</span> ${pctText(onMap.filter(x => x.won).length, onMap.length)}${cls && inCls.length ? ` · ${cls} maps ${pctText(inCls.filter(x => x.won).length, inCls.length)}` : ''}</div>`;
+    return `<div class="sc-line"><span class="sc-k">${lab} on ${esc(map)}</span> ${pctText(onMap.filter(x => x.won).length, onMap.length)}${cls && inCls.length ? ` · ${cls} maps ${pctText(inCls.filter(x => x.won).length, inCls.length)}` : ''}</div>`;
   })() : '';
-  return `<div class="scout"><div class="sc-head"><span>Scouting your game</span><span class="sc-sub">${esc(map || 'Unknown map')}${cls ? ' · ' + cls : ''} · ${mode === '1v1' ? '1v1' : groupTeams(pl).map(t => t.length).join('v')} · <span class="g-timer">${clock(Date.now() - Date.parse(m.started))}</span> in</span></div>` +
-    odds + change + `<div class="sc-body">${opps.map((o, i) => opponentLine(o, hOpps[i], mode, map, cls)).join('')}${peakBits}${meLine}${h2h}</div></div>`;
+  const body = `${odds}${change}<div class="sc-body">${opps.map((o, i) => opponentLine(o, hOpps[i], mode, map, cls)).join('')}${peakBits}${meLine}${h2h}</div>`;
+  if (!isMine) return `<div class="g-scout-body">${body}</div>`;
+  return `<div class="scout"><div class="sc-head"><span>Scouting your game</span><span class="sc-sub">${esc(map || 'Unknown map')}${cls ? ' · ' + cls : ''} · ${mode === '1v1' ? '1v1' : groupTeams(pl).map(t => t.length).join('v')} · <span class="g-timer">${clock(Date.now() - Date.parse(m.started))}</span> in</span></div>${body}</div>`;
+}
+function scoutCard() {
+  const g = myLiveGame();
+  return g ? scoutReport(g, true) : '';
+}
+// A one-line win chance for any ranked console game, from ratings and civs only, so it costs no extra requests. It uses a
+// player's saved game history too when it is already loaded (for example after pressing Scout on that game).
+function histPeek(id, lb) { const h = hist.get(lb === 'rm_1v1_console' ? id : lb + ':' + id); return h && h !== 'loading' && h !== 'err' ? h : null; }
+function cardOdds(m, pl) {
+  const teams = groupTeams(pl);
+  if (teams.length !== 2 || !teams.every(t => t.length && t.every(p => p.rating > 0))) return '';
+  const is1v1 = m.leaderboardId === 'rm_1v1_console' && teams[0].length === 1 && teams[1].length === 1;
+  if (!is1v1 && m.leaderboardId !== 'rm_team_console') return '';
+  loadCivStats();
+  let o, left, right;
+  if (is1v1) {
+    const a = teams[0][0], b = teams[1][0], ha = histPeek(a.profileId, 'rm_1v1_console'), hb = histPeek(b.profileId, 'rm_1v1_console');
+    o = oddsFor('1v1', a, b, ha && hb ? ha : null, ha && hb ? hb : null, m.mapName || ''); left = esc(a.name || ''); right = esc(b.name || '');
+  } else { o = oddsTeam(teams[0], teams[1]); left = 'Left team'; right = 'Right team'; }
+  const pc = Math.round(o.p * 100);
+  return `<div class="g-odds" title="${esc(o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → '))}. Fitted on recent console games; press Scout for the full report."><span class="go-l">${left} ${pc}%</span><div class="sc-bar"><i style="width:${pc}%"></i></div><span class="go-r">${100 - pc}% ${right}</span></div>`;
+}
+const scoutOpen = new Set();   // matchIds whose full report is open
+function cardScout(m, pl) {
+  const teams = groupTeams(pl);
+  if (teams.length !== 2 || !teams.every(t => t.length) || !(m.leaderboardId === 'rm_1v1_console' || m.leaderboardId === 'rm_team_console')) return '';
+  const open = scoutOpen.has(m.matchId);
+  const me = getMe(), mine = (me && pl.find(p => p.profileId === me.id)) || teams[0][0];
+  return `<div class="g-scoutrow"><button type="button" class="g-scout" data-id="${m.matchId}">${open ? 'Hide scouting report' : 'Scout this game'}</button></div>` + (open ? scoutReport({ m, pl, mine }, false) : '');
 }
 function renderScout() {
   const el = $('scout'); if (!el) return;
@@ -713,7 +753,7 @@ function gameCard(m) {
   return `<div class="game" data-started="${esc(m.started)}"><div class="g-info">${m.mapImageUrl ? `<img class="g-map" src="${esc(m.mapImageUrl)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<div class="g-map"></div>'}` +
     `<div class="g-title"><b>${esc(m.mapName || 'Unknown map')}</b><span>${esc(size)}${avg ? ' · avg ' + avg : ''}</span><span class="g-badge">${esc(ladderLabel(m))}</span>` +
     `<span><span class="g-timer">${clock(Date.now() - Date.parse(m.started))}</span> into the game</span>` +
-    `<span class="g-links"><a href="https://www.aoe2insights.com/match/${m.matchId}/" target="_blank" rel="noopener">↗ Insights</a></span></div></div>${sidesHtml(pl)}${h2hHtml(m, pl)}</div>`;
+    `<span class="g-links"><a href="https://www.aoe2insights.com/match/${m.matchId}/" target="_blank" rel="noopener">↗ Insights</a></span></div></div>${sidesHtml(pl)}${cardOdds(m, pl)}${h2hHtml(m, pl)}${cardScout(m, pl)}</div>`;
 }
 function lobbyPlayers(id) {
   const info = lobbyInfo.get(id);
@@ -730,6 +770,12 @@ function lobbyCard(id) {
 }
 
 // ---- rendering ----
+$('games').addEventListener('click', e => {
+  const b = e.target.closest('.g-scout'); if (!b) return;
+  const id = Number(b.dataset.id);
+  if (scoutOpen.has(id)) scoutOpen.delete(id); else scoutOpen.add(id);
+  render();
+});
 let renderQueued = false;
 function queueRender() { if (renderQueued) return; renderQueued = true; setTimeout(() => { renderQueued = false; render(); }, 250); }
 function render() {
