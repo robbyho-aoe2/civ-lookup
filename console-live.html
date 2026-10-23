@@ -101,7 +101,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
 /* odds on every game card */
 .g-odds{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text2);border-top:1px solid var(--border2);padding-top:7px;}
 .g-odds .sc-bar{flex:1;min-width:60px;}
-.g-odds .go-l{font-weight:700;color:var(--green);white-space:nowrap;max-width:36%;overflow:hidden;text-overflow:ellipsis;}
+.g-odds .go-l{font-weight:700;white-space:nowrap;max-width:36%;overflow:hidden;text-overflow:ellipsis;}
 .g-odds .go-r{white-space:nowrap;max-width:36%;overflow:hidden;text-overflow:ellipsis;}
 .g-scoutrow{grid-column:1/-1;}
 .g-scout{font:inherit;font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px;border:1px solid var(--border2);background:var(--surf);color:var(--amberL);cursor:pointer;}
@@ -113,11 +113,10 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
 .sc-sub{font-size:11px;font-weight:400;color:var(--text2);text-transform:none;letter-spacing:0;}
 .sc-dim{color:var(--text3);font-size:12px;font-weight:400;}
 .sc-odds{margin-bottom:10px;}
-.sc-bar{height:8px;border-radius:5px;background:rgba(248,113,113,.35);overflow:hidden;}
-.sc-bar i{display:block;height:100%;background:var(--green);}
+.sc-bar{height:8px;border-radius:5px;background:#f59e0b;overflow:hidden;}
+.sc-bar i{display:block;height:100%;background:#4c8dff;}
 .sc-pc{display:flex;justify-content:space-between;font-size:13px;margin-top:4px;}
-.sc-pc b{color:var(--green);}
-.sc-pc span{color:var(--text2);}
+.sc-pc b{font-weight:700;}
 .sc-why{font-size:11px;color:var(--text3);margin-top:2px;}
 .sc-elo{font-size:12px;margin-bottom:8px;}
 .sc-elo .up{color:var(--green);}
@@ -314,7 +313,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
-    <div class="version">v0.16</div>
+    <div class="version">v0.17</div>
   </div>
 </div>
 
@@ -563,6 +562,24 @@ function woe(games, pred) {   // wins over expectation per game (shrunk) from ga
   return { v: (w - e) / (n + WOE_SHRINK), n, w, e };
 }
 // Chance that `me` beats `opp` (1v1), with the part each ingredient adds. Missing ingredients (civ not picked yet, history still loading) are skipped.
+// Colors for the win-chance bar. Green and red already mean win and loss everywhere on the site, so the bar uses the colors
+// the two players picked in the game (1v1), and blue against amber when those are missing or too alike (team games, where
+// the players are on different colors but each side is not). Dark in-game colors are lightened so they show on the dark page.
+const SIDE_A = '#4c8dff', SIDE_B = '#f59e0b';
+function readableColor(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return null;
+  let r = parseInt(m[1].slice(0, 2), 16), g = parseInt(m[1].slice(2, 4), 16), b = parseInt(m[1].slice(4), 16);
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  if (lum < 90) { const k = (90 - lum) / (255 - lum); r += (255 - r) * k; g += (255 - g) * k; b += (255 - b) * k; }
+  return [r, g, b].map(v => Math.round(v)).reduce((a, v) => a + v.toString(16).padStart(2, '0'), '#');
+}
+function sideColors(a, b) {
+  const ca = readableColor(a), cb = readableColor(b);
+  if (!ca || !cb) return [SIDE_A, SIDE_B];
+  const d = [1, 3, 5].reduce((t, i) => t + Math.pow(parseInt(ca.substr(i, 2), 16) - parseInt(cb.substr(i, 2), 16), 2), 0);
+  return d < 100 * 100 ? [SIDE_A, SIDE_B] : [ca, cb];
+}
+const oddsBar = (pc, cl, cr) => `<div class="sc-bar" style="background:${cr}"><i style="width:${pc}%;background:${cl}"></i></div>`;
 function oddsFor(mode, me, opp, hMe, hOpp, map) {
   const M = SCOUT[mode], rA = me.rating, rB = opp.rating, avg = (rA + rB) / 2;
   const steps = [];
@@ -694,13 +711,13 @@ function scoutReport(g, isMine) {
   let odds = '', change = '';
   if (is1v1 && mine.rating > 0 && opps[0].rating > 0) {
     const o = oddsFor('1v1', mine, opps[0], ready ? hMe : null, ready ? hOpps[0] : null, map);
-    const pc = Math.round(o.p * 100);
-    odds = `<div class="sc-odds" title="Model fitted on 37,908 recent console ranked 1v1s. Rating-only picks the winner 71% of the time; this model 72%."><div class="sc-bar"><i style="width:${pc}%"></i></div>` +
-      `<div class="sc-pc"><b>${lab} ${pc}%</b><span>${100 - pc}% ${esc(opps[0].name || '')}</span></div>` +
+    const pc = Math.round(o.p * 100), [cl, cr] = sideColors(mine.colorHex, opps[0].colorHex);
+    odds = `<div class="sc-odds" title="Model fitted on 37,908 recent console ranked 1v1s. Rating-only picks the winner 71% of the time; this model 72%.">${oddsBar(pc, cl, cr)}` +
+      `<div class="sc-pc"><b style="color:${cl}">${lab} ${pc}%</b><span style="color:${cr}">${100 - pc}% ${esc(opps[0].name || '')}</span></div>` +
       `<div class="sc-why">${o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → ')}${ready ? '' : ' (form still loading)'}</div>${oddsNotes(o).map(n => `<div class="sc-why">${esc(n)}</div>`).join('')}</div>`;
   } else if (!is1v1 && myTeam.every(p => p.rating > 0) && opps.every(p => p.rating > 0)) {
     const o = oddsTeam(myTeam, opps), pc = Math.round(o.p * 100);
-    odds = `<div class="sc-odds" title="Fitted on 25,664 recent console team games. Rating only picks the winner 75.9% of the time; this model 76.1%."><div class="sc-bar"><i style="width:${pc}%"></i></div><div class="sc-pc"><b>${labTeam} ${pc}%</b><span>${100 - pc}% them</span></div><div class="sc-why">${o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → ')}</div></div>`;
+    odds = `<div class="sc-odds" title="Fitted on 25,664 recent console team games. Rating only picks the winner 75.9% of the time; this model 76.1%.">${oddsBar(pc, SIDE_A, SIDE_B)}<div class="sc-pc"><b style="color:${SIDE_A}">${labTeam} ${pc}%</b><span style="color:${SIDE_B}">${100 - pc}% them</span></div><div class="sc-why">${o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → ')}</div></div>`;
   }
   if (mine.rating > 0 && opAvg > 0) {
     const c = eloChange(mode, mine.rating, opAvg);
@@ -735,13 +752,13 @@ function cardOdds(m, pl) {
   const is1v1 = m.leaderboardId === 'rm_1v1_console' && teams[0].length === 1 && teams[1].length === 1;
   if (!is1v1 && m.leaderboardId !== 'rm_team_console') return '';
   loadCivStats();
-  let o, left, right;
+  let o, left, right, cl = SIDE_A, cr = SIDE_B;
   if (is1v1) {
     const a = teams[0][0], b = teams[1][0], ha = histPeek(a.profileId, 'rm_1v1_console'), hb = histPeek(b.profileId, 'rm_1v1_console');
-    o = oddsFor('1v1', a, b, ha && hb ? ha : null, ha && hb ? hb : null, m.mapName || ''); left = esc(a.name || ''); right = esc(b.name || '');
+    o = oddsFor('1v1', a, b, ha && hb ? ha : null, ha && hb ? hb : null, m.mapName || ''); left = esc(a.name || ''); right = esc(b.name || ''); [cl, cr] = sideColors(a.colorHex, b.colorHex);
   } else { o = oddsTeam(teams[0], teams[1]); left = 'Left team'; right = 'Right team'; }
   const pc = Math.round(o.p * 100);
-  return `<div class="g-odds" title="${esc(o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → '))}. Fitted on recent console games; press Scout for the full report."><span class="go-l">${left} ${pc}%</span><div class="sc-bar"><i style="width:${pc}%"></i></div><span class="go-r">${100 - pc}% ${right}</span></div>`;
+  return `<div class="g-odds" title="${esc(o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → '))}. Fitted on recent console games; press Scout for the full report."><span class="go-l" style="color:${cl}">${left} ${pc}%</span>${oddsBar(pc, cl, cr)}<span class="go-r" style="color:${cr}">${100 - pc}% ${right}</span></div>`;
 }
 const scoutOpen = new Set();   // matchIds whose full report is open
 function cardScout(m, pl) {
