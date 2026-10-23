@@ -96,6 +96,38 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
 .me-line a{color:var(--amberL);cursor:pointer;margin-left:6px;}
 .me-row input{height:32px;width:260px;max-width:100%;padding:0 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;outline:none;}
 
+/* scouting report */
+.scout{background:var(--surf2);border:1px solid var(--border2);border-left:3px solid var(--gold);border-radius:var(--radius);padding:12px 14px;margin:0 0 14px;}
+.sc-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;font-size:12px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;}
+.sc-sub{font-size:11px;font-weight:400;color:var(--text2);text-transform:none;letter-spacing:0;}
+.sc-dim{color:var(--text3);font-size:12px;font-weight:400;}
+.sc-odds{margin-bottom:10px;}
+.sc-bar{height:8px;border-radius:5px;background:rgba(248,113,113,.35);overflow:hidden;}
+.sc-bar i{display:block;height:100%;background:var(--green);}
+.sc-pc{display:flex;justify-content:space-between;font-size:13px;margin-top:4px;}
+.sc-pc b{color:var(--green);}
+.sc-pc span{color:var(--text2);}
+.sc-why{font-size:11px;color:var(--text3);margin-top:2px;}
+.sc-elo{font-size:12px;margin-bottom:8px;}
+.sc-elo .up{color:var(--green);}
+.sc-elo .dn{color:var(--red);}
+.sc-body{display:flex;flex-direction:column;gap:8px;}
+.sc-opp{font-size:12px;line-height:1.55;}
+.sc-name{font-size:13px;margin-bottom:2px;}
+.sc-name a{color:inherit;text-decoration:none;}
+.sc-name a:hover{color:var(--amberL);}
+.sc-line{color:var(--text2);}
+.sc-k{display:inline-block;min-width:92px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
+.sc-dots{display:inline-flex;gap:2px;margin-left:6px;vertical-align:1px;}
+.fd{display:inline-block;width:7px;height:7px;border-radius:50%;}
+.fd.w{background:var(--green);}
+.fd.l{background:var(--red);}
+.sc-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;}
+.sc-tag{font-size:10px;font-weight:700;padding:1px 8px;border-radius:20px;border:1px solid var(--border2);color:var(--text2);}
+.sc-tag.good{color:var(--green);border-color:rgba(74,222,128,.4);}
+.sc-tag.bad{color:var(--red);border-color:rgba(248,113,113,.4);}
+@media (max-width:520px){.sc-k{display:block;min-width:0;}}
+
 /* status */
 .statusbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:12px;color:var(--text2);margin-bottom:14px;}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text3);margin-right:6px;}
@@ -257,6 +289,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
       <div class="active-note">Players who just finished a game and are not in one now, so they may be searching for the next. It is a guess from recent games, not the matchmaking queue.</div>
       <div class="chips" id="active"></div>
     </div>
+    <div id="scout" hidden></div>
     <div class="sec-title" id="games-title">Games right now</div>
     <div id="games"></div>
     <div id="lobbies-wrap">
@@ -270,7 +303,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
-    <div class="version">v0.13</div>
+    <div class="version">v0.14</div>
   </div>
 </div>
 
@@ -394,18 +427,19 @@ function avgRating(players) { const r = players.map(p => p.rating).filter(x => x
 const HIST_PAGES = 3, HIST_PER_PAGE = 100;
 const hist = new Map();   // profileId -> { games: [{ map, won, opps: [ids] }] } | 'loading' | 'err'
 let histActive = 0; const histQueue = []; let histLastReq = 0;
-function histWant(id) {
-  const h = hist.get(id);
-  if (h === 'err') { if (!histRetryAt.has(id) || Date.now() < histRetryAt.get(id)) return 'err'; hist.delete(id); histRetryAt.delete(id); }
+// `lb` picks the ladder (1v1 by default; the scouting report also reads team games). 1v1 entries stay keyed by profile id.
+function histWant(id, lb = 'rm_1v1_console') {
+  const key = lb === 'rm_1v1_console' ? id : lb + ':' + id, h = hist.get(key);
+  if (h === 'err') { if (!histRetryAt.has(key) || Date.now() < histRetryAt.get(key)) return 'err'; hist.delete(key); histRetryAt.delete(key); }
   else if (h) return h;
-  hist.set(id, 'loading'); histQueue.push(id); histPump();
+  hist.set(key, 'loading'); histQueue.push({ key, id, lb }); histPump();
   return 'loading';
 }
 const histRetryAt = new Map();   // players whose lookup failed are tried again after a minute
 function histPump() {
   while (histActive < 2 && histQueue.length) {
-    const id = histQueue.shift(); histActive++;
-    histFetch(id).then(r => hist.set(id, r), () => { hist.set(id, 'err'); histRetryAt.set(id, Date.now() + 60000); }).finally(() => { histActive--; histPump(); queueRender(); });
+    const { key, id, lb } = histQueue.shift(); histActive++;
+    histFetch(id, lb).then(r => hist.set(key, r), () => { hist.set(key, 'err'); histRetryAt.set(key, Date.now() + 60000); }).finally(() => { histActive--; histPump(); queueRender(); });
   }
 }
 // The data API answers 429 when asked too fast, so requests are spaced out and a refused page is retried after a pause.
@@ -419,16 +453,19 @@ async function histGet(url) {
   }
   return null;
 }
-async function histFetch(id) {
+async function histFetch(id, lb = 'rm_1v1_console') {
   const games = [];
   for (let page = 1; page <= HIST_PAGES; page++) {
-    const r = await histGet(`${API}/matches?profile_ids=${id}&leaderboard_ids=rm_1v1_console&per_page=${HIST_PER_PAGE}&page=${page}`);
+    const r = await histGet(`${API}/matches?profile_ids=${id}&leaderboard_ids=${lb}&per_page=${HIST_PER_PAGE}&page=${page}`);
     if (!r || !r.ok) { if (page === 1) throw new Error('hist'); break; }   // keep what was read if a later page is refused
     const j = await r.json(), ms = Array.isArray(j) ? j : (j.matches || []);
     ms.forEach(m => {
       const ps = (m.teams || []).flatMap(t => t.players || []), me = ps.find(x => x.profileId === id);
       if (!me || me.won == null) return;
-      games.push({ map: m.mapName, won: !!me.won, opps: ps.filter(x => x.profileId !== id).map(x => x.profileId) });
+      const foes = ps.filter(x => (x.team != null && me.team != null ? x.team !== me.team : x.profileId !== id)), foeR = foes.map(x => x.rating).filter(x => x > 0);
+      // civ, start time, length (minutes) and the ratings at the time (own, and the opponents' average) feed the scouting report
+      games.push({ map: m.mapName, won: !!me.won, opps: foes.map(x => x.profileId), civ: me.civName || null, ts: m.started || null,
+        dur: m.started && m.finished ? (Date.parse(m.finished) - Date.parse(m.started)) / 60000 : null, r: me.rating || 0, or: foeR.length ? foeR.reduce((a, b) => a + b, 0) / foeR.length : 0 });
     });
     if (ms.length < HIST_PER_PAGE) break;
   }
@@ -461,6 +498,215 @@ function h2hHtml(m, pl) {
   }
   if (!lines.length) return '';
   return `<span class="g-h2h" title="From each player's recent ranked console 1v1s (up to ${HIST_PAGES * HIST_PER_PAGE})">${lines.join('<br>')}</span>`;
+}
+// ---- Scouting report for the game you are in ----
+// "You" is the player set with My level / Make this my player. When a live game has you in it, the opponents are
+// scouted from their recent ranked console games (the same history the head-to-head line uses) and their profile.
+//
+// Win chance (1v1) is a logistic model fitted on 37,908 recent console ranked 1v1s (Oct 2026), checked by 5-fold
+// cross-validation: rating only 71.2% right (log-loss 0.5428) -> with the terms below 72.0% (0.5361).
+//   x = ELO * (your rating - theirs) / 400 + CIV * (civ strength gap) + P_CIV * (skill-with-civ gap) + P_MAP * (skill-on-map gap)
+//       + P_ALL * (overall over-performance gap);  chance = 1 / (1 + e^-x)
+// "civ strength" is each civ's win rate in the matching rating bracket (from the Insights data, shrunk toward 50%);
+// the "gap" terms are each player's wins over expectation (actual wins minus what their rating gaps predicted) for that
+// civ, that map, and overall, shrunk by 12 games. Rating changes: K 36 with a 380 scale, fitted on 75,000 results.
+// Team games use the same idea on 25,664 recent team games (rating only 75.9% right, log-loss 0.4804; with the terms below
+// 76.1%, 0.4784): average rating gap, the gap in average civ strength, and the gap between each side's best player.
+// Rating changes there: K 35.5 with a 400 scale, from each player's own rating against the other team's average.
+const SCOUT = {
+  '1v1': { lb: 'rm_1v1_console', elo: 3.006, civ: 0.672, pCiv: 1.275, pMap: 2.415, pAll: 0.512, K: 36, D: 380, civLadder: '1v1 Console' },
+  team:  { lb: 'rm_team_console', elo: 3.741, civ: 1.425, best: 0.533, K: 35.5, D: 400, civLadder: 'Team Console' },
+};
+const WOE_SHRINK = 12;
+const MAP_CLASS = { 'Arabia': 'open', 'Arabian Desert': 'open', 'Nomad': 'open', 'MegaRandom': 'open', 'Arena': 'closed', 'Black Forest': 'closed', 'Fortress': 'closed',
+  'Glade': 'hybrid', 'Michi': 'hybrid', 'African Clearing': 'hybrid', 'Coastal Forest': 'hybrid', 'Scandinavia': 'hybrid', 'Yucatan': 'hybrid', 'Baltic': 'water', 'Northern Isles': 'water' };
+const CIV_NORM = { Mayans: 'Maya', Inca: 'Incas', Indians: 'Hindustanis' };
+const normCiv = c => CIV_NORM[c] || c;
+const scoutProfiles = new Map();   // key lb:id -> profile leaderboard entry | 'loading' | 'err'
+let civStats = null, civStatsBusy = false;
+function loadCivStats() {
+  if (civStats || civStatsBusy) return;
+  civStatsBusy = true;
+  fetch(`https://raw.githubusercontent.com/robbyho-aoe2/player-data/main/data/insights-console-civs.json`).then(r => r.json()).then(j => { civStats = j; queueRender(); }).catch(() => { civStats = { ladders: {} }; }).finally(() => { civStatsBusy = false; });
+}
+function profileEntry(id, lb) {
+  const key = lb + ':' + id, c = scoutProfiles.get(key);
+  if (c) return c;
+  scoutProfiles.set(key, 'loading');
+  histGet(`${API}/profiles/${id}`).then(r => (r && r.ok ? r.json() : Promise.reject())).then(j => {
+    scoutProfiles.set(key, (j.leaderboards || []).find(l => l.leaderboardId === lb) || 'err');
+  }, () => scoutProfiles.set(key, 'err')).finally(queueRender);
+  return 'loading';
+}
+const ratingBracket = r => (r >= 1700 ? 'high' : r >= 1300 ? 'himid' : r >= 900 ? 'lomid' : 'low');
+function civStrength(civ, rating, ladder) {   // shrunk bracket win rate for this civ, or null
+  if (!civ || !civStats) return null;
+  const d = (((civStats.ladders || {})[ladder] || {}).brackets || {})[ratingBracket(rating)] || {}, c = d[normCiv(civ)];
+  return ((c ? c.wins : 0) + 10) / ((c ? c.games : 0) + 20);
+}
+const logit = p => Math.log(p / (1 - p));
+const expect = (a, b, D) => 1 / (1 + Math.pow(10, -(a - b) / D));
+function woe(games, pred) {   // wins over expectation per game (shrunk) from games that carry both ratings
+  let w = 0, e = 0, n = 0;
+  for (const g of games) if (g.r > 0 && g.or > 0 && pred(g)) { w += g.won ? 1 : 0; e += expect(g.r, g.or, 400); n++; }
+  return { v: (w - e) / (n + WOE_SHRINK), n };
+}
+// Chance that `me` beats `opp` (1v1), with the part each ingredient adds. Missing ingredients (civ not picked yet, history still loading) are skipped.
+function oddsFor(mode, me, opp, hMe, hOpp, map) {
+  const M = SCOUT[mode], rA = me.rating, rB = opp.rating, avg = (rA + rB) / 2;
+  const steps = [];
+  let x = M.elo * (rA - rB) / 400;
+  steps.push({ label: 'Rating', p: 1 / (1 + Math.exp(-x)) });
+  const sa = civStrength(me.civName, avg, M.civLadder), sb = civStrength(opp.civName, avg, M.civLadder);
+  if (sa != null && sb != null) { x += M.civ * (logit(sa) - logit(sb)); steps.push({ label: 'Civs', p: 1 / (1 + Math.exp(-x)) }); }
+  if (hMe && hOpp && mode === '1v1') {
+    let any = false;
+    if (me.civName && opp.civName) { x += M.pCiv * (woe(hMe.games, g => g.civ === me.civName).v - woe(hOpp.games, g => g.civ === opp.civName).v); any = true; }
+    if (map) { x += M.pMap * (woe(hMe.games, g => g.map === map).v - woe(hOpp.games, g => g.map === map).v); any = true; }
+    x += M.pAll * (woe(hMe.games, () => true).v - woe(hOpp.games, () => true).v);
+    steps.push({ label: 'Form', p: 1 / (1 + Math.exp(-x)) });
+  }
+  return { p: 1 / (1 + Math.exp(-x)), steps };
+}
+function oddsTeam(mine, theirs) {   // mine / theirs: arrays of players with rating and civName
+  const M = SCOUT.team, avg = a => a.reduce((s, p) => s + p.rating, 0) / a.length, mx = a => Math.max(...a.map(p => p.rating)), all = (avg(mine) + avg(theirs)) / 2;
+  const steps = [];
+  let x = M.elo * (avg(mine) - avg(theirs)) / 400 + M.best * (mx(mine) - mx(theirs)) / 400;
+  steps.push({ label: 'Ratings', p: 1 / (1 + Math.exp(-x)) });
+  const cs = a => a.map(p => civStrength(p.civName, all, M.civLadder));
+  const ca = cs(mine), cb = cs(theirs);
+  if (ca.every(v => v != null) && cb.every(v => v != null)) {
+    const m = v => v.reduce((s, q) => s + logit(q), 0) / v.length;
+    x += M.civ * (m(ca) - m(cb)); steps.push({ label: 'Civs', p: 1 / (1 + Math.exp(-x)) });
+  }
+  return { p: 1 / (1 + Math.exp(-x)), steps };
+}
+function eloChange(mode, mine, theirs) {
+  const M = SCOUT[mode], e = expect(mine, theirs, M.D);
+  return { win: Math.round(M.K * (1 - e)), loss: Math.round(M.K * e) };
+}
+const pctText = (n, d) => d ? `${Math.round(n / d * 100)}% (${d})` : 'no games';
+function formDots(games, n) {
+  return games.slice(0, n).map(g => `<i class="fd ${g.won ? 'w' : 'l'}" title="${g.won ? 'Win' : 'Loss'}${g.map ? ' on ' + esc(g.map) : ''}"></i>`).join('');
+}
+function streakOf(games) {
+  if (!games.length) return '';
+  let n = 0; const w = games[0].won;
+  for (const g of games) { if (g.won === w) n++; else break; }
+  return `${n}${w ? 'W' : 'L'}`;
+}
+function median(a) { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+function scoutTags(opp, games, map, cls) {
+  const tags = [];
+  if (!games.length) return tags;
+  const last10 = games.slice(0, 10), w10 = last10.filter(g => g.won).length;
+  if (last10.length >= 8 && w10 >= 8) tags.push(['Hot', 'good', `${w10} wins in their last ${last10.length}`]);
+  if (last10.length >= 8 && w10 <= 2) tags.push(['Cold', 'bad', `${w10} wins in their last ${last10.length}`]);
+  const st = streakOf(games); if (/^[4-9]|^\d\d/.test(st)) tags.push([st.endsWith('W') ? `${st} streak` : `${st} skid`, st.endsWith('W') ? 'good' : 'bad', 'current streak']);
+  const m = map ? woe(games, g => g.map === map) : null;
+  if (m && m.n >= 10 && m.v >= 0.06) tags.push(['Strong on this map', 'good', `${m.n} games here, above what their rating predicts`]);
+  if (m && m.n >= 10 && m.v <= -0.06) tags.push(['Weak on this map', 'bad', `${m.n} games here, below what their rating predicts`]);
+  const civCount = new Map(); games.forEach(g => g.civ && civCount.set(g.civ, (civCount.get(g.civ) || 0) + 1));
+  const top = [...civCount.entries()].sort((a, b) => b[1] - a[1])[0];
+  if (top && games.length >= 30 && top[1] / games.length >= 0.45) tags.push([`${top[0]} one-trick`, '', `${Math.round(top[1] / games.length * 100)}% of their games`]);
+  const winDur = games.filter(g => g.won && g.dur).map(g => g.dur), md = median(winDur);
+  if (md != null && winDur.length >= 15 && md < 15) tags.push(['Early finisher', '', `median win ends at ${Math.round(md)} min`]);
+  const idle = games[0].ts ? Math.floor((Date.now() - Date.parse(games[0].ts)) / 864e5) : 0;
+  if (idle >= 45) tags.push(['Inactive', 'bad', `no ranked game in ${idle} days`]);
+  const all = games.length, wr = games.filter(g => g.won).length / all;
+  if (all < 40 && wr >= 0.65) tags.push(['Few games, high win rate', 'bad', 'could be a new or smurf account']);
+  return tags;
+}
+function opponentLine(opp, hist1, mode, map, cls) {
+  const n = esc(opp.name || '');
+  if (hist1 === 'loading' || hist1 === undefined) return `<div class="sc-opp"><b>${n}</b> <span class="sc-dim">checking their recent games…</span></div>`;
+  if (hist1 === 'err') return `<div class="sc-opp"><b>${n}</b> <span class="sc-dim">could not load their games</span></div>`;
+  const g = hist1.games, w = g.filter(x => x.won).length;
+  const onMap = map ? g.filter(x => x.map === map) : [];
+  const inCls = cls ? g.filter(x => MAP_CLASS[x.map] === cls) : [];
+  const last20 = g.slice(0, 20), w20 = last20.filter(x => x.won).length;
+  const civs = new Map(); g.forEach(x => { if (!x.civ) return; const c = civs.get(x.civ) || { n: 0, w: 0 }; c.n++; if (x.won) c.w++; civs.set(x.civ, c); });
+  const topCivs = [...civs.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 3).map(([c, v]) => `${esc(c)} ${Math.round(v.n / g.length * 100)}% · ${Math.round(v.w / v.n * 100)}% won`).join(', ');
+  const thisCiv = opp.civName ? civs.get(opp.civName) : null;
+  const lastTs = g.length && g[0].ts ? g[0].ts : null, week = g.filter(x => x.ts && Date.now() - Date.parse(x.ts) < 7 * 864e5).length;
+  const lines = [];
+  lines.push(`<span class="sc-k">${mode === 'team' ? 'Team win rate' : 'Win rate'}</span> ${pctText(w, g.length)} overall · last 20 ${pctText(w20, last20.length)} <span class="sc-dots">${formDots(g, 10)}</span>`);
+  if (map) lines.push(`<span class="sc-k">On ${esc(map)}</span> ${pctText(onMap.filter(x => x.won).length, onMap.length)}` + (cls && inCls.length ? ` · ${cls} maps ${pctText(inCls.filter(x => x.won).length, inCls.length)}` : ''));
+  if (opp.civName) lines.push(`<span class="sc-k">${esc(opp.civName)}</span> ${thisCiv ? pctText(thisCiv.w, thisCiv.n) : 'first time in their recent games'}`);
+  if (topCivs) lines.push(`<span class="sc-k">Plays</span> ${topCivs}`);
+  const md = median(g.filter(x => x.dur).map(x => x.dur));
+  const act = [];
+  if (md != null) act.push(`median game ${Math.round(md)} min`);
+  act.push(`${week} game${week === 1 ? '' : 's'} in the last 7 days`);
+  if (lastTs) act.push(`last game ${agoText(lastTs)}`);
+  lines.push(`<span class="sc-k">Activity</span> ${act.join(' · ')}`);
+  const tags = scoutTags(opp, g, map, cls);
+  return `<div class="sc-opp"><div class="sc-name"><b>${platIcon(opp.profileId)}<a href="player.html?id=${opp.profileId}">${n}</a></b> <span class="sc-dim">${opp.civName ? esc(opp.civName) + ' · ' : ''}${opp.rating > 0 ? opp.rating : ''}</span></div>` +
+    lines.map(l => `<div class="sc-line">${l}</div>`).join('') +
+    (tags.length ? `<div class="sc-tags">${tags.map(([t, c, why]) => `<span class="sc-tag ${c}" title="${esc(why)}">${esc(t)}</span>`).join('')}</div>` : '') + `</div>`;
+}
+function myLiveGame() {
+  const me = getMe();
+  if (!me) return null;
+  let best = null;
+  for (const m of matches.values()) {
+    if (m.finished || !m.started || Date.now() - Date.parse(m.started) > STALE_LIVE_MS) continue;
+    if (!isRankedLb(m) && !/console/.test(m.leaderboardId || '')) continue;
+    const pl = matchPlayers(m), mine = pl.find(p => p.profileId === me.id);
+    if (!mine) continue;
+    if (!best || Date.parse(m.started) > Date.parse(best.m.started)) best = { m, pl, mine };
+  }
+  return best;
+}
+function scoutCard() {
+  const g = myLiveGame();
+  if (!g) return '';
+  const { m, pl, mine } = g, teams = groupTeams(pl);
+  const myTeam = teams.find(t => t.some(p => p.profileId === mine.profileId)) || [], opps = pl.filter(p => !myTeam.includes(p));
+  if (!opps.length) return '';
+  const is1v1 = m.leaderboardId === 'rm_1v1_console' && opps.length === 1 && myTeam.length === 1;
+  const mode = is1v1 ? '1v1' : 'team', lb = SCOUT[mode].lb;
+  if (m.leaderboardId !== lb) return `<div class="scout"><div class="sc-head">Scouting your game</div><div class="sc-dim">Scouting works for ranked 1v1 and team games on console. This one is ${esc(ladderLabel(m))}.</div></div>`;
+  loadCivStats();
+  const map = m.mapName || '', cls = MAP_CLASS[map] || null;
+  const hOf = p => histWant(p.profileId, lb);
+  const hMe = hOf(mine), hOpps = opps.map(hOf);
+  const ready = hMe !== 'loading' && hMe !== 'err' && hOpps.every(h => h !== 'loading' && h !== 'err');
+  const myAvg = Math.round(myTeam.map(p => p.rating || 0).reduce((a, b) => a + b, 0) / myTeam.length), opAvg = Math.round(opps.map(p => p.rating || 0).reduce((a, b) => a + b, 0) / opps.length);
+  let odds = '', change = '';
+  if (is1v1 && mine.rating > 0 && opps[0].rating > 0) {
+    const o = oddsFor('1v1', mine, opps[0], ready ? hMe : null, ready ? hOpps[0] : null, map);
+    const pc = Math.round(o.p * 100);
+    odds = `<div class="sc-odds" title="Model fitted on 37,908 recent console ranked 1v1s. Rating-only picks the winner 71% of the time; this model 72%."><div class="sc-bar"><i style="width:${pc}%"></i></div>` +
+      `<div class="sc-pc"><b>You ${pc}%</b><span>${100 - pc}% ${esc(opps[0].name || '')}</span></div>` +
+      `<div class="sc-why">${o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → ')}${ready ? '' : ' (form still loading)'}</div></div>`;
+  } else if (!is1v1 && myTeam.every(p => p.rating > 0) && opps.every(p => p.rating > 0)) {
+    const o = oddsTeam(myTeam, opps), pc = Math.round(o.p * 100);
+    odds = `<div class="sc-odds" title="Fitted on 25,664 recent console team games. Rating only picks the winner 75.9% of the time; this model 76.1%."><div class="sc-bar"><i style="width:${pc}%"></i></div><div class="sc-pc"><b>Your team ${pc}%</b><span>${100 - pc}% them</span></div><div class="sc-why">${o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → ')}</div></div>`;
+  }
+  if (mine.rating > 0 && opAvg > 0) {
+    const c = eloChange(mode, mine.rating, opAvg);
+    change = `<div class="sc-elo"><span class="sc-k">Rating</span> ${mine.rating} v ${opAvg} (${mine.rating - opAvg >= 0 ? '+' : ''}${mine.rating - opAvg}) · win <b class="up">+${c.win}</b> → ${mine.rating + c.win} · loss <b class="dn">−${c.loss}</b> → ${mine.rating - c.loss}</div>`;
+  }
+  const peakBits = opps.length === 1 ? (() => {
+    const pe = profileEntry(opps[0].profileId, lb);
+    return pe && pe !== 'loading' && pe !== 'err' ? `<div class="sc-line"><span class="sc-k">Their ladder</span> peak ${pe.maxRating || '–'}${pe.rank ? ' · rank #' + pe.rank : ''}${pe.streak ? ' · streak ' + (pe.streak > 0 ? pe.streak + 'W' : -pe.streak + 'L') : ''}</div>` : '';
+  })() : '';
+  const h2h = is1v1 && hMe !== 'loading' && hMe !== 'err' ? (() => {
+    const s = hMe.games.filter(x => x.opps.includes(opps[0].profileId)), w = s.filter(x => x.won).length;
+    return `<div class="sc-line"><span class="sc-k">Head-to-head</span> ${s.length ? `you ${w}–${s.length - w}` : 'first match'}</div>`;
+  })() : '';
+  const meLine = ready && is1v1 && map ? (() => {
+    const onMap = hMe.games.filter(x => x.map === map), inCls = cls ? hMe.games.filter(x => MAP_CLASS[x.map] === cls) : [];
+    return `<div class="sc-line"><span class="sc-k">You on ${esc(map)}</span> ${pctText(onMap.filter(x => x.won).length, onMap.length)}${cls && inCls.length ? ` · ${cls} maps ${pctText(inCls.filter(x => x.won).length, inCls.length)}` : ''}</div>`;
+  })() : '';
+  return `<div class="scout"><div class="sc-head"><span>Scouting your game</span><span class="sc-sub">${esc(map || 'Unknown map')}${cls ? ' · ' + cls : ''} · ${mode === '1v1' ? '1v1' : groupTeams(pl).map(t => t.length).join('v')} · <span class="g-timer">${clock(Date.now() - Date.parse(m.started))}</span> in</span></div>` +
+    odds + change + `<div class="sc-body">${opps.map((o, i) => opponentLine(o, hOpps[i], mode, map, cls)).join('')}${peakBits}${meLine}${h2h}</div></div>`;
+}
+function renderScout() {
+  const el = $('scout'); if (!el) return;
+  const html = scoutCard();
+  el.hidden = !html; el.innerHTML = html;
 }
 function gameCard(m) {
   const pl = matchPlayers(m), size = groupTeams(pl).map(t => t.length).join('v'), avg = avgRating(pl);
@@ -503,6 +749,7 @@ function render() {
     $('lobbies').innerHTML = ids.length ? ids.map(lobbyCard).join('') : '<div class="empty">No open lobbies with players in your range. Console lobbies often do not show up in aoe2companion\'s lobby list, so this stays empty most of the time.</div>';
     $('lobbies-title').textContent = `Open lobbies (${ids.length})`;
   }
+  renderScout();
   updateStatus();
   renderActive();
   if (cfg.preset === 'followed') renderFollowing();
