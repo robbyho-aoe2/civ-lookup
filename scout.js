@@ -210,7 +210,8 @@ function teamColors(a, b) {
   return [wa ? WARM_SIDE : COOL_SIDE, wb ? WARM_SIDE : COOL_SIDE];
 }
 const oddsBar = (pc, cl, cr) => `<div class="sc-bar" style="background:${cr}"><i style="width:${pc}%;background:${cl}"></i></div>`;
-function oddsFor(mode, me, opp, hMe, hOpp, map) {
+// `who` names the two sides in the explanations: 'you' and 'they' for your own game, the players' names for anyone else's.
+function oddsFor(mode, me, opp, hMe, hOpp, map, who = ['you', 'they']) {
   const M = SCOUT[mode], rA = me.rating, rB = opp.rating, avg = (rA + rB) / 2;
   const steps = [];
   const rec = r => `${r.w}–${r.n - r.w} (about ${r.e.toFixed(1)} wins expected)`;
@@ -220,9 +221,9 @@ function oddsFor(mode, me, opp, hMe, hOpp, map) {
   if (sa != null && sb != null) { x += M.civ * (logit(sa) - logit(sb)); steps.push({ label: 'Civs', p: 1 / (1 + Math.exp(-x)), note: `${me.civName} wins ${Math.round(sa * 100)}% and ${opp.civName} ${Math.round(sb * 100)}% in this rating bracket` }); }
   if (hMe && hOpp && mode === '1v1') {
     const add = (label, a, b, coef, note) => { x += coef * (a.v - b.v); steps.push({ label, p: 1 / (1 + Math.exp(-x)), note }); };
-    if (me.civName && opp.civName) { const a = woe(hMe.games, g => g.civ === me.civName), b = woe(hOpp.games, g => g.civ === opp.civName); add('Civ skill', a, b, M.pCiv, `with their civs, you ${rec(a)}, they ${rec(b)}`); }
-    if (map) { const a = woe(hMe.games, g => g.map === map), b = woe(hOpp.games, g => g.map === map); add('Map', a, b, M.pMap, `on ${map}, you ${rec(a)}, they ${rec(b)}`); }
-    const a = woe(hMe.games, () => true), b = woe(hOpp.games, () => true); add('Form', a, b, M.pAll, `overall, you ${a.w}–${a.n - a.w} (about ${a.e.toFixed(0)} expected), they ${b.w}–${b.n - b.w} (about ${b.e.toFixed(0)} expected)`);
+    if (me.civName && opp.civName) { const a = woe(hMe.games, g => g.civ === me.civName), b = woe(hOpp.games, g => g.civ === opp.civName); add('Civ skill', a, b, M.pCiv, `with their civs, ${who[0]} ${rec(a)}, ${who[1]} ${rec(b)}`); }
+    if (map) { const a = woe(hMe.games, g => g.map === map), b = woe(hOpp.games, g => g.map === map); add('Map', a, b, M.pMap, `on ${map}, ${who[0]} ${rec(a)}, ${who[1]} ${rec(b)}`); }
+    const a = woe(hMe.games, () => true), b = woe(hOpp.games, () => true); add('Form', a, b, M.pAll, `overall, ${who[0]} ${a.w}–${a.n - a.w} (about ${a.e.toFixed(0)} expected), ${who[1]} ${b.w}–${b.n - b.w} (about ${b.e.toFixed(0)} expected)`);
   }
   return { p: 1 / (1 + Math.exp(-x)), steps };
 }
@@ -340,7 +341,7 @@ function scoutReport(g, isMine) {
   const [cl, cr] = is1v1 ? sideColors(mine.colorHex, opps[0].colorHex) : teamColors(myTeam, opps);
   let odds = '', change = '';
   if (is1v1 && mine.rating > 0 && opps[0].rating > 0) {
-    const o = oddsFor('1v1', mine, opps[0], ready ? hMe : null, ready ? hOpps[0] : null, map);
+    const o = oddsFor('1v1', mine, opps[0], ready ? hMe : null, ready ? hOpps[0] : null, map, isMine ? ['you', 'they'] : [mine.name || 'left player', opps[0].name || 'right player']);
     const pc = pctShow(o.p);
     odds = `<div class="sc-odds" title="Model fitted on 37,908 recent console ranked 1v1s. Rating-only picks the winner 71% of the time; this model 72%.">${oddsBar(pc, cl, cr)}` +
       `<div class="sc-pc"><b style="color:${cl}">${lab} ${pc}%</b><span style="color:${cr}">${100 - pc}% ${esc(opps[0].name || '')}</span></div>` +
