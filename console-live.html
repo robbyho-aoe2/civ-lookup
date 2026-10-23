@@ -288,7 +288,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
   </div>
 </div>
 
-<script src="scout.js?v=3"></script>
+<script src="scout.js?v=2"></script>
 <script>
 // Self-contained per this site's convention. A tracked list of console players (data/console-roster.json) decides
 // who to watch from the rating filter; aoe2companion's live socket is then asked only for those players' games and
@@ -452,7 +452,7 @@ function cardOdds(m, pl) {
     o = oddsFor('1v1', a, b, ha && hb ? ha : null, ha && hb ? hb : null, m.mapName || ''); left = esc(a.name || ''); right = esc(b.name || ''); [cl, cr] = sideColors(a.colorHex, b.colorHex);
   } else { o = oddsTeam(teams[0], teams[1]); left = 'Left team'; right = 'Right team'; [cl, cr] = teamColors(teams[0], teams[1]); }
   const pc = pctShow(o.p);
-  return `<div class="g-odds" title="${esc(o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → '))}. Fitted on recent console games; press Scout for the full report."><span class="go-l">${swatch(cl)}${left} ${pc}%</span>${oddsBar(pc, cl, cr)}<span class="go-r">${100 - pc}% ${right}${swatch(cr)}</span></div>`;
+  return `<div class="g-odds" title="${esc(o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → '))}. Fitted on recent console games; press Scout for the full report."><span class="go-l" style="color:${cl}">${left} ${pc}%</span>${oddsBar(pc, cl, cr)}<span class="go-r" style="color:${cr}">${100 - pc}% ${right}</span></div>`;
 }
 const scoutOpen = new Set();   // matchIds whose full report is open
 function cardScout(m, pl) {

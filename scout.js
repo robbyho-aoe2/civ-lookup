@@ -18,9 +18,6 @@
 .sc-bar i{display:block;height:100%;background:#4c8dff;}
 .sc-pc{display:flex;justify-content:space-between;font-size:13px;margin-top:4px;}
 .sc-pc b{font-weight:700;}
-.sc-pc span{color:var(--text2);}
-.sc-sw{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;}
-.sc-pc span .sc-sw,.go-r .sc-sw{margin:0 0 0 5px;}
 .sc-why{font-size:11px;color:var(--text3);margin-top:2px;}
 .sc-elo{font-size:12px;margin-bottom:8px;}
 .sc-elo .up,.sc-res.w{color:var(--green);}
@@ -35,7 +32,7 @@
 .sc-tag.bad{color:var(--red);border-color:rgba(248,113,113,.4);}
 .sc-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;}
 .sc-col{min-width:0;border-top:3px solid var(--c);padding-top:6px;}
-.sc-colhead{display:flex;justify-content:space-between;gap:6px;font-size:12px;font-weight:700;color:var(--text);overflow:hidden;}
+.sc-colhead{display:flex;justify-content:space-between;gap:6px;font-size:12px;font-weight:700;color:var(--c);overflow:hidden;}
 .sc-colhead span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .sc-avg{font-weight:400;color:var(--text3);font-size:11px;white-space:nowrap;}
 .sc-res{font-weight:700;}
@@ -212,7 +209,6 @@ function teamColors(a, b) {
   if (wa == null || wb == null || wa === wb) return [SIDE_A, SIDE_B];
   return [wa ? WARM_SIDE : COOL_SIDE, wb ? WARM_SIDE : COOL_SIDE];
 }
-const swatch = c => `<i class="sc-sw" style="background:${c}"></i>`;
 const oddsBar = (pc, cl, cr) => `<div class="sc-bar" style="background:${cr}"><i style="width:${pc}%;background:${cl}"></i></div>`;
 function oddsFor(mode, me, opp, hMe, hOpp, map) {
   const M = SCOUT[mode], rA = me.rating, rB = opp.rating, avg = (rA + rB) / 2;
@@ -347,11 +343,11 @@ function scoutReport(g, isMine) {
     const o = oddsFor('1v1', mine, opps[0], ready ? hMe : null, ready ? hOpps[0] : null, map);
     const pc = pctShow(o.p);
     odds = `<div class="sc-odds" title="Model fitted on 37,908 recent console ranked 1v1s. Rating-only picks the winner 71% of the time; this model 72%.">${oddsBar(pc, cl, cr)}` +
-      `<div class="sc-pc"><b>${swatch(cl)}${lab} ${pc}%</b><span>${100 - pc}% ${esc(opps[0].name || '')}${swatch(cr)}</span></div>` +
+      `<div class="sc-pc"><b style="color:${cl}">${lab} ${pc}%</b><span style="color:${cr}">${100 - pc}% ${esc(opps[0].name || '')}</span></div>` +
       `<div class="sc-why">${o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → ')}${ready ? '' : ' (form still loading)'}</div>${oddsNotes(o).map(n => `<div class="sc-why">${esc(n)}</div>`).join('')}</div>`;
   } else if (!is1v1 && myTeam.every(p => p.rating > 0) && opps.every(p => p.rating > 0)) {
     const o = oddsTeam(myTeam, opps), pc = pctShow(o.p);
-    odds = `<div class="sc-odds" title="Fitted on 25,664 recent console team games. Rating only picks the winner 75.9% of the time; this model 76.1%.">${oddsBar(pc, cl, cr)}<div class="sc-pc"><b>${swatch(cl)}${labTeam} ${pc}%</b><span>${100 - pc}% them${swatch(cr)}</span></div><div class="sc-why">${o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → ')}</div></div>`;
+    odds = `<div class="sc-odds" title="Fitted on 25,664 recent console team games. Rating only picks the winner 75.9% of the time; this model 76.1%.">${oddsBar(pc, cl, cr)}<div class="sc-pc"><b style="color:${cl}">${labTeam} ${pc}%</b><span style="color:${cr}">${100 - pc}% them</span></div><div class="sc-why">${o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → ')}</div></div>`;
   }
   if (asOf) {
     const d = mine.ratingDiff;
