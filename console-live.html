@@ -94,6 +94,8 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
 .hint{font-size:12px;color:var(--text3);padding:4px 2px;}
 .me-line{font-size:12px;color:var(--text2);margin:-4px 0 12px;}
 .me-line a{color:var(--amberL);cursor:pointer;margin-left:6px;}
+.me-line b a{margin-left:0;text-decoration:none;}
+.me-line b a:hover{text-decoration:underline;}
 .me-row input{height:32px;width:260px;max-width:100%;padding:0 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;outline:none;}
 
 /* odds on every game card */
@@ -312,7 +314,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
-    <div class="version">v0.15</div>
+    <div class="version">v0.16</div>
   </div>
 </div>
 
@@ -558,24 +560,30 @@ const expect = (a, b, D) => 1 / (1 + Math.pow(10, -(a - b) / D));
 function woe(games, pred) {   // wins over expectation per game (shrunk) from games that carry both ratings
   let w = 0, e = 0, n = 0;
   for (const g of games) if (g.r > 0 && g.or > 0 && pred(g)) { w += g.won ? 1 : 0; e += expect(g.r, g.or, 400); n++; }
-  return { v: (w - e) / (n + WOE_SHRINK), n };
+  return { v: (w - e) / (n + WOE_SHRINK), n, w, e };
 }
 // Chance that `me` beats `opp` (1v1), with the part each ingredient adds. Missing ingredients (civ not picked yet, history still loading) are skipped.
 function oddsFor(mode, me, opp, hMe, hOpp, map) {
   const M = SCOUT[mode], rA = me.rating, rB = opp.rating, avg = (rA + rB) / 2;
   const steps = [];
+  const rec = r => `${r.w}–${r.n - r.w} (about ${r.e.toFixed(1)} wins expected)`;
   let x = M.elo * (rA - rB) / 400;
-  steps.push({ label: 'Rating', p: 1 / (1 + Math.exp(-x)) });
+  steps.push({ label: 'Rating', p: 1 / (1 + Math.exp(-x)), note: `rating gap ${rA - rB >= 0 ? '+' : ''}${rA - rB}` });
   const sa = civStrength(me.civName, avg, M.civLadder), sb = civStrength(opp.civName, avg, M.civLadder);
-  if (sa != null && sb != null) { x += M.civ * (logit(sa) - logit(sb)); steps.push({ label: 'Civs', p: 1 / (1 + Math.exp(-x)) }); }
+  if (sa != null && sb != null) { x += M.civ * (logit(sa) - logit(sb)); steps.push({ label: 'Civs', p: 1 / (1 + Math.exp(-x)), note: `${me.civName} wins ${Math.round(sa * 100)}% and ${opp.civName} ${Math.round(sb * 100)}% in this rating bracket` }); }
   if (hMe && hOpp && mode === '1v1') {
-    let any = false;
-    if (me.civName && opp.civName) { x += M.pCiv * (woe(hMe.games, g => g.civ === me.civName).v - woe(hOpp.games, g => g.civ === opp.civName).v); any = true; }
-    if (map) { x += M.pMap * (woe(hMe.games, g => g.map === map).v - woe(hOpp.games, g => g.map === map).v); any = true; }
-    x += M.pAll * (woe(hMe.games, () => true).v - woe(hOpp.games, () => true).v);
-    steps.push({ label: 'Form', p: 1 / (1 + Math.exp(-x)) });
+    const add = (label, a, b, coef, note) => { x += coef * (a.v - b.v); steps.push({ label, p: 1 / (1 + Math.exp(-x)), note }); };
+    if (me.civName && opp.civName) { const a = woe(hMe.games, g => g.civ === me.civName), b = woe(hOpp.games, g => g.civ === opp.civName); add('Civ skill', a, b, M.pCiv, `with their civs, you ${rec(a)}, they ${rec(b)}`); }
+    if (map) { const a = woe(hMe.games, g => g.map === map), b = woe(hOpp.games, g => g.map === map); add('Map', a, b, M.pMap, `on ${map}, you ${rec(a)}, they ${rec(b)}`); }
+    const a = woe(hMe.games, () => true), b = woe(hOpp.games, () => true); add('Form', a, b, M.pAll, `overall, you ${a.w}–${a.n - a.w} (about ${a.e.toFixed(0)} expected), they ${b.w}–${b.n - b.w} (about ${b.e.toFixed(0)} expected)`);
   }
   return { p: 1 / (1 + Math.exp(-x)), steps };
+}
+// The few steps that moved the odds by 2+ points, in plain words, so a surprising number can be explained.
+function oddsNotes(o) {
+  const out = []; let prev = null;
+  o.steps.forEach((s, i) => { const d = prev == null ? 0 : s.p - prev; if (i > 0 && Math.abs(d) >= 0.02 && s.note) out.push(`${s.label} ${d > 0 ? '+' : '−'}${Math.round(Math.abs(d) * 100)} pts: ${s.note}`); prev = s.p; });
+  return out;
 }
 function oddsTeam(mine, theirs) {   // mine / theirs: arrays of players with rating and civName
   const M = SCOUT.team, avg = a => a.reduce((s, p) => s + p.rating, 0) / a.length, mx = a => Math.max(...a.map(p => p.rating)), all = (avg(mine) + avg(theirs)) / 2;
@@ -689,7 +697,7 @@ function scoutReport(g, isMine) {
     const pc = Math.round(o.p * 100);
     odds = `<div class="sc-odds" title="Model fitted on 37,908 recent console ranked 1v1s. Rating-only picks the winner 71% of the time; this model 72%."><div class="sc-bar"><i style="width:${pc}%"></i></div>` +
       `<div class="sc-pc"><b>${lab} ${pc}%</b><span>${100 - pc}% ${esc(opps[0].name || '')}</span></div>` +
-      `<div class="sc-why">${o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → ')}${ready ? '' : ' (form still loading)'}</div></div>`;
+      `<div class="sc-why">${o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → ')}${ready ? '' : ' (form still loading)'}</div>${oddsNotes(o).map(n => `<div class="sc-why">${esc(n)}</div>`).join('')}</div>`;
   } else if (!is1v1 && myTeam.every(p => p.rating > 0) && opps.every(p => p.rating > 0)) {
     const o = oddsTeam(myTeam, opps), pc = Math.round(o.p * 100);
     odds = `<div class="sc-odds" title="Fitted on 25,664 recent console team games. Rating only picks the winner 75.9% of the time; this model 76.1%."><div class="sc-bar"><i style="width:${pc}%"></i></div><div class="sc-pc"><b>${labTeam} ${pc}%</b><span>${100 - pc}% them</span></div><div class="sc-why">${o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → ')}</div></div>`;
@@ -943,9 +951,9 @@ async function ratingsFor(id, name) {
   return { id: Number(id), name: j.name || name || String(id), r1: lb.rm_1v1_console || 0, rt: lb.rm_team_console || 0 };
 }
 function paintMe() {
-  const me = loadMe(), el = $('me-line');
-  el.hidden = !me;
-  if (me) el.innerHTML = `Your level: <b>${esc(me.name)}</b> · 1v1 ${me.r1 || '–'} · Team ${me.rt || '–'} <a id="me-change">change</a>`;
+  const me = loadMe(), who = me || getMe(), el = $('me-line');   // getMe also finds the player set with Make this my player in the app
+  el.hidden = !who;
+  if (who) el.innerHTML = `Your player: <b><a href="player.html?id=${who.id}" title="Open ${esc(who.name)} in Player Spotlight">${esc(who.name)}</a></b>` + (me ? ` · 1v1 ${me.r1 || '–'} · Team ${me.rt || '–'}` : '') + ` <a id="me-change">change</a>`;
   const ch = $('me-change'); if (ch) ch.addEventListener('click', () => { openMeSearch(); });
 }
 let meMode = 'level';
