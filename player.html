@@ -80,6 +80,9 @@ header .back:hover{color:var(--amberL);}
 .mc-title b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .mc-title span{display:block;font-size:11px;color:var(--text2);margin-top:2px;}
 .mc-title .mc-ago{color:var(--text3);}
+.mc-title .mc-odds{color:var(--text2);}
+.mc-odds .mc-up{color:var(--green,#4ade80);font-weight:700;}
+.mc-odds .mc-dn{color:var(--red,#f87171);font-weight:700;}
 .mc-insights{color:var(--amberL);text-decoration:none;}
 .mc-insights:hover{text-decoration:underline;}
 .mc-teams{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;min-width:0;}
@@ -1252,6 +1255,55 @@ function render(content, entry, player) {
   };
   const platIcon = id => PLATFORM_ICONS[PLATFORMS_MAP[String(id)]] || '';
   const PLAYER_COLOR_NAMES = { 1: 'Blue', 2: 'Red', 3: 'Green', 4: 'Yellow', 5: 'Cyan', 6: 'Pink', 7: 'Gray', 8: 'Orange' };
+  // Pre-game win chance for ranked console games, from the ratings each player had when the game started and the civs they
+  // played. Same logistic model as Console Live's scouting report, fitted on 37,908 recent console 1v1s and 25,664 team games:
+  //   1v1:  x = 3.006 * rating gap / 400 + 0.672 * civ strength gap
+  //   team: x = 3.741 * average rating gap / 400 + 1.425 * average civ strength gap + 0.533 * best-player gap / 400
+  // Civ strength is the civ's win rate in the matching rating bracket (Insights data, shrunk toward 50%). Individual form on
+  // the map and civ is left out here (it would need each player's older games), so a Console Live odds figure can differ a bit.
+  let CIV_STATS = null, civStatsBusy = false;
+  function loadCivStats() {
+    if (CIV_STATS || civStatsBusy) return;
+    civStatsBusy = true;
+    fetch(`${PLAYER_DATA_BASE}/insights-console-civs.json`).then(r => r.json()).then(j => { CIV_STATS = j; renderRecentMatches(); })
+      .catch(() => { CIV_STATS = { ladders: {} }; }).finally(() => { civStatsBusy = false; });
+  }
+  const ratingBracket = r => (r >= 1700 ? 'high' : r >= 1300 ? 'himid' : r >= 900 ? 'lomid' : 'low');
+  const CIV_NORM_MAP = { Mayans: 'Maya', Inca: 'Incas', Indians: 'Hindustanis' };
+  function civStrength(civ, rating, ladder) {
+    if (!civ || !CIV_STATS) return null;
+    const d = (((CIV_STATS.ladders || {})[ladder] || {}).brackets || {})[ratingBracket(rating)] || {}, c = d[CIV_NORM_MAP[civ] || civ];
+    return ((c ? c.wins : 0) + 10) / ((c ? c.games : 0) + 20);
+  }
+  const logit = q => Math.log(q / (1 - q));
+  function preGameOdds(raw, me) {
+    const lb = raw.leaderboardId;
+    if (lb !== 'rm_1v1_console' && lb !== 'rm_team_console') return null;
+    const teams = (raw.teams || []).filter(t => (t.players || []).length);
+    if (teams.length !== 2) return null;
+    const mine = teams.find(t => t.players.some(p => p.profileId === me)), theirs = teams.find(t => t !== mine);
+    if (!mine || !theirs || mine.players.length !== theirs.players.length) return null;
+    const all = mine.players.concat(theirs.players);
+    if (!all.every(p => p.rating > 0)) return null;
+    loadCivStats();
+    const avg = a => a.reduce((t, p) => t + p.rating, 0) / a.length, mx = a => Math.max(...a.map(p => p.rating)), mean = all.map(p => p.rating).reduce((a, b) => a + b, 0) / all.length;
+    const ladder = lb === 'rm_1v1_console' ? '1v1 Console' : 'Team Console';
+    let x = lb === 'rm_1v1_console' ? 3.006 * (avg(mine.players) - avg(theirs.players)) / 400
+      : 3.741 * (avg(mine.players) - avg(theirs.players)) / 400 + 0.533 * (mx(mine.players) - mx(theirs.players)) / 400;
+    const sa = mine.players.map(p => civStrength(p.civName, mean, ladder)), sb = theirs.players.map(p => civStrength(p.civName, mean, ladder));
+    if (sa.every(v => v != null) && sb.every(v => v != null)) {
+      const m = a => a.reduce((t, q) => t + logit(q), 0) / a.length;
+      x += (lb === 'rm_1v1_console' ? 0.672 : 1.425) * (m(sa) - m(sb));
+    }
+    return 1 / (1 + Math.exp(-x));
+  }
+  function oddsMeta(raw, me, won) {
+    const q = preGameOdds(raw, me);
+    if (q == null) return '';
+    const pc = Math.round(q * 100);
+    const tag = won === true && q <= 0.35 ? ' · <b class="mc-up">upset win</b>' : won === false && q >= 0.65 ? ' · <b class="mc-dn">upset loss</b>' : '';
+    return `<span class="mc-odds" title="Win chance before the game, from both sides' ratings at the time and the civs played. Fitted on recent console games.">Pre-game odds: ${pc}%${tag}</span>`;
+  }
   function matchCardHtml(raw) {
     const me = Number(entry.profileId);
     const teams = (raw.teams || []).filter(t => (t.players || []).length);
@@ -1265,7 +1317,7 @@ function render(content, entry, player) {
     const ago = timeAgo(raw.finished || raw.started);
     const insightsLink = raw.matchId != null
       ? `<a class="mc-insights" href="https://www.aoe2insights.com/match/${raw.matchId}/" target="_blank" rel="noopener">↗ Insights</a>` : '';
-    const meta = [recentLabel(raw), ago && `<span class="mc-ago">${escapeHtml(ago)}${dur ? ' · ' + fmtLong(dur) : ''}${insightsLink ? ' · ' + insightsLink : ''}</span>`].filter(Boolean);
+    const meta = [recentLabel(raw), ago && `<span class="mc-ago">${escapeHtml(ago)}${dur ? ' · ' + fmtLong(dur) : ''}${insightsLink ? ' · ' + insightsLink : ''}</span>`, oddsMeta(raw, me, won)].filter(Boolean);
     const playerRow = p => {
       const d = p.ratingDiff;
       const colName = PLAYER_COLOR_NAMES[p.color];
