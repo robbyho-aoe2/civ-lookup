@@ -98,6 +98,27 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
 .me-line b a:hover{text-decoration:underline;}
 .me-row input{height:32px;width:260px;max-width:100%;padding:0 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;outline:none;}
 
+/* two-column scouting layout */
+.sc-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;}
+.sc-col{min-width:0;border-top:3px solid var(--c);padding-top:6px;}
+.sc-colhead{display:flex;justify-content:space-between;gap:6px;font-size:12px;font-weight:700;color:var(--c);overflow:hidden;}
+.sc-colhead span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sc-avg{font-weight:400;color:var(--text3);font-size:11px;white-space:nowrap;}
+.sc-pl{border-left:4px solid var(--pc);background:var(--surf);border-radius:7px;padding:6px 8px;margin-top:6px;min-width:0;font-size:11px;}
+.sc-ph{display:flex;justify-content:space-between;gap:6px;align-items:baseline;}
+.sc-pn{font-weight:700;font-size:12px;display:flex;align-items:center;gap:3px;min-width:0;}
+.sc-pn a{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.sc-pn a{color:inherit;text-decoration:none;}
+.sc-pn a:hover{color:var(--amberL);}
+.sc-you{flex:none;font-style:normal;font-size:9px;font-weight:700;color:var(--amberL);border:1px solid var(--border2);border-radius:10px;padding:0 5px;margin-left:3px;}
+.sc-pr{font-size:11px;color:var(--text2);font-variant-numeric:tabular-nums;}
+.sc-pcv{font-size:10px;color:var(--text3);margin-bottom:3px;}
+.sc-r{display:flex;justify-content:space-between;gap:6px;line-height:1.5;}
+.sc-r .sc-k{min-width:0;flex:none;font-size:10px;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sc-r .sc-v{text-align:right;min-width:0;color:var(--text2);overflow-wrap:anywhere;}
+.sc-dots{display:flex;flex-wrap:wrap;gap:2px;justify-content:flex-end;margin:1px 0 2px;}
+.sc-h2h{font-size:12px;color:var(--text2);margin-top:8px;}
+@media (max-width:520px){.sc-cols{gap:6px;}.sc-pl{padding:5px 6px;}.sc-r{display:block;margin-top:2px;}.sc-r .sc-k{display:block;max-width:none;white-space:normal;}.sc-r .sc-v{display:block;text-align:left;}.sc-dots{justify-content:flex-start;}}
 /* odds on every game card */
 .g-odds{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text2);border-top:1px solid var(--border2);padding-top:7px;}
 .g-odds .sc-bar{flex:1;min-width:60px;}
@@ -313,7 +334,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
-    <div class="version">v0.17</div>
+    <div class="version">v0.18</div>
   </div>
 </div>
 
@@ -651,33 +672,36 @@ function scoutTags(opp, games, map, cls) {
   if (all < 40 && wr >= 0.65) tags.push(['Few games, high win rate', 'bad', 'could be a new or smurf account']);
   return tags;
 }
-function opponentLine(opp, hist1, mode, map, cls) {
-  const n = esc(opp.name || '');
-  if (hist1 === 'loading' || hist1 === undefined) return `<div class="sc-opp"><b>${n}</b> <span class="sc-dim">checking their recent games…</span></div>`;
-  if (hist1 === 'err') return `<div class="sc-opp"><b>${n}</b> <span class="sc-dim">could not load their games</span></div>`;
-  const g = hist1.games, w = g.filter(x => x.won).length;
-  const onMap = map ? g.filter(x => x.map === map) : [];
-  const inCls = cls ? g.filter(x => MAP_CLASS[x.map] === cls) : [];
+// One player's block in the report: their in-game color on the left edge, then the stats that matter for this game.
+function scoutPlayer(p, h, mode, map, cls, pe, isYou) {
+  const col = readableColor(p.colorHex) || '#8b95a1', n = esc(p.name || '');
+  const head = `<div class="sc-ph"><span class="sc-pn">${platIcon(p.profileId)}<a href="player.html?id=${p.profileId}">${n}</a>${isYou ? ' <i class="sc-you">you</i>' : ''}</span><span class="sc-pr">${p.rating > 0 ? p.rating : ''}</span></div>` +
+    `<div class="sc-pcv">${p.civName ? esc(p.civName) : ''}</div>`;
+  const wrap = body => `<div class="sc-pl" style="--pc:${col}">${head}${body}</div>`;
+  if (h === 'loading' || h === undefined) return wrap('<div class="sc-dim">checking recent games…</div>');
+  if (h === 'err') return wrap('<div class="sc-dim">could not load their games</div>');
+  const g = h.games, w = g.filter(x => x.won).length;
+  const onMap = map ? g.filter(x => x.map === map) : [], inCls = cls ? g.filter(x => MAP_CLASS[x.map] === cls) : [];
   const last20 = g.slice(0, 20), w20 = last20.filter(x => x.won).length;
   const civs = new Map(); g.forEach(x => { if (!x.civ) return; const c = civs.get(x.civ) || { n: 0, w: 0 }; c.n++; if (x.won) c.w++; civs.set(x.civ, c); });
-  const topCivs = [...civs.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 3).map(([c, v]) => `${esc(c)} ${Math.round(v.n / g.length * 100)}% · ${Math.round(v.w / v.n * 100)}% won`).join(', ');
-  const thisCiv = opp.civName ? civs.get(opp.civName) : null;
+  const topCivs = [...civs.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 2).map(([c, v]) => `${esc(c)} ${Math.round(v.n / g.length * 100)}% (${Math.round(v.w / v.n * 100)}% won)`).join('<br>');
+  const thisCiv = p.civName ? civs.get(p.civName) : null;
   const lastTs = g.length && g[0].ts ? g[0].ts : null, week = g.filter(x => x.ts && Date.now() - Date.parse(x.ts) < 7 * 864e5).length;
-  const lines = [];
-  lines.push(`<span class="sc-k">${mode === 'team' ? 'Team win rate' : 'Win rate'}</span> ${pctText(w, g.length)} overall · last 20 ${pctText(w20, last20.length)} <span class="sc-dots">${formDots(g, 10)}</span>`);
-  if (map) lines.push(`<span class="sc-k">On ${esc(map)}</span> ${pctText(onMap.filter(x => x.won).length, onMap.length)}` + (cls && inCls.length ? ` · ${cls} maps ${pctText(inCls.filter(x => x.won).length, inCls.length)}` : ''));
-  if (opp.civName) lines.push(`<span class="sc-k">${esc(opp.civName)}</span> ${thisCiv ? pctText(thisCiv.w, thisCiv.n) : 'first time in their recent games'}`);
-  if (topCivs) lines.push(`<span class="sc-k">Plays</span> ${topCivs}`);
   const md = median(g.filter(x => x.dur).map(x => x.dur));
-  const act = [];
-  if (md != null) act.push(`median game ${Math.round(md)} min`);
-  act.push(`${week} game${week === 1 ? '' : 's'} in the last 7 days`);
-  if (lastTs) act.push(`last game ${agoText(lastTs)}`);
-  lines.push(`<span class="sc-k">Activity</span> ${act.join(' · ')}`);
-  const tags = scoutTags(opp, g, map, cls);
-  return `<div class="sc-opp"><div class="sc-name"><b>${platIcon(opp.profileId)}<a href="player.html?id=${opp.profileId}">${n}</a></b> <span class="sc-dim">${opp.civName ? esc(opp.civName) + ' · ' : ''}${opp.rating > 0 ? opp.rating : ''}</span></div>` +
-    lines.map(l => `<div class="sc-line">${l}</div>`).join('') +
-    (tags.length ? `<div class="sc-tags">${tags.map(([t, c, why]) => `<span class="sc-tag ${c}" title="${esc(why)}">${esc(t)}</span>`).join('')}</div>` : '') + `</div>`;
+  const row = (k, v) => v ? `<div class="sc-r"><span class="sc-k">${k}</span><span class="sc-v">${v}</span></div>` : '';
+  const rows = [
+    row(mode === 'team' ? 'Team win rate' : 'Win rate', pctText(w, g.length)),
+    row('Last 20', last20.length ? `${pctText(w20, last20.length)}` : ''),
+    g.length ? `<div class="sc-dots">${formDots(g, 10)}</div>` : '',
+    map ? row(`On ${esc(map)}`, pctText(onMap.filter(x => x.won).length, onMap.length)) : '',
+    cls && inCls.length ? row(`${cls} maps`, pctText(inCls.filter(x => x.won).length, inCls.length)) : '',
+    p.civName ? row(esc(p.civName), thisCiv ? pctText(thisCiv.w, thisCiv.n) : 'new for them') : '',
+    row('Plays', topCivs),
+    row('Games', `${md != null ? Math.round(md) + ' min · ' : ''}${week} this week${lastTs ? ' · ' + agoText(lastTs).replace(' ago', '') : ''}`),
+    pe && pe !== 'loading' && pe !== 'err' ? row('Peak', `${pe.maxRating || '–'}${pe.rank ? ' · #' + pe.rank : ''}${pe.streak ? ' · ' + (pe.streak > 0 ? pe.streak + 'W' : -pe.streak + 'L') : ''}`) : '',
+  ].join('');
+  const tags = scoutTags(p, g, map, cls);
+  return wrap(rows + (tags.length ? `<div class="sc-tags">${tags.map(([t, c, why]) => `<span class="sc-tag ${c}" title="${esc(why)}">${esc(t)}</span>`).join('')}</div>` : ''));
 }
 function myLiveGame() {
   const me = getMe();
@@ -694,6 +718,7 @@ function myLiveGame() {
 }
 // g = { m, pl, mine }: the game, its players and the player the report is written from. For your own game that is you; for any
 // other game it is the first player on the left side, and the labels use their name (or "Left team") instead of "You".
+// Both sides are shown in two columns, each player with their in-game color, so the report reads like the game lobby.
 function scoutReport(g, isMine) {
   const { m, pl, mine } = g, teams = groupTeams(pl);
   const myTeam = teams.find(t => t.some(p => p.profileId === mine.profileId)) || [], opps = pl.filter(p => !myTeam.includes(p));
@@ -704,14 +729,17 @@ function scoutReport(g, isMine) {
   if (m.leaderboardId !== lb) return `<div class="scout"><div class="sc-head">Scouting${isMine ? ' your game' : ''}</div><div class="sc-dim">Scouting works for ranked 1v1 and team games on console. This one is ${esc(ladderLabel(m))}.</div></div>`;
   loadCivStats();
   const map = m.mapName || '', cls = MAP_CLASS[map] || null;
-  const hOf = p => histWant(p.profileId, lb);
-  const hMe = hOf(mine), hOpps = opps.map(hOf);
-  const ready = hMe !== 'loading' && hMe !== 'err' && hOpps.every(h => h !== 'loading' && h !== 'err');
+  const hist = p => histWant(p.profileId, lb);
+  const hAll = new Map(pl.map(p => [p.profileId, hist(p)]));
+  const loaded = h => h && h !== 'loading' && h !== 'err';
+  const hMe = hAll.get(mine.profileId), hOpps = opps.map(p => hAll.get(p.profileId));
+  const ready = loaded(hMe) && hOpps.every(loaded);
   const myAvg = Math.round(myTeam.map(p => p.rating || 0).reduce((a, b) => a + b, 0) / myTeam.length), opAvg = Math.round(opps.map(p => p.rating || 0).reduce((a, b) => a + b, 0) / opps.length);
+  const [cl, cr] = is1v1 ? sideColors(mine.colorHex, opps[0].colorHex) : [SIDE_A, SIDE_B];
   let odds = '', change = '';
   if (is1v1 && mine.rating > 0 && opps[0].rating > 0) {
     const o = oddsFor('1v1', mine, opps[0], ready ? hMe : null, ready ? hOpps[0] : null, map);
-    const pc = Math.round(o.p * 100), [cl, cr] = sideColors(mine.colorHex, opps[0].colorHex);
+    const pc = Math.round(o.p * 100);
     odds = `<div class="sc-odds" title="Model fitted on 37,908 recent console ranked 1v1s. Rating-only picks the winner 71% of the time; this model 72%.">${oddsBar(pc, cl, cr)}` +
       `<div class="sc-pc"><b style="color:${cl}">${lab} ${pc}%</b><span style="color:${cr}">${100 - pc}% ${esc(opps[0].name || '')}</span></div>` +
       `<div class="sc-why">${o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → ')}${ready ? '' : ' (form still loading)'}</div>${oddsNotes(o).map(n => `<div class="sc-why">${esc(n)}</div>`).join('')}</div>`;
@@ -723,19 +751,14 @@ function scoutReport(g, isMine) {
     const c = eloChange(mode, mine.rating, opAvg);
     change = `<div class="sc-elo"><span class="sc-k">Rating</span> ${mine.rating} v ${opAvg} (${mine.rating - opAvg >= 0 ? '+' : ''}${mine.rating - opAvg}) · win <b class="up">+${c.win}</b> → ${mine.rating + c.win} · loss <b class="dn">−${c.loss}</b> → ${mine.rating - c.loss}${isMine ? '' : ' <span class="sc-dim">(for ' + esc(mine.name || '') + ')</span>'}</div>`;
   }
-  const peakBits = opps.length === 1 ? (() => {
-    const pe = profileEntry(opps[0].profileId, lb);
-    return pe && pe !== 'loading' && pe !== 'err' ? `<div class="sc-line"><span class="sc-k">Their ladder</span> peak ${pe.maxRating || '–'}${pe.rank ? ' · rank #' + pe.rank : ''}${pe.streak ? ' · streak ' + (pe.streak > 0 ? pe.streak + 'W' : -pe.streak + 'L') : ''}</div>` : '';
-  })() : '';
-  const h2h = is1v1 && hMe !== 'loading' && hMe !== 'err' ? (() => {
+  const peak = p => (is1v1 ? profileEntry(p.profileId, lb) : null);
+  const col = (team, label, avg, c, youId) => `<div class="sc-col" style="--c:${c}"><div class="sc-colhead"><span>${label}</span><span class="sc-avg">${avg > 0 ? 'avg ' + avg : ''}</span></div>` +
+    team.map(p => scoutPlayer(p, hAll.get(p.profileId), mode, map, cls, peak(p), p.profileId === youId)).join('') + `</div>`;
+  const h2h = is1v1 && loaded(hMe) ? (() => {
     const s = hMe.games.filter(x => x.opps.includes(opps[0].profileId)), w = s.filter(x => x.won).length;
-    return `<div class="sc-line"><span class="sc-k">Head-to-head</span> ${s.length ? `${isMine ? 'you' : lab} ${w}–${s.length - w}` : 'first match'}</div>`;
+    return `<div class="sc-h2h"><span class="sc-k">Head-to-head</span> ${s.length ? `${isMine ? 'you' : lab} ${w}–${s.length - w}` : 'first match'}</div>`;
   })() : '';
-  const meLine = ready && is1v1 && map ? (() => {
-    const onMap = hMe.games.filter(x => x.map === map), inCls = cls ? hMe.games.filter(x => MAP_CLASS[x.map] === cls) : [];
-    return `<div class="sc-line"><span class="sc-k">${lab} on ${esc(map)}</span> ${pctText(onMap.filter(x => x.won).length, onMap.length)}${cls && inCls.length ? ` · ${cls} maps ${pctText(inCls.filter(x => x.won).length, inCls.length)}` : ''}</div>`;
-  })() : '';
-  const body = `${odds}${change}<div class="sc-body">${opps.map((o, i) => opponentLine(o, hOpps[i], mode, map, cls)).join('')}${peakBits}${meLine}${h2h}</div>`;
+  const body = `${odds}${change}<div class="sc-cols">${col(myTeam, is1v1 ? esc(mine.name || '') : labTeam, myAvg, cl, isMine ? mine.profileId : -1)}${col(opps, is1v1 ? esc(opps[0].name || '') : (isMine ? 'Their team' : 'Right team'), opAvg, cr, -1)}</div>${h2h}`;
   if (!isMine) return `<div class="g-scout-body">${body}</div>`;
   return `<div class="scout"><div class="sc-head"><span>Scouting your game</span><span class="sc-sub">${esc(map || 'Unknown map')}${cls ? ' · ' + cls : ''} · ${mode === '1v1' ? '1v1' : groupTeams(pl).map(t => t.length).join('v')} · <span class="g-timer">${clock(Date.now() - Date.parse(m.started))}</span> in</span></div>${body}</div>`;
 }
