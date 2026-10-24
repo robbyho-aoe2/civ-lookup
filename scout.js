@@ -150,7 +150,7 @@ const SCOUT = {
 };
 const WOE_SHRINK = 12;
 const MAP_CLASS = { 'Arabia': 'open', 'Arabian Desert': 'open', 'Nomad': 'hybrid', 'MegaRandom': 'open', 'Arena': 'closed', 'Black Forest': 'closed', 'Fortress': 'closed',
-  'Glade': 'hybrid', 'Michi': 'closed', 'African Clearing': 'hybrid', 'Coastal Forest': 'hybrid', 'Scandinavia': 'hybrid', 'Yucatan': 'hybrid', 'Baltic': 'water', 'Northern Isles': 'water' };
+  'Glade': 'closed', 'Michi': 'closed', 'African Clearing': 'open', 'Coastal Forest': 'hybrid', 'Scandinavia': 'hybrid', 'Yucatan': 'hybrid', 'Baltic': 'water', 'Northern Isles': 'water' };
 const SCOUT_CIV_NORM = { Mayans: 'Maya', Inca: 'Incas', Indians: 'Hindustanis' };
 const normCiv = c => SCOUT_CIV_NORM[c] || c;
 const scoutProfiles = new Map();   // key lb:id -> profile leaderboard entry | 'loading' | 'err'
