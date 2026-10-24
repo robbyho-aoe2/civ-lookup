@@ -149,7 +149,7 @@ const SCOUT = {
   team:  { lb: 'rm_team_console', elo: 3.741, civ: 1.425, best: 0.533, K: 35.5, D: 400, civLadder: 'Team Console' },
 };
 const WOE_SHRINK = 12;
-const MAP_CLASS = { 'Arabia': 'open', 'Arabian Desert': 'open', 'Nomad': 'open', 'MegaRandom': 'open', 'Arena': 'closed', 'Black Forest': 'closed', 'Fortress': 'closed',
+const MAP_CLASS = { 'Arabia': 'open', 'Arabian Desert': 'open', 'Nomad': 'hybrid', 'MegaRandom': 'open', 'Arena': 'closed', 'Black Forest': 'closed', 'Fortress': 'closed',
   'Glade': 'hybrid', 'Michi': 'closed', 'African Clearing': 'hybrid', 'Coastal Forest': 'hybrid', 'Scandinavia': 'hybrid', 'Yucatan': 'hybrid', 'Baltic': 'water', 'Northern Isles': 'water' };
 const SCOUT_CIV_NORM = { Mayans: 'Maya', Inca: 'Incas', Indians: 'Hindustanis' };
 const normCiv = c => SCOUT_CIV_NORM[c] || c;
