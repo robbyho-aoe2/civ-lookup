@@ -108,6 +108,8 @@ header .back:hover{color:var(--amberL);}
 .mc-more{display:block;margin:6px auto 0;padding:8px 18px;background:var(--surf2);border:1px solid var(--border2);border-radius:20px;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;}
 .mc-more:hover{color:var(--amberL);border-color:var(--amber);}
 .mc-scoutrow{grid-column:1/-1;}
+.mc-title .mc-replay{display:inline;}
+@media (pointer:coarse),(max-width:820px){.mc-title .mc-replay{display:none;}}   /* a PC-only link, like Spectate on PC on Console Live */
 .mc-scoutbtn{font:inherit;font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px;border:1px solid var(--border2);background:var(--surf);color:var(--amberL);cursor:pointer;}
 .mc-scoutbtn:hover{border-color:var(--amber);}
 .rows-more{display:block;margin:8px auto 0;padding:6px 16px;background:var(--surf2);border:1px solid var(--border2);border-radius:20px;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;}
@@ -1300,7 +1302,10 @@ function render(content, entry, player) {
     const ago = timeAgo(raw.finished || raw.started);
     const insightsLink = raw.matchId != null
       ? `<a class="mc-insights" href="https://www.aoe2insights.com/match/${raw.matchId}/" target="_blank" rel="noopener">↗ Insights</a>` : '';
-    const meta = [recentLabel(raw), ago && `<span class="mc-ago">${escapeHtml(ago)}${dur ? ' · ' + fmtLong(dur) : ''}${insightsLink ? ' · ' + insightsLink : ''}</span>`, oddsMeta(raw, me, won)].filter(Boolean);
+    // Replay download (opens through the game's own aoe.ms link, so like Spectate on PC it only helps on a PC): hidden on phones
+    const replayLink = raw.matchId != null && raw.finished
+      ? `<span class="mc-replay"> · <a class="mc-insights" href="https://aoe.ms/replay/?gameId=${raw.matchId}&profileId=${me}" target="_blank" rel="noopener" title="Download the game recording (.aoe2record) to watch it in Age of Empires II on a PC">⬇ Replay</a></span>` : '';
+    const meta = [recentLabel(raw), ago && `<span class="mc-ago">${escapeHtml(ago)}${dur ? ' · ' + fmtLong(dur) : ''}${insightsLink ? ' · ' + insightsLink : ''}${replayLink}</span>`, oddsMeta(raw, me, won)].filter(Boolean);
     const playerRow = p => {
       const d = p.ratingDiff;
       const colName = PLAYER_COLOR_NAMES[p.color];
