@@ -778,7 +778,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
-    <div class="version">v1.86</div>
+    <div class="version">v1.87</div>
   </div>
 </div>
 
@@ -1051,6 +1051,8 @@ const DRAFTS = [
     events: [['host', 'ban', 'african-clearing'], ['guest', 'ban', 'arabia'], ['none', 'pick', 'black-forest'], ['host', 'pick', 'arena'], ['guest', 'pick', 'steppe'], ['host', 'pick', 'glade'], ['guest', 'pick', 'oasis']] },
   { teams: ['canada', 'mexico'], host: 'canada', guest: 'mexico', url: 'https://aoe2cm.net/draft/jYgUP',
     events: [['host', 'ban', 'arabia'], ['guest', 'ban', 'african-clearing'], ['none', 'pick', 'oasis'], ['host', 'pick', 'arena'], ['guest', 'pick', 'steppe'], ['host', 'pick', 'glade'], ['guest', 'pick', 'black-forest']] },
+  { teams: ['usa', 'uk'], host: 'usa', guest: 'uk', url: 'https://aoe2cm.net/draft/cqlPD',
+    events: [['host', 'ban', 'glade'], ['guest', 'ban', 'arabia'], ['none', 'pick', 'steppe'], ['host', 'pick', 'african-clearing'], ['guest', 'pick', 'arena'], ['host', 'pick', 'black-forest'], ['guest', 'pick', 'oasis']] },
 ];
 const draftFor = (a, b) => DRAFTS.find(d => (d.teams[0] === a.id && d.teams[1] === b.id) || (d.teams[0] === b.id && d.teams[1] === a.id));
 function draftHtml(a, b) {
