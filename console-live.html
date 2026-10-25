@@ -287,11 +287,11 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
-    <div class="version">v0.23</div>
+    <div class="version">v0.24</div>
   </div>
 </div>
 
-<script src="scout.js?v=8"></script>
+<script src="scout.js?v=9"></script>
 <script>
 // Self-contained per this site's convention. A tracked list of console players (data/console-roster.json) decides
 // who to watch from the rating filter; aoe2companion's live socket is then asked only for those players' games and
@@ -978,12 +978,12 @@ const connFresh = id => connCache[id] && Date.now() - connCache[id].at < CONN_TT
 async function analyzeFollower(id) {
   const mates = {}, opps = {}; let games = 0, ok = 0;
   for (let page = 1; page <= CONN_PAGES; page++) {
-    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 12000);
+    // goes through histGet (scout.js), which spaces requests and retries a 429, so these lookups and the scouting reports'
+    // history loads share one pace instead of both bursting at the API (that gave the "asked us to slow down" notice)
     let res;
-    try { res = await fetch(`${API}/matches?profile_ids=${id}&page=${page}&per_page=20`, { cache: 'no-store', signal: ctl.signal }); }
-    catch (e) { clearTimeout(to); break; }
-    clearTimeout(to);
-    if (res.status === 429) { const e = new Error('rate'); e.rate = true; throw e; }
+    try { res = await histGet(`${API}/matches?profile_ids=${id}&page=${page}&per_page=20`); }
+    catch (e) { break; }
+    if (!res) { const e = new Error('rate'); e.rate = true; throw e; }
     if (!res.ok) break;
     const j = await res.json(), ms = Array.isArray(j) ? j : (j.matches || []);
     ok++;

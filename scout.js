@@ -102,7 +102,7 @@ function histPump() {
 // The data API answers 429 when asked too fast, so requests are spaced out and a refused page is retried after a pause.
 async function histGet(url) {
   for (let attempt = 0; attempt < 4; attempt++) {
-    const wait = histLastReq + 200 - Date.now(); histLastReq = Math.max(Date.now(), histLastReq) + 200;
+    const wait = histLastReq + 350 - Date.now(); histLastReq = Math.max(Date.now(), histLastReq) + 350;
     if (wait > 0) await new Promise(r => setTimeout(r, wait));
     const r = await fetch(url);
     if (r.status !== 429) return r;
