@@ -75,14 +75,14 @@
     },
     civs: {
       label: 'Console civs',
-      note: 'Every civ in the console data, with its win rate across 1v1 and team games on console. "Fill with the site\'s pick" orders them by win rate (pulled toward 50% for civs with few games).',
+      note: 'Every civ in the console data. "Fill with the site\'s pick" orders them by win rate (pulled toward 50% for civs with few games).',
       async load(ctx) {
         const L = ((ctx.civs || {}).ladders) || {}, tot = {};
         Object.values(L).forEach(lad => Object.entries(lad.overall || {}).forEach(([name, d]) => { const t = tot[name] || (tot[name] = { games: 0, wins: 0 }); t.games += d.games; t.wins += d.wins; }));
         if (!Object.keys(tot).length) throw new Error('civ data is not loaded yet');
         return Object.entries(tot).map(([name, d]) => ({
-          id: name, name, big: pctText(d.wins, d.games), active: true, sort: d.games, img: 'img/civs/' + civSlug(name) + '.png', kind: 'icon', color: '#9b8f7a',
-          tip: name + ': ' + pctText(d.wins, d.games) + ' win rate over ' + d.games.toLocaleString() + ' console games (1v1 and team)',
+          id: name, name, big: '', active: true, sort: d.games, img: 'img/civs/' + civSlug(name) + '.png', kind: 'icon', color: '#9b8f7a',
+          tip: name,
           score: (d.wins + 20) / (d.games + 40),
         }));
       },
