@@ -67,7 +67,7 @@
         }));
         return all.map(p => ({
           id: String(p.id), pid: p.id, name: p.name, big: p.w + '–' + p.l, active: p.w + p.l > 0, sort: p.w + p.l,
-          img: NC_COUNTRY[p.id] ? 'https://flagcdn.com/w80/' + NC_COUNTRY[p.id] + '.png' : null, kind: 'flag', color: TEAM_COLOR[p.team] || '#888',
+          img: p.team === 'ps5' ? 'img/ps5.svg' : NC_COUNTRY[p.id] ? 'https://flagcdn.com/w80/' + NC_COUNTRY[p.id] + '.png' : null, kind: 'flag',   // the PS5 team's players get the PS5 logo, not their country flag color: TEAM_COLOR[p.team] || '#888',
           tip: p.name + ': ' + p.w + '-' + p.l + ' in the Nations Cup (' + p.e.toFixed(1) + ' wins expected from the pregame odds)',
           score: 0.5 * (((p.elo || mu - sd) - mu) / sd) + 0.5 * ((sh(p) - ms) / ss),
         }));
