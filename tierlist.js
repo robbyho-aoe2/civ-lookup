@@ -19,25 +19,67 @@
   const civSlug = n => String(n).toLowerCase().replace(/[ ']/g, '');
   const pctText = (w, g) => g ? (w / g * 100).toFixed(1) + '%' : '–';
 
-  // ---------- the console roster (for the players list and its search) ----------
-  let ROSTER = null;
-  async function loadRoster() {
-    if (ROSTER) return;
-    const r = await (await fetch(PLAYER_DATA + '/console-roster.json?t=' + Date.now(), { cache: 'no-store' })).json();
-    const ci = Object.fromEntries(r.cols.map((c, i) => [c, i]));
-    ROSTER = r.players.map(p => ({ id: p[ci.id], name: String(p[ci.name]), plat: p[ci.plat], r1: p[ci.r1v1] || 0, rt: p[ci.rTeam] || 0, best: Math.max(p[ci.r1v1] || 0, p[ci.rTeam] || 0) }));
+  // ---------- people: all of a player's accounts together, with ratings on every ladder and their historic peaks ----------
+  // Alt accounts (the known alt groups) are merged into one person, so a player shows up once. Their level is a score over every ladder
+  // they have played: 1v1 and team on console, plus 1v1 and team on PC, each valued as 60% current rating and 40% historic peak,
+  // turned into a z-score against the other console players on that ladder, then averaged with the weights below (a ladder they never
+  // played is left out, not counted as zero).
+  const LADDER_W = { '1v1 Console': .35, 'Team Console': .30, '1v1 PC': .20, 'Team PC': .15 };
+  const CONSOLE_L = ['1v1 Console', 'Team Console'];
+  let PEOPLE = null;
+  function buildPeople(all) {
+    if (PEOPLE) return PEOPLE;
+    const groupOf = new Map(); (window.ALT_GROUPS || []).forEach((g, gi) => g.forEach(id => groupOf.set(id, gi)));
+    const byKey = new Map();
+    (all || []).forEach(p => {
+      if (!p.ratings && !p.peaks) return;
+      const key = groupOf.has(p.profileId) ? 'g' + groupOf.get(p.profileId) : 'p' + p.profileId;
+      let q = byKey.get(key); if (!q) { q = { key, accounts: [], lad: {} }; byKey.set(key, q); }
+      q.accounts.push(p);
+      Object.keys(LADDER_W).forEach(L => {
+        const pk = (p.peaks || {})[L] || {}, cur = (p.ratings || {})[L] != null ? p.ratings[L] : pk.current;
+        if (cur == null && pk.peak == null) return;
+        const o = q.lad[L] || (q.lad[L] = { cur: null, peak: null });
+        if (cur != null && (o.cur == null || cur > o.cur)) o.cur = cur;
+        const top = Math.max(pk.peak || 0, cur || 0); if (top && (o.peak == null || top > o.peak)) o.peak = top;
+      });
+    });
+    const people = [...byKey.values()].filter(q => q.accounts.some(a => a.group === 'console'));
+    const val = o => 0.6 * (o.cur != null ? o.cur : o.peak) + 0.4 * o.peak;
+    const st = {};
+    Object.keys(LADDER_W).forEach(L => {
+      const v = people.map(q => q.lad[L]).filter(Boolean).map(val);
+      if (v.length < 30) return;   // too few players to say what is high on this ladder
+      const mu = v.reduce((a, b) => a + b, 0) / v.length;
+      st[L] = { mu, sd: Math.sqrt(v.reduce((a, b) => a + (b - mu) ** 2, 0) / v.length) || 1 };
+    });
+    const conBest = a => Math.max(0, ...CONSOLE_L.map(L => (a.ratings || {})[L] || 0));
+    people.forEach(q => {
+      let num = 0, den = 0;
+      Object.keys(st).forEach(L => { const o = q.lad[L]; if (!o) return; num += LADDER_W[L] * ((val(o) - st[L].mu) / st[L].sd); den += LADDER_W[L]; });
+      q.score = den ? num / den : -3;
+      q.best = Math.max(0, ...CONSOLE_L.map(L => (q.lad[L] && q.lad[L].cur) || 0));
+      // the account shown for the person: the console account with the most games (their main)
+      q.rep = q.accounts.filter(a => a.group === 'console').sort((a, b) => (b.totalGames || 0) - (a.totalGames || 0) || conBest(b) - conBest(a))[0] || q.accounts[0];
+    });
+    const byAcc = new Map(); people.forEach(q => q.accounts.forEach(a => byAcc.set(a.profileId, q)));
+    PEOPLE = { people, byAcc };
+    return PEOPLE;
   }
-  const playerItem = p => ({
-    id: String(p.id), pid: p.id, name: p.name, big: String(p.best), active: true, sort: p.best, img: null, kind: 'none', plat: p.plat, color: p.plat === 'X' ? '#4ade80' : p.plat === 'P' ? '#60a5fa' : '#888',
-    tip: p.name + ': 1v1 ' + (p.r1 || '–') + ', team ' + (p.rt || '–'), score: p.best,
+  const personItem = q => ({
+    id: String(q.rep.profileId), pid: q.rep.profileId, name: q.rep.name, big: q.best ? String(q.best) : '', active: true, sort: q.score * 1000, img: null, kind: 'none',
+    color: q.rep.platform === 'Xbox' ? '#4ade80' : q.rep.platform === 'PSN' ? '#60a5fa' : '#888',
+    tip: q.rep.name + (q.accounts.length > 1 ? ' (with ' + (q.accounts.length - 1) + ' alt account' + (q.accounts.length > 2 ? 's' : '') + ')' : '') + ': ' +
+      Object.keys(LADDER_W).filter(L => q.lad[L]).map(L => L + ' ' + (q.lad[L].cur != null ? q.lad[L].cur : '-') + ' (peak ' + q.lad[L].peak + ')').join(', '),
+    score: q.score,
   });
 
   // ---------- what can be ranked ----------
   const SOURCES = {
     nc: {
       label: 'Nations Cup players',
-      note: 'Players with at least one finished Nations Cup game. The tile shows their country and record. "Fill with the site\'s pick" ranks them half by rating and half by wins above what the pregame odds expected.',
-      async load() {
+      note: 'Players with at least one finished Nations Cup game. The tile shows their country and record. "Fill with the site\'s pick" ranks them half by overall level (every ladder and historic peaks, alts counted together) and half by wins above what the pregame odds expected.',
+      async load(ctx) {
         const txt = await (await fetch('competitive.html', { cache: 'no-store' })).text();
         const grab = (a, b) => { const i = txt.indexOf(a); if (i < 0) throw new Error('competitive.html changed: ' + a); return txt.slice(i, txt.indexOf(b, i) + b.length); };
         const fn = new Function(grab('const ALL_TEAMS = [', '\n];') + '\n' + grab('const SET_RESULTS = [', '\n];') + '\n' + grab('const PREGAME = {', '\n};') + '\nreturn { ALL_TEAMS, SET_RESULTS, PREGAME };');
@@ -57,8 +99,14 @@
           }));
         });
         const all = [...P.values()], act = all.filter(p => p.w + p.l > 0);
-        const elos = act.map(p => p.elo).filter(Boolean), mu = elos.reduce((a, b) => a + b, 0) / (elos.length || 1);
-        const sd = Math.sqrt(elos.reduce((a, b) => a + (b - mu) ** 2, 0) / (elos.length || 1)) || 1;
+        // ability: the all-ladders, peaks-included score (alts merged); the roster rating is the fallback if the player data is not there
+        const pe = ctx.players ? buildPeople(ctx.players) : null, abil = {};
+        act.forEach(p => { const q = pe && pe.byAcc.get(p.id); abil[p.id] = q ? q.score : null; });
+        const elos = act.map(p => p.elo).filter(Boolean), emu = elos.reduce((a, b) => a + b, 0) / (elos.length || 1);
+        const esd = Math.sqrt(elos.reduce((a, b) => a + (b - emu) ** 2, 0) / (elos.length || 1)) || 1;
+        act.forEach(p => { if (abil[p.id] == null) abil[p.id] = p.elo ? (p.elo - emu) / esd : -1; });
+        const av = act.map(p => abil[p.id]), mu = av.reduce((a, b) => a + b, 0) / (av.length || 1);
+        const sd = Math.sqrt(av.reduce((a, b) => a + (b - mu) ** 2, 0) / (av.length || 1)) || 1;
         const sh = p => (p.w - p.e) / (p.w + p.l + 4), shs = act.map(sh), ms = shs.reduce((a, b) => a + b, 0) / (shs.length || 1);
         const ss = Math.sqrt(shs.reduce((a, b) => a + (b - ms) ** 2, 0) / (shs.length || 1)) || 1;
         // flags for anyone not in the built-in table
@@ -69,7 +117,7 @@
           id: String(p.id), pid: p.id, name: p.name, big: p.w + '–' + p.l, active: p.w + p.l > 0, sort: p.w + p.l,
           img: p.team === 'ps5' ? 'img/ps5.svg' : NC_COUNTRY[p.id] ? 'https://flagcdn.com/w80/' + NC_COUNTRY[p.id] + '.png' : null, kind: 'flag',   // the PS5 team's players get the PS5 logo, not their country flag color: TEAM_COLOR[p.team] || '#888',
           tip: p.name + ': ' + p.w + '-' + p.l + ' in the Nations Cup (' + p.e.toFixed(1) + ' wins expected from the pregame odds)',
-          score: 0.5 * (((p.elo || mu - sd) - mu) / sd) + 0.5 * ((sh(p) - ms) / ss),
+          score: 0.5 * (((abil[p.id] != null ? abil[p.id] : mu - sd) - mu) / sd) + 0.5 * ((sh(p) - ms) / ss),
         }));
       },
     },
@@ -89,18 +137,19 @@
     },
     players: {
       label: 'Top console players',
-      note: 'The 60 highest-rated console players right now (best of 1v1 and team rating). Search to add anyone else on the console roster. "Fill with the site\'s pick" orders them by rating.',
-      searchHint: 'Search a console player to add',
-      async load() {
-        await loadRoster();
-        return ROSTER.slice().sort((a, b) => b.best - a.best).slice(0, 60).map(playerItem);
+      note: 'The 60 strongest console players, with each player\'s alt accounts counted as one. Strength combines every ladder (1v1 and team, console and PC) and each ladder\'s historic peak, not just the current rating. Search to add anyone else. The number on the tile is the best current console rating.',
+      searchHint: 'Search a console player to add (alts are found too)',
+      async load(ctx) {
+        if (!ctx.players) throw new Error('player data is not loaded yet');
+        return buildPeople(ctx.players).people.filter(q => q.best > 0).sort((a, b) => b.score - a.score).slice(0, 60).map(personItem);
       },
-      // the roster is searched by name; ids that are not on the list yet (a shared link, or players added earlier) come back through resolve
+      // searches every account name, but returns the one person; ids (any of a player's accounts) come back through resolve
       search(q) {
-        q = q.trim().toLowerCase(); if (q.length < 2 || !ROSTER) return [];
-        return ROSTER.filter(p => p.name.toLowerCase().includes(q)).sort((a, b) => (b.name.toLowerCase().startsWith(q) - a.name.toLowerCase().startsWith(q)) || b.best - a.best).slice(0, 8).map(playerItem);
+        q = q.trim().toLowerCase(); if (q.length < 2 || !PEOPLE) return [];
+        const hit = PEOPLE.people.map(p => ({ p, m: p.accounts.map(a => a.name.toLowerCase()).filter(n => n.includes(q)) })).filter(x => x.m.length);
+        return hit.sort((a, b) => (b.m.some(n => n.startsWith(q)) - a.m.some(n => n.startsWith(q))) || b.p.score - a.p.score).slice(0, 8).map(x => personItem(x.p));
       },
-      resolve(ids) { const set = new Set(ids); return ROSTER ? ROSTER.filter(p => set.has(String(p.id))).map(playerItem) : []; },
+      resolve(ids) { if (!PEOPLE) return []; const seen = new Set(), out = []; ids.forEach(id => { const p = PEOPLE.byAcc.get(Number(id)); if (p && !seen.has(p)) { seen.add(p); out.push(personItem(p)); } }); return out; },
     },
   };
 

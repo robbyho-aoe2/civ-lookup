@@ -316,8 +316,8 @@ svg.pad{width:100%;height:auto;display:block;}
 <meta name="apple-mobile-web-app-title" content="Auto Scout">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <script src="pwa.js?v=312" defer></script>
-<script src="imposters.js?v=3"></script>
-<script src="tierlist.js?v=9"></script>
+<script src="imposters.js?v=4"></script>
+<script src="tierlist.js?v=12"></script>
 <meta name="description" content="Console Age of Empires II insights: rating distribution, civ win rates, weekly recaps, alts and more.">
 <link rel="canonical" href="https://aoe2autoscout.com/insights.html">
 <meta property="og:site_name" content="AoE2 Auto Scout">
@@ -540,6 +540,7 @@ async function loadAndRender() {
     const civsData = await civsRes.json();
     const squadsData = squadsRes.ok ? await squadsRes.json() : { duos: [], trios: [], quads: [] };
     const consolePlayers = (meta.players || []).filter(p => p.group === 'console');
+    window.ALL_META_PLAYERS = meta.players || [];   // every tracked player (ratings and peaks on all ladders), for the tier list maker
     const rated = consolePlayers.filter(p => p.ratings && p.ratings['1v1 Console'] != null);
 
     const binSize = 100;
@@ -1377,7 +1378,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       ? 'The new civs have no "before", so they show a dash. ' : '') + `Dimmed rows have under ${lowBelow} games since the update, so their win rate is mostly noise. Click a civ to see what changed for it in the Sept 22 patch.`;
   }
   renderDlcCivs();
-  if (window.initTierList) window.initTierList(document.getElementById('tl-root'), { civs: civsData });
+  if (window.initTierList) window.initTierList(document.getElementById('tl-root'), { civs: civsData, players: window.ALL_META_PLAYERS });
   fetch(`${PLAYER_DATA_BASE}/civ-patch-change.json?t=${Date.now()}`, { cache: 'no-store' })
     .then(r => r.ok ? r.json() : null)
     .then(j => { if (j && j['1v1 Console'] && j['Team Console']) { dlcData = j; renderDlcCivs(); } })
