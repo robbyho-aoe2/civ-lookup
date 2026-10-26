@@ -202,7 +202,7 @@
     const tileHtml = it => {
       const im = it.img ? `<img class="tl-img tl-img-${it.kind}" src="${esc(it.img)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : `<span class="tl-img tl-img-none"></span>`;
       const tags = it.pid != null && typeof impTag === 'function' ? impTag(it.pid) : '';
-      return `<div class="tl-tile no-imp${selected === it.id ? ' sel' : ''}" draggable="true" data-id="${esc(it.id)}" style="--c:${it.color}" title="${esc(it.tip || it.name)}">${tags ? `<span class="tl-tags">${tags}</span>` : ''}${im}<b class="tl-name">${esc(it.name)}</b>${it.big ? `<span class="tl-rec">${esc(it.big)}</span>` : ''}</div>`;
+      return `<div class="tl-tile no-imp${selected === it.id ? ' sel' : ''}" draggable="true" data-id="${esc(it.id)}" style="--c:${it.color}" title="${esc(it.tip || it.name)}">${tags ? `<span class="tl-tags">${tags}</span>` : ''}${it.pid != null ? `<a class="tl-open" href="player.html?id=${it.pid}" target="_blank" rel="noopener" draggable="false" title="Open ${esc(it.name)}'s Player Spotlight">↗</a>` : ''}${im}<b class="tl-name">${esc(it.name)}</b>${it.big ? `<span class="tl-rec">${esc(it.big)}</span>` : ''}</div>`;
     };
     function draw() {
       $('tl-board').innerHTML = TIERS.map(([t, c]) => `<div class="tl-row"><div class="tl-label" style="background:${c}">${t}</div><div class="tl-drop" data-tier="${t}">${state[t].map(id => byId.get(id)).filter(Boolean).map(tileHtml).join('')}</div></div>`).join('');
@@ -251,6 +251,7 @@
       const b = e.target.closest('.tl-tile'); place(id, z.dataset.tier || null, b ? b.dataset.id : null);
     });
     root.addEventListener('click', e => {
+      if (e.target.closest('.tl-open')) return;   // the arrow on a tile is a real link to the player's spotlight
       const sb = e.target.closest('[data-src]'); if (sb) { open(sb.dataset.src); return; }
       const tb = e.target.closest('[data-tier-toggle]');
       if (tb) {
@@ -262,6 +263,9 @@
       const t = e.target.closest('.tl-tile'); if (t) { selected = selected === t.dataset.id ? null : t.dataset.id; draw(); return; }
       const z = zone(e.target); if (z && selected != null) place(selected, z.dataset.tier || null, null);
     });
+
+    // double-click (or double-tap) a player's tile to open their Player Spotlight too
+    root.addEventListener('dblclick', e => { const t = e.target.closest('.tl-tile'); const it = t && byId.get(t.dataset.id); if (it && it.pid != null) window.open('player.html?id=' + it.pid, '_blank', 'noopener'); });
 
     // ----- buttons -----
     const enc = () => type + (option ? '|' + option : '') + '~' + TIERS.map(([t]) => encodeURIComponent(t) + ':' + state[t].map(encodeURIComponent).join(',')).join(';') + (title.trim() ? '~' + encodeURIComponent(title.trim()) : '');
@@ -402,6 +406,8 @@
 .tl-img-none{display:none;}
 .tl-tags{position:absolute;top:5px;right:2px;display:flex;gap:1px;}
 .tl-tags .imp{margin-left:0;}
+.tl-open{position:absolute;top:3px;left:2px;width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;background:rgba(255,255,255,.1);color:var(--text2);font-size:11px;text-decoration:none;}
+.tl-open:hover{background:var(--amber);color:#1a0a00;}
 .tl-name{font-size:11px;font-weight:700;color:var(--text);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px;line-height:1.2;}
 .tl-rec{font-size:18px;font-weight:800;color:#fff;line-height:1.1;margin-top:2px;font-variant-numeric:tabular-nums;}
 @media (max-width:600px){.tl-label{width:40px;font-size:22px;}.tl-tile{width:70px;height:74px;}.tl-name{font-size:10px;}.tl-rec{font-size:16px;}.tl-drop{min-height:80px;}}
