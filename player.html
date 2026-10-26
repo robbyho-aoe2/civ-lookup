@@ -238,6 +238,7 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
 <meta name="apple-mobile-web-app-title" content="Auto Scout">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <script src="pwa.js?v=312" defer></script>
+<script src="imposters.js?v=1"></script>
 <meta name="description" content="Player Spotlight: ratings, civs, maps, recent games and head-to-heads for any Age of Empires II player.">
 <meta property="og:site_name" content="AoE2 Auto Scout">
 <meta property="og:type" content="website">
@@ -286,7 +287,7 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
   </div>
 </div>
 
-<script src="scout.js?v=13"></script>
+<script src="scout.js?v=14"></script>
 <script>
 const PLAYER_DATA_BASE = 'https://raw.githubusercontent.com/robbyho-aoe2/player-data/main/data';
 const svgNS = 'http://www.w3.org/2000/svg';
@@ -1048,7 +1049,7 @@ function render(content, entry, player) {
     <div class="card">
       <div class="player-hero">
         <div>
-          <div class="player-name">${entry.countryIcon ? `<span class="country-flag" data-country="${escapeHtml(entry.countryName || '')}">${entry.countryIcon}</span> ` : ''}${escapeHtml(entry.name)}</div>
+          <div class="player-name">${entry.countryIcon ? `<span class="country-flag" data-country="${escapeHtml(entry.countryName || '')}">${entry.countryIcon}</span> ` : ''}${escapeHtml(entry.name)}${typeof impTag === 'function' ? impTag(entry.profileId) : ''}</div>
           <div class="player-badges" id="player-badges"></div>
         </div>
         ${updatedNoteHtml}

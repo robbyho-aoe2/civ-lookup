@@ -52,9 +52,6 @@
 .sc-dots{display:flex;flex-wrap:wrap;gap:1.5px;justify-content:flex-end;margin:1px 0 2px;}
 .sc-h2h{font-size:12px;color:var(--text2);margin-top:8px;}
 .sc-pn svg{flex:none;}
-.imp{display:inline-block;margin-left:3px;min-width:11px;padding:0 3px;border-radius:3px;font-size:9px;font-weight:700;line-height:12px;text-align:center;text-transform:lowercase;vertical-align:1px;cursor:help;}
-.imp.r{color:#7db4ff;border:1px solid rgba(125,180,255,.5);}
-.imp.i{color:var(--gold,#fbbf24);border:1px solid rgba(251,191,36,.5);}
 @media (max-width:520px){.sc-cols{gap:6px;}.sc-pl{padding:5px 6px;}.sc-r{display:block;margin-top:2px;}.sc-r .sc-k{display:block;max-width:none;white-space:normal;}.sc-r .sc-v{display:block;text-align:left;}.sc-dots{justify-content:flex-start;}.sc-elo .sc-k,.sc-h2h .sc-k{display:block;}}
 `; document.head.appendChild(st); })();
 
@@ -148,21 +145,7 @@ async function histFetch(id, lb = 'rm_1v1_console') {
 // Team games use the same idea on 25,664 recent team games (rating only 75.9% right, log-loss 0.4804; with the terms below
 // 76.1%, 0.4784): average rating gap, the gap in average civ strength, and the gap between each side's best player.
 // Rating changes there: K 35.5 with a 400 scale, from each player's own rating against the other team's average.
-// Imposter accounts (a near-identical name to a real player), kept in sync with IMPOSTER_ACCOUNTS in player.html and insights.html.
-// impTag(id) is a tiny "r" after the real player's name (they have imposters) or "i" after the imposter's.
-const IMPOSTERS = [
-  { id: 24659170, real: 12477800, note: 'Near-identical name to Ghost of 6am' },
-  { id: 26084405, real: 3452279, note: 'Near-identical name to OleCrookedWoody' },
-  { id: 26247195, real: 3452279, note: 'Near-identical name to OleCrookedWoody' },
-  { id: 26120403, real: 15438688, note: 'Near-identical name to Veeling' },
-];
-function impTag(id) {
-  id = Number(id);
-  const imp = IMPOSTERS.find(e => e.id === id);
-  if (imp) return `<span class="imp i" title="Imposter account: ${esc(imp.note)}. Not confirmed to be the same real person.">i</span>`;
-  const n = IMPOSTERS.filter(e => e.real === id).length;
-  return n ? `<span class="imp r" title="Real account: ${n === 1 ? '1 imposter account uses' : n + ' imposter accounts use'} a near-identical name.">r</span>` : '';
-}
+// impTag(id) (the small r / i after a player's name when they have an imposter, or are one) comes from imposters.js
 let scoutNow = Date.now();   // "now" for the report being drawn: the game's start when reading a past game
 const SCOUT = {
   '1v1': { lb: 'rm_1v1_console', elo: 3.006, civ: 0.672, pCiv: 1.275, pMap: 2.415, pAll: 0.512, h2h: 0.7, K: 36, D: 380, civLadder: '1v1 Console' },
