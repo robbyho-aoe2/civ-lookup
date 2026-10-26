@@ -19,6 +19,19 @@
   const civSlug = n => String(n).toLowerCase().replace(/[ ']/g, '');
   const pctText = (w, g) => g ? (w / g * 100).toFixed(1) + '%' : '–';
 
+  // ---------- the console roster (for the players list and its search) ----------
+  let ROSTER = null;
+  async function loadRoster() {
+    if (ROSTER) return;
+    const r = await (await fetch(PLAYER_DATA + '/console-roster.json?t=' + Date.now(), { cache: 'no-store' })).json();
+    const ci = Object.fromEntries(r.cols.map((c, i) => [c, i]));
+    ROSTER = r.players.map(p => ({ id: p[ci.id], name: String(p[ci.name]), plat: p[ci.plat], r1: p[ci.r1v1] || 0, rt: p[ci.rTeam] || 0, best: Math.max(p[ci.r1v1] || 0, p[ci.rTeam] || 0) }));
+  }
+  const playerItem = p => ({
+    id: String(p.id), pid: p.id, name: p.name, big: String(p.best), active: true, sort: p.best, img: null, kind: 'none', plat: p.plat, color: p.plat === 'X' ? '#4ade80' : p.plat === 'P' ? '#60a5fa' : '#888',
+    tip: p.name + ': 1v1 ' + (p.r1 || '–') + ', team ' + (p.rt || '–'), score: p.best,
+  });
+
   // ---------- what can be ranked ----------
   const SOURCES = {
     nc: {
@@ -53,7 +66,7 @@
           try { const j = await (await fetch('https://data.aoe2companion.com/api/profiles/' + p.id)).json(); NC_COUNTRY[p.id] = (j.country || '').toLowerCase(); } catch (e) { NC_COUNTRY[p.id] = ''; }
         }));
         return all.map(p => ({
-          id: String(p.id), name: p.name, big: p.w + '–' + p.l, active: p.w + p.l > 0, sort: p.w + p.l,
+          id: String(p.id), pid: p.id, name: p.name, big: p.w + '–' + p.l, active: p.w + p.l > 0, sort: p.w + p.l,
           img: NC_COUNTRY[p.id] ? 'https://flagcdn.com/w80/' + NC_COUNTRY[p.id] + '.png' : null, kind: 'flag', color: TEAM_COLOR[p.team] || '#888',
           tip: p.name + ': ' + p.w + '-' + p.l + ' in the Nations Cup (' + p.e.toFixed(1) + ' wins expected from the pregame odds)',
           score: 0.5 * (((p.elo || mu - sd) - mu) / sd) + 0.5 * ((sh(p) - ms) / ss),
@@ -62,29 +75,32 @@
     },
     civs: {
       label: 'Console civs',
-      note: 'Every civ in the console data, with its win rate on the ladder you pick. "Fill with the site\'s pick" orders them by win rate (pulled toward 50% for civs with few games).',
-      options: ['1v1 Console', 'Team Console'],
-      async load(ctx, option) {
-        const lad = ((ctx.civs || {}).ladders || {})[option || '1v1 Console'];
-        if (!lad) throw new Error('civ data is not loaded yet');
-        return Object.entries(lad.overall).map(([name, d]) => ({
+      note: 'Every civ in the console data, with its win rate across 1v1 and team games on console. "Fill with the site\'s pick" orders them by win rate (pulled toward 50% for civs with few games).',
+      async load(ctx) {
+        const L = ((ctx.civs || {}).ladders) || {}, tot = {};
+        Object.values(L).forEach(lad => Object.entries(lad.overall || {}).forEach(([name, d]) => { const t = tot[name] || (tot[name] = { games: 0, wins: 0 }); t.games += d.games; t.wins += d.wins; }));
+        if (!Object.keys(tot).length) throw new Error('civ data is not loaded yet');
+        return Object.entries(tot).map(([name, d]) => ({
           id: name, name, big: pctText(d.wins, d.games), active: true, sort: d.games, img: 'img/civs/' + civSlug(name) + '.png', kind: 'icon', color: '#9b8f7a',
-          tip: name + ': ' + pctText(d.wins, d.games) + ' win rate over ' + d.games.toLocaleString() + ' games',
+          tip: name + ': ' + pctText(d.wins, d.games) + ' win rate over ' + d.games.toLocaleString() + ' console games (1v1 and team)',
           score: (d.wins + 20) / (d.games + 40),
         }));
       },
     },
     players: {
       label: 'Top console players',
-      note: 'The 60 highest-rated console players right now (best of 1v1 and team rating). "Fill with the site\'s pick" orders them by rating.',
+      note: 'The 60 highest-rated console players right now (best of 1v1 and team rating). Search to add anyone else on the console roster. "Fill with the site\'s pick" orders them by rating.',
+      searchHint: 'Search a console player to add',
       async load() {
-        const r = await (await fetch(PLAYER_DATA + '/console-roster.json?t=' + Date.now(), { cache: 'no-store' })).json();
-        const ci = Object.fromEntries(r.cols.map((c, i) => [c, i]));
-        return r.players.map(p => ({ p, best: Math.max(p[ci.r1v1] || 0, p[ci.rTeam] || 0) })).sort((a, b) => b.best - a.best).slice(0, 60).map(({ p, best }) => ({
-          id: String(p[ci.id]), name: p[ci.name], big: String(best), active: true, sort: best, img: null, kind: 'none', color: p[ci.plat] === 'X' ? '#4ade80' : p[ci.plat] === 'P' ? '#60a5fa' : '#888',
-          tip: p[ci.name] + ': 1v1 ' + (p[ci.r1v1] || '–') + ', team ' + (p[ci.rTeam] || '–'), score: best,
-        }));
+        await loadRoster();
+        return ROSTER.slice().sort((a, b) => b.best - a.best).slice(0, 60).map(playerItem);
       },
+      // the roster is searched by name; ids that are not on the list yet (a shared link, or players added earlier) come back through resolve
+      search(q) {
+        q = q.trim().toLowerCase(); if (q.length < 2 || !ROSTER) return [];
+        return ROSTER.filter(p => p.name.toLowerCase().includes(q)).sort((a, b) => (b.name.toLowerCase().startsWith(q) - a.name.toLowerCase().startsWith(q)) || b.best - a.best).slice(0, 8).map(playerItem);
+      },
+      resolve(ids) { const set = new Set(ids); return ROSTER ? ROSTER.filter(p => set.has(String(p.id))).map(playerItem) : []; },
     },
   };
 
@@ -95,14 +111,14 @@
     injectCss();
     const KEY = 'autoscout-tierlist-2';
     let type = 'nc', option = null, items = [], byId = new Map(), showAll = false, selected = null, loading = false, err = '';
-    let state = empty(), title = '', TIERS = [];
+    let state = empty(), title = '', TIERS = [], extras = [];
     const saved = readSaved();
     function empty() { return Object.fromEntries(ALL_TIERS.map(([t]) => [t, []])); }
     function setTiers(names) { TIERS = ALL_TIERS.filter(([t]) => (names || []).includes(t)); if (!TIERS.length) TIERS = ALL_TIERS.filter(([t]) => DEFAULT_TIERS.includes(t)); }
     setTiers(saved.tiers || DEFAULT_TIERS);
     function readSaved() { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
     const slot = () => type + (option ? '|' + option : '');
-    const persist = () => { try { saved[slot()] = state; saved.titles = saved.titles || {}; saved.titles[slot()] = title; localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {} };
+    const persist = () => { try { saved[slot()] = state; saved.titles = saved.titles || {}; saved.titles[slot()] = title; saved.extras = saved.extras || {}; saved.extras[slot()] = extras; localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {} };
 
     root.innerHTML = `
       <div class="tl-pills" id="tl-src">${Object.entries(SOURCES).map(([k, s]) => `<button type="button" class="tl-pill" data-src="${k}">${s.label}</button>`).join('')}</div>
@@ -110,6 +126,10 @@
       <p class="tl-note" id="tl-note"></p>
       <div class="tl-pills tl-tiers" id="tl-tiers"></div>
       <input type="text" id="tl-title" class="tl-title" maxlength="60" placeholder="Name of list (optional)" aria-label="Name of list">
+      <div class="tl-search" id="tl-searchwrap" hidden>
+        <input type="text" id="tl-search" class="tl-title tl-searchbox" autocomplete="off" placeholder="Search a console player to add" aria-label="Search a player to add">
+        <div class="tl-results" id="tl-results" hidden></div>
+      </div>
       <div class="tl-bar">
         <button type="button" class="tl-btn" id="tl-fill">Fill with the site's pick</button>
         <button type="button" class="tl-btn" id="tl-reset">Start over</button>
@@ -132,7 +152,8 @@
     }
     const tileHtml = it => {
       const im = it.img ? `<img class="tl-img tl-img-${it.kind}" src="${esc(it.img)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : `<span class="tl-img tl-img-none"></span>`;
-      return `<div class="tl-tile${selected === it.id ? ' sel' : ''}" draggable="true" data-id="${esc(it.id)}" style="--c:${it.color}" title="${esc(it.tip || it.name)}">${im}<b class="tl-name">${esc(it.name)}</b>${it.big ? `<span class="tl-rec">${esc(it.big)}</span>` : ''}</div>`;
+      const tags = it.pid != null && typeof impTag === 'function' ? impTag(it.pid) : '';
+      return `<div class="tl-tile no-imp${selected === it.id ? ' sel' : ''}" draggable="true" data-id="${esc(it.id)}" style="--c:${it.color}" title="${esc(it.tip || it.name)}">${tags ? `<span class="tl-tags">${tags}</span>` : ''}${im}<b class="tl-name">${esc(it.name)}</b>${it.big ? `<span class="tl-rec">${esc(it.big)}</span>` : ''}</div>`;
     };
     function draw() {
       $('tl-board').innerHTML = TIERS.map(([t, c]) => `<div class="tl-row"><div class="tl-label" style="background:${c}">${t}</div><div class="tl-drop" data-tier="${t}">${state[t].map(id => byId.get(id)).filter(Boolean).map(tileHtml).join('')}</div></div>`).join('');
@@ -146,6 +167,8 @@
       const optEl = $('tl-opt'); optEl.hidden = !src.options;
       if (src.options) optEl.innerHTML = src.options.map(o => `<button type="button" class="tl-pill${o === option ? ' on' : ''}" data-opt="${esc(o)}">${esc(o)}</button>`).join('');
       $('tl-allwrap').hidden = type !== 'nc';
+      $('tl-searchwrap').hidden = !src.search;
+      if (src.searchHint) $('tl-search').placeholder = src.searchHint;
       $('tl-fill').hidden = !items.some(i => i.score != null);
     }
     async function open(newType, newOption, hashState, hashTitle, hashTiers) {
@@ -156,6 +179,13 @@
       loading = false;
       if (hashTiers && hashTiers.length) setTiers(hashTiers);
       const s = hashState || saved[slot()] || empty();
+      extras = (saved.extras || {})[slot()] || [];
+      const src2 = SOURCES[type];
+      if (src2.resolve && items.length) {   // anyone placed or added who is not in the base list (added by search, or named in a shared link)
+        const want = new Set(extras); ALL_TIERS.forEach(([t]) => (s[t] || []).forEach(id => want.add(id)));
+        const have = new Set(items.map(i => i.id)); const miss = [...want].filter(id => !have.has(id));
+        if (miss.length) { src2.resolve(miss).forEach(it => { items.push(it); byId.set(it.id, it); }); extras = [...new Set([...extras, ...miss.filter(id => byId.has(id))])]; }
+      }
       state = empty(); ALL_TIERS.forEach(([t]) => { state[t] = TIERS.some(x => x[0] === t) ? (s[t] || []).filter(id => byId.has(id)) : []; });
       title = hashTitle != null ? hashTitle : ((saved.titles || {})[slot()] || '');
       $('tl-title').value = title;
@@ -192,6 +222,21 @@
       body.split(';').forEach(part => { const i = part.indexOf(':'); if (i < 0) return; const t = decodeURIComponent(part.slice(0, i)); if (!st[t]) return; names.push(t); if (part.length > i + 1) st[t] = part.slice(i + 1).split(',').map(decodeURIComponent); });
       return { type: ty, option: op || null, state: st, title: ttl ? decodeURIComponent(ttl) : '', tiers: names };
     }
+    const box = $('tl-search'), res = $('tl-results');
+    const showResults = () => {
+      const src = SOURCES[type]; const found = src.search ? src.search(box.value) : [];
+      if (!found.length) { res.hidden = box.value.trim().length < 2; res.innerHTML = box.value.trim().length < 2 ? '' : '<div class="tl-res-empty">No console player with that name.</div>'; res.hidden = box.value.trim().length < 2; return; }
+      res.hidden = false;
+      res.innerHTML = found.map(it => `<button type="button" class="tl-res" data-add="${esc(it.id)}"><span class="tl-res-dot" style="background:${it.color}"></span><b>${esc(it.name)}</b><span>${esc(it.big)}${byId.has(it.id) ? ' · already in the list' : ''}</span></button>`).join('');
+    };
+    box.addEventListener('input', showResults);
+    root.addEventListener('click', e => {
+      const add = e.target.closest('[data-add]'); if (!add) return;
+      const it = (SOURCES[type].resolve || (() => []))([add.dataset.add])[0]; if (!it) return;
+      if (!byId.has(it.id)) { items.push(it); byId.set(it.id, it); extras = [...new Set([...extras, it.id])]; }
+      selected = placedTier(it.id) ? null : it.id; box.value = ''; res.hidden = true; res.innerHTML = ''; persist(); draw();
+      const t = root.querySelector('.tl-tile[data-id="' + CSS.escape(it.id) + '"]'); if (t && t.scrollIntoView) t.scrollIntoView({ block: 'nearest' });
+    });
     $('tl-title').addEventListener('input', e => { title = e.target.value; persist(); });
     $('tl-reset').addEventListener('click', () => { state = empty(); selected = null; persist(); draw(); });
     $('tl-all').addEventListener('change', e => { showAll = e.target.checked; draw(); });
@@ -238,6 +283,8 @@
             const sc = Math.min(box[0] / im.width, box[1] / im.height), dw = im.width * sc, dh = im.height * sc;
             g.drawImage(im, x + (TS - dw) / 2, yy + 10 + (box[1] - dh) / 2, dw, dh);
           }
+          const letters = (it.pid != null && typeof impTag === 'function' ? impTag(it.pid) : '').match(/class="imp (\w)"/g) || [];
+          letters.forEach((l, n) => { const ch = l.slice(-2, -1), colr = { r: '#7db4ff', i: '#fbbf24', a: '#c3a6ff' }[ch] || '#aaa', bx = x + TS - 17 - n * 17; g.strokeStyle = colr; g.lineWidth = 1.5; g.strokeRect(bx, yy + 8, 14, 16); g.fillStyle = colr; g.font = '700 12px "Segoe UI", system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(ch, bx + 7, yy + 17); });
           g.textAlign = 'center'; g.fillStyle = '#f4efe3';
           let size = 15; g.font = '700 ' + size + 'px "Segoe UI", system-ui, sans-serif';
           while (g.measureText(it.name).width > TS - 8 && size > 9) { size--; g.font = '700 ' + size + 'px "Segoe UI", system-ui, sans-serif'; }
@@ -270,6 +317,14 @@
 .tl-tiers{align-items:center;}
 .tl-tiers-label{font-size:12px;color:var(--text2);margin-right:2px;}
 .tl-tierpill{min-width:34px;padding:5px 10px;}
+.tl-search{position:relative;margin:0 0 10px;}
+.tl-searchbox{font-size:14px;font-weight:500;margin:0;}
+.tl-results{position:absolute;z-index:5;left:0;right:0;max-width:520px;top:100%;margin-top:2px;background:var(--surf);border:1px solid var(--border2);border-radius:8px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.45);}
+.tl-res{display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box;padding:8px 12px;border:none;background:none;color:var(--text);font:inherit;font-size:13px;text-align:left;cursor:pointer;}
+.tl-res:hover{background:var(--surf2);}
+.tl-res span:last-child{margin-left:auto;color:var(--text3);font-size:12px;}
+.tl-res-dot{width:8px;height:8px;border-radius:50%;flex:none;}
+.tl-res-empty{padding:8px 12px;font-size:12px;color:var(--text3);}
 .tl-note{font-size:12px;color:var(--text2);line-height:1.6;margin:0 0 10px;}
 .tl-title{width:100%;max-width:520px;box-sizing:border-box;font:inherit;font-size:18px;font-weight:700;color:var(--text);background:var(--surf);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;margin:0 0 10px;}
 .tl-title::placeholder{color:var(--text3);font-weight:500;}
@@ -289,13 +344,15 @@
 .tl-pool-head{font-size:12px;color:var(--text2);margin-bottom:6px;}
 .tl-pool-head b{color:var(--text);}
 .tl-empty{font-size:12px;color:var(--text3);align-self:center;padding:0 8px;}
-.tl-tile{width:84px;height:84px;box-sizing:border-box;background:#14110c;border-top:4px solid var(--c);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3px;cursor:grab;user-select:none;-webkit-user-select:none;overflow:hidden;}
+.tl-tile{position:relative;width:84px;height:84px;box-sizing:border-box;background:#14110c;border-top:4px solid var(--c);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3px;cursor:grab;user-select:none;-webkit-user-select:none;overflow:hidden;}
 .tl-tile.sel{outline:2px solid var(--amberL);outline-offset:1px;}
 .tl-img{display:block;border-radius:2px;flex:none;}
 .tl-img-flag{width:24px;height:16px;object-fit:cover;}
 .tl-img-icon{width:34px;height:34px;object-fit:contain;}
 .tl-img-map{width:60px;height:36px;object-fit:cover;}
 .tl-img-none{display:none;}
+.tl-tags{position:absolute;top:5px;right:2px;display:flex;gap:1px;}
+.tl-tags .imp{margin-left:0;}
 .tl-name{font-size:11px;font-weight:700;color:var(--text);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px;line-height:1.2;}
 .tl-rec{font-size:18px;font-weight:800;color:#fff;line-height:1.1;margin-top:2px;font-variant-numeric:tabular-nums;}
 @media (max-width:600px){.tl-label{width:40px;font-size:22px;}.tl-tile{width:70px;height:74px;}.tl-name{font-size:10px;}.tl-rec{font-size:16px;}.tl-drop{min-height:80px;}}
