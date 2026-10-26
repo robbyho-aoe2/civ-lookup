@@ -287,11 +287,11 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
-    <div class="version">v0.24</div>
+    <div class="version">v0.25</div>
   </div>
 </div>
 
-<script src="scout.js?v=11"></script>
+<script src="scout.js?v=13"></script>
 <script>
 // Self-contained per this site's convention. A tracked list of console players (data/console-roster.json) decides
 // who to watch from the rating filter; aoe2companion's live socket is then asked only for those players' games and
@@ -384,7 +384,7 @@ function playerRow(p, canFollow) {
   const isMe = (getMe() || {}).id === p.profileId;
   return `<div class="p${hit ? ' hit' : ''}${isMe ? ' me' : ''}">${hex}` +
     (p.civImageUrl ? `<img class="civ" src="${esc(p.civImageUrl)}" alt="" title="${esc(p.civName || '')}" loading="lazy" onerror="this.style.visibility='hidden'">` : '') +
-    `<span class="idc"><span class="nm">${platIcon(p.profileId)}<a href="player.html?id=${p.profileId}">${esc(p.name || '')}</a></span><span class="cn">${esc(p.civName || '')}</span></span>` +
+    `<span class="idc"><span class="nm">${platIcon(p.profileId)}<a href="player.html?id=${p.profileId}">${esc(p.name || '')}</a>${impTag(p.profileId)}</span><span class="cn">${esc(p.civName || '')}</span></span>` +
     `<span class="rt">${p.rating != null && p.rating > 0 ? p.rating : ''}</span>` +
     (canFollow && p.profileId > 0 && !isFollowed(p.profileId) ? `<button class="p-add" type="button" data-id="${p.profileId}" data-name="${esc(p.name || '')}" title="Follow ${esc(p.name || '')}" aria-label="Follow ${esc(p.name || '')}">+</button>` : '') + `</div>`;
 }
