@@ -1,4 +1,4 @@
-// Tier list maker for Console Insights: pick what to rank (Nations Cup players, console civs, maps, top console players), drag the
+// Tier list maker for Console Insights: pick what to rank (Nations Cup players, console civs, top console players), drag the
 // tiles into S to D (on a phone: tap a tile, then tap a tier), then copy a share link or save the board as a picture.
 //
 //   initTierList(rootElement, { civs })     civs = the page's insights-console-civs.json (already loaded for the civ leaderboard)
@@ -7,13 +7,13 @@
 // where `score` (optional) is what "Fill with the site's pick" sorts by. Everything else (dragging, sharing, saving) is shared.
 (function () {
   const PLAYER_DATA = 'https://raw.githubusercontent.com/robbyho-aoe2/player-data/main/data';
-  const TIERS = [['S', '#ff7f7f'], ['A', '#ffbf7f'], ['B', '#ffdf7f'], ['C', '#bfff7f'], ['D', '#7fbfff']];
-  const CUTS = [['S', .08], ['A', .25], ['B', .55], ['C', .83], ['D', 1.01]];   // share of the list each tier gets when auto-filled
+  // every tier a list can use, S+ down to F; the person picks which ones to include (S to D to start with)
+  const ALL_TIERS = [['S+', '#ff5f5f'], ['S', '#ff7f7f'], ['A', '#ffbf7f'], ['B', '#ffdf7f'], ['C', '#bfff7f'], ['D', '#7fbfff'], ['F', '#c3a6ff']];
+  const DEFAULT_TIERS = ['S', 'A', 'B', 'C', 'D'];
+  const WEIGHTS = { 'S+': .04, S: .08, A: .17, B: .28, C: .25, D: .12, F: .06 };   // share of the list each tier gets when auto-filled, scaled to the tiers in use
   const TEAM_COLOR = { usa: '#e5484d', canada: '#f5b800', mexico: '#3b82f6', uk: '#22c55e', france: '#a78bfa', ps5: '#22d3ee' };
   // country of each Nations Cup player (from their aoe2companion profile); anyone missing is looked up when the list opens
   const NC_COUNTRY = {"7096003":"ca","8154765":"ca","8363994":"fr","11828362":"gb","12459914":"mx","12462155":"us","12478121":"mx","12484696":"us","12507343":"fr","12516504":"jp","12527010":"us","12554124":"us","12591985":"ca","12710758":"gb","12868111":"mx","12893749":"ca","13106080":"mx","13107937":"gb","13216763":"mx","13323926":"gb","13394271":"fr","13410632":"gb","13467931":"us","13479761":"us","13480709":"mx","13623295":"gb","14065945":"fr","14276793":"us","16972769":"gb","17828880":"us","22759370":"au","22765143":"gb","22831188":"nl","23147426":"us","23477132":"sa","25013161":"mx","25166648":"co","25476302":"fr"};
-  const MAPS = ['Arabia', 'Arena', 'Glade', 'Scandinavia', 'Fortress', 'Arabian Desert', 'Northern Isles', 'Michi', 'Black Forest', 'African Clearing', 'Nomad', 'MegaRandom', 'Baltic', 'Coastal Forest', 'Yucatan'];
-  const MAP_IMG = { 'Arabia': 'arabia', 'Arena': 'arena', 'Glade': 'glade', 'Black Forest': 'black-forest', 'African Clearing': 'african-clearing' };
 
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const civSlug = n => String(n).toLowerCase().replace(/[ ']/g, '');
@@ -74,11 +74,6 @@
         }));
       },
     },
-    maps: {
-      label: 'Maps',
-      note: 'The console ranked map pool. Rank them however you like: favourites, hated maps, best for your civ.',
-      async load() { return MAPS.map(n => ({ id: n, name: n, big: '', active: true, sort: 0, img: MAP_IMG[n] ? 'img/maps/' + MAP_IMG[n] + '.jpg' : null, kind: 'map', color: '#7a8a6a', tip: n })); },
-    },
     players: {
       label: 'Top console players',
       note: 'The 60 highest-rated console players right now (best of 1v1 and team rating). "Fill with the site\'s pick" orders them by rating.',
@@ -100,17 +95,21 @@
     injectCss();
     const KEY = 'autoscout-tierlist-2';
     let type = 'nc', option = null, items = [], byId = new Map(), showAll = false, selected = null, loading = false, err = '';
-    let state = empty();
+    let state = empty(), title = '', TIERS = [];
     const saved = readSaved();
-    function empty() { return { S: [], A: [], B: [], C: [], D: [] }; }
+    function empty() { return Object.fromEntries(ALL_TIERS.map(([t]) => [t, []])); }
+    function setTiers(names) { TIERS = ALL_TIERS.filter(([t]) => (names || []).includes(t)); if (!TIERS.length) TIERS = ALL_TIERS.filter(([t]) => DEFAULT_TIERS.includes(t)); }
+    setTiers(saved.tiers || DEFAULT_TIERS);
     function readSaved() { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
     const slot = () => type + (option ? '|' + option : '');
-    const persist = () => { try { saved[slot()] = state; localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {} };
+    const persist = () => { try { saved[slot()] = state; saved.titles = saved.titles || {}; saved.titles[slot()] = title; localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {} };
 
     root.innerHTML = `
       <div class="tl-pills" id="tl-src">${Object.entries(SOURCES).map(([k, s]) => `<button type="button" class="tl-pill" data-src="${k}">${s.label}</button>`).join('')}</div>
       <div class="tl-pills" id="tl-opt" hidden></div>
       <p class="tl-note" id="tl-note"></p>
+      <div class="tl-pills tl-tiers" id="tl-tiers"></div>
+      <input type="text" id="tl-title" class="tl-title" maxlength="60" placeholder="Name of list (optional)" aria-label="Name of list">
       <div class="tl-bar">
         <button type="button" class="tl-btn" id="tl-fill">Fill with the site's pick</button>
         <button type="button" class="tl-btn" id="tl-reset">Start over</button>
@@ -141,6 +140,7 @@
       $('tl-pool').innerHTML = loading ? '<span class="tl-empty">Loading…</span>' : err ? `<span class="tl-empty">${esc(err)}</span>` : rest.length ? rest.map(tileHtml).join('') : '<span class="tl-empty">Everyone is placed.</span>';
       $('tl-count').textContent = loading || err ? '' : rest.length + ' left to place';
       root.querySelectorAll('[data-src]').forEach(b => b.classList.toggle('on', b.dataset.src === type));
+      $('tl-tiers').innerHTML = '<span class="tl-tiers-label">Tiers</span>' + ALL_TIERS.map(([t, c]) => { const on = TIERS.some(x => x[0] === t); return `<button type="button" class="tl-pill tl-tierpill" data-tier-toggle="${esc(t)}" aria-pressed="${on}" title="${on ? 'Remove' : 'Add'} the ${esc(t)} tier"${on ? ` style="background:${c};border-color:${c};color:#1a1306"` : ''}>${esc(t)}</button>`; }).join('');
       const src = SOURCES[type];
       $('tl-note').textContent = src.note;
       const optEl = $('tl-opt'); optEl.hidden = !src.options;
@@ -148,14 +148,17 @@
       $('tl-allwrap').hidden = type !== 'nc';
       $('tl-fill').hidden = !items.some(i => i.score != null);
     }
-    async function open(newType, newOption, hashState) {
+    async function open(newType, newOption, hashState, hashTitle, hashTiers) {
       type = newType; option = SOURCES[type].options ? (newOption || SOURCES[type].options[0]) : null;
       selected = null; items = []; byId = new Map(); err = ''; loading = true; showAll = false; $('tl-all').checked = false; draw();
       try { items = await SOURCES[type].load(ctx || {}, option); byId = new Map(items.map(i => [i.id, i])); }
       catch (e) { err = 'Could not load this list (' + (e && e.message ? e.message : e) + ').'; }
       loading = false;
+      if (hashTiers && hashTiers.length) setTiers(hashTiers);
       const s = hashState || saved[slot()] || empty();
-      state = empty(); TIERS.forEach(([t]) => { state[t] = (s[t] || []).filter(id => byId.has(id)); });
+      state = empty(); ALL_TIERS.forEach(([t]) => { state[t] = TIERS.some(x => x[0] === t) ? (s[t] || []).filter(id => byId.has(id)) : []; });
+      title = hashTitle != null ? hashTitle : ((saved.titles || {})[slot()] || '');
+      $('tl-title').value = title;
       draw();
     }
 
@@ -170,19 +173,26 @@
     });
     root.addEventListener('click', e => {
       const sb = e.target.closest('[data-src]'); if (sb) { open(sb.dataset.src); return; }
+      const tb = e.target.closest('[data-tier-toggle]');
+      if (tb) {
+        const t = tb.dataset.tierToggle, names = TIERS.map(x => x[0]), i = names.indexOf(t);
+        if (i >= 0) { if (names.length <= 1) return; state[t] = []; names.splice(i, 1); } else names.push(t);
+        setTiers(names); saved.tiers = TIERS.map(x => x[0]); selected = null; persist(); draw(); return;
+      }
       const ob = e.target.closest('[data-opt]'); if (ob) { open(type, ob.dataset.opt); return; }
       const t = e.target.closest('.tl-tile'); if (t) { selected = selected === t.dataset.id ? null : t.dataset.id; draw(); return; }
       const z = zone(e.target); if (z && selected != null) place(selected, z.dataset.tier || null, null);
     });
 
     // ----- buttons -----
-    const enc = () => type + (option ? '|' + option : '') + '~' + TIERS.map(([t]) => t + ':' + state[t].map(encodeURIComponent).join(',')).join(';');
+    const enc = () => type + (option ? '|' + option : '') + '~' + TIERS.map(([t]) => encodeURIComponent(t) + ':' + state[t].map(encodeURIComponent).join(',')).join(';') + (title.trim() ? '~' + encodeURIComponent(title.trim()) : '');
     function dec(str) {
-      const [head, body] = String(str).split('~'); if (body == null) return null;
-      const [ty, op] = head.split('|'); const st = empty();
-      body.split(';').forEach(part => { const i = part.indexOf(':'); const t = part.slice(0, i); if (st[t] && part.length > i + 1) st[t] = part.slice(i + 1).split(',').map(decodeURIComponent); });
-      return { type: ty, option: op || null, state: st };
+      const [head, body, ttl] = String(str).split('~'); if (body == null) return null;
+      const [ty, op] = head.split('|'); const st = empty(), names = [];
+      body.split(';').forEach(part => { const i = part.indexOf(':'); if (i < 0) return; const t = decodeURIComponent(part.slice(0, i)); if (!st[t]) return; names.push(t); if (part.length > i + 1) st[t] = part.slice(i + 1).split(',').map(decodeURIComponent); });
+      return { type: ty, option: op || null, state: st, title: ttl ? decodeURIComponent(ttl) : '', tiers: names };
     }
+    $('tl-title').addEventListener('input', e => { title = e.target.value; persist(); });
     $('tl-reset').addEventListener('click', () => { state = empty(); selected = null; persist(); draw(); });
     $('tl-all').addEventListener('change', e => { showAll = e.target.checked; draw(); });
     $('tl-share').addEventListener('click', async () => {
@@ -193,7 +203,9 @@
     });
     $('tl-fill').addEventListener('click', () => {
       const pool = items.filter(i => i.score != null && (i.active || showAll)).sort((a, b) => b.score - a.score);
-      state = empty(); pool.forEach((it, k) => { const q = (k + .5) / pool.length; state[CUTS.find(c => q < c[1])[0]].push(it.id); });
+      state = empty();
+      const tot = TIERS.reduce((a, [t]) => a + WEIGHTS[t], 0); let acc = 0; const cuts = TIERS.map(([t]) => [t, (acc += WEIGHTS[t] / tot)]);
+      pool.forEach((it, k) => { const q = (k + .5) / pool.length; state[(cuts.find(c => q < c[1]) || cuts[cuts.length - 1])[0]].push(it.id); });
       selected = null; persist(); draw();
     });
     $('tl-img').addEventListener('click', async () => {
@@ -207,7 +219,9 @@
       const pics = {}; await Promise.all([...new Set(placed.flat().map(i => i.img).filter(Boolean))].map(async s => { pics[s] = await load(s); }));
       g.fillStyle = '#0b0906'; g.fillRect(0, 0, W, H);
       g.fillStyle = '#f4efe3'; g.font = '700 30px "Segoe UI", system-ui, sans-serif'; g.textBaseline = 'middle';
-      g.fillText(SOURCES[type].label + (option ? ' (' + option + ')' : '') + ' tier list', 16, 32);
+      const heading = title.trim() || (SOURCES[type].label + (option ? ' (' + option + ')' : '') + ' tier list');
+      let hs = 30; g.font = '700 ' + hs + 'px "Segoe UI", system-ui, sans-serif'; while (g.measureText(heading).width > W - 360 && hs > 16) { hs--; g.font = '700 ' + hs + 'px "Segoe UI", system-ui, sans-serif'; }
+      g.fillText(heading, 16, 32);
       g.fillStyle = '#8f8578'; g.font = '400 16px "Segoe UI", system-ui, sans-serif'; g.textAlign = 'right'; g.fillText('aoe2autoscout.com/insights.html', W - 16, 32); g.textAlign = 'left';
       let y = TOP;
       placed.forEach((arr, ti) => {
@@ -241,7 +255,7 @@
     const m = /[#&]tl=([^&]+)/.exec(location.hash);
     let first = null;
     if (m) { try { first = dec(decodeURIComponent(m[1])); } catch (e) { first = null; } }
-    if (first && SOURCES[first.type]) open(first.type, first.option, first.state);
+    if (first && SOURCES[first.type]) open(first.type, first.option, first.state, first.title, first.tiers);
     else open(saved.last && SOURCES[saved.last] ? saved.last : 'nc');
     root.addEventListener('click', e => { if (e.target.closest('[data-src]')) { saved.last = type; try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (er) {} } });
   };
@@ -253,7 +267,13 @@
 .tl-pills{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px;}
 .tl-pill{font:inherit;font-size:12px;font-weight:600;padding:5px 12px;border-radius:16px;border:1px solid var(--border2);background:var(--surf2);color:var(--text2);cursor:pointer;}
 .tl-pill.on{background:var(--amber);border-color:var(--amber);color:#1a0a00;}
+.tl-tiers{align-items:center;}
+.tl-tiers-label{font-size:12px;color:var(--text2);margin-right:2px;}
+.tl-tierpill{min-width:34px;padding:5px 10px;}
 .tl-note{font-size:12px;color:var(--text2);line-height:1.6;margin:0 0 10px;}
+.tl-title{width:100%;max-width:520px;box-sizing:border-box;font:inherit;font-size:18px;font-weight:700;color:var(--text);background:var(--surf);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;margin:0 0 10px;}
+.tl-title::placeholder{color:var(--text3);font-weight:500;}
+.tl-title:focus{outline:none;border-color:var(--amber);}
 .tl-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:2px 0 8px;}
 .tl-btn{font:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:16px;border:1px solid var(--border2);background:var(--surf2);color:var(--text2);cursor:pointer;}
 .tl-btn:hover{color:var(--text);border-color:var(--text3);}
