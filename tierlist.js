@@ -24,7 +24,7 @@
   // they have played: 1v1 and team on console, plus 1v1 and team on PC, each valued as 60% current rating and 40% historic peak,
   // turned into a z-score against the other console players on that ladder, then averaged with the weights below (a ladder they never
   // played is left out, not counted as zero).
-  const LADDER_W = { '1v1 Console': .35, 'Team Console': .30, '1v1 PC': .20, 'Team PC': .15 };
+  const LADDER_W = { '1v1 Console': .45, 'Team Console': .20, '1v1 PC': .25, 'Team PC': .10 };   // 1v1 counts most: 70% between the two 1v1 ladders
   const CONSOLE_L = ['1v1 Console', 'Team Console'];
   let PEOPLE = null;
   function buildPeople(all) {
@@ -137,7 +137,7 @@
     },
     players: {
       label: 'Top console players',
-      note: 'The 60 strongest console players, with each player\'s alt accounts counted as one. Strength combines every ladder (1v1 and team, console and PC) and each ladder\'s historic peak, not just the current rating. Search to add anyone else. The number on the tile is the best current console rating.',
+      note: 'The 60 strongest console players, with each player\'s alt accounts counted as one. Strength combines every ladder (1v1 and team, console and PC, with 1v1 counting most) and each ladder\'s historic peak, not just the current rating. Search to add anyone else. The number on the tile is the best current console rating.',
       searchHint: 'Search a console player to add (alts are found too)',
       async load(ctx) {
         if (!ctx.players) throw new Error('player data is not loaded yet');
