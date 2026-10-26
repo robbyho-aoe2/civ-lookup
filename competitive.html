@@ -153,6 +153,11 @@ a.set-status{text-decoration:none;}
 .caster a{font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;border:1px solid var(--border2);border-radius:20px;padding:2px 9px;background:var(--surf);}
 .caster a:hover{border-color:var(--amber);}
 .standings-note{font-size:12px;color:var(--text2);margin:0 0 14px;line-height:1.6;}
+/* half width on a PC, full width on phones; the table sizes to its content instead of stretching */
+.standings-card{max-width:520px;}
+#standings-table{width:100%;}
+#standings-table th,#standings-table td{padding:6px 10px;}
+#standings-table th:first-child,#standings-table td:first-child{width:99%;}
 table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;}
 th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
 th{color:var(--text3);font-weight:600;text-transform:uppercase;font-size:9px;letter-spacing:.03em;white-space:nowrap;}
@@ -613,9 +618,9 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     </div>
   </details>
 
-  <div class="card">
+  <div class="card standings-card">
     <h2>Standings</h2>
-    <p class="standings-note">Teams are ranked by points: 1v1 = 1, 2v2 = 2, 3v3 = 3, 4v4 = 4. Wins and losses count every finished game (1v1, 2v2, 3v3 and 4v4 each count once).</p>
+    <p class="standings-note">Teams are ranked by points: 1v1 = 1, 2v2 = 2, 3v3 = 3, 4v4 = 4. Points left is what a team can still win: every series is worth 10, so it is 10 per game not yet played. Wins and losses count every finished game once.</p>
     <div class="overflow-x">
       <table id="standings-table"></table>
     </div>
@@ -778,7 +783,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
     <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
     <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
-    <div class="version">v1.93</div>
+    <div class="version">v1.94</div>
   </div>
 </div>
 
@@ -1217,8 +1222,10 @@ document.getElementById('fixtures-grid').innerHTML = fixtureGroups
 // Everything comes from SET_RESULTS, so entering a result there updates this table.
 function standingsRows() {
   const rec = {};
-  TEAMS.forEach(t => rec[t.id] = { won: 0, lost: 0, pts: 0 });
+  const SERIES_POINTS = Object.values(SET_POINTS).reduce((a, b) => a + b, 0);   // 1+2+3+4 = 10 for each series
+  TEAMS.forEach(t => rec[t.id] = { won: 0, lost: 0, pts: 0, left: (TEAMS.length - 1) * SERIES_POINTS });
   SET_RESULTS.forEach(r => {
+    r.teams.forEach(id => { if (rec[id]) rec[id].left -= SET_POINTS[r.fmt]; });   // a played game takes its points off the table for both teams
     const loser = r.teams.find(id => id !== r.winner);
     if (rec[r.winner]) { rec[r.winner].pts += SET_POINTS[r.fmt]; rec[r.winner].won++; }
     if (rec[loser]) rec[loser].lost++;
@@ -1227,12 +1234,13 @@ function standingsRows() {
     .sort((x, y) => y.pts - x.pts || y.won - x.won || x.lost - y.lost);
 }
 document.getElementById('standings-table').innerHTML = `
-  <thead><tr><th>Nation</th><th class="num">Points</th><th class="num">Wins</th><th class="num">Losses</th></tr></thead>
+  <thead><tr><th>Nation</th><th class="num">Points</th><th class="num">Points left</th><th class="num">Wins</th><th class="num">Losses</th></tr></thead>
   <tbody>
     ${standingsRows().map(r => `
       <tr>
         <td>${r.team.name}</td>
         <td class="num">${r.pts}</td>
+        <td class="num">${r.left}</td>
         <td class="num">${r.won}</td>
         <td class="num">${r.lost}</td>
       </tr>
