@@ -26,6 +26,8 @@
 .fd{display:inline-block;width:7px;height:7px;border-radius:50%;}
 .fd.w{background:var(--green);}
 .fd.l{background:var(--red);}
+.fd.now{box-shadow:0 0 0 1.5px rgba(255,255,255,.65);margin:0 2px 0 1.5px;}   /* the most recent game, then older ones to the right */
+.sc-dl{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;margin-right:1px;align-self:center;}
 .sc-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;}
 .sc-tag{font-size:10px;font-weight:700;padding:1px 8px;border-radius:20px;border:1px solid var(--border2);color:var(--text2);}
 .sc-tag.good{color:var(--green);border-color:rgba(74,222,128,.4);}
@@ -47,7 +49,7 @@
 .sc-r{display:flex;justify-content:space-between;gap:6px;line-height:1.5;}
 .sc-r .sc-k{min-width:0;flex:none;font-size:10px;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:0;}
 .sc-r .sc-v{text-align:right;min-width:0;color:var(--text2);overflow-wrap:anywhere;}
-.sc-dots{display:flex;flex-wrap:wrap;gap:2px;justify-content:flex-end;margin:1px 0 2px;}
+.sc-dots{display:flex;flex-wrap:wrap;gap:1.5px;justify-content:flex-end;margin:1px 0 2px;}
 .sc-h2h{font-size:12px;color:var(--text2);margin-top:8px;}
 .sc-pn svg{flex:none;}
 @media (max-width:520px){.sc-cols{gap:6px;}.sc-pl{padding:5px 6px;}.sc-r{display:block;margin-top:2px;}.sc-r .sc-k{display:block;max-width:none;white-space:normal;}.sc-r .sc-v{display:block;text-align:left;}.sc-dots{justify-content:flex-start;}.sc-elo .sc-k,.sc-h2h .sc-k{display:block;}}
@@ -259,7 +261,7 @@ function eloChange(mode, mine, theirs) {
 const pctShow = p => Math.min(99, Math.max(1, Math.round(p * 100)));
 const pctText = (n, d) => d ? `${Math.round(n / d * 100)}% (${d})` : 'no games';
 function formDots(games, n) {
-  return games.slice(0, n).map(g => `<i class="fd ${g.won ? 'w' : 'l'}" title="${g.won ? 'Win' : 'Loss'}${g.map ? ' on ' + esc(g.map) : ''}"></i>`).join('');
+  return games.slice(0, n).map((g, i) => `<i class="fd ${g.won ? 'w' : 'l'}${i === 0 ? ' now' : ''}" title="${i === 0 ? 'Latest game: ' : ''}${g.won ? 'Win' : 'Loss'}${g.map ? ' on ' + esc(g.map) : ''}"></i>`).join('');
 }
 function streakOf(games) {
   if (!games.length) return '';
@@ -309,7 +311,7 @@ function scoutPlayer(p, h, mode, map, cls, pe, isYou) {
   const rows = [
     row(mode === 'team' ? 'Team win rate' : 'Win rate', pctText(w, g.length)),
     row('Last 20', last20.length ? `${pctText(w20, last20.length)}` : ''),
-    g.length ? `<div class="sc-dots">${formDots(g, 10)}</div>` : '',
+    g.length ? `<div class="sc-dots"><span class="sc-dl">latest ▸</span>${formDots(g, 10)}</div>` : '',
     map ? row(`On ${esc(map)}`, pctText(onMap.filter(x => x.won).length, onMap.length)) : '',
     cls && inCls.length ? row(`${cls} maps`, pctText(inCls.filter(x => x.won).length, inCls.length)) : '',
     p.civName ? row(esc(p.civName), thisCiv ? pctText(thisCiv.w, thisCiv.n) : 'new for them') : '',
