@@ -316,6 +316,7 @@ svg.pad{width:100%;height:auto;display:block;}
 <meta name="apple-mobile-web-app-title" content="Auto Scout">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <script src="pwa.js?v=312" defer></script>
+<script src="tierlist.js?v=1"></script>
 <meta name="description" content="Console Age of Empires II insights: rating distribution, civ win rates, weekly recaps, alts and more.">
 <link rel="canonical" href="https://aoe2autoscout.com/insights.html">
 <meta property="og:site_name" content="AoE2 Auto Scout">
@@ -360,6 +361,7 @@ svg.pad{width:100%;height:auto;display:block;}
     <a href="#squads">Top Squads</a>
     <a href="#console-vs-pc">Console vs PC</a>
     <a href="#regions">🌍 Top Players by Region</a>
+    <a href="#tierlist">🏅 Tier List Maker</a>
   </nav>
 
   <details class="ctl-wrap" id="controls" hidden>
@@ -914,6 +916,12 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       </div>
       <button class="peek-toggle" data-target="regions-peek" type="button">Show more ▾</button>
     </section>
+
+    <section id="tierlist" class="card">
+      <h2>Tier List Maker</h2>
+      <p class="desc">Make your own tier list. Pick what to rank, drag the tiles into S, A, B, C and D (on a phone, tap a tile and then tap a tier), then copy a link to share it or save it as a picture.</p>
+      <div id="tl-root"></div>
+    </section>
   `;
 
   document.querySelectorAll('.peek-toggle').forEach(btn => {
@@ -1368,6 +1376,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       ? 'The new civs have no "before", so they show a dash. ' : '') + `Dimmed rows have under ${lowBelow} games since the update, so their win rate is mostly noise. Click a civ to see what changed for it in the Sept 22 patch.`;
   }
   renderDlcCivs();
+  if (window.initTierList) window.initTierList(document.getElementById('tl-root'), { civs: civsData });
   fetch(`${PLAYER_DATA_BASE}/civ-patch-change.json?t=${Date.now()}`, { cache: 'no-store' })
     .then(r => r.ok ? r.json() : null)
     .then(j => { if (j && j['1v1 Console'] && j['Team Console']) { dlcData = j; renderDlcCivs(); } })

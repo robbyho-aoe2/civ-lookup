@@ -5,7 +5,7 @@
 const CACHE = 'autoscout-v3';
 const SHELL = [
   './', 'index.html', 'console-live.html', 'player.html', 'insights.html', 'competitive.html', 'civ-insights.html',
-  'build-order.html', 'investigations.html', 'tournament-player.html', 'launch.html', 'manifest.webmanifest', 'pwa.js', 'scout.js',
+  'build-order.html', 'investigations.html', 'tournament-player.html', 'launch.html', 'manifest.webmanifest', 'pwa.js', 'scout.js', 'tierlist.js',
   'app-icons/icon-192.png', 'app-icons/icon-512.png', 'app-icons/favicon.svg',
 ];
 
