@@ -58,6 +58,13 @@ header .back:hover{color:var(--amberL);}
 .badge.rating{background:var(--amberBg);color:var(--amberL);border-color:var(--amber);}
 .nc-link-a{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:8px 16px;border-radius:20px;border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);font-size:12px;font-weight:700;text-decoration:none;}
 .nc-link-a:hover{background:var(--amber);color:var(--bg);}
+/* Follow / Make my player: small and quiet, under the rating badges */
+.me-wrap{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px;margin-top:8px;}
+.mini-btn{font-family:inherit;font-size:11px;font-weight:600;line-height:1.4;padding:2px 10px;border-radius:12px;border:1px solid var(--border2);background:none;color:var(--text3);cursor:pointer;}
+.mini-btn:hover{color:var(--amberL);border-color:var(--amber);}
+.mini-btn.on{color:var(--text2);}
+.mini-note{font-size:11px;color:var(--text3);text-decoration:none;}
+.mini-note:hover{color:var(--amberL);}
 .nc-link-a span{font-weight:500;opacity:.85;}
 .video-links{display:flex;flex-wrap:wrap;gap:0 8px;}
 .video-links .nc-link-a{border-radius:14px;line-height:1.35;}
@@ -130,6 +137,7 @@ header .back:hover{color:var(--amberL);}
 .ladder-toggle{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin:0 auto 16px;width:fit-content;}
 .ladder-toggle button{background:none;border:none;padding:8px 16px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;white-space:nowrap;}
 .ladder-toggle button.on{background:var(--amber);color:#1a0a00;}
+.ladder-toggle .lt-elo{font-weight:500;opacity:.7;margin-left:4px;font-variant-numeric:tabular-nums;}
 
 .stat-row{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:6px;}
 .stat-tile{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;text-align:center;min-width:90px;flex:0 1 auto;}
@@ -785,15 +793,15 @@ function attachMyPlayerButton(entry) {
   if (!api || !badges) return;
   const wrap = document.createElement('div');
   wrap.className = 'me-wrap';
-  wrap.style.cssText = 'text-align:center';
   const btn = document.createElement('button');
   btn.type = 'button';
-  btn.className = 'nc-link-a';
-  btn.style.cssText = 'font-family:inherit;cursor:pointer;';
+  btn.className = 'mini-btn';
   const paint = () => {
     const me = api.get().me;
     const isMe = me && String(me.id) === String(entry.profileId);
-    btn.innerHTML = isMe ? '★ This is my player <span>tap to clear</span>' : '☆ Make this my player <span>the installed app opens here</span>';
+    btn.textContent = isMe ? '★ My player' : '☆ Make my player';
+    btn.title = isMe ? 'This is your player (tap to clear). The installed app opens here.' : 'Make this your player: the installed app opens straight to this page.';
+    btn.classList.toggle('on', !!isMe);
   };
   btn.addEventListener('click', () => {
     const me = api.get().me;
@@ -815,17 +823,18 @@ function attachFollowButton(entry) {
   const write = list => { try { localStorage.setItem(FOLLOW_KEY, JSON.stringify(list)); return true; } catch (e) { return false; } };
   const id = Number(entry.profileId);
   let wrap = badges.nextElementSibling;
-  if (!wrap || !wrap.classList.contains('me-wrap')) { wrap = document.createElement('div'); wrap.style.cssText = 'text-align:center'; badges.insertAdjacentElement('afterend', wrap); }
+  if (!wrap || !wrap.classList.contains('me-wrap')) { wrap = document.createElement('div'); wrap.className = 'me-wrap'; badges.insertAdjacentElement('afterend', wrap); }
   const btn = document.createElement('button');
   btn.type = 'button';
-  btn.className = 'nc-link-a';
-  btn.style.cssText = 'font-family:inherit;cursor:pointer;margin-right:8px;';
+  btn.className = 'mini-btn';
   const note = document.createElement('a');
+  note.className = 'mini-note';
   note.href = 'console-live.html#followed';
-  note.style.cssText = 'font-size:12px;color:var(--amberL);margin-left:2px;';
   const paint = msg => {
     const on = read().some(f => Number(f.id) === id);
-    btn.innerHTML = on ? '✓ Following <span>tap to unfollow</span>' : '＋ Follow <span>see their live games</span>';
+    btn.textContent = on ? '✓ Following' : '＋ Follow';
+    btn.title = on ? 'Tap to unfollow' : 'Follow: see their live games on Console Live';
+    btn.classList.toggle('on', on);
     note.textContent = msg || (on ? 'Open your Following list →' : '');
     note.style.display = note.textContent ? '' : 'none';
   };
@@ -1186,7 +1195,9 @@ function render(content, entry, player) {
   const requestedLadder = params.get('ladder');
   let activeLadder = ladders.includes(requestedLadder) ? requestedLadder : ladders[0];
   const toggleEl = document.getElementById('ladder-toggle');
-  toggleEl.innerHTML = ladders.map(l => `<button data-ladder="${l}" class="${l === activeLadder ? 'on' : ''}">${l}</button>`).join('');
+  // each ladder's current rating next to its name (entry.ratings, or the crossplay ladders' current from entry.peaks)
+  const currentRating = l => (entry.ratings || {})[l] ?? ((entry.peaks || {})[l] || {}).current ?? null;
+  toggleEl.innerHTML = ladders.map(l => { const r = currentRating(l); return `<button data-ladder="${l}" class="${l === activeLadder ? 'on' : ''}">${l}${r != null ? ` <span class="lt-elo">${r}</span>` : ''}</button>`; }).join('');
   toggleEl.querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
       activeLadder = btn.dataset.ladder;
