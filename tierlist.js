@@ -23,7 +23,7 @@
   // Alt accounts (the known alt groups) are merged into one person, so a player shows up once. Their level is a score over every ladder
   // they have played: 1v1 and team on console, plus 1v1 and team on PC, each valued as 60% current rating and 40% historic peak,
   // turned into a z-score against the other console players on that ladder, then averaged with the weights below (a ladder they never
-  // played is left out, not counted as zero).
+  // played counts as an average player on it).
   const LADDER_W = { '1v1 Console': .45, 'Team Console': .20, '1v1 PC': .25, 'Team PC': .10 };   // 1v1 counts most: 70% between the two 1v1 ladders
   const CONSOLE_L = ['1v1 Console', 'Team Console'];
   let PEOPLE = null;
@@ -55,8 +55,10 @@
     });
     const conBest = a => Math.max(0, ...CONSOLE_L.map(L => (a.ratings || {})[L] || 0));
     people.forEach(q => {
+      // a ladder they never played counts as an average player on it (z = 0), not as "left out": otherwise someone with only team games
+      // (no 1v1 at all) would be scored on those alone and rank next to the 1v1 stars
       let num = 0, den = 0;
-      Object.keys(st).forEach(L => { const o = q.lad[L]; if (!o) return; num += LADDER_W[L] * ((val(o) - st[L].mu) / st[L].sd); den += LADDER_W[L]; });
+      Object.keys(st).forEach(L => { const o = q.lad[L]; num += LADDER_W[L] * (o ? (val(o) - st[L].mu) / st[L].sd : 0); den += LADDER_W[L]; });
       q.score = den ? num / den : -3;
       q.best = Math.max(0, ...CONSOLE_L.map(L => (q.lad[L] && q.lad[L].cur) || 0));
       // the account shown for the person: the console account with the most games (their main)
