@@ -196,6 +196,25 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
 .search-result .sr-request{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:20px;background:transparent;border:1px solid var(--amber);color:var(--amberL);flex-shrink:0;}
 .search-result .sr-request:hover{background:var(--amber);color:var(--bg);}
 .search-hint{font-size:11px;color:var(--text3);padding:4px 2px;}
+#opp-q{width:100%;height:34px;padding:0 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;outline:none;}
+#opp-q:focus{border-color:var(--amber);}
+#opp-sugg{margin-top:6px;display:flex;flex-direction:column;gap:4px;}
+#opp-sugg:empty{margin-top:0;}
+.opp-pick{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:7px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);font:inherit;font-size:13px;color:var(--text);cursor:pointer;text-align:left;}
+.opp-pick:hover{border-color:var(--amber);}
+.opp-pick span{font-size:11px;color:var(--text3);flex-shrink:0;}
+#opp-detail:empty{display:none;}
+#opp-detail{margin:10px 0 14px;padding:10px 12px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg);}
+.opp-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
+.opp-name{font-size:15px;font-weight:700;}
+.opp-name a{color:var(--text);text-decoration:none;}
+.opp-name a:hover{color:var(--amberL);}
+.opp-close{font:inherit;font-size:11px;color:var(--text3);background:none;border:1px solid var(--border2);border-radius:12px;padding:1px 9px;cursor:pointer;}
+.opp-close:hover{color:var(--amberL);border-color:var(--amber);}
+.opp-rec{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;}
+.opp-sub{font-size:11px;color:var(--text3);margin:2px 0 8px;}
+.opp-games{width:100%;}
+.opp-games a{color:var(--text2);}
 
 .similar-players{display:flex;flex-wrap:wrap;gap:8px;}
 .similar-players a{display:flex;flex-direction:column;gap:2px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text);font-size:12px;min-width:100px;}
@@ -1117,8 +1136,13 @@ function render(content, entry, player) {
     </div>
 
     <div class="card">
-      <h2>Top 10 Opponents</h2>
+      <h2>Opponents</h2>
       <p class="desc" id="opponents-desc">Head-to-head record vs. the most-played opponents.</p>
+      <div id="opp-find">
+        <input id="opp-q" type="search" placeholder="Search an opponent by name or ID…" autocomplete="off" spellcheck="false" aria-label="Search opponents">
+        <div id="opp-sugg"></div>
+      </div>
+      <div id="opp-detail"></div>
       <table id="opponents-table"></table>
     </div>
 
@@ -1517,6 +1541,76 @@ function render(content, entry, player) {
     listEl.innerHTML = pool.map(p => `<a href="player.html?id=${p.profileId}"><b>${escapeHtml(p.name)}</b><span>${p.rating} rating</span></a>`).join('');
   }
 
+  // Opponent search: every opponent met on this ladder, with the head-to-head record and the games played against them.
+  // `oppIndex` is rebuilt for the ladder shown; the input and its handlers are wired once.
+  var oppIndex = null;
+  const oppSort = m => m.startedAt || m.date || '';
+  function buildOppIndex(matches) {
+    const map = new Map();
+    matches.forEach(m => (m.opponents || []).forEach(o => {
+      const key = o.profileId != null ? String(o.profileId) : (o.name ? 'n:' + o.name : null);
+      if (key == null) return;
+      let r = map.get(key);
+      if (!r) { r = { key, profileId: o.profileId, name: o.name || `#${o.profileId}`, names: new Set(), ms: [] }; map.set(key, r); }
+      if (o.name) r.names.add(o.name.toLowerCase());
+      r.ms.push({ m, name: o.name });
+    }));
+    map.forEach(r => {
+      r.ms.sort((a, b) => oppSort(b.m) < oppSort(a.m) ? -1 : oppSort(b.m) > oppSort(a.m) ? 1 : 0);   // newest first
+      const named = r.ms.find(x => x.name); if (named) r.name = named.name;
+      r.wins = r.ms.filter(x => x.m.won === true).length;
+      r.losses = r.ms.filter(x => x.m.won === false).length;
+    });
+    return map;
+  }
+  function oppMatches(q) {
+    q = q.trim().toLowerCase();
+    const all = [...oppIndex.values()];
+    const hit = q ? all.filter(r => String(r.profileId) === q || [...r.names].some(n => n.includes(q)) || (/^\d{3,}$/.test(q) && String(r.profileId).startsWith(q))) : all;
+    return hit.sort((a, b) => b.ms.length - a.ms.length).slice(0, 8);
+  }
+  function renderOppSuggestions() {
+    const el = document.getElementById('opp-sugg'), q = document.getElementById('opp-q').value;
+    if (!oppIndex) { el.innerHTML = ''; return; }
+    const rows = oppMatches(q);
+    el.innerHTML = rows.length
+      ? rows.map(r => `<button type="button" class="opp-pick" data-k="${escapeHtml(r.key)}"><b>${escapeHtml(r.name)}${window.impTag && r.profileId != null ? window.impTag(r.profileId) : ''}</b><span>${r.wins}–${r.losses} · ${r.ms.length} game${r.ms.length !== 1 ? 's' : ''}</span></button>`).join('')
+      : '<div class="search-hint">No opponent with that name on this ladder.</div>';
+  }
+  function showOpponent(key, all) {
+    const r = oppIndex && oppIndex.get(key), el = document.getElementById('opp-detail');
+    if (!r) { el.innerHTML = ''; return; }
+    const decided = r.wins + r.losses, pct = decided ? (r.wins / decided * 100).toFixed(1) + '%' : '—';
+    let streak = 0, streakWin = null;
+    for (const x of r.ms) { if (x.m.won == null) continue; if (streakWin == null) streakWin = x.m.won; if (x.m.won === streakWin) streak++; else break; }
+    const dates = r.ms.map(x => x.m.date).filter(Boolean).sort();
+    const shown = all ? r.ms : r.ms.slice(0, 10);
+    const rows = shown.map(({ m }) => `<tr><td>${escapeHtml(m.date ? formatPulledDate(m.date) : '—')}</td><td>${m.won == null ? '—' : m.won ? '<b class="wr-good">Win</b>' : '<b class="wr-bad">Loss</b>'}</td><td>${escapeHtml(m.civ || '—')}</td><td>${escapeHtml(m.map || '—')}</td><td class="num">${m.dur ? fmtLong(m.dur) : '—'}</td><td class="num">${m.matchId ? `<a href="https://www.aoe2insights.com/match/${m.matchId}/" target="_blank" rel="noopener">↗ Insights</a>` : ''}</td></tr>`).join('');
+    el.innerHTML = `
+      <div class="opp-head"><span class="opp-name">vs. ${playerLinkOrName(r.name, r.profileId)}</span><button type="button" class="opp-close" id="opp-close">Close</button></div>
+      <div class="opp-rec"><span class="wr-good">${r.wins}</span>–<span class="wr-bad">${r.losses}</span> <span style="font-size:13px;font-weight:600;color:var(--text2)">${pct} over ${r.ms.length} game${r.ms.length !== 1 ? 's' : ''}</span></div>
+      <div class="opp-sub">${dates.length ? `First met ${escapeHtml(formatPulledDate(dates[0]))} · last ${escapeHtml(formatPulledDate(dates[dates.length - 1]))}` : ''}${streak > 1 ? ` · ${streakWin ? 'won' : 'lost'} the last ${streak}` : ''}</div>
+      <div class="table-scroll"><table class="opp-games"><thead><tr><th>Date</th><th>Result</th><th>${escapeHtml(entry.name)}'s civ</th><th>Map</th><th class="num">Length</th><th class="num"></th></tr></thead><tbody>${rows}</tbody></table></div>
+      ${r.ms.length > 10 ? `<button type="button" class="rows-more" id="opp-more">${all ? 'Show only the last 10' : `Show all ${r.ms.length} games`}</button>` : ''}`;
+    document.getElementById('opp-close').onclick = () => { el.innerHTML = ''; };
+    const more = document.getElementById('opp-more');
+    if (more) more.onclick = () => showOpponent(key, !all);
+  }
+  function wireOppSearch() {
+    const inp = document.getElementById('opp-q'), sug = document.getElementById('opp-sugg');
+    if (!inp || inp.dataset.wired) return;
+    inp.dataset.wired = '1';
+    inp.addEventListener('input', renderOppSuggestions);
+    inp.addEventListener('focus', renderOppSuggestions);
+    sug.addEventListener('click', e => {
+      const b = e.target.closest('.opp-pick'); if (!b) return;
+      showOpponent(b.dataset.k, false);
+      sug.innerHTML = '';
+      inp.value = '';
+      if (window.tagImposters) window.tagImposters(document.getElementById('opp-detail'));
+    });
+  }
+
   function renderOpponentsTable(matches) {
     const opponents = {};
     let matchesWithData = 0;
@@ -1533,9 +1627,17 @@ function render(content, entry, player) {
     });
     const rows = Object.values(opponents).sort((a, b) => b.games - a.games).slice(0, 10);
 
+    // search every opponent met on this ladder (a ladder switch resets it)
+    oppIndex = buildOppIndex(matches);
+    wireOppSearch();
+    document.getElementById('opp-detail').innerHTML = '';
+    document.getElementById('opp-sugg').innerHTML = '';
+    document.getElementById('opp-q').value = '';
+    document.getElementById('opp-find').style.display = oppIndex.size ? '' : 'none';
+
     const descEl = document.getElementById('opponents-desc');
     descEl.textContent = matchesWithData
-      ? `Head-to-head record vs. the 10 most-played opponents, from ${matchesWithData.toLocaleString()} of ${matches.length.toLocaleString()} matches with opponent data captured.`
+      ? `Search any of the ${oppIndex.size.toLocaleString()} opponents met on this ladder for the head-to-head record and the games played against them. The table shows the 10 most-played, from ${matchesWithData.toLocaleString()} of ${matches.length.toLocaleString()} matches with opponent data captured.`
       : `No opponent data captured yet for this ladder — tracking was added recently, so only new matches from here on will have it.`;
 
     const tableEl = document.getElementById('opponents-table');
