@@ -79,6 +79,10 @@ header .back:hover{color:var(--amberL);}
 .mc{display:grid;grid-template-columns:250px 1fr;gap:16px;align-items:center;padding:12px 16px;margin-bottom:10px;background:var(--surf2);border:1px solid var(--border);border-left:4px solid var(--border2);border-radius:10px;}
 .mc.win{border-left-color:var(--green);}
 .mc.loss{border-left-color:var(--red);}
+.mc.live{border-left-color:var(--amber);}
+.live-dot{display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:50%;background:var(--amberL);animation:livepulse 1.6s ease-in-out infinite;vertical-align:1px;}
+@keyframes livepulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+@media(prefers-reduced-motion:reduce){.live-dot{animation:none;}}
 .mc-info{display:flex;gap:12px;align-items:center;min-width:0;}
 .mc-mapwrap{position:relative;flex:none;width:58px;height:58px;}
 .mc-map{width:58px;height:58px;border-radius:9px;object-fit:cover;background:var(--surf);display:block;}
@@ -1089,6 +1093,12 @@ function render(content, entry, player) {
       <div class="stat-row" id="stat-row"></div>
     </div>
 
+    <div class="card" id="live-card" hidden>
+      <h2><span class="live-dot"></span>Playing now</h2>
+      <p class="desc" id="live-desc"></p>
+      <div id="live-list"></div>
+    </div>
+
     <div class="card" id="recent-card">
       <h2>Recent Matches</h2>
       <p class="desc" id="recent-desc">Latest games, newest first.</p>
@@ -1338,7 +1348,8 @@ function render(content, entry, player) {
     const t0 = raw.started ? Date.parse(raw.started) : NaN, t1 = raw.finished ? Date.parse(raw.finished) : NaN;
     const dur = t1 > t0 ? Math.round((t1 - t0) / 1000) : null;
     const mapName = raw.mapName || 'Unknown map';
-    const ago = timeAgo(raw.finished || raw.started);
+    const live = isLiveGame(raw);
+    const ago = live ? 'In game, started ' + timeAgo(raw.started) : timeAgo(raw.finished || raw.started);
     const insightsLink = raw.matchId != null
       ? `<a class="mc-insights" href="https://www.aoe2insights.com/match/${raw.matchId}/" target="_blank" rel="noopener">↗ Insights</a>` : '';
     // Replay download (opens through the game's own aoe.ms link, so like Spectate on PC it only helps on a PC): hidden on phones
@@ -1370,7 +1381,7 @@ function render(content, entry, player) {
     const scoutOpen = scoutable && RS.scout.has(raw.matchId);
     const scoutHtml = !scoutable ? '' : `<div class="mc-scoutrow"><button type="button" class="mc-scoutbtn" data-id="${raw.matchId}">${scoutOpen ? 'Hide scouting report' : 'Scouting report'}</button></div>` +
       (scoutOpen ? scoutReport({ m: raw, pl: teams.flatMap(t => t.players), mine, asOf: Date.parse(raw.started), subject: true }, false) : '');
-    return `<div class="mc ${won === true ? 'win' : won === false ? 'loss' : ''}">` +
+    return `<div class="mc ${live ? 'live' : won === true ? 'win' : won === false ? 'loss' : ''}">` +
       `<div class="mc-info"><div class="mc-mapwrap">` +
       (raw.mapImageUrl ? `<img class="mc-map" src="${escapeHtml(raw.mapImageUrl)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<div class="mc-map"></div>') +
       (won === true ? '<span class="mc-res" title="Win">👑</span>' : won === false ? '<span class="mc-res" title="Loss">💀</span>' : '') +
@@ -1427,10 +1438,42 @@ function render(content, entry, player) {
     if (RS.scout.has(id)) RS.scout.delete(id); else RS.scout.add(id);
     renderRecentMatches();
   });
+  // A game with no finish time that started in the last few hours (older ones are abandoned lobbies the API never closed).
+  const LIVE_STALE_MS = 4 * 3600 * 1000;
+  function isLiveGame(r) { return !r.finished && !!r.started && Date.now() - Date.parse(r.started) <= LIVE_STALE_MS; }
+
+  function renderLiveNow() {
+    const card = document.getElementById('live-card');
+    const live = RS.raws.filter(isLiveGame);
+    card.hidden = !live.length;
+    if (!live.length) return;
+    document.getElementById('live-desc').textContent = `${entry.name} is in ${live.length > 1 ? live.length + ' games' : 'a game'} right now. This card checks again every minute.`;
+    document.getElementById('live-list').innerHTML = live.map(matchCardHtml).join('');
+  }
+  // Re-read the newest page of games: picks up a game that just started and closes one that just ended.
+  async function pollLiveNow() {
+    if (document.hidden || RS.failed || RS.loading) return;
+    try {
+      const res = await fetch(`${LIVE_MATCHES_URL}?profile_ids=${Number(entry.profileId)}&page=1&per_page=10&_=${Date.now()}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      (Array.isArray(data) ? data : (data.matches || [])).forEach(r => {
+        if (r.matchId == null) return;
+        const i = RS.raws.findIndex(x => x.matchId === r.matchId);
+        if (i >= 0) RS.raws[i] = r;
+        else if (!RS.seen.has(r.matchId)) { RS.seen.add(r.matchId); RS.raws.unshift(r); }
+      });
+      RS.raws.sort((a, b) => (Date.parse(b.started) || 0) - (Date.parse(a.started) || 0));
+      renderRecentMatches();
+    } catch (e) { /* best effort, the next tick tries again */ }
+  }
+  setInterval(pollLiveNow, 60000);
+
   function renderRecentMatches() {
     const descEl = document.getElementById('recent-desc');
     const toggleEl = document.getElementById('recent-toggle');
     const listEl = document.getElementById('recent-list');
+    renderLiveNow();
     if (RS.failed) return renderRecentFallback(descEl, toggleEl, listEl);
 
     if (!RS.raws.length) {
@@ -1440,7 +1483,7 @@ function render(content, entry, player) {
       return;
     }
     const counts = {};
-    RS.raws.forEach(r => { const l = recentLabel(r); counts[l] = (counts[l] || 0) + 1; });
+    RS.raws.forEach(r => { if (isLiveGame(r)) return; const l = recentLabel(r); counts[l] = (counts[l] || 0) + 1; });
     const labels = Object.keys(counts).sort((x, y) => {
       const ix = RECENT_LADDER_ORDER.indexOf(x), iy = RECENT_LADDER_ORDER.indexOf(y);
       return (ix < 0 ? 99 : ix) - (iy < 0 ? 99 : iy) || counts[y] - counts[x];
@@ -1449,7 +1492,7 @@ function render(content, entry, player) {
     toggleEl.innerHTML = ['All', ...labels].map(l => `<button data-ladder="${escapeHtml(l)}" class="${l === RS.ladder ? 'on' : ''}">${l === 'All' ? 'All' : escapeHtml(l)}${l === 'All' ? '' : ` <span style="opacity:.6">${counts[l].toLocaleString()}</span>`}</button>`).join('');
     toggleEl.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => { RS.ladder = btn.dataset.ladder; renderRecentMatches(); }));
 
-    const shown = RS.raws.filter(r => RS.ladder === 'All' || recentLabel(r) === RS.ladder);
+    const shown = RS.raws.filter(r => !isLiveGame(r) && (RS.ladder === 'All' || recentLabel(r) === RS.ladder));
     const last10 = shown.slice(0, 10).filter(r => iWon(r) != null);
     const w10 = last10.filter(iWon).length;
     const oldest = RS.raws.length ? (RS.raws[RS.raws.length - 1].started || '').slice(0, 10) : '';
