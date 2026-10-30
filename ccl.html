@@ -60,6 +60,9 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .ccl-top td:nth-child(2){font-weight:700;}
 .x-plink{color:inherit;text-decoration:underline dotted var(--text3);text-underline-offset:2px;}
 .x-plink:hover{color:var(--amberL);}
+.ccl-discord{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:20px;border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);font-size:13px;font-weight:700;text-decoration:none;}
+.ccl-discord:hover{background:var(--amber);color:var(--bg);}
+.ccl-join{margin:0 0 22px;}
 .game-head{display:flex;align-items:center;gap:14px;margin:0 0 6px;}
 .game-head img{width:56px;height:56px;border-radius:10px;object-fit:cover;flex:none;}
 .game-head h2{font-size:19px;margin:0;color:var(--text);}
@@ -133,6 +136,8 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
     <a href="build-order.html">🛠️ Build Order</a>
     <a href="investigations.html">🕵️ Investigations</a>
   </nav>
+
+  <div class="ccl-join"><a class="ccl-discord" href="https://discord.gg/Xs56BRxZaq" target="_blank" rel="noopener">Join the CCL Discord</a></div>
 
   <div class="card" id="game-card" hidden>
     <h2>This week's game</h2>
@@ -228,7 +233,7 @@ if (gameOn) {
     `<p class="game-story">${esc(g.story)}</p><div class="game-sides">` +
     g.sides.map(sd => `<div class="game-side" style="--accent:${sd.accent}"><h3><img src="img/civs/${sd.civ}.png" alt="">${esc(sd.name)}</h3><p class="who">${esc(sd.who)}</p>` +
       `<table><thead><tr><th>${esc(sd.head[0])}</th><th class="num">${esc(sd.head[1])}</th></tr></thead><tbody>${sd.rows.map(r => `<tr><td>${esc(r[0])}</td><td class="num">${r[1]}</td></tr>`).join('')}</tbody></table>` +
-      `<p class="note">${esc(sd.note)}</p></div>`).join('') + `</div><p class="game-tag">${esc(g.tag)}</p>`;
+      `<p class="note">${esc(sd.note)}</p></div>`).join('') + `</div><p class="game-tag">${esc(g.tag)}</p><a class="ccl-discord" href="https://discord.gg/Xs56BRxZaq" target="_blank" rel="noopener" style="margin-top:14px">Sign in on Discord</a>`;
 }
 
 function finalsTable(s) {
