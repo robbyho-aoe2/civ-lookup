@@ -951,7 +951,7 @@ document.getElementById('caster-list').innerHTML = CASTERS.filter(c => !c.player
 document.getElementById('player-caster-list').innerHTML = CASTERS.filter(c => c.player).map(casterHtml).join('');
 const SCHEDULED_GAMES = [
   // (past) { date: 'Fri, Oct 30', short: 'Oct 30', time: '5:00 pm ET', teams: ['mexico', 'ps5'], games: ['4v4'], maps: { '4v4': 'Steppe' }, caster: 'Old Peenuts' },
-  { date: 'Fri, Oct 30', short: 'Oct 30', time: '5:00 pm ET', teams: ['uk', 'usa'], games: ['2v2', '3v3', '4v4'], maps: { '2v2': 'Oasis', '3v3': 'Arena', '4v4': 'African Clearing' }, caster: 'Old Peenuts' },   // 9 pm GMT
+  { date: 'Fri, Oct 30', short: 'Oct 30', time: '5:00 pm ET', teams: ['uk', 'usa'], games: ['3v3', '4v4'], maps: { '3v3': 'Arena', '4v4': 'African Clearing' }, caster: 'Old Peenuts' },   // 9 pm GMT
   // { date: 'Sat, Oct 10', short: 'Oct 10', time: '3:00 pm ET', teams: ['usa', 'mexico'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
   // (past) { date: 'Tue, Oct 13', short: 'Oct 13', time: '2:00 pm ET', teams: ['uk', 'france'], games: ['1v1', '2v2', '3v3', '4v4'], caster: 'Sammy Diamonds' }, // 7 pm UK time
   // (past) { date: 'Thu, Oct 15', short: 'Oct 15', time: '7:00 pm ET', teams: ['canada', 'ps5'], games: ['3v3'], caster: 'Old Peenuts' },
@@ -1051,6 +1051,9 @@ const SET_RESULTS = [
     losers: [{ name: 'Saymyname3451', id: 8363994, civ: 'Franks' }, { name: 'supercharlie12', id: 12507343, civ: 'Italians' }, { name: 'x FalKo i', id: 13394271, civ: 'Magyars' }] },
   { teams: ['usa', 'uk'], fmt: '1v1', winner: 'usa', map: 'Black Forest', video: 'ILSiRD-qQLo', t: 0,
     winners: [{ name: 'PrEyOnU1', id: 13467931, civ: 'Bulgarians' }], losers: [{ name: 'D4NI3L J0N35', id: 13410632, civ: 'Goths' }] },
+  { teams: ['usa', 'uk'], fmt: '2v2', winner: 'usa', map: 'Oasis', video: null, t: 0,
+    winners: [{ name: 'Faith2Adventure', id: 12527010, civ: 'Magyars' }, { name: 'PrEyOnU1', id: 13467931, civ: 'Ethiopians' }],
+    losers: [{ name: 'DarK Slaayer', id: 13107937, civ: 'Magyars' }, { name: 'Calum1Ltv', id: 16972769, civ: 'Inca' }] },
 ];
 // Map drafts from aoe2cm.net. Each event is [who, action, map id]: who is 'host', 'guest' or 'none' (the admin map).
 const MAP_NAMES = { 'african-clearing': 'African Clearing', arena: 'Arena', arabia: 'Arabia', 'black-forest': 'Black Forest', glade: 'Glade', oasis: 'Oasis', pilgrims: 'Pilgrims', 'team-islands': 'Team Islands', steppe: 'Steppe' };
@@ -1153,7 +1156,7 @@ if (schedEl) schedEl.innerHTML = SCHEDULED_GAMES.length
 const PREGAME = {
   pairs: {"mexico|usa": [0.4, 0.25, 0.25, 0.24], "mexico|france": [0.92, 0.52, 0.48, 0.52], "mexico|canada": [0.45, 0.37, 0.38, 0.41], "mexico|uk": [0.57, 0.43, 0.41, 0.43], "mexico|ps5": [0.81, 0.67, 0.68, 0.7], "usa|france": [0.95, 0.77, 0.74, 0.76], "usa|canada": [0.54, 0.63, 0.65, 0.67], "usa|uk": [0.66, 0.7, 0.68, 0.7], "usa|ps5": [0.86, 0.86, 0.87, 0.87], "france|canada": [0.06, 0.36, 0.4, 0.38], "france|uk": [0.1, 0.42, 0.43, 0.4], "france|ps5": [0.27, 0.65, 0.7, 0.68], "canada|uk": [0.62, 0.58, 0.53, 0.52], "canada|ps5": [0.84, 0.78, 0.78, 0.76], "uk|ps5": [0.77, 0.73, 0.75, 0.76]},
   played: {"canada|ps5|1v1": 0.81, "canada|ps5|2v2": 0.679, "usa|mexico|1v1": 0.728, "usa|mexico|2v2": 0.838, "usa|mexico|4v4": 0.749, "usa|mexico|3v3": 0.755, "uk|france|1v1": 0.871, "uk|france|2v2": 0.364, "uk|france|3v3": 0.577, "uk|france|4v4": 0.502, "canada|ps5|3v3": 0.672, "canada|ps5|4v4": 0.718, "usa|france|1v1": 0.851, "usa|france|2v2": 0.723, "usa|france|3v3": 0.754, "usa|france|4v4": 0.622, "canada|mexico|1v1": 0.545, "uk|ps5|1v1": 0.836, "uk|ps5|2v2": 0.501, "uk|ps5|3v3": 0.676, "uk|ps5|4v4": 0.666, "canada|mexico|2v2": 0.783, "canada|mexico|3v3": 0.653, "canada|mexico|4v4": 0.707, "mexico|ps5|1v1": 0.752, "mexico|ps5|2v2": 0.412, "mexico|ps5|3v3": 0.626, "usa|uk|1v1": 0.786, "canada|france|2v2": 0.579, "canada|france|3v3": 0.629, "canada|france|1v1": 0.938},
-  planned: {"canada|france|4v4": {"p": 0.617, "map": "African Clearing", "confirmed": false, "players": {"canada": ["volcanloup", "GOAT Gobz", "Arbiters Son", "Dbs Elm"], "france": ["vN eRaaz", "x FalKo i", "supercharlie12", "Saymyname3451"]}}, "usa|uk|2v2": {"p": 0.668, "map": "Oasis", "confirmed": false, "players": {"usa": ["Faith2Adventure", "sologhost"], "uk": ["DarK Slaayer", "Calum1Ltv"]}}}
+  planned: {"canada|france|4v4": {"p": 0.617, "map": "African Clearing", "confirmed": false, "players": {"canada": ["volcanloup", "GOAT Gobz", "Arbiters Son", "Dbs Elm"], "france": ["vN eRaaz", "x FalKo i", "supercharlie12", "Saymyname3451"]}}}
 };
 // END ODDS
 // Chance that team a wins the game of this format, from the scouting simulation (null if unknown).
