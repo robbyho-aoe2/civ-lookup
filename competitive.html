@@ -948,7 +948,8 @@ const casterHtml = c => `<div class="caster">${c.name}${c.links.map(([label, url
 document.getElementById('caster-list').innerHTML = CASTERS.filter(c => !c.player).map(casterHtml).join('');
 document.getElementById('player-caster-list').innerHTML = CASTERS.filter(c => c.player).map(casterHtml).join('');
 const SCHEDULED_GAMES = [
-  { date: 'Fri, Oct 30', short: 'Oct 30', time: '5:00 pm ET', teams: ['mexico', 'ps5'], games: ['4v4'] },
+  { date: 'Fri, Oct 30', short: 'Oct 30', time: '5:00 pm ET', teams: ['mexico', 'ps5'], games: ['4v4'], maps: { '4v4': 'Steppe' } },
+  { date: 'Fri, Oct 30', short: 'Oct 30', time: '5:00 pm ET', teams: ['uk', 'usa'], games: ['2v2', '3v3', '4v4'] },   // 9 pm GMT
   // { date: 'Sat, Oct 10', short: 'Oct 10', time: '3:00 pm ET', teams: ['usa', 'mexico'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
   // (past) { date: 'Tue, Oct 13', short: 'Oct 13', time: '2:00 pm ET', teams: ['uk', 'france'], games: ['1v1', '2v2', '3v3', '4v4'], caster: 'Sammy Diamonds' }, // 7 pm UK time
   // (past) { date: 'Thu, Oct 15', short: 'Oct 15', time: '7:00 pm ET', teams: ['canada', 'ps5'], games: ['3v3'], caster: 'Old Peenuts' },
@@ -1138,7 +1139,7 @@ if (schedEl) schedEl.innerHTML = SCHEDULED_GAMES.length
   ? SCHEDULED_GAMES.map(g => `
     <div class="sched-item">
       <div class="sched-when">${casterLink(g.caster) ? `<a href="${casterLink(g.caster)}" target="_blank" rel="noopener" title="Watch on Twitch">` : ''}<b>${g.date}</b><span>${g.time}</span>${casterLink(g.caster) ? '</a>' : ''}</div>
-      <div class="sched-match"><b>${teamName(g.teams[0])} vs ${teamName(g.teams[1])}</b><span>${g.games.length === SET_FORMATS.length ? 'Full set: 1v1, 2v2, 3v3, 4v4' : (g.games.length > 2 ? g.games.slice(0, -1).join(', ') + ' and ' + g.games[g.games.length - 1] : g.games.join(' and '))}</span></div>
+      <div class="sched-match"><b>${teamName(g.teams[0])} vs ${teamName(g.teams[1])}</b><span>${g.games.length === SET_FORMATS.length ? 'Full set: 1v1, 2v2, 3v3, 4v4' : ((l => l.length > 2 ? l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1] : l.join(' and '))(g.games.map(f => f + (g.maps && g.maps[f] ? ' on ' + g.maps[f] : ''))))}</span></div>
       <div class="sched-cast">${g.caster ? `Casted by <b>${g.caster}</b>` : 'Caster to be announced'}</div>
     </div>`).join('')
   : '<p class="desc">No games are scheduled right now. New games will be listed here.</p>';
