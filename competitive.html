@@ -949,7 +949,7 @@ const casterHtml = c => `<div class="caster">${c.name}${c.links.map(([label, url
 document.getElementById('caster-list').innerHTML = CASTERS.filter(c => !c.player).map(casterHtml).join('');
 document.getElementById('player-caster-list').innerHTML = CASTERS.filter(c => c.player).map(casterHtml).join('');
 const SCHEDULED_GAMES = [
-  { date: 'Fri, Oct 30', short: 'Oct 30', time: '5:00 pm ET', teams: ['mexico', 'ps5'], games: ['4v4'], maps: { '4v4': 'Steppe' }, caster: 'Old Peenuts' },
+  // (past) { date: 'Fri, Oct 30', short: 'Oct 30', time: '5:00 pm ET', teams: ['mexico', 'ps5'], games: ['4v4'], maps: { '4v4': 'Steppe' }, caster: 'Old Peenuts' },
   { date: 'Fri, Oct 30', short: 'Oct 30', time: '5:00 pm ET', teams: ['uk', 'usa'], games: ['2v2', '3v3', '4v4'], maps: { '2v2': 'Oasis', '3v3': 'Arena', '4v4': 'African Clearing' }, caster: 'Old Peenuts' },   // 9 pm GMT
   // { date: 'Sat, Oct 10', short: 'Oct 10', time: '3:00 pm ET', teams: ['usa', 'mexico'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
   // (past) { date: 'Tue, Oct 13', short: 'Oct 13', time: '2:00 pm ET', teams: ['uk', 'france'], games: ['1v1', '2v2', '3v3', '4v4'], caster: 'Sammy Diamonds' }, // 7 pm UK time
@@ -1026,6 +1026,9 @@ const SET_RESULTS = [
   { teams: ['mexico', 'ps5'], fmt: '3v3', winner: 'mexico', map: 'Arena', video: '_t_ZcJquSaM', t: 0,
     winners: [{ name: 'UxLiho', id: 12459914, civ: 'Franks' }, { name: 'Cristiano102277', id: 13480709, civ: 'Malay' }, { name: 'UxDora', id: 25013161, civ: 'Italians' }],
     losers: [{ name: 'CrustyPotato313', id: 23147426, civ: 'Cumans' }, { name: 'Prop1aNea', id: 25166648, civ: 'Poles' }, { name: 'ItsGutsAoE', id: 23477132, civ: 'Bohemians' }] },
+  { teams: ['mexico', 'ps5'], fmt: '4v4', winner: 'mexico', map: 'Steppe', video: null, t: 0,
+    winners: [{ name: 'UxLiho', id: 12459914, civ: 'Mongols' }, { name: 'MORIS0202', id: 12868111, civ: 'Britons' }, { name: 'moramora48', id: 13216763, civ: 'Persians' }, { name: 'UxDora', id: 25013161, civ: 'Celts' }],
+    losers: [{ name: 'SammyDiamonds', id: 22753596, civ: 'Mongols' }, { name: 'esgedda', id: 22831188, civ: 'Koreans' }, { name: 'CrustyPotato313', id: 23147426, civ: 'Ethiopians' }, { name: 'ItsGutsAoE', id: 23477132, civ: 'Persians' }] },
   { teams: ['usa', 'mexico'], fmt: '1v1', winner: 'usa', map: 'Oasis', video: 'nMK7JPSzLJY', t: 0,
     winners: [{ name: 'Faith2Adventure', id: 12527010, civ: 'Britons' }], losers: [{ name: 'UxLiho', id: 12459914, civ: 'Berbers' }] },
   { teams: ['usa', 'mexico'], fmt: '2v2', winner: 'usa', map: 'Arena', video: 'nMK7JPSzLJY', t: 1525,
