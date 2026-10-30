@@ -148,7 +148,10 @@ async function histFetch(id, lb = 'rm_1v1_console') {
 // impTag(id) (the small r / i after a player's name when they have an imposter, or are one) comes from imposters.js
 let scoutNow = Date.now();   // "now" for the report being drawn: the game's start when reading a past game
 const SCOUT = {
-  '1v1': { lb: 'rm_1v1_console', elo: 3.006, civ: 0.672, pCiv: 1.275, pMap: 2.415, pAll: 0.512, h2h: 0.7, K: 36, D: 380, civLadder: '1v1 Console' },
+  '1v1': { lb: 'rm_1v1_console', elo: 3.006, civ: 0.672, pCiv: 1.275, pMap: 2.415, pAll: 0.512, h2h: 0.7, K: 36, D: 380, civLadder: '1v1 Console',
+    // High odds were too high in the forward test (3,246 games: 75%+ picks predicted 87.4%, won 83.9%), so everything past 70% is pulled
+    // back toward it by 30% on the logit scale. Chosen on some days of the test and scored on the others: log-loss 0.5554 -> 0.5524.
+    shrinkAt: 0.7, shrinkBy: 0.7 },
   team:  { lb: 'rm_team_console', elo: 3.741, civ: 1.425, best: 0.533, K: 35.5, D: 400, civLadder: 'Team Console' },
 };
 const WOE_SHRINK = 12;
@@ -233,10 +236,19 @@ function oddsFor(mode, me, opp, hMe, hOpp, map, who = ['you', 'they']) {
     const meet = hMe.games.filter(g => (g.opps || []).includes(opp.profileId)), hw = meet.filter(g => g.won).length, hl = meet.length - hw;
     if (meet.length) add('Head-to-head', { v: (hw - hl) / (meet.length + 2) }, { v: 0 }, M.h2h, `${who[0]} ${hw}–${hl} against ${who[1]} in their recent games`);
   }
-  return { p: 1 / (1 + Math.exp(-x)), steps };
+  const raw = 1 / (1 + Math.exp(-x));
+  const t = logit(M.shrinkAt), ax = Math.abs(x);
+  if (mode === '1v1' && ax > t) {
+    const xs = Math.sign(x) * (t + M.shrinkBy * (ax - t)), p = 1 / (1 + Math.exp(-xs));
+    if (Math.abs(p - raw) >= 0.005) steps.push({ label: 'Calibration', p, note: 'very high odds were too high in testing, so they are pulled back a little' });
+    return { p, raw, steps, gap: rA - rB };
+  }
+  return { p: raw, raw, steps, gap: rA - rB };
 }
 // The few steps that moved the odds by 2+ points, in plain words, so a surprising number can be explained.
 function oddsNotes(o) {
+  // With a rating gap of 150+ the civ, map and form terms did not improve the odds in testing, so only the rating is explained.
+  if (o.gap != null && Math.abs(o.gap) >= 150) return [`Rating gap ${o.gap >= 0 ? '+' : ''}${o.gap}: at this size civs, map and form rarely change the result.`];
   const out = []; let prev = null;
   o.steps.forEach((s, i) => { const d = prev == null ? 0 : s.p - prev; if (i > 0 && Math.abs(d) >= 0.02 && s.note) out.push(`${s.label} ${d > 0 ? '+' : '−'}${Math.round(Math.abs(d) * 100)} pts: ${s.note}`); prev = s.p; });
   return out;
