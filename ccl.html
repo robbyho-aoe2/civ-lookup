@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>CCL Community League — AoE2 Auto Scout</title>
+<style>
+:root{
+  --bg:#100E0C;--surf:#17130F;--surf2:#1F1A15;--border:#241F1A;--border2:#362E24;
+  --amber:#3F9B72;--amberL:#5FB88C;--amberBg:rgba(63,155,114,.12);
+  --text:#EDE8DD;--text2:#8F8578;--text3:#5C544A;
+  --blue:#60a5fa;--purple:#a78bfa;--cyan:#22d3ee;--orange:#fb923c;--teal:#34d399;--pink:#f472b6;--yellow:#fbbf24;--red:#f87171;
+  --nc-red:#CA492C;--nc-blue:#2E2DAD;--nc-green:#3F8D42;--nc-gold:#AA812F;
+  --radius:9px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px;}
+header{display:flex;align-items:center;gap:14px;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+header h1{font-size:20px;margin:0;}
+header .subtitle{font-size:12px;color:var(--text3);margin-top:2px;}
+.page-tabs{display:flex;gap:6px;margin:0 0 22px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.page-tabs a{padding:10px 16px;font-size:13px;font-weight:600;color:var(--text2);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.page-tabs a:hover{color:var(--text);}
+.page-tabs a.on{color:var(--amberL);border-bottom-color:var(--amber);}
+.card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
+.card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
+.card .desc{font-size:12px;color:var(--text2);margin:0 0 16px;line-height:1.6;}
+details.section{margin-bottom:22px;}
+details.section .card{margin-bottom:0;border-radius:0;border-top:none;}
+details.section .card:first-of-type{border-top:1px solid var(--border);}
+details.section .card:last-of-type{border-radius:0 0 12px 12px;}
+details.section summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px 22px;color:var(--amberL);font-size:15px;font-weight:600;}
+details.section summary::-webkit-details-marker{display:none;}
+details.section summary::before{content:'▸';color:var(--text3);font-size:12px;transition:transform .15s;}
+details.section[open] summary{border-radius:12px 12px 0 0;}
+details.section[open] summary::before{transform:rotate(90deg);}
+details.section summary .summary-hint{color:var(--text3);font-weight:400;font-size:12px;margin-left:auto;}
+.card .sub-heading{font-size:13px;font-weight:700;margin:20px 0 4px;padding-top:16px;border-top:1px solid var(--border);color:var(--text);}
+.card .sub-heading:first-of-type{padding-top:0;border-top:none;margin-top:4px;}
+.rules-list{margin:0 0 4px;padding-left:20px;font-size:12.5px;line-height:1.8;color:var(--text2);}
+.rules-list ul{margin:2px 0 8px 0;padding-left:18px;font-size:12px;line-height:1.7;}
+.rules-list b{color:var(--text);}
+
+.rules{margin:0;padding-left:22px;font-size:13px;line-height:1.7;color:var(--text2);}
+.rules li{margin:0 0 10px;padding-left:4px;}
+.rules li>b{color:var(--text);}
+.rules .ex{display:block;color:var(--text3);font-size:12px;}
+.rules a{color:var(--amberL);text-decoration:none;border-bottom:1px solid var(--border2);}
+.rules a:hover{border-color:var(--amberL);}
+.ccl-empty{padding:18px 0 6px;color:var(--text2);font-size:13px;line-height:1.6;}
+.ccl-week{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin:18px 0 8px;}
+.ccl-week:first-child{margin-top:6px;}
+.ccl-vids{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;}
+.ccl-vid{display:block;text-decoration:none;color:var(--text);background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden;}
+.ccl-vid:hover{border-color:var(--amber);}
+.ccl-vid img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--surf);}
+.ccl-vid span{display:block;padding:9px 11px 11px;font-size:12px;line-height:1.45;color:var(--text2);}
+.pos-1{color:var(--yellow);font-weight:800;}
+.ccl-top td:nth-child(2){font-weight:700;}
+.x-plink{color:inherit;text-decoration:underline dotted var(--text3);text-underline-offset:2px;}
+.x-plink:hover{color:var(--amberL);}
+.ccl-season{margin:0 0 22px;}
+.ccl-season:last-child{margin-bottom:0;}
+.ccl-season-name{font-size:17px;margin:0 0 4px;color:var(--text);}
+.ccl-reg{margin-top:14px;}
+.ccl-reg summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--text2);padding:6px 0;}
+.ccl-reg summary:hover{color:var(--amberL);}
+@media (max-width:700px){
+  .wrap{padding:14px 10px 40px;}
+  .card{padding:14px 12px 12px;margin-bottom:14px;border-radius:10px;}
+  th,td{padding:5px 5px;}
+  .page-tabs{flex-wrap:nowrap;overflow-x:auto;gap:0;margin-bottom:12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .page-tabs::-webkit-scrollbar{display:none;}
+  .page-tabs a{flex:none;padding:8px 10px;font-size:12px;white-space:nowrap;}
+  .card table{display:block;overflow-x:auto;max-width:100%;}
+}
+</style>
+<script data-goatcounter="https://robbyho.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#100E0C">
+<link rel="icon" type="image/svg+xml" href="app-icons/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="app-icons/favicon-32.png">
+<link rel="apple-touch-icon" href="app-icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Auto Scout">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<script src="pwa.js?v=312" defer></script>
+<script src="imposters.js?v=4"></script>
+<meta name="description" content="The CCL Community League: weekly console Age of Empires II games from Fast Castle and Chill. Rules, season standings and past seasons.">
+<meta property="og:site_name" content="AoE2 Auto Scout">
+<meta property="og:type" content="website">
+<meta property="og:title" content="CCL Community League — AoE2 Auto Scout">
+<meta property="og:description" content="The CCL Community League: weekly console Age of Empires II games from Fast Castle and Chill. Rules, season standings and past seasons.">
+<meta property="og:image" content="https://aoe2autoscout.com/app-icons/share-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>CCL Community League</h1>
+      <div class="subtitle">Weekly console Age of Empires II games, run by <a href="https://youtube.com/@Fastcastleandchill" target="_blank" rel="noopener" style="color:inherit">Fast Castle and Chill</a></div>
+    </div>
+  </header>
+
+  <nav class="page-tabs">
+    <a href="index.html">🏠 Auto Scout</a>
+    <a href="console-live.html">🎮 Console Live</a>
+    <a href="player.html">🔎 Player Spotlight</a>
+    <a href="competitive.html">Nations Cup</a>
+    <a href="insights.html">📊 Console Insights</a>
+    <a href="civ-insights.html">🧮 Civ Insights</a>
+    <a href="ccl.html" class="on">CCL</a>
+    <a href="build-order.html">🛠️ Build Order</a>
+    <a href="investigations.html">🕵️ Investigations</a>
+  </nav>
+
+  <div class="card" id="current-card">
+    <h2 id="current-title">Current season</h2>
+    <p class="desc" id="current-desc"></p>
+    <div id="current-body"></div>
+  </div>
+
+  <div class="card" id="past-card">
+    <h2>Past seasons</h2>
+    <p class="desc">Champions and final finishes. Points reset every season.</p>
+    <div id="past-body"></div>
+  </div>
+
+  <div class="card">
+    <h2>Rules</h2>
+    <p class="desc">How the league works.</p>
+    <ol class="rules">
+      <li><b>Sign-ups.</b> Post “IN” by 12 PM (EST) on game day. You may request teammates, but final teams and formats are the organizer's call. No-shows = −1 pt.</li>
+      <li><b>Formats.</b> Weekly formats vary (FFA, team games, multi-team, experimental). They are announced before the games.</li>
+      <li><b>Participation.</b> Play to completion or be eliminated legitimately to earn points. Disconnects are handled by the organizer. Minimum 1 pt per game.</li>
+      <li><b>Voice chat.</b> Players must stay in their team VC. Non-players are not allowed. Polite channel hopping is ok.</li>
+      <li><b>Points.</b> 1 pt minimum. Placement points scale with the number of players or teams.
+        <span class="ex">Example: in an 8-player FFA, 1st = 8 pts, … last = 1 pt. In team games, all team members get the same points.</span></li>
+      <li><b>Multiple games.</b> Each game awards points independently, and the leaderboards track season totals. If a player takes part in more than one game on a single day, only their highest score from that day counts toward the leaderboard.</li>
+      <li><b>Conduct.</b> No griefing, FFA teaming, match-fixing or stream sniping. Trash talk is ok if respectful. Organizer rulings are final.</li>
+      <li><b>Admin and caster.</b> <a href="player.html?id=14602117">NotATheist</a></li>
+      <li><b>Seasons.</b> 12-week seasons. Points reset each season. Standings are for bragging rights, titles and possible prizes.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>CCL videos</h2>
+    <p class="desc" id="vid-desc"></p>
+    <div id="vid-body"></div>
+  </div>
+
+  <div class="footer">
+    <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
+    <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
+    <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
+    <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
+    <div class="version">v0.05</div>
+  </div>
+</div>
+
+<script>
+// Self-contained per this site's convention.
+// Season results are kept here by hand. Each season is { name, weeks, current, standings, champion }:
+//   standings = [{ name, id (profileId, optional), pts }] in rank order; finals = [{ rank, name, id, pts, g (game scores, optional) }];
+//   champion = a name. `current` marks the season shown in the top card; the rest are listed under Past seasons.
+const CCL_SEASONS = [{"name": "Season 3", "weeks": 12, "current": true, "champion": "SammyDiamonds", "finalsLabel": "Finals, Oct 4", "gameCols": 3, "finals": [{"rank": 1, "name": "SammyDiamonds", "pts": 22, "g": [8, 11, 3], "id": 22753596}, {"rank": 2, "name": "ManBearPig1511", "pts": 20, "g": [10, 3, 7], "id": 8764015}, {"rank": 3, "name": "BombEater3", "pts": 19, "g": [6, 4, 9], "id": 24050143}, {"rank": 3, "name": "Seth41737spare", "pts": 19, "g": [6, 9, 4], "id": 16829189}, {"rank": 5, "name": "Balinthusa", "pts": 18, "g": [8, 5, 5], "id": 16314476}, {"rank": 6, "name": "Not A Theist", "pts": 13, "g": [4, 7, 2], "id": 14602117}, {"rank": 7, "name": "Zoopu", "pts": 10, "g": [1, 3, 6], "id": 12904223}, {"rank": 8, "name": "SharkeyTank", "pts": 5, "g": [3, 1, 1], "id": 12525616}], "standings": [{"name": "ManBearPig1511", "pts": 116, "id": 8764015}, {"name": "BombEater3", "pts": 108, "id": 24050143}, {"name": "Seth41737spare", "pts": 91, "id": 16829189}, {"name": "Balinthusa", "pts": 64, "id": 16314476}, {"name": "Not A Theist", "pts": 64, "id": 14602117}, {"name": "SammyDiamonds", "pts": 64, "id": 22753596}, {"name": "SharkeyTank", "pts": 53, "id": 12525616}, {"name": "Gogs987", "pts": 49, "id": 8764016}, {"name": "Zoopu", "pts": 49, "id": 12904223}, {"name": "Ice2207", "pts": 38, "id": 17828880}, {"name": "MoraMora48", "pts": 35, "id": 13216763}, {"name": "Ryanp1001", "pts": 27, "id": 13885770}, {"name": "GOAT Gobz", "pts": 23, "id": 8154765}, {"name": "RKs Raggz", "pts": 22, "id": 12478121}, {"name": "D0cTOrSniper", "pts": 20, "id": 13323926}, {"name": "Ghost of 6 am", "pts": 20, "id": 12477800}, {"name": "p41l park3r", "pts": 15, "id": 13755854}, {"name": "CrustyPotato313", "pts": 14, "id": 23147426}, {"name": "DodelManaNeagra", "pts": 8, "id": 592345}, {"name": "Pandosopoderoso", "pts": 6, "id": 23448013}, {"name": "ShawtyRTR", "pts": 2, "id": 18408660}]}, {"name": "Season 2", "weeks": 12, "champion": "BombEater3", "finalsLabel": "Playoffs", "finals": [{"rank": 1, "name": "BombEater3", "pts": 28, "id": 24050143}, {"rank": 2, "name": "Seth41737spare", "pts": 24, "id": 16829189}, {"rank": 3, "name": "ManBearPig1511", "pts": 21, "id": 8764015}, {"rank": 4, "name": "Not A Theist", "pts": 15, "id": 14602117}, {"rank": 5, "name": "MoraMora48", "pts": 15, "id": 13216763}, {"rank": 6, "name": "SammyDiamonds", "pts": 14, "id": 22753596}, {"rank": 7, "name": "Ghost of 6am", "pts": 9, "id": 12477800}, {"rank": 8, "name": "Zoopu", "pts": 9, "id": 12904223}], "standings": [{"name": "ManBearPig1511", "pts": 104, "id": 8764015}, {"name": "Balinthusa", "pts": 101, "id": 16314476}, {"name": "SammyDiamonds", "pts": 98, "id": 22753596}, {"name": "Not A Theist", "pts": 95, "id": 14602117}, {"name": "Ryanp1001", "pts": 88, "id": 13885770}, {"name": "Seth41737spare", "pts": 73, "id": 16829189}, {"name": "BombEater3", "pts": 71, "id": 24050143}, {"name": "Ghost of 6am", "pts": 55, "id": 12477800}, {"name": "MoraMora48", "pts": 55, "id": 13216763}, {"name": "Zoopu", "pts": 53, "id": 12904223}, {"name": "Pandosopoderoso", "pts": 51, "id": 23448013}, {"name": "GOAT Gobz", "pts": 38, "id": 8154765}, {"name": "SharkeyTank", "pts": 34, "id": 12525616}, {"name": "p41l park3r", "pts": 28, "id": 13755854}, {"name": "i am dixon x", "pts": 26, "id": 12786171}, {"name": "Shawn96", "pts": 25, "id": 12845395}, {"name": "OleCrookedWoody", "pts": 24, "id": 3452279}, {"name": "KiingOzaki", "pts": 19, "id": 15260747}, {"name": "Zotico3", "pts": 19, "id": 12462155}, {"name": "Chucky", "pts": 18}, {"name": "Ice2207", "pts": 18, "id": 17828880}, {"name": "Lagging__Dawg", "pts": 15}, {"name": "Epic_25o", "pts": 14, "id": 23630056}, {"name": "Nglsh", "pts": 10, "id": 19931559}, {"name": "D0cTOrSniper", "pts": 9, "id": 13323926}, {"name": "BillieDown", "pts": 8, "id": 22759370}, {"name": "VolcanLoup", "pts": 7, "id": 12893749}, {"name": "EaterofAnts", "pts": 6}, {"name": "DsT Ash 9", "pts": 3}, {"name": "Gogs987", "pts": 3, "id": 8764016}, {"name": "Chowde", "pts": 2}, {"name": "slytiger4815", "pts": 2, "id": 22409057}, {"name": "Shadow8373", "pts": 0, "id": 12760988}, {"name": "ShangDynasty11", "pts": 0, "id": 13994899}, {"name": "A Grundle Gnome", "pts": -1, "id": 20575320}, {"name": "xxfuahalaxx", "pts": -1, "id": 5633456}]}, {"name": "Season 1", "weeks": 12, "champion": "Zotico3", "finalsLabel": "Winter Finals", "finals": [{"rank": 1, "name": "Zotico3", "pts": 21, "id": 12462155}, {"rank": 2, "name": "VolcanLoup", "pts": 18, "id": 12893749}, {"rank": 3, "name": "Not A Theist", "pts": 17, "id": 14602117}, {"rank": 4, "name": "Balinthusa", "pts": 16, "id": 16314476}, {"rank": 5, "name": "Ryanp1001", "pts": 15, "id": 13885770}, {"rank": 6, "name": "SammyDiamonds", "pts": 14, "id": 22753596}, {"rank": 7, "name": "Ice2207", "pts": 11, "id": 17828880}, {"rank": 8, "name": "Zoopu", "pts": 10, "id": 12904223}], "standings": [{"name": "VolcanLoup", "pts": 215, "id": 12893749}, {"name": "Ice2207", "pts": 201, "id": 17828880}, {"name": "Not A Theist", "pts": 183, "id": 14602117}, {"name": "Ryanp1001", "pts": 174, "id": 13885770}, {"name": "Balinthusa", "pts": 157, "id": 16314476}, {"name": "SammyDiamonds", "pts": 151, "id": 22753596}, {"name": "GOAT Gobz", "pts": 145, "id": 8154765}, {"name": "Ghost of 6am", "pts": 131, "id": 12477800}, {"name": "SharkeyTank", "pts": 121, "id": 12525616}, {"name": "MoraMora48", "pts": 112, "id": 13216763}, {"name": "Zotico3", "pts": 77, "id": 12462155}, {"name": "KiingOzaki", "pts": 69, "id": 15260747}, {"name": "OleCrookedWoody", "pts": 65, "id": 3452279}, {"name": "Arbiters Son", "pts": 61, "id": 7096003}, {"name": "Lagging__Dawg", "pts": 52}, {"name": "Zoopu", "pts": 52, "id": 12904223}, {"name": "MightyMosaic", "pts": 49, "id": 15047238}, {"name": "xxfuahalaxx", "pts": 49, "id": 5633456}, {"name": "p41l park3r", "pts": 34, "id": 13755854}, {"name": "i am dixon x", "pts": 33, "id": 12786171}, {"name": "Shadow8373", "pts": 32, "id": 12760988}, {"name": "Nglsh", "pts": 30, "id": 19931559}, {"name": "Shawn96", "pts": 30, "id": 12845395}, {"name": "CarefulTulip69", "pts": 29, "id": 13624096}, {"name": "Mr Meezeek", "pts": 29, "id": 13977069}, {"name": "TrdFrgsn20", "pts": 29}, {"name": "Stuffing Farts", "pts": 23, "id": 14110584}, {"name": "RN Jacob 11", "pts": 20}, {"name": "Buttwe1ser", "pts": 12, "id": 23096693}, {"name": "Calum", "pts": 11}, {"name": "Old Peenuts", "pts": 10, "id": 12637242}, {"name": "DsT Ash 9", "pts": 8}, {"name": "kobyrobys", "pts": 8, "id": 13106080}, {"name": "whitewidow52", "pts": 8, "id": 13382722}, {"name": "FeedTHEPony", "pts": 7}, {"name": "ShangDynasty11", "pts": 6, "id": 13994899}, {"name": "BillieDown", "pts": 5, "id": 22759370}, {"name": "EaterofAnts", "pts": 5}, {"name": "Kyrik0", "pts": 5}, {"name": "BlueBird", "pts": 4}, {"name": "HG_212", "pts": 4, "id": 22795687}, {"name": "Skully", "pts": 4, "id": 376308}, {"name": "x330West", "pts": 4, "id": 2135846}, {"name": "Chowde", "pts": 4}, {"name": "im2Good4YoMoma", "pts": 3, "id": 12591985}, {"name": "R00FT0P CG", "pts": 3, "id": 13615709}, {"name": "UltraAliens", "pts": 3}, {"name": "StonePleaseAOE2", "pts": 2}, {"name": "MoneyManSage", "pts": 1, "id": 13729189}, {"name": "LE Lamechara", "pts": 1, "id": 20192944}, {"name": "BostonStrain", "pts": 0, "id": 12512031}]}];
+
+const CCL_VIDEOS = [["tDHnjkplOgQ", "CCL Week 11 CHAOS – King of the Hill Regicide on Crossroads (FFA Madness)"], ["zZgJ_7mzjQM", "CCL Week 7 Shipwreck | 2v2v2v2 Crashes & a Legendary Hold"], ["bExnUzo5tKU", "CCL Week 6 FFA on Nile Delta 🌊 | Secret Missions, Castle Drops & Elephants"], ["jgJ6_rTS_iU", "Week 6 CCL FFA — Pilgrims Sudden Death | Secret Missions & Feudal Rams"], ["ySzFVjOJVOE", "CCL Week 5 Diplo FFA Game 1 — KING SNIPES, Secret Missions & TOTAL BETRAYAL"], ["DAdVKw2ztRk", "CCL Week 5 Diplo FFA Game 2 – ELEPHANT EMPIRE, Flemish Revolts & Brutal King Snipes"], ["8SyYP-05cVg", "CCL Week 4 Game 3 – Canals 2v3v3 | BIG BRAIN NAVY - VOLCAN Lobby"], ["xd3elOs6llw", "CCL Week 4 Teams FFA – Monument Madness on Canals | 2v3v3 KOTH - WOODY Lobby"], ["jqV1wdN6iIQ", "CCL Week 4 on Canals | King of the Hill EXPLODES in a 2v3v3 Team FFA THEIST Lobby"], ["YNO9Rnxglw4", "EVERYONE Is Lying 🤯 | CCL Week 4 FFA Diplo (LIVE Player Comms)"], ["09J9yiB4FG8", "Trust Nobody 🤝❌ | CCL Week 4 FFA Diplo (LIVE Player Comms)"], ["d_x3GFNmyEI", "Feudal RAMS?! Cumans Go WILD in CCL Week 3 | Karst 2v2v2v2 MADNESS"], ["BXmw4HhZcb4", "Regicide Chaos on Karsts! Kings RUNNING, Tiger Cav DOMINATE | CCL Week 3 Woody Lobby"], ["OI49iodgxks", "11 Town Centers?! This Tiny Socotra FFA Got OUT OF CONTROL | CCL Week 2"], ["uuLAb0JJ3hQ", "EARLY LAME Chaos on Valley Ends in a Brutal GG - CCL Week 2 – Game 3"], ["BvxFAo7egHY", "ELEPHANT ARCHERS, ISLAND HIDES & TOTAL CHAOS | CCL Week 2 FFA"], ["LNOmswxhVm0", "Early Trash Talk, HARD Pressure & a Clinical Finish 🔥- CCL Week 2 Game 2"], ["7dRLXdtbmRU", "FFA Survival on Front Line – Early Aggression, Long Grinds & Big Brain Plays | CCL Week 2 FFA"], ["EKWY-y29hww", "Mongol MAP CONTROL Goes CRAZY | Tiny African Clearing FFA (CCL Week 2 Woody Lobby – Game 2)"], ["OdpGHaDwzjM", "TOWER RUSHED… Then TURNED | Absolute Chaos on Valley (CCL Week 2)"], ["W8GvePEW6jA", "Birthday Update AOE2 on Console, CCL Update, future of the channel and league"], ["0hSzGs0lzMg", "Eight Players. ZERO Safety. African Clearing Goes FULL Chaos | CCL Game 2"], ["CpdWF2d70qk", "Lose an Ally, Lose the Crown | CCL Community League | AoE2- oops forgot game audio"], ["Y2bJwsPUkH4", "Saxons V Danes V Varangians - CCL FFA"], ["BUb2duhFAho", "They Let a WONDER Finish… and LOST EVERYTHING | CCL Game 1"]];
+
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+const who = p => p.id ? `<a href="player.html?id=${p.id}" class="x-plink">${esc(p.name)}</a>` : esc(p.name);
+
+function standingsTable(rows) {
+  return '<div class="overflow-x"><table><thead><tr><th class="num">#</th><th>Player</th><th class="num">Points</th></tr></thead><tbody>' +
+    rows.map((p, i) => `<tr class="${i < 3 ? 'ccl-top' : ''}"><td class="num${i === 0 ? ' pos-1' : ''}">${i + 1}</td><td>${who(p)}</td><td class="num">${p.pts}</td></tr>`).join('') +
+    '</tbody></table></div>';
+}
+
+function finalsTable(s) {
+  const gc = s.finals.some(r => r.g) ? s.finals.find(r => r.g).g.length : 0;
+  const gh = Array.from({ length: gc }, (_, i) => `<th class="num">G${i + 1}</th>`).join('');
+  return `<div class="overflow-x"><table><thead><tr><th class="num">#</th><th>Player</th>${gh}<th class="num">${gc ? 'Total' : 'Points'}</th></tr></thead><tbody>` +
+    s.finals.map(r => `<tr class="ccl-top"><td class="num${r.rank === 1 ? ' pos-1' : ''}">${r.rank}</td><td>${who(r)}</td>${(r.g || []).map(v => `<td class="num">${v}</td>`).join('')}<td class="num">${r.pts}</td></tr>`).join('') +
+    '</tbody></table></div>';
+}
+const champPill = s => s.champion ? `<span class="pill prize" style="margin-left:8px">🏆 ${esc(s.champion)}</span>` : '';
+function seasonBody(s, openStandings) {
+  const n = s.standings ? s.standings.length : 0;
+  return (s.finals && s.finals.length ? `<h3 class="sub-heading">${esc(s.finalsLabel || 'Finals')}${champPill(s)}</h3>` + finalsTable(s) : '') +
+    (n ? (openStandings
+      ? `<h3 class="sub-heading">Regular season</h3>` + standingsTable(s.standings)
+      : `<details class="ccl-reg"><summary>Regular season standings (${n} players)</summary>${standingsTable(s.standings)}</details>`) : '');
+}
+
+const cur = CCL_SEASONS.find(s => s.current);
+document.getElementById('current-title').textContent = cur ? cur.name : 'Current season';
+document.getElementById('current-desc').textContent = cur ? `${cur.weeks || 12}-week season. Points reset each season.` : '';
+document.getElementById('current-body').innerHTML = cur ? seasonBody(cur, true) : '<div class="ccl-empty">Season standings will be posted here.</div>';
+
+const past = CCL_SEASONS.filter(s => !s.current);
+document.getElementById('past-body').innerHTML = past.length
+  ? past.map(s => `<div class="ccl-season"><h3 class="ccl-season-name">${esc(s.name)}</h3>${seasonBody(s, false)}</div>`).join('')
+  : '<div class="ccl-empty">Past seasons will be listed here.</div>';
+
+// videos, newest week first; those without a week number go last
+const weekOf = t => { const m = /Week (\d+)/.exec(t); return m ? Number(m[1]) : null; };
+const groups = new Map();
+CCL_VIDEOS.forEach(([id, title]) => { const w = weekOf(title), k = w == null ? 0 : w; if (!groups.has(k)) groups.set(k, []); groups.get(k).push([id, title]); });
+const keys = [...groups.keys()].sort((a, b) => (a === 0) - (b === 0) || b - a);
+document.getElementById('vid-desc').textContent = `${CCL_VIDEOS.length} games and updates on the Fast Castle and Chill channel.`;
+document.getElementById('vid-body').innerHTML = keys.map(k =>
+  `<div class="ccl-week">${k ? 'Week ' + k : 'Other CCL videos'}</div><div class="ccl-vids">` +
+  groups.get(k).map(([id, title]) => `<a class="ccl-vid" href="https://youtu.be/${id}" target="_blank" rel="noopener"><img src="https://i.ytimg.com/vi/${id}/mqdefault.jpg" alt="" loading="lazy"><span>${esc(title)}</span></a>`).join('') +
+  '</div>').join('');
+</script>
+</body>
+</html>
