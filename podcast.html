@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Idle Villagers Podcast — AoE2 Auto Scout</title>
+<style>
+:root{
+  --bg:#100E0C;--surf:#17130F;--surf2:#1F1A15;--border:#241F1A;--border2:#362E24;
+  --amber:#3F9B72;--amberL:#5FB88C;--amberBg:rgba(63,155,114,.12);
+  --text:#EDE8DD;--text2:#8F8578;--text3:#5C544A;
+  --blue:#60a5fa;--purple:#a78bfa;--cyan:#22d3ee;--orange:#fb923c;--teal:#34d399;--pink:#f472b6;--yellow:#fbbf24;--red:#f87171;
+  --nc-red:#CA492C;--nc-blue:#2E2DAD;--nc-green:#3F8D42;--nc-gold:#AA812F;
+  --radius:9px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px;}
+header{display:flex;align-items:center;gap:14px;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+header h1{font-size:20px;margin:0;}
+header .subtitle{font-size:12px;color:var(--text3);margin-top:2px;}
+.page-tabs{display:flex;gap:6px;margin:0 0 22px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.page-tabs a{padding:10px 16px;font-size:13px;font-weight:600;color:var(--text2);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.page-tabs a:hover{color:var(--text);}
+.page-tabs a.on{color:var(--amberL);border-bottom-color:var(--amber);}
+.card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
+.card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
+.card .desc{font-size:12px;color:var(--text2);margin:0 0 16px;line-height:1.6;}
+details.section{margin-bottom:22px;}
+details.section .card{margin-bottom:0;border-radius:0;border-top:none;}
+details.section .card:first-of-type{border-top:1px solid var(--border);}
+details.section .card:last-of-type{border-radius:0 0 12px 12px;}
+details.section summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px 22px;color:var(--amberL);font-size:15px;font-weight:600;}
+details.section summary::-webkit-details-marker{display:none;}
+details.section summary::before{content:'▸';color:var(--text3);font-size:12px;transition:transform .15s;}
+details.section[open] summary{border-radius:12px 12px 0 0;}
+details.section[open] summary::before{transform:rotate(90deg);}
+details.section summary .summary-hint{color:var(--text3);font-weight:400;font-size:12px;margin-left:auto;}
+.card .sub-heading{font-size:13px;font-weight:700;margin:20px 0 4px;padding-top:16px;border-top:1px solid var(--border);color:var(--text);}
+.card .sub-heading:first-of-type{padding-top:0;border-top:none;margin-top:4px;}
+.rules-list{margin:0 0 4px;padding-left:20px;font-size:12.5px;line-height:1.8;color:var(--text2);}
+.rules-list ul{margin:2px 0 8px 0;padding-left:18px;font-size:12px;line-height:1.7;}
+.rules-list b{color:var(--text);}
+
+.rules{margin:0;padding-left:22px;font-size:13px;line-height:1.7;color:var(--text2);}
+.rules li{margin:0 0 10px;padding-left:4px;}
+.rules li>b{color:var(--text);}
+.rules .ex{display:block;color:var(--text3);font-size:12px;}
+.rules a{color:var(--amberL);text-decoration:none;border-bottom:1px solid var(--border2);}
+.rules a:hover{border-color:var(--amberL);}
+@media (max-width:700px){
+  .wrap{padding:14px 10px 40px;}
+  .card{padding:14px 12px 12px;margin-bottom:14px;border-radius:10px;}
+  th,td{padding:5px 5px;}
+  .page-tabs{flex-wrap:nowrap;overflow-x:auto;gap:0;margin-bottom:12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .page-tabs::-webkit-scrollbar{display:none;}
+  .page-tabs a{flex:none;padding:8px 10px;font-size:12px;white-space:nowrap;}
+  .card table{display:block;overflow-x:auto;max-width:100%;}
+}
+
+.pod-hero{display:flex;gap:22px;align-items:center;}
+.pod-hero img{width:170px;height:170px;border-radius:14px;object-fit:cover;flex:none;border:1px solid var(--border2);}
+.pod-hero h2{font-size:22px;margin:0 0 6px;color:var(--text);}
+.pod-hero p{font-size:13.5px;color:var(--text2);line-height:1.7;margin:0 0 14px;}
+.pod-btns{display:flex;flex-wrap:wrap;gap:10px;}
+.pod-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:20px;border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);font-size:13px;font-weight:700;text-decoration:none;}
+.pod-btn:hover{background:var(--amber);color:var(--bg);}
+.pod-btn.alt{border-color:var(--border2);background:var(--surf2);color:var(--text);}
+.pod-btn.alt:hover{border-color:var(--amber);background:var(--surf2);color:var(--amberL);}
+.pod-embed{display:block;width:100%;height:352px;border:0;border-radius:12px;background:var(--surf2);}
+.pod-note{font-size:12px;color:var(--text3);margin:10px 0 0;line-height:1.6;}
+.pod-note a{color:var(--text2);}
+.pod-people{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;}
+.pod-person{background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 14px;}
+.pod-person h3{font-size:14px;margin:0 0 2px;color:var(--text);}
+.pod-person .role{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-weight:700;margin:0 0 8px;}
+.pod-person .links{font-size:12.5px;display:flex;flex-wrap:wrap;gap:4px 12px;}
+.pod-person a{color:var(--amberL);text-decoration:none;}
+.pod-person a:hover{text-decoration:underline;}
+@media (max-width:700px){
+  .pod-hero{flex-direction:column;align-items:flex-start;gap:14px;}
+  .pod-hero img{width:130px;height:130px;}
+  .pod-embed{height:300px;}
+}
+</style>
+<script data-goatcounter="https://robbyho.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#100E0C">
+<link rel="icon" type="image/svg+xml" href="app-icons/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="app-icons/favicon-32.png">
+<link rel="apple-touch-icon" href="app-icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Auto Scout">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<script src="pwa.js?v=312" defer></script>
+<script src="imposters.js?v=4"></script>
+<meta name="description" content="Idle Villagers: an Age of Empires 2 podcast from Fast Castle and Chill, hosted by SammyDiamonds and Not A Theist. Listen on Spotify.">
+<meta property="og:site_name" content="AoE2 Auto Scout">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Idle Villagers Podcast — AoE2 Auto Scout">
+<meta property="og:description" content="Idle Villagers: an Age of Empires 2 podcast from Fast Castle and Chill, hosted by SammyDiamonds and Not A Theist. Listen on Spotify.">
+<meta property="og:image" content="https://aoe2autoscout.com/img/idle-villagers.jpg">
+<meta property="og:image:width" content="640">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Idle Villagers</h1>
+      <div class="subtitle">An Age of Empires 2 podcast from <a href="https://youtube.com/@Fastcastleandchill" target="_blank" rel="noopener" style="color:inherit">Fast Castle and Chill</a></div>
+    </div>
+  </header>
+
+  <nav class="page-tabs">
+    <a href="index.html">🏠 Auto Scout</a>
+    <a href="console-live.html">🎮 Console Live</a>
+    <a href="player.html">🔎 Player Spotlight</a>
+    <a href="competitive.html">Nations Cup</a>
+    <a href="insights.html">📊 Console Insights</a>
+    <a href="civ-insights.html">🧮 Civ Insights</a>
+    <a href="ccl.html">CCL</a>
+    <a href="podcast.html" class="on">🎙️ Podcast</a>
+    <a href="build-order.html">🛠️ Build Order</a>
+    <a href="investigations.html">🕵️ Investigations</a>
+  </nav>
+
+  <div class="card">
+    <div class="pod-hero">
+      <img src="img/idle-villagers.jpg" alt="Idle Villagers: An Age of Empires 2 Podcast" width="170" height="170">
+      <div>
+        <h2>Idle Villagers</h2>
+        <p>SammyDiamonds and Not A Theist sit down with guests from the AoE2 community to talk games, tournaments, console play and everything in between.</p>
+        <div class="pod-btns">
+          <a class="pod-btn" href="https://open.spotify.com/show/2CSZCptebR0jPZTd4NKmw2" target="_blank" rel="noopener">Listen on Spotify</a>
+          <a class="pod-btn alt" href="https://www.youtube.com/@Fastcastleandchill" target="_blank" rel="noopener">Watch on YouTube</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Episodes</h2>
+    <p class="desc">Play right here, or open the show in Spotify.</p>
+    <iframe class="pod-embed" src="https://open.spotify.com/embed/show/2CSZCptebR0jPZTd4NKmw2?utm_source=generator&amp;theme=0" title="Idle Villagers on Spotify" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+    <p class="pod-note">The player doesn't load? <a href="https://open.spotify.com/show/2CSZCptebR0jPZTd4NKmw2" target="_blank" rel="noopener">Open Idle Villagers on Spotify</a>.</p>
+  </div>
+
+  <div class="card">
+    <h2>Who's on the show</h2>
+    <p class="desc">Your hosts, and the guest from Episode 1.</p>
+    <div class="pod-people">
+      <div class="pod-person"><h3>SammyDiamonds</h3><p class="role">Host</p>
+        <div class="links"><a href="player.html?id=22753596">Stats</a><a href="https://www.twitch.tv/sammydiamonds" target="_blank" rel="noopener">Twitch</a></div></div>
+      <div class="pod-person"><h3>Not A Theist</h3><p class="role">Host</p>
+        <div class="links"><a href="player.html?id=14602117">Stats</a><a href="https://www.twitch.tv/fastcastleandchill" target="_blank" rel="noopener">Twitch</a><a href="https://www.youtube.com/@Fastcastleandchill" target="_blank" rel="noopener">YouTube</a></div></div>
+      <div class="pod-person"><h3>OleCrookedWoody</h3><p class="role">Episode 1 guest</p>
+        <div class="links"><a href="https://www.twitch.tv/olecrookedwoody" target="_blank" rel="noopener">Twitch</a></div></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
+    <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
+    <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
+    <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span>
+    <div class="version">v0.05</div>
+  </div>
+</div>
+
+</body>
+</html>

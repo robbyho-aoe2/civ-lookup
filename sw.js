@@ -2,9 +2,9 @@
 // revalidated, since GitHub Pages lets browsers cache files for 10 minutes), so
 // updates show up immediately; the cache is only a fallback when offline. Anything on another
 // origin (live match data, player data, API calls) is never touched, so numbers are never stale.
-const CACHE = 'autoscout-v4';
+const CACHE = 'autoscout-v5';
 const SHELL = [
-  './', 'index.html', 'console-live.html', 'player.html', 'insights.html', 'competitive.html', 'civ-insights.html', 'ccl.html',
+  './', 'index.html', 'console-live.html', 'player.html', 'insights.html', 'competitive.html', 'civ-insights.html', 'ccl.html', 'podcast.html',
   'build-order.html', 'investigations.html', 'tournament-player.html', 'launch.html', 'manifest.webmanifest', 'pwa.js', 'scout.js', 'tierlist.js', 'imposters.js',
   'app-icons/icon-192.png', 'app-icons/icon-512.png', 'app-icons/favicon.svg',
 ];
