@@ -951,7 +951,7 @@ document.getElementById('caster-list').innerHTML = CASTERS.filter(c => !c.player
 document.getElementById('player-caster-list').innerHTML = CASTERS.filter(c => c.player).map(casterHtml).join('');
 const SCHEDULED_GAMES = [
   // (past) { date: 'Fri, Oct 30', short: 'Oct 30', time: '5:00 pm ET', teams: ['mexico', 'ps5'], games: ['4v4'], maps: { '4v4': 'Steppe' }, caster: 'Old Peenuts' },
-  { date: 'Fri, Oct 30', short: 'Oct 30', time: '5:00 pm ET', teams: ['uk', 'usa'], games: ['3v3', '4v4'], maps: { '3v3': 'Arena', '4v4': 'African Clearing' }, caster: 'Old Peenuts' },   // 9 pm GMT
+  // (past) { date: 'Fri, Oct 30', short: 'Oct 30', time: '5:00 pm ET', teams: ['uk', 'usa'], games: ['3v3', '4v4'], maps: { '3v3': 'Arena', '4v4': 'African Clearing' }, caster: 'Old Peenuts' },   // 9 pm GMT
   // { date: 'Sat, Oct 10', short: 'Oct 10', time: '3:00 pm ET', teams: ['usa', 'mexico'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
   // (past) { date: 'Tue, Oct 13', short: 'Oct 13', time: '2:00 pm ET', teams: ['uk', 'france'], games: ['1v1', '2v2', '3v3', '4v4'], caster: 'Sammy Diamonds' }, // 7 pm UK time
   // (past) { date: 'Thu, Oct 15', short: 'Oct 15', time: '7:00 pm ET', teams: ['canada', 'ps5'], games: ['3v3'], caster: 'Old Peenuts' },
@@ -1054,6 +1054,12 @@ const SET_RESULTS = [
   { teams: ['usa', 'uk'], fmt: '2v2', winner: 'usa', map: 'Oasis', video: null, t: 0,
     winners: [{ name: 'Faith2Adventure', id: 12527010, civ: 'Magyars' }, { name: 'PrEyOnU1', id: 13467931, civ: 'Ethiopians' }],
     losers: [{ name: 'DarK Slaayer', id: 13107937, civ: 'Magyars' }, { name: 'Calum1Ltv', id: 16972769, civ: 'Inca' }] },
+  { teams: ['usa', 'uk'], fmt: '3v3', winner: 'uk', map: 'Arena', video: null, t: 0,
+    winners: [{ name: 'Huskarls4', id: 11828362, civ: 'Khmer' }, { name: 'ALPO4769', id: 13623295, civ: 'Romans' }, { name: 'Calum1Ltv', id: 16972769, civ: 'Tupi' }],
+    losers: [{ name: 'Faith2Adventure', id: 12527010, civ: 'Bohemians' }, { name: 'PrEyOnU1', id: 13467931, civ: 'Koreans' }, { name: 'Cain2point0', id: 13479761, civ: 'Shu' }] },
+  { teams: ['usa', 'uk'], fmt: '4v4', winner: 'usa', map: 'African Clearing', video: null, t: 0,
+    winners: [{ name: 'Faith2Adventure', id: 12527010, civ: 'Chinese' }, { name: 'PrEyOnU1', id: 13467931, civ: 'Spanish' }, { name: 'Cain2point0', id: 13479761, civ: 'Berbers' }, { name: 'Ice2207', id: 17828880, civ: 'Hindustanis' }],
+    losers: [{ name: 'Fiz 98', id: 12710758, civ: 'Berbers' }, { name: 'DarK Slaayer', id: 13107937, civ: 'Mongols' }, { name: 'D4NI3L J0N35', id: 13410632, civ: 'Vietnamese' }, { name: 'ALPO4769', id: 13623295, civ: 'Persians' }] },
 ];
 // Map drafts from aoe2cm.net. Each event is [who, action, map id]: who is 'host', 'guest' or 'none' (the admin map).
 const MAP_NAMES = { 'african-clearing': 'African Clearing', arena: 'Arena', arabia: 'Arabia', 'black-forest': 'Black Forest', glade: 'Glade', oasis: 'Oasis', pilgrims: 'Pilgrims', 'team-islands': 'Team Islands', steppe: 'Steppe' };
