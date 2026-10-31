@@ -82,6 +82,16 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .game-side table{margin-top:2px;}
 .game-side .note{font-size:11.5px;color:var(--text3);margin:8px 0 0;line-height:1.55;}
 .game-tag{font-size:13px;color:var(--text);margin:16px 0 0;font-style:italic;}
+.game-roster{list-style:none;margin:0 0 10px;padding:0;}
+.game-roster li{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--border2);font-size:13px;}
+.game-roster li:last-child{border-bottom:0;}
+.game-roster a{color:var(--text);font-weight:600;text-decoration:none;}
+.game-roster a:hover{color:var(--amberL);}
+.game-roster span{color:var(--text3);font-variant-numeric:tabular-nums;}
+.game-teams-bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 0 12px;}
+.game-teams-bar h3{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin:0;font-weight:700;flex:1 1 auto;}
+.game-copy{cursor:pointer;font:inherit;font-size:12px;font-weight:700;padding:6px 14px;border-radius:20px;border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);}
+.game-copy:hover{background:var(--amber);color:var(--bg);}
 .ccl-season{margin:0 0 22px;}
 .ccl-season:last-child{margin-bottom:0;}
 .ccl-season-name{font-size:17px;margin:0 0 4px;color:var(--text);}
@@ -227,21 +237,34 @@ const CCL_GAME = {
       head: ['Wins', 'Points'], rows: [['Before 60 min', 10], ['60–89 min', 7], ['90–119 min', 5], ['120+ min', 2]],
       note: 'Every King kill is worth +1.' },
   ],
-  players: [{ name: 'NotATheist', id: 14602117 }, { name: 'Balinthusa', id: 16314476 }, { name: 'VolcanLoup', id: 12893749 }, { name: 'MoraMora48', id: 13216763 }, { name: 'ManBearPig1511', id: 8764015 }, { name: 'Seth41737spare', id: 16829189 }, { name: 'Donald2O16Trump', id: 12554124 }, { name: 'SammyDiamonds', id: 22753596 }],
+  // elo = console 1v1 rating (Oct 31). With a full lobby the top 3 are assigned to Japan, the rest to the Mongols.
+  players: [{ name: 'NotATheist', id: 14602117, elo: 1496 }, { name: 'Balinthusa', id: 16314476, elo: 1525 }, { name: 'VolcanLoup', id: 12893749, elo: 2327 }, { name: 'MoraMora48', id: 13216763, elo: 1916 }, { name: 'ManBearPig1511', id: 8764015, elo: 1726 }, { name: 'Seth41737spare', id: 16829189, elo: 1663 }, { name: 'Donald2O16Trump', id: 12554124, elo: 2188 }, { name: 'SammyDiamonds', id: 22753596, elo: 1836 }],
   tag: 'The Mongols have the numbers. Japan has the island.',
 };
 const gameOn = CCL_GAME && (!CCL_GAME.until || Date.now() < Date.parse(CCL_GAME.until));
 document.getElementById('game-card').hidden = !gameOn;
 if (gameOn) {
   const g = CCL_GAME;
+  const lobby = g.players || [];
+  const ranked = lobby.slice().sort((a, b) => b.elo - a.elo);
+  const teams = lobby.length === 8 && lobby.every(p => p.elo) ? [ranked.slice(0, 3), ranked.slice(3)] : null;
+  const roster = i => teams ? `<ol class="game-roster">${teams[i].map(p => `<li><a href="player.html?id=${p.id}">${esc(p.name)}</a><span>${p.elo}</span></li>`).join('')}</ol>` : '';
+  const discordText = () => teams ? [`**${g.title}** · ${g.when}`, `**Japan** (defend): ${teams[0].map(p => p.name).join(', ')}`, `**Mongols** (invade): ${teams[1].map(p => p.name).join(', ')}`].join(String.fromCharCode(10)) : '';
   document.getElementById('game-body').innerHTML =
     `<div class="game-head"><img src="img/maps/${g.map}.jpg" alt="" width="56" height="56"><div><h2>${esc(g.title)}</h2><div class="game-when">${esc(g.when)}</div><div class="game-when">${esc(g.setup)}</div></div></div>` +
     `<p class="game-story">${esc(g.story)}</p>` +
-    (g.players && g.players.length ? `<div class="game-players"><h3>In the lobby (${g.players.length} of 8)</h3><div class="game-chips">${g.players.map(p => `<a class="game-chip" href="player.html?id=${p.id}">${esc(p.name)}</a>`).join('')}</div></div>` : '') +
+    (teams ? `<div class="game-teams-bar"><h3>Teams · split by console 1v1 rating</h3><button type="button" class="game-copy" id="game-copy">Copy teams for Discord</button></div>`
+    : g.players && g.players.length ? `<div class="game-players"><h3>In the lobby (${g.players.length} of 8)</h3><div class="game-chips">${g.players.map(p => `<a class="game-chip" href="player.html?id=${p.id}">${esc(p.name)}</a>`).join('')}</div></div>` : '') +
     `<div class="game-sides">` +
-    g.sides.map(sd => `<div class="game-side" style="--accent:${sd.accent}"><h3><img src="img/civs/${sd.civ}.png" alt="">${esc(sd.name)}</h3><p class="who">${esc(sd.who)}</p>` +
+    g.sides.map((sd, i) => `<div class="game-side" style="--accent:${sd.accent}"><h3><img src="img/civs/${sd.civ}.png" alt="">${esc(sd.name)}</h3><p class="who">${esc(sd.who)}</p>${roster(i)}` +
       `<table><thead><tr><th>${esc(sd.head[0])}</th><th class="num">${esc(sd.head[1])}</th></tr></thead><tbody>${sd.rows.map(r => `<tr><td>${esc(r[0])}</td><td class="num">${r[1]}</td></tr>`).join('')}</tbody></table>` +
       `<p class="note">${esc(sd.note)}</p></div>`).join('') + `</div><p class="game-tag">${esc(g.tag)}</p><a class="ccl-discord" href="https://discord.gg/Xs56BRxZaq" target="_blank" rel="noopener" style="margin-top:14px">Sign in on Discord</a>`;
+  const cb = document.getElementById('game-copy');
+  if (cb) cb.addEventListener('click', () => {
+    const txt = discordText(), done = () => { cb.textContent = 'Copied!'; setTimeout(() => { cb.textContent = 'Copy teams for Discord'; }, 1800); };
+    const fallback = () => { const ta = document.createElement('textarea'); ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, fallback); else fallback();
+  });
 }
 
 function finalsTable(s) {
