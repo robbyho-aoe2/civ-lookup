@@ -68,6 +68,11 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .game-head h2{font-size:19px;margin:0;color:var(--text);}
 .game-when{font-size:12px;color:var(--text2);margin-top:3px;}
 .game-story{font-size:13px;color:var(--text2);line-height:1.7;margin:12px 0 16px;}
+.game-players{margin:0 0 16px;}
+.game-players h3{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin:0 0 8px;font-weight:700;}
+.game-chips{display:flex;flex-wrap:wrap;gap:8px;}
+.game-chip{font-size:13px;color:var(--text);background:var(--surf2);border:1px solid var(--border2);border-radius:20px;padding:5px 12px;text-decoration:none;}
+.game-chip:hover{border-color:var(--amber);color:var(--amberL);}
 .game-sides{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 @media(max-width:700px){.game-sides{grid-template-columns:1fr;}}
 .game-side{background:var(--surf2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px 16px;border-left:3px solid var(--accent,var(--border2));}
@@ -222,6 +227,7 @@ const CCL_GAME = {
       head: ['Wins', 'Points'], rows: [['Before 60 min', 10], ['60–89 min', 7], ['90–119 min', 5], ['120+ min', 2]],
       note: 'Every King kill is worth +1.' },
   ],
+  players: [{ name: 'NotATheist', id: 14602117 }, { name: 'Balinthusa', id: 16314476 }, { name: 'VolcanLoup', id: 12893749 }, { name: 'MoraMora48', id: 13216763 }],
   tag: 'The Mongols have the numbers. Japan has the island.',
 };
 const gameOn = CCL_GAME && (!CCL_GAME.until || Date.now() < Date.parse(CCL_GAME.until));
@@ -230,7 +236,9 @@ if (gameOn) {
   const g = CCL_GAME;
   document.getElementById('game-body').innerHTML =
     `<div class="game-head"><img src="img/maps/${g.map}.jpg" alt="" width="56" height="56"><div><h2>${esc(g.title)}</h2><div class="game-when">${esc(g.when)}</div><div class="game-when">${esc(g.setup)}</div></div></div>` +
-    `<p class="game-story">${esc(g.story)}</p><div class="game-sides">` +
+    `<p class="game-story">${esc(g.story)}</p>` +
+    (g.players && g.players.length ? `<div class="game-players"><h3>In the lobby (${g.players.length} of 8)</h3><div class="game-chips">${g.players.map(p => `<a class="game-chip" href="player.html?id=${p.id}">${esc(p.name)}</a>`).join('')}</div></div>` : '') +
+    `<div class="game-sides">` +
     g.sides.map(sd => `<div class="game-side" style="--accent:${sd.accent}"><h3><img src="img/civs/${sd.civ}.png" alt="">${esc(sd.name)}</h3><p class="who">${esc(sd.who)}</p>` +
       `<table><thead><tr><th>${esc(sd.head[0])}</th><th class="num">${esc(sd.head[1])}</th></tr></thead><tbody>${sd.rows.map(r => `<tr><td>${esc(r[0])}</td><td class="num">${r[1]}</td></tr>`).join('')}</tbody></table>` +
       `<p class="note">${esc(sd.note)}</p></div>`).join('') + `</div><p class="game-tag">${esc(g.tag)}</p><a class="ccl-discord" href="https://discord.gg/Xs56BRxZaq" target="_blank" rel="noopener" style="margin-top:14px">Sign in on Discord</a>`;
