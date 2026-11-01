@@ -20,12 +20,13 @@
 
   // ids the bundled name list does not know yet (names taken from the game's own messages).
   // Settlement (2556) is the drop-off the South American civs build in place of mills and camps; Incas and Tupi both use this id.
-  const BUILDING_NAMES = { 2556: 'Settlement' };
+  // Mule Cart (1889, Khitans) is "built" by villagers and works as a movable drop-off for hunt, wood, stone and gold.
+  const BUILDING_NAMES = { 2556: 'Settlement', 1889: 'Mule Cart' };
   const UNIT_NAMES = { 2550: 'Champi Scout', 1963: 'Llama' };
   // the Champi line (Inca, Tupi, Muisca, Mapuche); names read off the game's own "Research Complete" messages in a Tupi recording
   const TECH_NAMES = { 1402: 'Champi Runner', 1351: 'Champi Warrior', 1352: 'Elite Champi Warrior' };
   const MILITARY_BLD = new Set(['Barracks', 'Archery Range', 'Stable', 'Siege Workshop', 'Castle', 'Krepost', 'Donjon']);
-  const DROPOFF_BLD = new Set(['Lumber Camp', 'Mining Camp', 'Mill', 'Settlement', 'Dock', 'Folwark']);
+  const DROPOFF_BLD = new Set(['Lumber Camp', 'Mining Camp', 'Mill', 'Settlement', 'Mule Cart', 'Dock', 'Folwark']);
   const AGE_TECH = { 101: 'Feudal Age', 102: 'Castle Age', 103: 'Imperial Age' };
   const FOOD_NAMES = new Set(['Wild Boar', 'Deer', 'Goose', 'Sheep', 'Llama', 'Fruit Bush', 'Forage Bush', 'Javelina', 'Zebra', 'Ostrich', 'Gazelle', 'Elephant', 'Turkey', 'Ibex']);
   const LABELS = { 'Wild Boar': 'boar', Deer: 'deer', Goose: 'goose', Sheep: 'sheep', Llama: 'llama', 'Fruit Bush': 'berries', 'Forage Bush': 'berries', };
@@ -254,7 +255,7 @@
     const nearest = (pts, x, y) => { let best = null, bd = Infinity; for (const q of pts) { const d = dist(x, y, q[0], q[1]); if (d < bd) { bd = d; best = q; } } return best; };
     function dropoffFor(nm, x, y) {
       const pool = nm === 'Mill' ? staticPts.filter(q => q[2] === 'food') : nm === 'Lumber Camp' ? staticPts.filter(q => q[2] === 'wood')
-        : nm === 'Mining Camp' ? staticPts.filter(q => q[2] === 'gold' || q[2] === 'stone') : staticPts;
+        : nm === 'Mining Camp' ? staticPts.filter(q => q[2] === 'gold' || q[2] === 'stone') : nm === 'Mule Cart' ? resPts : staticPts;     // a Mule Cart takes hunt too
       const q = nearest(pool, x, y);
       if (q && dist(x, y, q[0], q[1]) <= 12) return [q[2], q[3]];
       return nm === 'Mill' ? ['food', 'farm'] : nm === 'Lumber Camp' ? ['wood', 'trees'] : nm === 'Mining Camp' ? ['gold', 'gold'] : null;
@@ -349,7 +350,7 @@
         else if (a.a === 'ORDER' && ids.length) { const c = classify(p, a, a.t); if (c) events.push({ t: a.t, kind: 'order', c, ids }); }
         else if (a.a === 'BUILD' && ids.length) {
           const nm = bname(a.building);
-          if (['Lumber Camp', 'Mill', 'Mining Camp', 'Farm', 'Settlement'].includes(nm)) {
+          if (['Lumber Camp', 'Mill', 'Mining Camp', 'Farm', 'Settlement', 'Mule Cart'].includes(nm)) {
             const c = nm === 'Farm' ? ['food', 'farm'] : dropoffFor(nm, a.x, a.y);
             if (c) events.push({ t: a.t, kind: 'order', c, ids });
           }
