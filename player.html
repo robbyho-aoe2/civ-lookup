@@ -149,7 +149,7 @@ header .back:hover{color:var(--amberL);}
 .bo-r{display:flex;gap:7px;align-items:baseline;justify-content:flex-end;white-space:nowrap;}
 .bo-n{font-weight:800;font-variant-numeric:tabular-nums;min-width:18px;text-align:right;}
 .bo-sp{font-size:11px;font-weight:700;display:inline-flex;gap:5px;}
-.bo-sp .F{color:#D9604C;}.bo-sp .W{color:#B88A4E;}.bo-sp .G{color:#E6B422;}.bo-sp .S{color:#9AA0A6;}
+.bo-sp .F{color:#D9604C;}.bo-sp .W{color:#B88A4E;}.bo-sp .G{color:#E6B422;}.bo-sp .S{color:#9AA0A6;}.bo-sp .I{color:var(--text3);}
 .bo-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;color:var(--text3);font-size:11px;}
 .bo-copy{font:inherit;font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px;border:1px solid var(--border2);background:var(--surf);color:var(--amberL);cursor:pointer;}
 .bo-copy:hover{border-color:var(--amber);}
@@ -1434,10 +1434,10 @@ function render(content, entry, player) {
   const BO_WINS = [[660000, '11 min'], [900000, '15 min'], [1200000, '20 min'], [Infinity, 'Full game']];
   const BO_CACHE = new Map();        // "matchId:profileId" -> promise of the analysed recording
   const BO_KIND_COL = { start: '#8F8578', build: '#5FB88C', military: '#E0603C', tech: '#C9B458', unit: '#E0A030', age: '#EDE8DD' };
-  const BO_RES_COL = { food: '#D9604C', wood: '#B88A4E', gold: '#E6B422', stone: '#9AA0A6' };
+  const BO_RES_COL = { food: '#D9604C', wood: '#B88A4E', gold: '#E6B422', stone: '#9AA0A6', idle: '#8F8578', back: '#5FB88C', deleted: '#8F8578' };
   let boScript = null;
   const boLoadScript = () => boScript || (boScript = new Promise((ok, no) => {
-    const s = document.createElement('script'); s.src = 'replay-order.js?v=6'; s.onload = ok; s.onerror = () => { boScript = null; no(new Error('could not load the reader')); };
+    const s = document.createElement('script'); s.src = 'replay-order.js?v=7'; s.onload = ok; s.onerror = () => { boScript = null; no(new Error('could not load the reader')); };
     document.head.appendChild(s);
   }));
   function boAnalyse(raw, pid) {

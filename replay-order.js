@@ -34,7 +34,7 @@
   // Extra villagers some civs get at the start. With a nomad start they only appear once the first Town Center is finished.
   const START_EXTRA = { Chinese: 3, Maya: 1 };
   const WORDS = { trees: 'wood', hunt: 'hunted animals' };
-  const RES_LETTER = { food: 'F', wood: 'W', gold: 'G', stone: 'S' };
+  const RES_LETTER = { food: 'F', wood: 'W', gold: 'G', stone: 'S', idle: 'I' };
   const DETAIL_UNTIL = 660000;   // every villager gets its own step up to 11:00; after that runs are grouped so a full game stays readable
 
   const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
@@ -82,12 +82,19 @@
         if (end + 4 > len) break;
         pos = end + 4;
         if (id === 255) break;
-        if (id !== 0 && id !== 101 && id !== 102 && id !== 120 && id !== 129) continue;
+        if (id !== 0 && id !== 1 && id !== 101 && id !== 102 && id !== 106 && id !== 120 && id !== 127 && id !== 128 && id !== 129) continue;
         const pid = dv.getInt8(pb), plen = dv.getInt16(pb + 1, true);
         if (length - 1 !== plen + 3) { unsupported++; continue; }
         const r = pb + 3, ids = (at, n) => { const out = []; for (let i = 0; i < n; i++) out.push(dv.getUint32(at + 4 * i, true)); return out; };
         let a = null;
-        if (id === 101) {
+        if (id === 1) {
+          const sel = dv.getUint32(r, true);
+          if (sel > 0 && sel < 500) a = { a: 'STOP', ids: ids(r + 4, sel) };
+        } else if (id === 128 || id === 106) {
+          a = { a: id === 128 ? 'BACK_TO_WORK' : 'DELETE', ids: [dv.getUint32(r, true)] };
+        } else if (id === 127) {
+          a = { a: 'TOWN_BELL', building: dv.getUint32(r, true), mode: dv.getInt8(r + 4), ids: [] };
+        } else if (id === 101) {
           const sel = dv.getInt16(r + 4, true);
           a = { a: 'RESEARCH', tech: dv.getInt16(r + 6, true), ids: [dv.getUint32(r, true)] };
         } else if (id === 102) {
@@ -345,12 +352,16 @@
 
     // allocation
     for (const p of players) {
-      const s = p.slot, created = p._created, events = [];
+      const s = p.slot, created = p._created, events = [], bells = [];
       for (const a of acts) {
         if (a.pid !== s) continue;
         const ids = a.ids || [];
         if (a.a === 'GATHER_POINT' && ids[0] === p.tc_id) events.push({ t: a.t, kind: 'rally', c: classify(p, a, a.t) });
         else if (a.a === 'ORDER' && ids.length) { const c = classify(p, a, a.t); if (c) events.push({ t: a.t, kind: 'order', c, ids }); }
+        else if (a.a === 'STOP' && ids.length) events.push({ t: a.t, kind: 'stop', ids });
+        else if (a.a === 'BACK_TO_WORK') events.push({ t: a.t, kind: 'resume', ids });
+        else if (a.a === 'DELETE') events.push({ t: a.t, kind: 'delete', ids });
+        else if (a.a === 'TOWN_BELL') bells.push({ t: a.t, mode: a.mode });
         else if (a.a === 'BUILD' && ids.length) {
           const nm = bname(a.building);
           if (['Lumber Camp', 'Mill', 'Mining Camp', 'Farm', 'Settlement', 'Mule Cart'].includes(nm)) {
@@ -360,7 +371,7 @@
         }
       }
       const all = created.map(t => ({ t, kind: 'create' })).concat(events).sort((a, b) => (a.t - b.t) || ((a.kind === 'create' ? 0 : 1) - (b.kind === 'create' ? 0 : 1)));
-      const state = new Map(), keyOf = new Map(), idmap = idmaps[s];
+      const state = new Map(), keyOf = new Map(), idmap = idmaps[s], prevJob = new Map();
       startVills[s].forEach((vid, i) => { state.set('s' + i, 'food'); keyOf.set(vid, 's' + i); });
       let rally = null, nNew = 0, startSplit = null;
       const startVotes = {};
@@ -373,6 +384,18 @@
         } else if (e.kind === 'rally') {
           if (e.c && !(rally && e.c[0] === rally[0] && e.c[1] === rally[1])) rallyLog.push({ t: e.t, to: e.c[0], label: e.c[1] });
           rally = e.c || rally;
+        } else if (e.kind === 'stop' || e.kind === 'resume' || e.kind === 'delete') {
+          // a villager told to stop leaves its job until it is ordered again or sent back to work; a deleted one is gone
+          const frm = {}; let n = 0;
+          const keys = e.kind === 'resume' ? [...state].filter(([k, v]) => v === 'idle').map(([k]) => k) : e.ids.map(vid => keyOf.get(vid) || (idmap.has(vid) ? 'n' + (idmap.get(vid) - 1) : null));
+          for (const k of keys) {
+            if (k == null || !state.has(k)) continue;
+            const cur = state.get(k);
+            if (e.kind === 'stop' && cur !== 'idle') { prevJob.set(k, cur); frm[cur] = (frm[cur] || 0) + 1; state.set(k, 'idle'); n++; }
+            else if (e.kind === 'resume' && cur === 'idle') { state.set(k, prevJob.get(k) || 'food'); frm.idle = (frm.idle || 0) + 1; n++; }
+            else if (e.kind === 'delete') { frm[cur] = (frm[cur] || 0) + 1; state.delete(k); n++; }
+          }
+          if (n) reassign.push({ t: e.t, n, to: { stop: 'idle', resume: 'back', delete: 'deleted' }[e.kind], label: { stop: 'idle', resume: 'work', delete: 'deleted' }[e.kind], frm });
         } else {
           let moved = 0; const frm = {};
           for (const vid of e.ids) {
@@ -383,12 +406,12 @@
           const sv = e.ids.filter(v => keyOf.has(v)).length;
           if (e.t <= 40000 && sv) startVotes[e.c[1]] = (startVotes[e.c[1]] || 0) + sv;
         }
-        const cnt = { food: 0, wood: 0, gold: 0, stone: 0 };
+        const cnt = { food: 0, wood: 0, gold: 0, stone: 0, idle: 0 };
         for (const v of state.values()) cnt[v]++;
-        timeline.push([e.t, cnt.food, cnt.wood, cnt.gold, cnt.stone]);
-        if (e.t <= 40000) { const c0 = { food: 0, wood: 0, gold: 0, stone: 0 }; for (const [k, v] of state) if (k[0] === 's') c0[v]++; startSplit = [c0.food, c0.wood, c0.gold, c0.stone]; }     // where the start villagers are once their first orders are in
+        timeline.push([e.t, cnt.food, cnt.wood, cnt.gold, cnt.stone, cnt.idle]);
+        if (e.t <= 40000) { const c0 = { food: 0, wood: 0, gold: 0, stone: 0, idle: 0 }; for (const [k, v] of state) if (k[0] === 's') c0[v]++; startSplit = [c0.food, c0.wood, c0.gold, c0.stone]; }     // where the start villagers are once their first orders are in
       }
-      p.villagers = { extra: p.extra_villagers || null, created, created_to: createdTo, timeline, rally: rallyLog, reassign, start: startVills[s].length, start_label: Object.entries(startVotes).sort((a, b) => b[1] - a[1])[0]?.[0] || null, start_split: startSplit };
+      p.villagers = { extra: p.extra_villagers || null, bells, created, created_to: createdTo, timeline, rally: rallyLog, reassign, start: startVills[s].length, start_label: Object.entries(startVotes).sort((a, b) => b[1] - a[1])[0]?.[0] || null, start_split: startSplit };
 
       const blds = [], techs = [], units = [];
       for (const a of acts) {
@@ -412,15 +435,15 @@
   }
 
   // ------------------------------------------------------------------ the list
-  const splitText = r => ['food', 'wood', 'gold', 'stone'].map((k, i) => r[1 + i] ? r[1 + i] + RES_LETTER[k] : '').filter(Boolean).join(' ');
+  const splitText = r => ['food', 'wood', 'gold', 'stone', 'idle'].map((k, i) => r[1 + i] ? r[1 + i] + RES_LETTER[k] : '').filter(Boolean).join(' ');
 
   function steps(p, windowMs) {
     const v = p.villagers, tl = v.timeline;
-    const base = [0, v.start, 0, 0, 0];      // before the first rally/order/villager: just the start villagers
+    const base = [0, v.start, 0, 0, 0, 0];      // before the first rally/order/villager: just the start villagers
     const at = ms => { let last = base; for (const r of tl) { if (r[0] <= ms) last = r; else break; } return last; };
     const S = [];
     const ex = v.extra && v.extra.t <= windowMs ? v.extra : null;      // bonus villagers that arrive with a nomad start's Town Center; not in the split, since where they go isn't recorded
-    const add = (t, kind, text, split, res) => { const r = at(t); S.push({ t, kind, text, vills: r[1] + r[2] + r[3] + r[4] + (ex && t >= ex.t ? ex.n : 0), split: split ? splitText(r) : '', res: res || null }); };
+    const add = (t, kind, text, split, res) => { const r = at(t); S.push({ t, kind, text, vills: r[1] + r[2] + r[3] + r[4] + (r[5] || 0) + (ex && t >= ex.t ? ex.n : 0), split: split ? splitText(r) : '', res: res || null }); };
     const n0 = v.start;
     add(0, 'start', v.start_label ? `Start: ${n0} villagers go to the ${WORDS[v.start_label] || v.start_label}` : `Start: ${n0} villagers`, false);
     if (v.start_split) { const r = [0].concat(v.start_split); S[0].split = splitText(r); }
@@ -438,7 +461,9 @@
     for (const r of v.reassign) {
       if (r.t > windowMs) continue;
       if (r.n === 1 && buildT.some(bt => Math.abs(r.t - bt) <= 2000)) continue;       // the builder walking off to work: the build step already says it
-      add(r.t, 'move', `Moves ${Object.entries(r.frm).map(([k, n]) => n + ' off ' + k).join(' and ')} → ${WORDS[r.label] || r.label}`, true, r.to);
+      const was = Object.entries(r.frm).map(([k, n]) => n + ' off ' + k).join(' and '), pl = r.n > 1 ? 's' : '';
+      add(r.t, 'move', r.label === 'idle' ? `Stops ${r.n} villager${pl} (${was})` : r.label === 'work' ? `${r.n} idle villager${pl} sent back to work` : r.label === 'deleted' ? `Deletes ${r.n} villager${pl}`
+        : `Moves ${was} → ${WORDS[r.label] || r.label}`, true, r.to);
     }
     const b = p.buildings.filter(x => x.t <= windowMs);
     for (let i = 0; i < b.length;) {
@@ -456,6 +481,7 @@
       i++;
     }
     for (const tc of p.techs) if (tc.t <= windowMs) add(tc.t, 'tech', tc.name);
+    for (const b of (v.bells || [])) if (b.t <= windowMs && b.mode === 1) add(b.t, 'build', 'Town bell rung');
     for (const a of p.ages) {
       const age = a.name.replace(' Age', '');
       if (a.click <= windowMs) add(a.click, 'age', `Clicks ${age} Age`, true);
