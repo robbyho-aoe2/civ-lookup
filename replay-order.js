@@ -206,7 +206,21 @@
       const g = /player_id,(\d+),\d+> advanced to the (\w+) Age/.exec(c.m);
       if (g) (ageDone[g[1]] = ageDone[g[1]] || {})[g[2] + ' Age'] = c.t;
     }
-    const recVill = chat.filter(c => c.m === '--Villager Created--').map(c => c.t);
+    // The game writes these notifications in the player's own language ("--Aldeão Criado(a)--"), so find the villager one by its rhythm:
+    // it first shows up in the opening half minute and then repeats every ~25 s from the one Town Center.
+    const recVill = (() => {
+      const groups = new Map();
+      for (const c of chat) { const g = /^--(.+)--$/.exec(c.m); if (g) { if (!groups.has(g[1])) groups.set(g[1], []); groups.get(g[1]).push(c.t); } }
+      if (groups.has('Villager Created')) return groups.get('Villager Created');
+      let best = [];
+      for (const ts of groups.values()) {
+        if (ts.length < 5 || ts[0] < 15000 || ts[0] > 45000) continue;
+        const gaps = ts.slice(1, 6).map((t, i) => t - ts[i]);
+        if (gaps.every(g => g > 20000 && g < 32000) && ts.length > best.length) best = ts;
+      }
+      return best;
+    })();
+    const playerMsgs = chat.map(c => { const g = /<player_id,(\d+),\d+>/.exec(c.m); return g ? { t: c.t, pid: +g[1], m: c.m } : null; }).filter(Boolean);
     const tname = id => UNIT_NAMES[id] || OBJ[id] || 'unit ' + id;
     const bname = id => BUILDING_NAMES[id] || OBJ[id] || 'building ' + id;
 
@@ -273,6 +287,11 @@
       const s = p.slot, mine = acts.filter(a => a.pid === s);
       p.ages = mine.filter(a => a.a === 'RESEARCH' && AGE_TECH[a.tech]).map(a => ({ name: AGE_TECH[a.tech], click: a.t, done: (ageDone[s] || {})[AGE_TECH[a.tech]] || null }))
         .filter((a, i, arr) => arr.findIndex(b => b.name === a.name) === i);
+      for (const a of p.ages) {
+        if (a.done) continue;                    // not in English: the player's next announcement a research-time after the click is the age arriving
+        const hit = playerMsgs.find(x => x.pid === s && x.t > a.click + 90000 && x.t <= a.click + 260000 && !/defeat|resign/i.test(x.m));
+        if (hit) a.done = hit.t;
+      }
       const busy = p.ages.map(a => [a.click, a.done || a.click + 130000]);
       if (s === recorder && recVill.length >= 5) p._created = recVill.slice();       // the recorder's own "Villager Created" messages are exact; without them, replay the queue
       else {
