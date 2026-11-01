@@ -1443,7 +1443,7 @@ function render(content, entry, player) {
   const BO_RES_COL = { food: '#D9604C', wood: '#B88A4E', gold: '#E6B422', stone: '#9AA0A6', idle: '#8F8578', back: '#5FB88C', deleted: '#8F8578' };
   let boScript = null;
   const boLoadScript = () => boScript || (boScript = new Promise((ok, no) => {
-    const s = document.createElement('script'); s.src = 'replay-order.js?v=10'; s.onload = ok; s.onerror = () => { boScript = null; no(new Error('could not load the reader')); };
+    const s = document.createElement('script'); s.src = 'replay-order.js?v=11'; s.onload = ok; s.onerror = () => { boScript = null; no(new Error('could not load the reader')); };
     document.head.appendChild(s);
   }));
   function boAnalyse(raw, pid) {

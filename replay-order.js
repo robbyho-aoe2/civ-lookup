@@ -361,11 +361,12 @@
     }
 
     // The first fight: the first time the recording player is attacked (a notification in any language: it starts with a colour tag and names the attacker),
-    // or the first army order, whichever is earlier. One poke in the opening minutes (a scout shot by a Town Center) is not counted.
+    // or the first army order, whichever is earlier. Nothing before 8:00 counts: a real fight can't happen sooner, and earlier pokes are scouts and Town Center arrows.
     const slotName = n => (players.find(p => p.slot === n) || {}).name || 'a player';
     const warns = chat.filter(c => /^<[A-Z]+>--/.test(c.m)).map(c => { const g = /<player_id,(\d+),\d+>/.exec(c.m); return g ? { t: c.t, by: +g[1] } : null; }).filter(Boolean);
-    const real = warns.filter((w, i) => w.t >= 360000 || warns.some((x, j) => j !== i && Math.abs(x.t - w.t) <= 60000));
-    const army = acts.find(a => a.a === 'ARMY' && a.n >= 2);
+    const FIGHT_FROM = 480000;
+    const real = warns.filter(w => w.t >= FIGHT_FROM);
+    const army = acts.find(a => a.a === 'ARMY' && a.n >= 2 && a.t >= FIGHT_FROM);
     const cands = [];
     if (real.length) cands.push({ t: real[0].t, kind: 'attacked', who: players[recorder - 1].name, by: slotName(real[0].by) });
     if (army) cands.push({ t: army.t, kind: 'army', who: slotName(army.pid), n: army.n });
