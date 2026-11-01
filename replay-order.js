@@ -83,12 +83,15 @@
         if (end + 4 > len) break;
         pos = end + 4;
         if (id === 255) break;
-        if (id !== 0 && id !== 1 && id !== 101 && id !== 102 && id !== 106 && id !== 120 && id !== 127 && id !== 128 && id !== 129) continue;
+        if (id !== 0 && id !== 1 && id !== 21 && id !== 33 && id !== 101 && id !== 102 && id !== 106 && id !== 107 && id !== 120 && id !== 127 && id !== 128 && id !== 129) continue;
         const pid = dv.getInt8(pb), plen = dv.getInt16(pb + 1, true);
         if (length - 1 !== plen + 3) { unsupported++; continue; }
         const r = pb + 3, ids = (at, n) => { const out = []; for (let i = 0; i < n; i++) out.push(dv.getUint32(at + 4 * i, true)); return out; };
         let a = null;
-        if (id === 1) {
+        if (id === 21 || id === 33 || id === 107) {
+          const n = dv.getUint32(r, true);
+          if (n < 2000) a = { a: 'ARMY', n, ids: [] };       // attack-move / patrol / attack-ground: the size of the group is enough here
+        } else if (id === 1) {
           const sel = dv.getUint32(r, true);
           if (sel > 0 && sel < 500) a = { a: 'STOP', ids: ids(r + 4, sel) };
         } else if (id === 128 || id === 106) {
@@ -357,6 +360,17 @@
       idmaps[p.slot] = m;
     }
 
+    // The first fight: the first time the recording player is attacked (a notification in any language: it starts with a colour tag and names the attacker),
+    // or the first army order, whichever is earlier. One poke in the opening minutes (a scout shot by a Town Center) is not counted.
+    const slotName = n => (players.find(p => p.slot === n) || {}).name || 'a player';
+    const warns = chat.filter(c => /^<[A-Z]+>--/.test(c.m)).map(c => { const g = /<player_id,(\d+),\d+>/.exec(c.m); return g ? { t: c.t, by: +g[1] } : null; }).filter(Boolean);
+    const real = warns.filter((w, i) => w.t >= 360000 || warns.some((x, j) => j !== i && Math.abs(x.t - w.t) <= 60000));
+    const army = acts.find(a => a.a === 'ARMY' && a.n >= 2);
+    const cands = [];
+    if (real.length) cands.push({ t: real[0].t, kind: 'attacked', who: players[recorder - 1].name, by: slotName(real[0].by) });
+    if (army) cands.push({ t: army.t, kind: 'army', who: slotName(army.pid), n: army.n });
+    const fight = cands.sort((a, b) => a.t - b.t)[0] || null;
+
     // allocation
     for (const p of players) {
       const s = p.slot, created = p._created, events = [], bells = [];
@@ -445,13 +459,13 @@
       p.buildings = blds; p.techs = techs; p.units = units;
       delete p._created;
     }
-    return { duration_ms: parsed.duration, recorder, players, unsupported: parsed.unsupported };
+    return { duration_ms: parsed.duration, recorder, players, fight, unsupported: parsed.unsupported };
   }
 
   // ------------------------------------------------------------------ the list
   const splitText = r => ['food', 'wood', 'gold', 'stone', 'idle'].map((k, i) => r[1 + i] ? r[1 + i] + RES_LETTER[k] : '').filter(Boolean).join(' ');
 
-  function steps(p, windowMs) {
+  function steps(p, windowMs, fight) {
     const v = p.villagers, tl = v.timeline;
     const base = [0, v.start, 0, 0, 0, 0];      // before the first rally/order/villager: just the start villagers
     const at = ms => { let last = base; for (const r of tl) { if (r[0] <= ms) last = r; else break; } return last; };
@@ -509,14 +523,19 @@
       add(u[i].t, 'unit', u[i].name + ' queued' + (n > 1 ? ' x' + n : ''));
       i = j + 1;
     }
-    const order = { age: 0, build: 1, military: 1, tech: 2, unit: 3, move: 4, vill: 5, start: -1 };
+    if (fight && fight.t <= windowMs) {
+      add(fight.t, 'fight', fight.kind === 'attacked' ? `First fight: ${fight.who} is attacked by ${fight.by}. Villager counts are rougher from here (deaths aren't recorded)`
+        : `First army orders: ${fight.who} sends ${fight.n} units out. Villager counts are rougher from here (deaths aren't recorded)`, false);
+    }
+    if (fight) for (const x of S) if (x.t > fight.t && (x.split || x.kind === 'vill')) x.rough = true;
+    const order = { age: 0, build: 1, military: 1, tech: 2, unit: 3, move: 4, vill: 5, start: -1, fight: -0.5 };
     return S.sort((a, b) => (a.t - b.t) || (order[a.kind] - order[b.kind]));
   }
 
   function toText(data, slot, windowMs) {
     const p = data.players.find(x => x.slot === slot);
     const lines = [`${p.name} (${[p.civ, p.rating].filter(Boolean).join(', ')}) - build order, first ${mmss(windowMs)}`];
-    for (const s of steps(p, windowMs)) lines.push(`${mmss(s.t).padStart(5)}  ${s.text}  [${s.vills} vills${s.split ? ', ' + s.split : ''}]`);
+    for (const s of steps(p, windowMs, data.fight)) lines.push(`${mmss(s.t).padStart(5)}  ${s.text}  [${s.vills} vills${s.split ? ', ' + s.split : ''}]`);
     return lines.join('\n');
   }
 

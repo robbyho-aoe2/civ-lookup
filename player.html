@@ -143,6 +143,8 @@ header .back:hover{color:var(--amberL);}
 .bo-row{display:grid;grid-template-columns:42px 10px minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:4px 4px;border-bottom:1px solid var(--border);}
 .bo-row.age{background:var(--surf2);font-weight:700;}
 .bo-row.military .bo-x{font-weight:700;}
+.bo-row.fight{background:rgba(224,96,60,.12);font-weight:700;}
+.bo-row.rough .bo-r{opacity:.6;}
 .bo-t{font-variant-numeric:tabular-nums;color:var(--amberL);font-weight:700;text-align:right;}
 .bo-dot{width:8px;height:8px;border-radius:50%;align-self:center;}
 .bo-x{min-width:0;overflow-wrap:anywhere;}
@@ -1437,11 +1439,11 @@ function render(content, entry, player) {
   const BO_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8"/><circle cx="2.3" cy="4" r=".6" fill="currentColor"/><circle cx="2.3" cy="8" r=".6" fill="currentColor"/><circle cx="2.3" cy="12" r=".6" fill="currentColor"/></svg>';
   const BO_WINS = [[660000, '11 min'], [900000, '15 min'], [1200000, '20 min'], [Infinity, 'Full game']];
   const BO_CACHE = new Map();        // "matchId:profileId" -> promise of the analysed recording
-  const BO_KIND_COL = { start: '#8F8578', build: '#5FB88C', military: '#E0603C', tech: '#C9B458', unit: '#E0A030', age: '#EDE8DD' };
+  const BO_KIND_COL = { fight: '#E0603C', start: '#8F8578', build: '#5FB88C', military: '#E0603C', tech: '#C9B458', unit: '#E0A030', age: '#EDE8DD' };
   const BO_RES_COL = { food: '#D9604C', wood: '#B88A4E', gold: '#E6B422', stone: '#9AA0A6', idle: '#8F8578', back: '#5FB88C', deleted: '#8F8578' };
   let boScript = null;
   const boLoadScript = () => boScript || (boScript = new Promise((ok, no) => {
-    const s = document.createElement('script'); s.src = 'replay-order.js?v=9'; s.onload = ok; s.onerror = () => { boScript = null; no(new Error('could not load the reader')); };
+    const s = document.createElement('script'); s.src = 'replay-order.js?v=10'; s.onload = ok; s.onerror = () => { boScript = null; no(new Error('could not load the reader')); };
     document.head.appendChild(s);
   }));
   function boAnalyse(raw, pid) {
@@ -1469,16 +1471,17 @@ function render(content, entry, player) {
     const p = boPlayer(st.data, st.pid, raw);
     if (!p) return `<div class="bo-panel">${head}<div class="bo-msg">This player wasn't found in the recording.</div></div>`;
     const full = st.data.duration_ms, RO = window.ReplayOrder;
-    const wins = BO_WINS.filter(([ms]) => ms === Infinity || ms < full - 60000);      // only windows shorter than the game, plus the whole game
+    const fight = st.data.fight, fightWin = fight && fight.t + 5000 < full - 60000 ? [fight.t + 5000, `Until first fight (${RO.mmss(fight.t)})`] : null;
+    const wins = (fightWin ? [fightWin] : []).concat(BO_WINS.filter(([ms]) => ms === Infinity || ms < full - 60000)).sort((a, b) => a[0] - b[0]);      // only windows shorter than the game, plus the whole game
     const win = Math.min(st.win, full);
     const on = wins.some(([ms]) => Math.min(ms, full) === win) ? win : full;
     const tabs = `<div class="bo-wins">${wins.map(([ms, lab]) => `<button type="button" class="bo-win${Math.min(ms, full) === on ? ' on' : ''}" data-mid="${raw.matchId}" data-win="${ms === Infinity ? 'full' : ms}">${ms === Infinity ? `Full game (${RO.mmss(full)})` : lab}</button>`).join('')}</div>`;
-    const rows = RO.steps(p, on).map(s => {
+    const rows = RO.steps(p, on, st.data.fight).map(s => {
       const c = (s.kind === 'vill' || s.kind === 'move') && s.res ? BO_RES_COL[s.res] : BO_KIND_COL[s.kind];
       const sp = s.split ? `<span class="bo-sp">${s.split.split(' ').map(x => `<span class="${x.slice(-1)}">${x}</span>`).join('')}</span>` : '';
-      return `<div class="bo-row ${s.kind}"><span class="bo-t">${RO.mmss(s.t)}</span><i class="bo-dot" style="background:${c}"></i><span class="bo-x">${escapeHtml(s.text)}</span><span class="bo-r">${sp}<span class="bo-n">${s.vills}</span></span></div>`;
+      return `<div class="bo-row ${s.kind}${s.rough ? ' rough' : ''}"><span class="bo-t">${RO.mmss(s.t)}</span><i class="bo-dot" style="background:${c}"></i><span class="bo-x">${escapeHtml(s.text)}</span><span class="bo-r">${sp}<span class="bo-n">${s.vills}</span></span></div>`;
     }).join('');
-    const rough = on > 900000 ? 'After about 15 minutes the food / wood / gold split is a rough guess (second Town Centers, farm re-seeding). The buildings, techs and units are what the player ordered. ' : '';
+    const rough = on > 900000 || (fight && on > fight.t) ? 'Villager counts and the split get rougher after the first fight, and after about 15 minutes in any case (deaths, second Town Centers, farm re-seeding). The buildings, techs and units are what the player ordered. ' : '';
     return `<div class="bo-panel">${head}${tabs}<div class="bo-list">${rows}</div>` +
       `<div class="bo-foot"><button type="button" class="bo-copy" data-mid="${raw.matchId}">Copy as text</button><span>Times are when the order was given. Right-hand column: villagers after that step, then the food / wood / gold split (an estimate). ${rough}${st.data.profile === st.pid ? `Read from ${escapeHtml(who.name || 'the player')}'s own recording.` : ''}</span></div></div>`;
   }
