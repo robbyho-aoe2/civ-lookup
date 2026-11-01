@@ -28,7 +28,7 @@
   const DROPOFF_BLD = new Set(['Lumber Camp', 'Mining Camp', 'Mill', 'Settlement', 'Dock', 'Folwark']);
   const AGE_TECH = { 101: 'Feudal Age', 102: 'Castle Age', 103: 'Imperial Age' };
   const FOOD_NAMES = new Set(['Wild Boar', 'Deer', 'Goose', 'Sheep', 'Llama', 'Fruit Bush', 'Forage Bush', 'Javelina', 'Zebra', 'Ostrich', 'Gazelle', 'Elephant', 'Turkey', 'Ibex']);
-  const LABELS = { 'Wild Boar': 'boar', Deer: 'deer', Goose: 'goose', Sheep: 'sheep', Llama: 'llama', 'Fruit Bush': 'berries', 'Forage Bush': 'berries', Javelina: 'javelina', Zebra: 'zebra', Ostrich: 'ostrich', Gazelle: 'gazelle', Elephant: 'elephant', Turkey: 'turkey', Ibex: 'ibex' };
+  const LABELS = { 'Wild Boar': 'boar', Deer: 'deer', Goose: 'goose', Sheep: 'sheep', Llama: 'llama', 'Fruit Bush': 'berries', 'Forage Bush': 'berries', };
   const VILLAGER_TYPES = new Set([83, 293]);
   const WORDS = { trees: 'wood', hunt: 'hunted animals' };
   const RES_LETTER = { food: 'F', wood: 'W', gold: 'G', stone: 'S' };
@@ -121,8 +121,9 @@
     for (let i = 0; i < end && out.length < limit + 8; i++) {
       if (h[i] === 0x60 && h[i + 1] === 0x0a && h[i + 2] >= 1 && h[i + 2] <= 0x30 && h[i + 3] === 0) {
         const n = h[i + 2];
-        let s = '', ok = true;
-        for (let k = 0; k < n; k++) { const c = h[i + 4 + k]; if (c < 0x20 || c > 0x7e) { ok = false; break; } s += String.fromCharCode(c); }
+        let ok = true;
+        for (let k = 0; k < n; k++) if (h[i + 4 + k] < 0x20 || h[i + 4 + k] === 0x7f) { ok = false; break; }
+        const s = ok ? new TextDecoder().decode(h.subarray(i + 4, i + 4 + n)) : '';
         if (ok && !s.startsWith('NONE:') && !out.includes(s)) out.push(s);
       }
     }
@@ -142,15 +143,32 @@
     return out;
   }
 
+  // The game stores the name as typed in game, which can carry a clan tag ("VIT | Hera"); the API has the bare name.
+  function matchPlayers(hdrNames, api) {
+    const norm = s => String(s == null ? '' : s).toLowerCase().trim();
+    const used = new Set(), out = new Array(hdrNames.length).fill(null);
+    const take = (i, k) => { used.add(k); out[i] = api[k]; };
+    hdrNames.forEach((nm, i) => { const k = api.findIndex((p, j) => !used.has(j) && norm(p.name) === norm(nm)); if (k >= 0) take(i, k); });
+    hdrNames.forEach((nm, i) => {
+      if (out[i]) return;
+      let best = -1;
+      api.forEach((p, k) => { const a = norm(p.name); if (!used.has(k) && a.length >= 2 && norm(nm).endsWith(a) && (best < 0 || a.length > norm(api[best].name).length)) best = k; });
+      if (best >= 0) take(i, best);
+    });
+    const freeH = out.map((o, i) => o ? -1 : i).filter(i => i >= 0), freeA = api.map((p, k) => used.has(k) ? -1 : k).filter(k => k >= 0);
+    if (freeH.length === 1 && freeA.length === 1) take(freeH[0], freeA[0]);        // one left on each side: they are the same player
+    return out;
+  }
+
   // ------------------------------------------------------------------ rebuilding the opening
   function analyze(parsed, hdr, names, rawMatch, profileId) {
     const OBJ = names.objects, TECH = names.technologies;
     const objs = scanObjects(hdr);
     const api = (rawMatch.teams || []).flatMap(t => (t.players || []).map(p => Object.assign({ team: t.teamId }, p)));
-    const byName = new Map(api.map(p => [String(p.name).toLowerCase(), p]));
-    const players = playerNames(hdr, api.length).map((nm, i) => {
-      const a = byName.get(nm.toLowerCase()) || {};
-      return { slot: i + 1, name: nm, civ: a.civName || null, rating: a.rating == null ? null : a.rating, won: a.won == null ? null : a.won, profile: a.profileId || null };
+    const hdrNames = playerNames(hdr, api.length), matched = matchPlayers(hdrNames, api);
+    const players = hdrNames.map((nm, i) => {
+      const a = matched[i] || {};
+      return { slot: i + 1, name: a.name || nm, civ: a.civName || null, rating: a.rating == null ? null : a.rating, won: a.won == null ? null : a.won, profile: a.profileId || null };
     });
     const recorder = (players.find(p => p.profile === Number(profileId)) || players[0]).slot;
     const endMs = parsed.duration;
@@ -200,7 +218,7 @@
       const o = objs.get(oid);
       if (!o) return null;
       const nm = OBJ[o[0]] || '';
-      if (FOOD_NAMES.has(nm)) return ['food', LABELS[nm] || nm.toLowerCase()];
+      if (FOOD_NAMES.has(nm)) return ['food', LABELS[nm] || 'hunt'];      // the bundled list can be stale for the rarer animals, so only the sure names are shown
       if (nm.includes('Tree') || nm === 'Bush A' || nm === 'Bush B') return ['wood', 'trees'];   // 'Bush B' ringed round each Town Center = straggler trees
       if (nm === 'Gold Mine') return ['gold', 'gold'];
       if (nm === 'Stone Mine') return ['stone', 'stone'];
@@ -220,6 +238,13 @@
       if (nm && (!FOOD_NAMES.has(nm) || nm === 'Fruit Bush' || nm === 'Forage Bush')) staticPts.push([v[1], v[2], c[0], c[1]]);
     }
     const nearest = (pts, x, y) => { let best = null, bd = Infinity; for (const q of pts) { const d = dist(x, y, q[0], q[1]); if (d < bd) { bd = d; best = q; } } return best; };
+    function dropoffFor(nm, x, y) {
+      const pool = nm === 'Mill' ? staticPts.filter(q => q[2] === 'food') : nm === 'Lumber Camp' ? staticPts.filter(q => q[2] === 'wood')
+        : nm === 'Mining Camp' ? staticPts.filter(q => q[2] === 'gold' || q[2] === 'stone') : staticPts;
+      const q = nearest(pool, x, y);
+      if (q && dist(x, y, q[0], q[1]) <= 12) return [q[2], q[3]];
+      return nm === 'Mill' ? ['food', 'farm'] : nm === 'Lumber Camp' ? ['wood', 'trees'] : nm === 'Mining Camp' ? ['gold', 'gold'] : null;
+    }
     const farmBuilds = acts.filter(a => a.a === 'BUILD' && a.x > 0 && bname(a.building) === 'Farm');
 
     function classify(p, a, t) {
@@ -246,9 +271,10 @@
     // villager creation times
     for (const p of players) {
       const s = p.slot, mine = acts.filter(a => a.pid === s);
-      p.ages = mine.filter(a => a.a === 'RESEARCH' && AGE_TECH[a.tech]).map(a => ({ name: AGE_TECH[a.tech], click: a.t, done: (ageDone[s] || {})[AGE_TECH[a.tech]] || null }));
+      p.ages = mine.filter(a => a.a === 'RESEARCH' && AGE_TECH[a.tech]).map(a => ({ name: AGE_TECH[a.tech], click: a.t, done: (ageDone[s] || {})[AGE_TECH[a.tech]] || null }))
+        .filter((a, i, arr) => arr.findIndex(b => b.name === a.name) === i);
       const busy = p.ages.map(a => [a.click, a.done || a.click + 130000]);
-      if (s === recorder) p._created = recVill.slice();
+      if (s === recorder && recVill.length >= 5) p._created = recVill.slice();       // the recorder's own "Villager Created" messages are exact; without them, replay the queue
       else {
         const created = [];
         let free = 0;
@@ -305,8 +331,7 @@
         else if (a.a === 'BUILD' && ids.length) {
           const nm = bname(a.building);
           if (['Lumber Camp', 'Mill', 'Mining Camp', 'Farm', 'Settlement'].includes(nm)) {
-            const near = nearest(staticPts, a.x, a.y);
-            const c = { 'Lumber Camp': ['wood', 'trees'], Mill: ['food', 'berries'], Farm: ['food', 'farm'] }[nm] || (near ? [near[2], near[3]] : null);
+            const c = nm === 'Farm' ? ['food', 'farm'] : dropoffFor(nm, a.x, a.y);
             if (c) events.push({ t: a.t, kind: 'order', c, ids });
           }
         }
@@ -349,9 +374,12 @@
           const nm = bname(a.building);
           const kind = MILITARY_BLD.has(nm) ? 'military' : DROPOFF_BLD.has(nm) ? 'dropoff' : nm === 'House' ? 'house' : nm === 'Farm' ? 'farm' : nm === 'Town Center' ? 'tc' : 'other';
           const b = { t: a.t, name: nm, kind, x: Math.round(a.x), y: Math.round(a.y) };
-          if (kind === 'dropoff') { const near = nearest(staticPts, a.x, a.y); b.serves = near ? near[3] : null; }
+          if (kind === 'dropoff') { const c = dropoffFor(nm, a.x, a.y); b.serves = c ? c[1] : null; }
           blds.push(b);
-        } else if (a.a === 'RESEARCH' && !AGE_TECH[a.tech]) techs.push({ t: a.t, name: TECH_NAMES[a.tech] || TECH[a.tech] || 'tech ' + a.tech });
+        } else if (a.a === 'RESEARCH' && !AGE_TECH[a.tech]) {
+          const nm = TECH_NAMES[a.tech] || TECH[a.tech] || 'tech ' + a.tech;
+          if (!techs.some(x => x.name === nm && a.t - x.t < 3000)) techs.push({ t: a.t, name: nm });      // same tech sent to several buildings at once
+        }
         else if (a.a === 'DE_QUEUE' && !VILLAGER_TYPES.has(a.unit)) units.push({ t: a.t, name: tname(a.unit), n: a.amount });
       }
       p.buildings = blds; p.techs = techs; p.units = units;
