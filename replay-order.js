@@ -28,8 +28,9 @@
   const MILITARY_BLD = new Set(['Barracks', 'Archery Range', 'Stable', 'Siege Workshop', 'Castle', 'Krepost', 'Donjon']);
   const DROPOFF_BLD = new Set(['Lumber Camp', 'Mining Camp', 'Mill', 'Settlement', 'Mule Cart', 'Dock', 'Folwark']);
   const AGE_TECH = { 101: 'Feudal Age', 102: 'Castle Age', 103: 'Imperial Age' };
-  const FOOD_NAMES = new Set(['Wild Boar', 'Deer', 'Goose', 'Sheep', 'Llama', 'Fruit Bush', 'Forage Bush', 'Javelina', 'Zebra', 'Ostrich', 'Gazelle', 'Elephant', 'Turkey', 'Ibex']);
-  const LABELS = { 'Wild Boar': 'boar', Deer: 'deer', Goose: 'goose', Sheep: 'sheep', Llama: 'llama', 'Fruit Bush': 'berries', 'Forage Bush': 'berries', };
+  const LIVESTOCK = { Sheep: 'sheep', Goat: 'goat', Pig: 'pig', Llama: 'llama', 'Cow A': 'cow', 'Cow B': 'cow', 'Cow C': 'cow', 'Cow D': 'cow' };      // the herd animals villagers are sent to at the start
+  const FOOD_NAMES = new Set(['Wild Boar', 'Deer', 'Goose', 'Fruit Bush', 'Forage Bush', 'Javelina', 'Zebra', 'Ostrich', 'Gazelle', 'Elephant', 'Turkey', 'Ibex', 'Wild Horse', 'Wild Camel', 'Wild Bactrian Camel', 'Rhinoceros', ...Object.keys(LIVESTOCK)]);
+  const LABELS = Object.assign({ 'Wild Boar': 'boar', Deer: 'deer', Goose: 'goose', 'Fruit Bush': 'berries', 'Forage Bush': 'berries' }, LIVESTOCK);
   const VILLAGER_TYPES = new Set([83, 293]);
   // Extra villagers some civs get at the start. With a nomad start they only appear once the first Town Center is finished.
   const START_EXTRA = { Chinese: 3, Maya: 1 };
@@ -254,8 +255,10 @@
       return null;
     }
     for (const p of players) {      // what a villager does with no rally point: the sheep (or the Inca's llama) beside the start Town Center
-      const near = p.tc && [...objs].some(([o, v]) => dist(v[1], v[2], p.tc[0], p.tc[1]) <= 8 && (OBJ[v[0]] === 'Sheep' || (!OBJ[v[0]] && objClass(o, p) && objClass(o, p)[1] !== 'hunt')));
-      p.auto_food = (near ? (p.civ === 'Inca' ? 'llama' : 'sheep') : 'nearest food') + ' (no rally set)';
+      const near = p.tc ? [...objs].filter(([o, v]) => dist(v[1], v[2], p.tc[0], p.tc[1]) <= 9) : [];
+      const herd = near.find(([o, v]) => LIVESTOCK[OBJ[v[0]]]);
+      const unknownAnimal = near.some(([o, v]) => !OBJ[v[0]] && objClass(o, p) && objClass(o, p)[1] !== 'hunt');
+      p.auto_food = (herd ? LIVESTOCK[OBJ[herd[1][0]]] : unknownAnimal ? (p.civ === 'Inca' ? 'llama' : 'sheep') : 'nearest food') + ' (no rally set)';
     }
     const resPts = [], staticPts = [];
     for (const [o, v] of objs) {
