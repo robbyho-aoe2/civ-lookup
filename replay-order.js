@@ -425,7 +425,7 @@
     add(0, 'start', v.start_label ? `Start: ${n0} villagers go to the ${WORDS[v.start_label] || v.start_label}` : `Start: ${n0} villagers`, false);
     if (v.start_split) { const r = [0].concat(v.start_split); S[0].split = splitText(r); }
 
-    if (ex) add(ex.t, 'build', `Town Center finished: ${ex.n} bonus villager${ex.n > 1 ? 's' : ''} arrive`);
+    if (ex) add(ex.t, 'build', `Town Center finished: ${ex.n} bonus villager${ex.n > 1 ? 's arrive' : ' arrives'}`);
     const cr = v.created_to.filter(c => c.t <= windowMs);
     for (let i = 0; i < cr.length;) {
       let j = i;
