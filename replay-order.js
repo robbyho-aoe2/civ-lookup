@@ -253,6 +253,10 @@
       }
       return null;
     }
+    for (const p of players) {      // what a villager does with no rally point: the sheep (or the Inca's llama) beside the start Town Center
+      const near = p.tc && [...objs].some(([o, v]) => dist(v[1], v[2], p.tc[0], p.tc[1]) <= 8 && (OBJ[v[0]] === 'Sheep' || (!OBJ[v[0]] && objClass(o, p) && objClass(o, p)[1] !== 'hunt')));
+      p.auto_food = (near ? (p.civ === 'Inca' ? 'llama' : 'sheep') : 'nearest food') + ' (no rally set)';
+    }
     const resPts = [], staticPts = [];
     for (const [o, v] of objs) {
       if (!(v[1] > 0 && v[1] < 260)) continue;
@@ -378,7 +382,7 @@
       const timeline = [], reassign = [], rallyLog = [], createdTo = [];
       for (const e of all) {
         if (e.kind === 'create') {
-          const r = rally || ['food', 'no rally set'];
+          const r = rally || ['food', p.auto_food];     // no rally point yet: confirmed in CaptureAge, the game sends a new villager straight to the nearest sheep
           state.set('n' + nNew++, r[0]);
           createdTo.push({ t: e.t, to: r[0], label: r[1] });
         } else if (e.kind === 'rally') {
@@ -411,6 +415,13 @@
         timeline.push([e.t, cnt.food, cnt.wood, cnt.gold, cnt.stone, cnt.idle]);
         if (e.t <= 40000) { const c0 = { food: 0, wood: 0, gold: 0, stone: 0, idle: 0 }; for (const [k, v] of state) if (k[0] === 's') c0[v]++; startSplit = [c0.food, c0.wood, c0.gold, c0.stone]; }     // where the start villagers are once their first orders are in
       }
+      // when each new villager is first given an order of its own (a gather or build command that names its id): how long it stood at the Town Center
+      const firstCmd = new Map();
+      for (const a of acts) {
+        if (a.pid !== s || !a.ids || !a.ids.length || (a.a !== 'ORDER' && a.a !== 'BUILD' && a.a !== 'STOP')) continue;
+        for (const vid of a.ids) { const k = idmap.get(vid); if (k != null && !firstCmd.has(k) && created[k - 1] != null && a.t >= created[k - 1]) firstCmd.set(k, a.t); }
+      }
+      createdTo.forEach((c, i) => { c.first_order = firstCmd.get(i + 1) || null; });
       p.villagers = { extra: p.extra_villagers || null, bells, created, created_to: createdTo, timeline, rally: rallyLog, reassign, start: startVills[s].length, start_label: Object.entries(startVotes).sort((a, b) => b[1] - a[1])[0]?.[0] || null, start_split: startSplit };
 
       const blds = [], techs = [], units = [];
