@@ -1480,7 +1480,7 @@ function render(content, entry, player) {
     }).join('');
     const rough = on > 900000 ? 'After about 15 minutes the food / wood / gold split is a rough guess (second Town Centers, farm re-seeding). The buildings, techs and units are what the player ordered. ' : '';
     return `<div class="bo-panel">${head}${tabs}<div class="bo-list">${rows}</div>` +
-      `<div class="bo-foot"><button type="button" class="bo-copy" data-mid="${raw.matchId}">Copy as text</button><span>Times are when the order was given. Right-hand column: villagers after that step, then the food / wood / gold split (an estimate). ${rough}Read from ${escapeHtml(who.name || 'the player')}'s recording${st.data.profile !== st.pid ? ' (another player\'s, since theirs wasn\'t available)' : ''}.</span></div></div>`;
+      `<div class="bo-foot"><button type="button" class="bo-copy" data-mid="${raw.matchId}">Copy as text</button><span>Times are when the order was given. Right-hand column: villagers after that step, then the food / wood / gold split (an estimate). ${rough}${st.data.profile === st.pid ? `Read from ${escapeHtml(who.name || 'the player')}'s own recording.` : ''}</span></div></div>`;
   }
   document.addEventListener('click', e => {
     const b = e.target.closest('.mc-bo');
