@@ -31,6 +31,8 @@
   const FOOD_NAMES = new Set(['Wild Boar', 'Deer', 'Goose', 'Sheep', 'Llama', 'Fruit Bush', 'Forage Bush', 'Javelina', 'Zebra', 'Ostrich', 'Gazelle', 'Elephant', 'Turkey', 'Ibex']);
   const LABELS = { 'Wild Boar': 'boar', Deer: 'deer', Goose: 'goose', Sheep: 'sheep', Llama: 'llama', 'Fruit Bush': 'berries', 'Forage Bush': 'berries', };
   const VILLAGER_TYPES = new Set([83, 293]);
+  // Extra villagers some civs get at the start. With a nomad start they only appear once the first Town Center is finished.
+  const START_EXTRA = { Chinese: 3, Maya: 1 };
   const WORDS = { trees: 'wood', hunt: 'hunted animals' };
   const RES_LETTER = { food: 'F', wood: 'W', gold: 'G', stone: 'S' };
   const DETAIL_UNTIL = 660000;   // every villager gets its own step up to 11:00; after that runs are grouped so a full game stays readable
@@ -182,6 +184,7 @@
       // no Town Center at the start (a nomad-style start): use the first one the player trained villagers from, and where they built it
       const fq = acts.find(a => a.pid === p.slot && a.a === 'DE_QUEUE' && VILLAGER_TYPES.has(a.unit) && a.ids.length);
       p.tc_id = fq ? fq.ids[0] : null;
+      if (fq && START_EXTRA[p.civ]) p.extra_villagers = { t: fq.t, n: START_EXTRA[p.civ] };      // the first villager is queued as the Town Center finishes
       const b = fq && acts.filter(a => a.pid === p.slot && a.a === 'BUILD' && a.t <= fq.t && (BUILDING_NAMES[a.building] || names.objects[a.building]) === 'Town Center').pop();
       p.tc = b ? [b.x, b.y] : null;
     });
@@ -385,7 +388,7 @@
         timeline.push([e.t, cnt.food, cnt.wood, cnt.gold, cnt.stone]);
         if (e.t <= 40000) { const c0 = { food: 0, wood: 0, gold: 0, stone: 0 }; for (const [k, v] of state) if (k[0] === 's') c0[v]++; startSplit = [c0.food, c0.wood, c0.gold, c0.stone]; }     // where the start villagers are once their first orders are in
       }
-      p.villagers = { created, created_to: createdTo, timeline, rally: rallyLog, reassign, start: startVills[s].length, start_label: Object.entries(startVotes).sort((a, b) => b[1] - a[1])[0]?.[0] || null, start_split: startSplit };
+      p.villagers = { extra: p.extra_villagers || null, created, created_to: createdTo, timeline, rally: rallyLog, reassign, start: startVills[s].length, start_label: Object.entries(startVotes).sort((a, b) => b[1] - a[1])[0]?.[0] || null, start_split: startSplit };
 
       const blds = [], techs = [], units = [];
       for (const a of acts) {
@@ -416,11 +419,13 @@
     const base = [0, v.start, 0, 0, 0];      // before the first rally/order/villager: just the start villagers
     const at = ms => { let last = base; for (const r of tl) { if (r[0] <= ms) last = r; else break; } return last; };
     const S = [];
-    const add = (t, kind, text, split, res) => { const r = at(t); S.push({ t, kind, text, vills: r[1] + r[2] + r[3] + r[4], split: split ? splitText(r) : '', res: res || null }); };
+    const ex = v.extra && v.extra.t <= windowMs ? v.extra : null;      // bonus villagers that arrive with a nomad start's Town Center; not in the split, since where they go isn't recorded
+    const add = (t, kind, text, split, res) => { const r = at(t); S.push({ t, kind, text, vills: r[1] + r[2] + r[3] + r[4] + (ex && t >= ex.t ? ex.n : 0), split: split ? splitText(r) : '', res: res || null }); };
     const n0 = v.start;
     add(0, 'start', v.start_label ? `Start: ${n0} villagers go to the ${WORDS[v.start_label] || v.start_label}` : `Start: ${n0} villagers`, false);
     if (v.start_split) { const r = [0].concat(v.start_split); S[0].split = splitText(r); }
 
+    if (ex) add(ex.t, 'build', `Town Center finished: ${ex.n} bonus villager${ex.n > 1 ? 's' : ''} arrive`);
     const cr = v.created_to.filter(c => c.t <= windowMs);
     for (let i = 0; i < cr.length;) {
       let j = i;
