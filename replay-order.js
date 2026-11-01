@@ -22,7 +22,8 @@
   // Settlement (2556) is the drop-off the South American civs build in place of mills and camps; Incas and Tupi both use this id.
   const BUILDING_NAMES = { 2556: 'Settlement' };
   const UNIT_NAMES = { 2550: 'Champi Scout', 1963: 'Llama' };
-  const TECH_NAMES = { 1402: 'Champi Runner' };
+  // the Champi line (Inca, Tupi, Muisca, Mapuche); names read off the game's own "Research Complete" messages in a Tupi recording
+  const TECH_NAMES = { 1402: 'Champi Runner', 1351: 'Champi Warrior', 1352: 'Elite Champi Warrior' };
   const MILITARY_BLD = new Set(['Barracks', 'Archery Range', 'Stable', 'Siege Workshop', 'Castle', 'Krepost', 'Donjon']);
   const DROPOFF_BLD = new Set(['Lumber Camp', 'Mining Camp', 'Mill', 'Settlement', 'Dock', 'Folwark']);
   const AGE_TECH = { 101: 'Feudal Age', 102: 'Castle Age', 103: 'Imperial Age' };
