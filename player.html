@@ -1389,7 +1389,10 @@ function render(content, entry, player) {
     // Replay download (opens through the game's own aoe.ms link, so like Spectate on PC it only helps on a PC): hidden on phones
     const replayLink = raw.matchId != null && raw.finished
       ? `<span class="mc-replay"> · <a class="mc-insights" href="https://aoe.ms/replay/?gameId=${raw.matchId}&profileId=${me}" target="_blank" rel="noopener" title="Download the game recording (.aoe2record) to watch it in Age of Empires II on a PC">⬇ Replay</a></span>` : '';
-    const meta = [recentLabel(raw), ago && `<span class="mc-ago">${escapeHtml(ago)}${dur ? ' · ' + fmtLong(dur) : ''}${insightsLink ? ' · ' + insightsLink : ''}${replayLink}</span>`, oddsMeta(raw, me, won)].filter(Boolean);
+    // Spectate a game that is still going (the same aoe2de:// link Console Live and Insights use); it opens the game on a PC, so it is hidden on phones too
+    const spectateLink = live && raw.matchId != null
+      ? `<span class="mc-replay"> · <a class="mc-insights" href="aoe2de://1/${raw.matchId}" title="Opens the game to spectate in Age of Empires II on a PC where it is installed (the same link Insights uses)">▶ Spectate on PC</a></span>` : '';
+    const meta = [recentLabel(raw), ago && `<span class="mc-ago">${escapeHtml(ago)}${dur ? ' · ' + fmtLong(dur) : ''}${insightsLink ? ' · ' + insightsLink : ''}${spectateLink}${replayLink}</span>`, oddsMeta(raw, me, won)].filter(Boolean);
     // Build order: any player in a finished game, read from that player's own recording (see replay-order.js)
     const canBuildOrder = raw.matchId != null && !!raw.finished;
     const boOpen = canBuildOrder ? RS.bo.get(raw.matchId) : null;
