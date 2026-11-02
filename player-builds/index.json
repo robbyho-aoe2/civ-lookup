@@ -1,0 +1,19 @@
+{
+ "updated": "2026-11-02",
+ "builds": [
+  {
+   "id": "13623295-romans-scorpions",
+   "profileId": 13623295,
+   "player": "ALPO4769",
+   "civ": "Romans",
+   "plan": "scorpions",
+   "title": "Into Scorpions",
+   "blurb": "Fast Castle at about 25 villagers, then Siege Workshops and Scorpions backed by spearmen and rams.",
+   "games": 111,
+   "wins": 69,
+   "map": null,
+   "mode": "mostly team games (95 of 111)",
+   "file": "13623295-romans-scorpions.json"
+  }
+ ]
+}

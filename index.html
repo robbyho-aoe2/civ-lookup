@@ -238,6 +238,7 @@ header{
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <script src="pwa.js?v=312" defer></script>
 <script src="imposters.js?v=4"></script>
+<script src="player-builds.js?v=1"></script>
 <meta name="description" content="Civ tier lists, unit and tech comparisons and player matchups for Age of Empires II.">
 <link rel="canonical" href="https://aoe2autoscout.com/">
 <meta property="og:site_name" content="AoE2 Auto Scout">
@@ -6286,6 +6287,15 @@ function showCivInfo(civ) {
   const p = document.getElementById('info-panel');
   p.innerHTML = `<button class="close-panel" onclick="closePanel()">×</button>` + civInfoHtml(civ, false);
   p.classList.add('visible');
+  // links to the build orders worked out from real players' replays for this civ
+  PlayerBuilds.forCiv(civ).then(bs => {
+    if (!bs.length || window._currentCivInfo !== civ || p.querySelector('.civ-pb')) return;
+    const d = document.createElement('div');
+    d.className = 'civ-pb';
+    d.style.cssText = 'margin:14px 0 0;border-top:1px solid var(--border);padding-top:12px';
+    d.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--amberL);margin-bottom:6px">📋 Player build orders for ${civ}</div>` + bs.map(b => `<a href="${PlayerBuilds.href(b)}" style="display:block;font-size:12px;color:var(--text);text-decoration:none;padding:6px 0;border-bottom:1px solid var(--border)">${b.player} · ${b.title} <span style="color:var(--text2)">· ${b.games} games${b.wins != null ? ', ' + b.wins + '–' + (b.games - b.wins) : ''}${b.map ? ' · ' + b.map : ''}</span> →</a>`).join('');
+    p.appendChild(d);
+  });
   p.querySelectorAll('.arch-rank-ring').forEach(el => {
     el.addEventListener('click', () => {
       selectArchetype(+el.dataset.archI);

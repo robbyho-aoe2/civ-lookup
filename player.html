@@ -295,6 +295,7 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <script src="pwa.js?v=312" defer></script>
 <script src="imposters.js?v=4"></script>
+<script src="player-builds.js?v=1"></script>
 <meta name="description" content="Player Spotlight: ratings, civs, maps, recent games and head-to-heads for any Age of Empires II player.">
 <meta property="og:site_name" content="AoE2 Auto Scout">
 <meta property="og:type" content="website">
@@ -402,6 +403,16 @@ async function attachProScoutLink(entry) {
     if (!hit || !el) return;
     el.innerHTML = `<a class="nc-link-a" href="${d.base}?player=${encodeURIComponent(hit.name)}" target="_blank" rel="noopener">📊 See ${escapeHtml(hit.name)} on the Tournament Auto Scout ↗ <span>pro tournament results</span></a>`;
   } catch (e) { /* not on the tournament site, or map unavailable */ }
+}
+
+// "Reverse-engineered build orders": shown when player-builds/ holds a build order worked out from this player's replays.
+async function attachPlayerBuildsLink(entry) {
+  try {
+    const builds = await PlayerBuilds.forPlayer(entry.profileId);
+    const el = document.getElementById('pb-link');
+    if (!builds.length || !el) return;
+    el.innerHTML = builds.map(b => `<a class="nc-link-a" href="${PlayerBuilds.href(b)}" style="margin-right:8px">📋 ${escapeHtml(b.civ)} build order: ${escapeHtml(b.title)} → <span>${b.games} games${b.wins != null ? ', ' + b.wins + '–' + (b.games - b.wins) : ''}</span></a>`).join('');
+  } catch (e) { /* no builds for this player, or the list is unavailable */ }
 }
 
 // ---- live lookup for players outside the tracked roster ----
@@ -1121,6 +1132,7 @@ function render(content, entry, player) {
       ${videoHtml ? `<div class="video-links">${videoHtml}</div>` : ''}
       <div id="nc-link"></div>
       <div id="pro-link"></div>
+      <div id="pb-link"></div>
     </div>
     ${altsCardHtml}
 
@@ -1210,6 +1222,7 @@ function render(content, entry, player) {
 
   attachTournamentLink(entry);
   attachProScoutLink(entry);
+  attachPlayerBuildsLink(entry);
   attachMyPlayerButton(entry);
   attachFollowButton(entry);
   const badgesEl = document.getElementById('player-badges');

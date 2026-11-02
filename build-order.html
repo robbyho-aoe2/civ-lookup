@@ -232,16 +232,17 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <div class="mode-toggle">
       <button class="mode-btn" data-mode="production" type="button"><b>⚙️ Constant Production</b><span>Check off what you have and what you want to keep producing — see the ideal villager split.</span></button>
       <button class="mode-btn" data-mode="optimize" type="button"><b>⚡ Optimize</b><span>Pick a unit and go — the fastest path to constant production of it.</span></button>
+      <button class="mode-btn" data-mode="players" type="button"><b>📋 Player Builds</b><span>Build orders worked out from real players' replays.</span></button>
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" data-mode-hide="players">
     <h2 id="intro-heading">What this does</h2>
     <p class="desc" id="intro-desc" style="margin-bottom:0"></p>
     <p class="assumptions" id="intro-assumptions"></p>
   </div>
 
-  <div class="card">
+  <div class="card" data-mode-hide="players">
     <h2>Civilization</h2>
     <p class="desc">Adds their unique unit(s) to the roster below and applies any economy bonus they have.</p>
     <select id="civ-select"></select>
@@ -285,7 +286,13 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
     <div class="tech-grid" id="tech-grid"></div>
   </div>
 
-  <div class="card">
+  <div class="card" data-mode-only="players">
+    <h2>Player Builds</h2>
+    <p class="desc">Build orders reverse-engineered from real replays: what a player usually builds, researches and queues, in order by villager count, with where their villagers are working at each step.</p>
+    <div id="pb-root"></div>
+  </div>
+
+  <div class="card" data-mode-hide="players">
     <h2>Villager Allocation</h2>
     <p class="desc" id="results-desc">Add units above to see the split.</p>
     <div id="results-body"></div>
@@ -301,6 +308,7 @@ tr.unique-row .uname::after{content:' ★';color:var(--amberL);}
   </div>
 </div>
 
+<script src="player-builds.js?v=1"></script>
 <script>
 // ─── Placeholder data — replaced with researched AoE2:DE numbers before ship ───
 const DATA = {
@@ -8802,6 +8810,7 @@ function renderCurrentModeResults() {
 }
 
 const MODE_COPY = {
+  players: { introDesc: '', introAssumptions: '', ecoDesc: '', armyDesc: '' },
   production: {
     introDesc: "Check off the economy upgrades you'll have and the army you want to keep producing — this works out the resource income you need and tells you how many villagers to put on Wood/Food/Gold/Stone to sustain it.",
     introAssumptions: 'Steady-state estimate, not a minute-by-minute timeline: it assumes you keep this mix in constant production forever (not a one-time batch) and food comes from farms (not hunting/berries). Villager counts are a target ratio to sustain that rotation, not "move vills at pop X" instructions. The Wood total includes farm upkeep (60 wood to rebuild a depleted farm) and house upkeep (25 wood per House, 5 pop each) — food and population both need wood villagers behind them, not just their own gather rate.',
@@ -8826,9 +8835,18 @@ function setMode(mode) {
   document.querySelectorAll('[data-mode-only]').forEach(el => {
     el.style.display = el.dataset.modeOnly === mode ? '' : 'none';
   });
+  document.querySelectorAll('[data-mode-hide]').forEach(el => {
+    if (el.dataset.modeHide === mode) el.style.display = 'none';
+    else if (!el.dataset.modeOnly) el.style.display = '';
+  });
+  if (mode !== 'players' && /[?&]mode=players/.test(location.search)) history.replaceState(null, '', location.pathname);
   const copy = MODE_COPY[mode];
   document.getElementById('intro-desc').textContent = copy.introDesc;
   document.getElementById('intro-assumptions').textContent = copy.introAssumptions;
+  if (mode === 'players') {
+    mountPlayerBuilds();
+    return;
+  }
   if (mode === 'production') {
     document.getElementById('eco-desc').textContent = copy.ecoDesc;
     updateArmyDesc();
@@ -8850,7 +8868,21 @@ function setMode(mode) {
 
 document.querySelectorAll('.mode-btn').forEach(btn => btn.addEventListener('click', () => setMode(btn.dataset.mode)));
 
-setMode('production');
+// Player Builds tab: the picker and the recipe view live in player-builds.js; a link can open one directly (?mode=players&build=ID)
+let pbMounted = false;
+const startParams = new URLSearchParams(location.search);
+function mountPlayerBuilds() {
+  if (pbMounted) return;
+  pbMounted = true;
+  PlayerBuilds.mount(document.getElementById('pb-root'), {
+    build: startParams.get('build'),
+    civ: startParams.get('civ') || '',
+    autoFirst: true,
+    onSelect: b => history.replaceState(null, '', location.pathname + '?mode=players&build=' + encodeURIComponent(b.id)),
+  });
+}
+
+setMode(startParams.get('mode') === 'players' ? 'players' : 'production');
 </script>
 </body>
 </html>
