@@ -955,6 +955,8 @@ const casterHtml = c => `<div class="caster">${c.name}${c.links.map(([label, url
 document.getElementById('caster-list').innerHTML = CASTERS.filter(c => !c.player).map(casterHtml).join('');
 document.getElementById('player-caster-list').innerHTML = CASTERS.filter(c => c.player).map(casterHtml).join('');
 const SCHEDULED_GAMES = [
+  { date: 'Thu, Nov 5', short: 'Nov 5', time: '4:00 pm ET', teams: ['uk', 'mexico'], games: ['1v1'], maps: { '1v1': 'Arena' }, caster: null },   // 9 pm GMT
+  { date: 'Fri, Nov 6', short: 'Nov 6', time: '4:00 pm ET', teams: ['uk', 'mexico'], games: ['2v2', '3v3', '4v4'], caster: null },   // 9 pm GMT
   // (past) { date: 'Fri, Oct 30', short: 'Oct 30', time: '5:00 pm ET', teams: ['mexico', 'ps5'], games: ['4v4'], maps: { '4v4': 'Steppe' }, caster: 'Old Peenuts' },
   // (past) { date: 'Fri, Oct 30', short: 'Oct 30', time: '5:00 pm ET', teams: ['uk', 'usa'], games: ['3v3', '4v4'], maps: { '3v3': 'Arena', '4v4': 'African Clearing' }, caster: 'Old Peenuts' },   // 9 pm GMT
   // { date: 'Sat, Oct 10', short: 'Oct 10', time: '3:00 pm ET', teams: ['usa', 'mexico'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
