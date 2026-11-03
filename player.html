@@ -65,6 +65,21 @@ header .back:hover{color:var(--amberL);}
 .mini-btn.on{color:var(--text2);}
 .mini-note{font-size:11px;color:var(--text3);text-decoration:none;}
 .mini-note:hover{color:var(--amberL);}
+.share-wrap{display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:14px;}
+.share-btn{font-family:inherit;font-size:13px;font-weight:700;padding:9px 20px;border-radius:22px;border:1px solid var(--amber);background:var(--amber);color:#07130d;cursor:pointer;}
+.share-btn:hover{background:var(--amberL);border-color:var(--amberL);}
+.share-hint{font-size:11px;color:var(--text3);}
+.share-modal{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px;}
+.share-modal[hidden]{display:none;}
+.share-box{background:var(--surf);border:1px solid var(--border2);border-radius:14px;padding:16px;width:100%;max-width:720px;max-height:100%;overflow:auto;}
+.share-box h3{margin:0 0 4px;font-size:15px;color:var(--amberL);}
+.share-box p{margin:0 0 12px;font-size:12px;color:var(--text2);}
+.share-box canvas{display:block;width:100%;height:auto;border-radius:8px;border:1px solid var(--border2);}
+.share-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.share-actions button{font-family:inherit;font-size:13px;font-weight:600;padding:8px 16px;border-radius:20px;border:1px solid var(--border2);background:var(--surf2);color:var(--text);cursor:pointer;}
+.share-actions button.primary{background:var(--amber);border-color:var(--amber);color:#07130d;font-weight:700;}
+.share-actions button:hover{border-color:var(--amberL);}
+.share-status{font-size:12px;color:var(--amberL);min-height:16px;margin-top:8px;}
 .nc-link-a span{font-weight:500;opacity:.85;}
 .video-links{display:flex;flex-wrap:wrap;gap:0 8px;}
 .video-links .nc-link-a{border-radius:14px;line-height:1.35;}
@@ -922,6 +937,128 @@ function attachFollowButton(entry) {
   wrap.appendChild(note);
 }
 
+// "Share player card": draws a card (name, ratings, record, top civs and maps for the ladder being viewed) on a canvas, then shares it
+// as an image with the player's page link (phones: the share sheet; elsewhere: copy link / save image).
+function attachShareButton(entry, player, getLadder) {
+  const badges = document.getElementById('player-badges');
+  if (!badges) return;
+  const site = 'https://aoe2autoscout.com/';
+  const linkFor = ladder => `${site}player.html?id=${entry.profileId}&ladder=${encodeURIComponent(ladder)}`;
+  const wrap = document.createElement('div');
+  wrap.className = 'share-wrap';
+  wrap.innerHTML = `<button type="button" class="share-btn">📤 Share ${escapeHtml(entry.name)}'s player card</button><span class="share-hint">Send it to a friend, or post it in your Discord</span>`;
+  const anchor = badges.nextElementSibling && badges.nextElementSibling.classList.contains('me-wrap') ? badges.nextElementSibling : badges;
+  anchor.insertAdjacentElement('afterend', wrap);
+
+  const top = (matches, key, n) => {
+    const by = new Map();
+    matches.forEach(m => { const k = m[key]; if (!k) return; const r = by.get(k) || { name: k, g: 0, w: 0 }; r.g++; if (m.won) r.w++; by.set(k, r); });
+    return [...by.values()].sort((a, b) => b.g - a.g || b.w - a.w).slice(0, n);
+  };
+  function drawCard(ladder) {
+    const matches = (player.ladders[ladder] || {}).matches || [];
+    const wins = matches.filter(m => m.won).length;
+    const durs = matches.map(m => m.dur).filter(d => d != null);
+    const rating = (entry.ratings || {})[ladder] ?? ((entry.peaks || {})[ladder] || {}).current ?? null;
+    const peak = ((entry.peaks || {})[ladder] || {}).peak;
+    const W = 1200, H = 675, c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const x = c.getContext('2d');
+    const F = (w, s) => `${w} ${s}px system-ui,-apple-system,"Segoe UI",sans-serif`;
+    const rr = (px, py, w, h, r) => { x.beginPath(); if (x.roundRect) x.roundRect(px, py, w, h, r); else x.rect(px, py, w, h); };
+    const fit = (txt, maxW, size, weight) => { let s = size; x.font = F(weight, s); while (x.measureText(txt).width > maxW && s > 20) { s -= 2; x.font = F(weight, s); } return s; };
+    const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#17130F'); g.addColorStop(1, '#0B0A08');
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#3F9B72'; x.fillRect(0, 0, 14, H);
+    x.textBaseline = 'alphabetic'; x.textAlign = 'left';
+    x.fillStyle = '#5FB88C'; x.font = F(800, 22); x.fillText('AoE2 AUTO SCOUT', 56, 58);
+    x.textAlign = 'right'; x.fillStyle = '#5C544A'; x.font = F(500, 22); x.fillText('aoe2autoscout.com', W - 56, 58);
+    x.textAlign = 'left';
+    fit(entry.name, W - 112, 76, 800); x.fillStyle = '#EDE8DD'; x.fillText(entry.name, 56, 148);
+    const sub = [entry.countryName, ladder, rating != null ? rating + ' rating' + (peak != null && peak !== rating ? ' (peak ' + peak + ')' : '') : ''].filter(Boolean).join('  ·  ');
+    x.fillStyle = '#8F8578'; x.font = F(500, 26); x.fillText(sub, 56, 190);
+    // record tiles
+    const wr = matches.length ? wins / matches.length * 100 : 0;
+    const tiles = [['GAMES', matches.length.toLocaleString(), '#EDE8DD'], ['WINS', wins.toLocaleString(), '#EDE8DD'], ['WIN RATE', wr.toFixed(1) + '%', wr >= 52 ? '#4ade80' : wr <= 48 ? '#f87171' : '#EDE8DD'], ['AVG GAME', durs.length ? fmtDur(durs.reduce((a, b) => a + b, 0) / durs.length) : '—', '#EDE8DD']];
+    const tw = (W - 112 - 3 * 18) / 4;
+    tiles.forEach(([l, v, col], i) => {
+      const tx = 56 + i * (tw + 18);
+      rr(tx, 224, tw, 118, 14); x.fillStyle = '#1F1A15'; x.fill(); x.strokeStyle = '#362E24'; x.lineWidth = 2; x.stroke();
+      x.fillStyle = '#8F8578'; x.font = F(700, 17); x.fillText(l, tx + 22, 262);
+      x.fillStyle = col; x.font = F(800, 52); x.fillText(v, tx + 22, 322);
+    });
+    // top civs and maps with a win-rate bar
+    const col = (title, rows, cx) => {
+      const cw = (W - 112 - 40) / 2;
+      x.fillStyle = '#5FB88C'; x.font = F(800, 20); x.fillText(title, cx, 392);
+      rows.forEach((r, i) => {
+        const y = 430 + i * 62, pct = r.w / r.g * 100;
+        x.fillStyle = '#EDE8DD'; x.font = F(700, 26); x.fillText(r.name, cx, y + 20);
+        x.textAlign = 'right'; x.fillStyle = '#8F8578'; x.font = F(500, 22); x.fillText(`${r.g} game${r.g === 1 ? '' : 's'} · ${pct.toFixed(0)}%`, cx + cw, y + 20); x.textAlign = 'left';
+        rr(cx, y + 30, cw, 10, 5); x.fillStyle = '#2A241D'; x.fill();
+        rr(cx, y + 30, Math.max(10, cw * pct / 100), 10, 5); x.fillStyle = pct >= 50 ? '#3F9B72' : '#c8553d'; x.fill();
+      });
+      if (!rows.length) { x.fillStyle = '#5C544A'; x.font = F(500, 22); x.fillText('No games yet', cx, 440); }
+    };
+    col('MOST-PLAYED CIVS', top(matches, 'civ', 3), 56);
+    col('MOST-PLAYED MAPS', top(matches, 'map', 3), 56 + (W - 112 - 40) / 2 + 40);
+    x.fillStyle = '#5C544A'; x.font = F(500, 20); x.fillText('Look up any player at aoe2autoscout.com', 56, H - 26);
+    return c;
+  }
+
+  let modal = null;
+  const open = () => {
+    const ladder = getLadder();
+    const url = linkFor(ladder);
+    const text = `${entry.name} on AoE2 Auto Scout: ratings, civs, maps and recent games`;
+    const canvas = drawCard(ladder);
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.className = 'share-modal';
+      modal.hidden = true;
+      modal.innerHTML = `<div class="share-box" role="dialog" aria-modal="true" aria-label="Share player card"><h3>Share ${escapeHtml(entry.name)}'s player card</h3><p>The card shows the ladder you are viewing. Anyone who opens the link lands on this page.</p><div class="share-canvas"></div><div class="share-actions"></div><div class="share-status" aria-live="polite"></div></div>`;
+      modal.addEventListener('click', e => { if (e.target === modal) modal.hidden = true; });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.hidden = true; });
+      document.body.appendChild(modal);
+    }
+    modal.querySelector('.share-canvas').replaceChildren(canvas);
+    const status = modal.querySelector('.share-status'); status.textContent = '';
+    const actions = modal.querySelector('.share-actions'); actions.replaceChildren();
+    const say = m => { status.textContent = m; };
+    const blobP = () => new Promise(res => canvas.toBlob(res, 'image/png'));
+    const fileName = `${entry.name.replace(/[^\w-]+/g, '_')}-player-card.png`;
+    const add = (label, fn, cls) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; if (cls) b.className = cls; b.addEventListener('click', fn); actions.appendChild(b); return b; };
+    const count = what => { try { window.goatcounter && window.goatcounter.count({ path: 'share-card-' + what, title: 'Share player card: ' + what, event: true }); } catch (e) {} };
+    const copyLink = async () => {
+      try { await navigator.clipboard.writeText(url); say('Link copied. Paste it anywhere.'); count('copy'); }
+      catch (e) { say('Copy this link: ' + url); }
+    };
+    if (navigator.share) {
+      add('📤 Share…', async () => {
+        try {
+          const blob = await blobP();
+          const file = blob && new File([blob], fileName, { type: 'image/png' });
+          if (file && navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], text: `${text}\n${url}`, title: text });
+          else await navigator.share({ text, url, title: text });
+          count('share');
+        } catch (e) { if (e && e.name !== 'AbortError') copyLink(); }
+      }, 'primary');
+    }
+    add('🔗 Copy link', copyLink, navigator.share ? '' : 'primary');
+    add('⬇ Save image', async () => {
+      const blob = await blobP();
+      if (!blob) { say('Could not make the image.'); return; }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      say('Image saved. Attach it to a post or message.'); count('save');
+    });
+    add('Close', () => { modal.hidden = true; });
+    modal.hidden = false;
+    count('open');
+  };
+  wrap.querySelector('.share-btn').addEventListener('click', open);
+}
+
 async function loadAndRender() {
   const content = document.getElementById('content');
   try {
@@ -1290,6 +1427,8 @@ function render(content, entry, player) {
       renderLadder(activeLadder);
     });
   });
+
+  attachShareButton(entry, player, () => activeLadder);
 
   const RS = { raws: [], seen: new Set(), page: 0, done: false, failed: false, loading: false, bulk: false, stop: false, ladder: 'All', open: new Set(), expanded: false, scout: new Set(), bo: new Map() };
   loadRecentPages(2);
