@@ -38,8 +38,8 @@
 
   if (!document.getElementById('imp-css')) {
     const st = document.createElement('style'); st.id = 'imp-css';
-    st.textContent = '.imp{display:inline-block;margin-left:3px;min-width:11px;padding:0 3px;border-radius:3px;font-size:9px;font-weight:700;line-height:12px;text-align:center;text-transform:lowercase;vertical-align:1px;cursor:help;font-style:normal;letter-spacing:0;}' +
-      '.imp.r{color:#7db4ff;border:1px solid rgba(125,180,255,.5);}.imp.i{color:#fbbf24;border:1px solid rgba(251,191,36,.5);}.imp.a{color:#c3a6ff;border:1px solid rgba(195,166,255,.5);}';
+    st.textContent = '.imp{display:inline-block;margin-left:3px;font-size:10px;font-weight:700;line-height:12px;text-transform:lowercase;vertical-align:1px;cursor:help;font-style:normal;letter-spacing:0;}' +
+      '.imp.r{color:#7db4ff;}.imp.i{color:#fbbf24;}.imp.a{color:#c3a6ff;}';
     document.head.appendChild(st);
   }
 
@@ -68,8 +68,16 @@
     });
   }
   window.tagImposters = scan;
-  let timer = null;
-  const later = () => { clearTimeout(timer); timer = setTimeout(() => scan(), 250); };
-  const start = () => { scan(); new MutationObserver(later).observe(document.body, { childList: true, subtree: true }); };
+  // Tag new content as soon as it is added, inside the observer callback (before the browser paints), so a list that re-renders
+  // on a timer (Console Live) never shows a name without its tag for a moment. Only the added nodes are scanned.
+  const onChange = muts => {
+    const roots = new Set();
+    muts.forEach(m => m.addedNodes.forEach(n => {
+      if (n.nodeType !== 1 || (n.classList && n.classList.contains('imp'))) return;
+      roots.add(n.parentElement || n);
+    }));
+    roots.forEach(r => { if (!r.isConnected) return; for (let p = r.parentElement; p; p = p.parentElement) if (roots.has(p)) return; scan(r); });
+  };
+  const start = () => { scan(); new MutationObserver(onChange).observe(document.body, { childList: true, subtree: true }); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
