@@ -1085,6 +1085,10 @@ const DRAFTS = [
     events: [['host', 'ban', 'arabia'], ['guest', 'ban', 'african-clearing'], ['none', 'pick', 'oasis'], ['host', 'pick', 'arena'], ['guest', 'pick', 'steppe'], ['host', 'pick', 'glade'], ['guest', 'pick', 'black-forest']] },
   { teams: ['usa', 'uk'], host: 'usa', guest: 'uk', url: 'https://aoe2cm.net/draft/cqlPD',
     events: [['host', 'ban', 'glade'], ['guest', 'ban', 'arabia'], ['none', 'pick', 'black-forest'], ['host', 'pick', 'steppe'], ['guest', 'pick', 'arena'], ['host', 'pick', 'african-clearing'], ['guest', 'pick', 'oasis']] },
+  { teams: ['usa', 'canada'], host: 'usa', guest: 'canada', url: 'https://aoe2cm.net/draft/zRQUt',
+    events: [['host', 'ban', 'arabia'], ['guest', 'ban', 'black-forest'], ['none', 'pick', 'steppe'], ['host', 'pick', 'african-clearing'], ['guest', 'pick', 'glade'], ['host', 'pick', 'arena'], ['guest', 'pick', 'oasis']] },
+  { teams: ['uk', 'mexico'], host: 'mexico', guest: 'uk', url: 'https://aoe2cm.net/draft/aMvVS',
+    events: [['host', 'ban', 'african-clearing'], ['guest', 'ban', 'arabia'], ['none', 'pick', 'arena'], ['host', 'pick', 'black-forest'], ['guest', 'pick', 'steppe'], ['host', 'pick', 'oasis'], ['guest', 'pick', 'glade']] },
 ];
 const draftFor = (a, b) => DRAFTS.find(d => (d.teams[0] === a.id && d.teams[1] === b.id) || (d.teams[0] === b.id && d.teams[1] === a.id));
 function draftHtml(a, b) {
