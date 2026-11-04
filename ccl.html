@@ -264,7 +264,12 @@ const CCL_GAME = {
   story: 'One player on each team is picked as a traitor by someone who is not playing. The traitor plays the game normally, but can betray and swap sides at any moment. The other three players cannot swap sides.',
   split: false,
   size: 8,
-  lobbyNote: 'Ryanp1001 is a maybe. Teams are set by the organizer.',
+  // Teams balanced on console team rating (Nov 4): 6297 vs 6293. rating = console team rating. sub fills in if someone drops.
+  teams: [
+    { name: 'Team A', accent: '#60a5fa', players: [{ name: 'Ice2207', id: 17828880, rating: 1672 }, { name: 'ManBearPig1511', id: 8764015, rating: 1612 }, { name: 'Seth41737spare', id: 16829189, rating: 1598 }, { name: 'Balinthusa', id: 16314476, rating: 1415 }] },
+    { name: 'Team B', accent: '#3F9B72', players: [{ name: 'GOAT Gobz', id: 8154765, rating: 1766 }, { name: 'MoraMora48', id: 13216763, rating: 1617 }, { name: 'D0cTOrSniper', id: 13323926, rating: 1525 }, { name: 'NotATheist', id: 14602117, rating: 1385 }] },
+  ],
+  sub: { name: 'Ryanp1001', id: 13885770, rating: 1592 },
   sides: [
     { name: 'The traitor', accent: '#C0392B', who: 'One player per team. Points depend on when you betray.',
       head: ['Betray', 'Points'], rows: [['Under 10 min', 6], ['10–29 min', 4], ['30–89 min', 2], ['90–119 min', 4], ['120+ min', 6], ['Never betray', -6]],
@@ -296,11 +301,17 @@ if (gameOn) {
     ? [`**${g.title}: ${res.headline}**`, `**Mongols** (${teams[1][0].pts} pts each): ${teams[1].map(p => p.name).join(', ')}`, `**Japan** (${teams[0][0].pts} pt each): ${teams[0].map(p => p.name).join(', ')}`, res.detail].join(nl)
     : [`**${g.title}** · ${g.when}`, `**Japan** (defend): ${teams[0].map(p => p.name).join(', ')}`, `**Mongols** (invade): ${teams[1].map(p => p.name).join(', ')}`].join(nl);
   const copyLabel = res ? 'Copy result for Discord' : 'Copy teams for Discord';
+  const tm = g.teams || null;
+  const tmText = () => [`**${g.title}** · ${g.when}`].concat(tm.map(t => `**${t.name}**: ${t.players.map(p => p.name).join(', ')}`)).concat(g.sub ? [`Sub: ${g.sub.name}`] : []).join(nl);
+  const tmTotals = tm ? tm.map(t => t.players.reduce((a, p) => a + p.rating, 0)) : [];
+  const tmBlock = tm ? `<div class="game-teams-bar"><h3>Teams · balanced on console team rating (${tmTotals.join(' vs ')})</h3><button type="button" class="game-copy" id="game-copy">${copyLabel}</button></div>` +
+    `<div class="game-sides" style="margin-bottom:14px">${tm.map(t => `<div class="game-side" style="--accent:${t.accent}"><h3>${esc(t.name)}</h3><ol class="game-roster">${t.players.map(p => `<li><a href="player.html?id=${p.id}">${esc(p.name)}</a><span>${p.rating}</span></li>`).join('')}</ol></div>`).join('')}</div>` +
+    (g.sub ? `<p class="note" style="font-size:12px;color:var(--text2);margin:0 0 16px">Sub: <a href="player.html?id=${g.sub.id}" style="color:var(--text);font-weight:600;text-decoration:none">${esc(g.sub.name)}</a> (${g.sub.rating}) steps in if someone drops.</p>` : '') : '';
   document.getElementById('game-body').innerHTML =
     `<div class="game-head">${g.map ? `<img src="img/maps/${g.map}.jpg" alt="" width="56" height="56">` : ''}<div><h2>${esc(g.title)}</h2><div class="game-when">${esc(g.when)}</div><div class="game-when">${esc(g.setup)}</div></div></div>` +
     `<p class="game-story">${esc(g.story)}</p>` +
     (res ? `<div class="game-result"><b>${esc(res.headline)}</b><span>${esc(res.detail)}</span></div>` : '') +
-    (teams ? `<div class="game-teams-bar"><h3>${res ? 'Points earned' : 'Teams · split by console 1v1 rating'}</h3><button type="button" class="game-copy" id="game-copy">${copyLabel}</button></div>`
+    (tm ? tmBlock : teams ? `<div class="game-teams-bar"><h3>${res ? 'Points earned' : 'Teams · split by console 1v1 rating'}</h3><button type="button" class="game-copy" id="game-copy">${copyLabel}</button></div>`
     : g.players && g.players.length ? `<div class="game-players"><h3>In the lobby (${g.players.length} of ${g.size || 8})</h3><div class="game-chips">${g.players.map(p => `<a class="game-chip" href="player.html?id=${p.id}">${esc(p.name)}</a>`).join('')}</div>${g.lobbyNote ? `<p class="note" style="font-size:11.5px;color:var(--text3);margin:10px 0 0">${esc(g.lobbyNote)}</p>` : ''}</div>` : '') +
     `<div class="game-sides">` +
     g.sides.map((sd, i) => `<div class="game-side" style="--accent:${sd.accent}"><h3>${sd.civ ? `<img src="img/civs/${sd.civ}.png" alt="">` : ''}${esc(sd.name)}</h3><p class="who">${esc(sd.who)}</p>${roster(i)}` +
@@ -308,7 +319,7 @@ if (gameOn) {
       (sd.note ? `<p class="note">${esc(sd.note)}</p>` : '') + `</div>`).join('') + `</div><p class="game-tag">${esc(g.tag)}</p><a class="ccl-discord" href="https://discord.gg/Xs56BRxZaq" target="_blank" rel="noopener" style="margin-top:14px">Sign in on Discord</a>`;
   const cb = document.getElementById('game-copy');
   if (cb) cb.addEventListener('click', () => {
-    const txt = discordText(), done = () => { cb.textContent = 'Copied!'; setTimeout(() => { cb.textContent = copyLabel; }, 1800); };
+    const txt = tm ? tmText() : discordText(), done = () => { cb.textContent = 'Copied!'; setTimeout(() => { cb.textContent = copyLabel; }, 1800); };
     const fallback = () => { const ta = document.createElement('textarea'); ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, fallback); else fallback();
   });
