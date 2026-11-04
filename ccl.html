@@ -79,7 +79,13 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .game-side h3{display:flex;align-items:center;gap:8px;font-size:14px;margin:0 0 4px;color:var(--text);}
 .game-side h3 img{width:22px;height:22px;}
 .game-side .who{font-size:12px;color:var(--text2);margin:0 0 8px;line-height:1.55;}
-.game-side table{margin-top:2px;}
+.game-side table{margin-top:2px;width:100%;}
+.game-side th{text-align:left;}
+.game-side th.num{text-align:right;}
+.game-side table{border-collapse:collapse;}
+.game-side th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);padding:4px 0;}
+.game-side td{font-size:13px;padding:5px 0;border-top:1px solid var(--border2);}
+.game-side td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;}
 .game-side .note{font-size:11.5px;color:var(--text3);margin:8px 0 0;line-height:1.55;}
 .game-tag{font-size:13px;color:var(--text);margin:16px 0 0;font-style:italic;}
 .game-roster{list-style:none;margin:0 0 10px;padding:0;}
@@ -96,6 +102,15 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .game-result span{font-size:12.5px;color:var(--text2);line-height:1.6;}
 .game-copy{cursor:pointer;font:inherit;font-size:12px;font-weight:700;padding:6px 14px;border-radius:20px;border:1px solid var(--amber);background:var(--amberBg);color:var(--amberL);}
 .game-copy:hover{background:var(--amber);color:var(--bg);}
+.civ-lock-sum{font-size:13px;color:var(--text2);line-height:1.7;margin:0 0 14px;}
+.civ-lock-sum b{color:var(--text);}
+.civ-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(124px,1fr));gap:8px;}
+.civ-cell{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:var(--radius);background:var(--surf2);border:1px solid var(--border2);font-size:12.5px;color:var(--text);min-width:0;}
+.civ-cell img{width:22px;height:22px;flex:none;}
+.civ-cell span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.civ-cell.used{opacity:.4;border-style:dashed;}
+.civ-cell.used img{filter:grayscale(1);}
+.civ-cell.used span{text-decoration:line-through;}
 .ccl-season{margin:0 0 22px;}
 .ccl-season:last-child{margin-bottom:0;}
 .ccl-season-name{font-size:17px;margin:0 0 4px;color:var(--text);}
@@ -169,6 +184,12 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
     <div id="extra-body"></div>
   </div>
 
+  <div class="card" id="civ-card">
+    <h2>Civ lock</h2>
+    <p class="desc">New this season: once a civ has been used in a CCL game, it cannot be used again. Greyed-out civs are taken.</p>
+    <div id="civ-body"></div>
+  </div>
+
   <div class="card" id="current-card">
     <h2 id="current-title">Current season</h2>
     <p class="desc" id="current-desc"></p>
@@ -193,6 +214,7 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
         <span class="ex">Example: in an 8-player FFA, 1st = 8 pts, … last = 1 pt. In team games, all team members get the same points.</span></li>
       <li><b>Multiple games.</b> Each game awards points independently, and the leaderboards track season totals.</li>
       <li><b>Conduct.</b> No griefing, FFA teaming, match-fixing or stream sniping. Trash talk is ok if respectful. Organizer rulings are final.</li>
+      <li><b>Civ lock (Season 4 trial).</b> Once a civ has been used in a CCL game, it cannot be used again this season. Used civs are tracked in the Civ lock card above.</li>
       <li><b>Admin and caster.</b> <a href="player.html?id=14602117">NotATheist</a></li>
       <li><b>Seasons.</b> 12-week seasons. Points reset each season. Standings are for bragging rights, titles and possible prizes.</li>
     </ol>
@@ -232,26 +254,32 @@ function standingsTable(rows) {
 }
 
 // This week's game. Set CCL_GAME to null (or let `until` pass) to hide the card.
+// split: false means no automatic teams (the organizer sets them); lobbyNote is a line under the player chips.
 const CCL_GAME = {
-  until: '2026-11-01T16:00:00Z',
-  title: 'Regicide on Team Islands',
-  map: 'team-islands',
-  when: 'Saturday, October 31, 2026 · 12:30 PM ET',
-  setup: '3 Japanese vs 5 Mongols · Wonder and Relic victory off',
-  story: 'In 1274 and 1281, Mongol armies crossed the sea to invade Japan. This week, history gets another chance.',
+  until: '2026-11-08T16:00:00Z',
+  title: 'Regicide Traitors',
+  map: null,
+  when: 'Saturday, November 7, 2026 · 12:30 PM ET',
+  setup: '4v4 · Regicide · Map TBD',
+  story: 'One player on each team is picked as a traitor by someone who is not playing. The traitor plays the game normally, but can betray and swap sides at any moment. The other three players cannot swap sides.',
+  split: false,
+  size: 8,
+  lobbyNote: 'Ryanp1001 is a maybe. Teams are set by the organizer.',
   sides: [
-    { civ: 'japanese', name: 'Japan', accent: '#D4A24C', who: '3 players defend Japan.',
-      head: ['Survives to', 'Points'], rows: [['60 min', 5], ['90 min', 7], ['120 min', 10], ['Wins the game', 15]],
-      note: 'Only the highest milestone reached counts, not the total. Your King must be alive when the milestone is reached.' },
-    { civ: 'mongols', name: 'Mongols', accent: '#2E2DAD', who: 'The remaining 5 players invade Japan.',
-      head: ['Wins', 'Points'], rows: [['Before 60 min', 10], ['60–89 min', 7], ['90–119 min', 5], ['120+ min', 2]],
-      note: 'Every King kill is worth +1.' },
+    { name: 'The traitor', accent: '#C0392B', who: 'One player per team. Points depend on when you betray.',
+      head: ['Betray', 'Points'], rows: [['Under 10 min', 6], ['10–29 min', 4], ['30–89 min', 2], ['90–119 min', 4], ['120+ min', 6], ['Never betray', -6]],
+      note: 'Points are not cumulative.' },
+    { name: 'The teams', accent: '#D4A24C', who: 'How the two teams score.',
+      head: ['Result', 'Points'], rows: [['Winning team', 4], ['Losing team', 1], ['Kill the betrayer’s King and win the game', 5]],
+      note: '' },
   ],
-  // Who actually played. SharkeyTank and Itz_ED_aoe subbed in for Donald2O16Trump and VolcanLoup. side = the team they played;
-  // elo = console 1v1 rating (Oct 31), used to split the teams when no side is set; pts = points earned once the game is over.
-  players: [{ name: 'NotATheist', id: 14602117, elo: 1496, side: 'mongols', pts: 13 }, { name: 'Balinthusa', id: 16314476, elo: 1525, side: 'mongols', pts: 13 }, { name: 'MoraMora48', id: 13216763, elo: 1916, side: 'japan', pts: 1 }, { name: 'ManBearPig1511', id: 8764015, elo: 1726, side: 'japan', pts: 1 }, { name: 'Seth41737spare', id: 16829189, elo: 1663, side: 'mongols', pts: 13 }, { name: 'SharkeyTank', id: 12525616, side: 'mongols', pts: 13 }, { name: 'Itz_ED_aoe', id: 22710476, elo: 1636, side: 'japan', pts: 1 }, { name: 'SammyDiamonds', id: 22753596, elo: 1836, side: 'mongols', pts: 13 }],
-  result: { headline: 'Mongols win at 55:50', detail: 'Japan fell before the 60-minute mark, so the Mongols take 10 points and Japan the 1-point minimum. The Mongols also took 3 King kills, worth +1 each to every Mongol player, so 13 points each.' },
-  tag: 'The Mongols have the numbers. Japan has the island.',
+  // elo = console 1v1 rating (Nov 4); some are old because those players have not played 1v1 console lately.
+  players: [
+    { name: 'Balinthusa', id: 16314476, elo: 1525 }, { name: 'ManBearPig1511', id: 8764015, elo: 1739 }, { name: 'Ice2207', id: 17828880, elo: 1692 },
+    { name: 'MoraMora48', id: 13216763, elo: 1916 }, { name: 'Seth41737spare', id: 16829189, elo: 1663 }, { name: 'NotATheist', id: 14602117, elo: 1500 },
+    { name: 'GOAT Gobz', id: 8154765, elo: 1843 }, { name: 'D0cTOrSniper', id: 13323926, elo: 1534 },
+  ],
+  tag: 'Trust your team. Watch your back.',
 };
 const gameOn = CCL_GAME && (!CCL_GAME.until || Date.now() < Date.parse(CCL_GAME.until));
 document.getElementById('game-card').hidden = !gameOn;
@@ -259,7 +287,7 @@ if (gameOn) {
   const g = CCL_GAME;
   const lobby = g.players || [];
   const ranked = lobby.slice().sort((a, b) => b.elo - a.elo);
-  const teams = lobby.length === 8 && lobby.every(p => p.side) ? [lobby.filter(p => p.side === 'japan'), lobby.filter(p => p.side === 'mongols')]
+  const teams = g.split === false ? null : lobby.length === 8 && lobby.every(p => p.side) ? [lobby.filter(p => p.side === 'japan'), lobby.filter(p => p.side === 'mongols')]
     : lobby.length === 8 && lobby.every(p => p.elo) ? [ranked.slice(0, 3), ranked.slice(3)] : null;
   const res = g.result && teams && teams.flat().every(p => p.pts != null) ? g.result : null;
   const roster = i => teams ? `<ol class="game-roster">${teams[i].map(p => `<li><a href="player.html?id=${p.id}">${esc(p.name)}</a><span>${res ? p.pts + (p.pts === 1 ? ' pt' : ' pts') : p.elo}</span></li>`).join('')}</ol>` : '';
@@ -269,15 +297,15 @@ if (gameOn) {
     : [`**${g.title}** · ${g.when}`, `**Japan** (defend): ${teams[0].map(p => p.name).join(', ')}`, `**Mongols** (invade): ${teams[1].map(p => p.name).join(', ')}`].join(nl);
   const copyLabel = res ? 'Copy result for Discord' : 'Copy teams for Discord';
   document.getElementById('game-body').innerHTML =
-    `<div class="game-head"><img src="img/maps/${g.map}.jpg" alt="" width="56" height="56"><div><h2>${esc(g.title)}</h2><div class="game-when">${esc(g.when)}</div><div class="game-when">${esc(g.setup)}</div></div></div>` +
+    `<div class="game-head">${g.map ? `<img src="img/maps/${g.map}.jpg" alt="" width="56" height="56">` : ''}<div><h2>${esc(g.title)}</h2><div class="game-when">${esc(g.when)}</div><div class="game-when">${esc(g.setup)}</div></div></div>` +
     `<p class="game-story">${esc(g.story)}</p>` +
     (res ? `<div class="game-result"><b>${esc(res.headline)}</b><span>${esc(res.detail)}</span></div>` : '') +
     (teams ? `<div class="game-teams-bar"><h3>${res ? 'Points earned' : 'Teams · split by console 1v1 rating'}</h3><button type="button" class="game-copy" id="game-copy">${copyLabel}</button></div>`
-    : g.players && g.players.length ? `<div class="game-players"><h3>In the lobby (${g.players.length} of 8)</h3><div class="game-chips">${g.players.map(p => `<a class="game-chip" href="player.html?id=${p.id}">${esc(p.name)}</a>`).join('')}</div></div>` : '') +
+    : g.players && g.players.length ? `<div class="game-players"><h3>In the lobby (${g.players.length} of ${g.size || 8})</h3><div class="game-chips">${g.players.map(p => `<a class="game-chip" href="player.html?id=${p.id}">${esc(p.name)}</a>`).join('')}</div>${g.lobbyNote ? `<p class="note" style="font-size:11.5px;color:var(--text3);margin:10px 0 0">${esc(g.lobbyNote)}</p>` : ''}</div>` : '') +
     `<div class="game-sides">` +
-    g.sides.map((sd, i) => `<div class="game-side" style="--accent:${sd.accent}"><h3><img src="img/civs/${sd.civ}.png" alt="">${esc(sd.name)}</h3><p class="who">${esc(sd.who)}</p>${roster(i)}` +
+    g.sides.map((sd, i) => `<div class="game-side" style="--accent:${sd.accent}"><h3>${sd.civ ? `<img src="img/civs/${sd.civ}.png" alt="">` : ''}${esc(sd.name)}</h3><p class="who">${esc(sd.who)}</p>${roster(i)}` +
       `<table><thead><tr><th>${esc(sd.head[0])}</th><th class="num">${esc(sd.head[1])}</th></tr></thead><tbody>${sd.rows.map(r => `<tr><td>${esc(r[0])}</td><td class="num">${r[1]}</td></tr>`).join('')}</tbody></table>` +
-      `<p class="note">${esc(sd.note)}</p></div>`).join('') + `</div><p class="game-tag">${esc(g.tag)}</p><a class="ccl-discord" href="https://discord.gg/Xs56BRxZaq" target="_blank" rel="noopener" style="margin-top:14px">Sign in on Discord</a>`;
+      (sd.note ? `<p class="note">${esc(sd.note)}</p>` : '') + `</div>`).join('') + `</div><p class="game-tag">${esc(g.tag)}</p><a class="ccl-discord" href="https://discord.gg/Xs56BRxZaq" target="_blank" rel="noopener" style="margin-top:14px">Sign in on Discord</a>`;
   const cb = document.getElementById('game-copy');
   if (cb) cb.addEventListener('click', () => {
     const txt = discordText(), done = () => { cb.textContent = 'Copied!'; setTimeout(() => { cb.textContent = copyLabel; }, 1800); };
@@ -286,9 +314,22 @@ if (gameOn) {
   });
 }
 
+// Civ lock (Season 4): every civ used in a CCL game so far. Add a row here after each game; the card works out the rest.
+const CCL_CIVS_USED = [
+  { civ: 'mongols', game: 'Oct 31 · Regicide on Team Islands' },
+  { civ: 'japanese', game: 'Oct 31 · Regicide on Team Islands' },
+  { civ: 'khmer', game: 'Oct 31 · 3v3 on Metropolis' },
+];
+const CCL_ALL_CIVS = ['armenians','aztecs','bengalis','berbers','bohemians','britons','bulgarians','burgundians','burmese','byzantines','celts','chinese','cumans','danes','dravidians','ethiopians','franks','georgians','goths','gurjaras','hindustanis','huns','incas','italians','japanese','jurchens','khitans','khmer','koreans','lithuanians','magyars','malay','malians','mapuche','maya','mongols','muisca','persians','poles','portuguese','romans','saracens','saxons','shu','sicilians','slavs','spanish','tatars','teutons','tupi','turks','varangians','vietnamese','vikings','wei','wu'];
+const civName = c => c.charAt(0).toUpperCase() + c.slice(1);
+const usedBy = new Map(CCL_CIVS_USED.map(u => [u.civ, u.game]));
+document.getElementById('civ-body').innerHTML =
+  `<p class="civ-lock-sum"><b>${usedBy.size} of ${CCL_ALL_CIVS.length}</b> civs used so far: ${CCL_CIVS_USED.map(u => civName(u.civ) + ' (' + esc(u.game) + ')').join(', ')}.</p>` +
+  `<div class="civ-grid">${CCL_ALL_CIVS.map(c => `<div class="civ-cell${usedBy.has(c) ? ' used' : ''}"${usedBy.has(c) ? ` title="${esc(usedBy.get(c))}"` : ''}><img src="img/civs/${c}.png" alt=""><span>${civName(c)}</span></div>`).join('')}</div>`;
+
 // Extra games for the week. Each has two teams; `rating` is the console team rating (Oct 31) the split was balanced on.
 const CCL_EXTRA = [
-  { title: '3v3', setup: '6 players · two teams of 3',
+  { until: '2026-11-01T16:00:00Z', title: '3v3', setup: '6 players · two teams of 3',
     note: 'Teams were balanced on console team rating (4324 vs 4315). BombEater3 has only 31 rated team games, so his 1084 is likely low.',
     result: { headline: 'Team A wins', detail: 'The winners take 3 points and the losers the 1-point minimum.' },
     teams: [
