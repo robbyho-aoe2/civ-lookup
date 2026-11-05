@@ -352,7 +352,10 @@ function scoutReport(g, isMine) {
   if (m.leaderboardId !== lb) return `<div class="scout"><div class="sc-head">Scouting${isMine ? ' your game' : ''}</div><div class="sc-dim">Scouting works for ranked 1v1 and team games on console. This one is ${esc(ladderLabel(m))}.</div></div>`;
   loadCivStats();
   const map = m.mapName || '', cls = MAP_CLASS[map] || null;
-  const hist = p => { const h = histWant(p.profileId, lb); return asOf && h !== 'loading' && h !== 'err' ? { games: h.games.filter(x => x.ts && Date.parse(x.ts) < asOf) } : h; };
+  // Form is read from games before this one started. For a live game (no asOf) that keeps the game being scouted out of its own
+  // record: once it has a result, a history loaded after it ended would otherwise count it (a 9–0 player showing as 9–1).
+  const cutoff = asOf || (m.started ? Date.parse(m.started) : 0);
+  const hist = p => { const h = histWant(p.profileId, lb); return cutoff && h !== 'loading' && h !== 'err' ? { games: h.games.filter(x => x.ts && Date.parse(x.ts) < cutoff) } : h; };
   const hAll = new Map(pl.map(p => [p.profileId, hist(p)]));
   const loaded = h => h && h !== 'loading' && h !== 'err';
   const hMe = hAll.get(mine.profileId), hOpps = opps.map(p => hAll.get(p.profileId));
