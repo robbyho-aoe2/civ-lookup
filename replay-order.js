@@ -29,11 +29,11 @@
   const DROPOFF_BLD = new Set(['Lumber Camp', 'Mining Camp', 'Mill', 'Settlement', 'Mule Cart', 'Dock', 'Folwark']);
   const AGE_TECH = { 101: 'Feudal Age', 102: 'Castle Age', 103: 'Imperial Age' };
   const LIVESTOCK = { Sheep: 'sheep', Goat: 'goat', Pig: 'pig', Llama: 'llama', 'Cow A': 'cow', 'Cow B': 'cow', 'Cow C': 'cow', 'Cow D': 'cow' };      // the herd animals villagers are sent to at the start
-  const FOOD_NAMES = new Set(['Wild Boar', 'Deer', 'Goose', 'Fruit Bush', 'Forage Bush', 'Javelina', 'Zebra', 'Ostrich', 'Gazelle', 'Elephant', 'Turkey', 'Ibex', 'Wild Horse', 'Wild Camel', 'Wild Bactrian Camel', 'Rhinoceros', ...Object.keys(LIVESTOCK)]);
+  const FOOD_NAMES = new Set(['Wild Boar', 'Deer', 'Goose', 'Fruit Bush', 'Forage Bush', 'Javelina', 'Zebra', 'Ostrich', 'Gazelle', 'Elephant', 'Turkey', 'Ibex', 'Wild Horse', 'Wild Camel', 'Wild Bactrian Camel', 'Rhinoceros', 'Elk', ...Object.keys(LIVESTOCK)]);
   // One label per kind of animal, so boars (lured to the Town Center) are told apart from deer and from the big game (elephants, rhinos, ibex, zebra and so on).
   // An animal the bundled list does not know yet still shows as plain 'hunt'.
   const LABELS = Object.assign({ 'Wild Boar': 'boar', Deer: 'deer', Goose: 'goose', 'Fruit Bush': 'berries', 'Forage Bush': 'berries', Javelina: 'javelina', Zebra: 'zebra', Ostrich: 'ostrich', Gazelle: 'gazelle',
-    Elephant: 'elephant', Rhinoceros: 'rhinoceros', Turkey: 'turkey', Ibex: 'ibex', 'Wild Horse': 'wild horse', 'Wild Camel': 'wild camel', 'Wild Bactrian Camel': 'wild camel' }, LIVESTOCK);
+    Elephant: 'elephant', Rhinoceros: 'rhinoceros', Turkey: 'turkey', Ibex: 'ibex', Elk: 'elk', 'Wild Horse': 'wild horse', 'Wild Camel': 'wild camel', 'Wild Bactrian Camel': 'wild camel' }, LIVESTOCK);
   const VILLAGER_TYPES = new Set([83, 293]);
   // Extra villagers some civs get at the start. With a nomad start they only appear once the first Town Center is finished.
   const START_EXTRA = { Chinese: 3, Maya: 1 };
@@ -180,6 +180,7 @@
   // ------------------------------------------------------------------ rebuilding the opening
   function analyze(parsed, hdr, names, rawMatch, profileId) {
     const OBJ = names.objects, TECH = names.technologies;
+    if (!OBJ[2739]) OBJ[2739] = 'Elk';      // the bundled list predates elk (the moose-looking animal on Mountain Pass); found from the hunt orders in a real game
     const objs = scanObjects(hdr);
     const api = (rawMatch.teams || []).flatMap(t => (t.players || []).map(p => Object.assign({ team: t.teamId }, p)));
     const hdrNames = playerNames(hdr, api.length), matched = matchPlayers(hdrNames, api);
@@ -245,6 +246,7 @@
     let aLo = Infinity, aHi = 0;
     for (const [o, v] of objs) if (FOOD_NAMES.has(OBJ[v[0]] || '')) { if (o < aLo) aLo = o; if (o > aHi) aHi = o; }
     if (aLo === Infinity) aLo = 0;
+    const unnamedN = {}; for (const [, v] of objs) if (!OBJ[v[0]]) unnamedN[v[0]] = (unnamedN[v[0]] || 0) + 1;      // an unnamed type with hundreds of copies is forest, not game animals
 
     function objClass(oid, p) {
       const o = objs.get(oid);
@@ -255,6 +257,7 @@
       if (nm === 'Gold Mine') return ['gold', 'gold'];
       if (nm === 'Stone Mine') return ['stone', 'stone'];
       if (!nm) {                                                    // type newer than the bundled name list
+        if (unnamedN[o[0]] >= 500) return ['wood', 'trees'];
         if (p.tc && dist(o[1], o[2], p.tc[0], p.tc[1]) <= 8) return ['food', p.civ === 'Inca' ? 'llama' : 'livestock'];   // the animal beside the Town Center at the start
         if (aLo <= oid && oid <= aHi) return ['food', 'hunt'];      // inside the block of map animals
       }
