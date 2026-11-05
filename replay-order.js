@@ -30,7 +30,10 @@
   const AGE_TECH = { 101: 'Feudal Age', 102: 'Castle Age', 103: 'Imperial Age' };
   const LIVESTOCK = { Sheep: 'sheep', Goat: 'goat', Pig: 'pig', Llama: 'llama', 'Cow A': 'cow', 'Cow B': 'cow', 'Cow C': 'cow', 'Cow D': 'cow' };      // the herd animals villagers are sent to at the start
   const FOOD_NAMES = new Set(['Wild Boar', 'Deer', 'Goose', 'Fruit Bush', 'Forage Bush', 'Javelina', 'Zebra', 'Ostrich', 'Gazelle', 'Elephant', 'Turkey', 'Ibex', 'Wild Horse', 'Wild Camel', 'Wild Bactrian Camel', 'Rhinoceros', ...Object.keys(LIVESTOCK)]);
-  const LABELS = Object.assign({ 'Wild Boar': 'boar', Deer: 'deer', Goose: 'goose', 'Fruit Bush': 'berries', 'Forage Bush': 'berries' }, LIVESTOCK);
+  // One label per kind of animal, so boars (lured to the Town Center) are told apart from deer and from the big game (elephants, rhinos, ibex, zebra and so on).
+  // An animal the bundled list does not know yet still shows as plain 'hunt'.
+  const LABELS = Object.assign({ 'Wild Boar': 'boar', Deer: 'deer', Goose: 'goose', 'Fruit Bush': 'berries', 'Forage Bush': 'berries', Javelina: 'javelina', Zebra: 'zebra', Ostrich: 'ostrich', Gazelle: 'gazelle',
+    Elephant: 'elephant', Rhinoceros: 'rhinoceros', Turkey: 'turkey', Ibex: 'ibex', 'Wild Horse': 'wild horse', 'Wild Camel': 'wild camel', 'Wild Bactrian Camel': 'wild camel' }, LIVESTOCK);
   const VILLAGER_TYPES = new Set([83, 293]);
   // Extra villagers some civs get at the start. With a nomad start they only appear once the first Town Center is finished.
   const START_EXTRA = { Chinese: 3, Maya: 1 };
@@ -247,7 +250,7 @@
       const o = objs.get(oid);
       if (!o) return null;
       const nm = OBJ[o[0]] || '';
-      if (FOOD_NAMES.has(nm)) return ['food', LABELS[nm] || 'hunt'];      // the bundled list can be stale for the rarer animals, so only the sure names are shown
+      if (FOOD_NAMES.has(nm)) return ['food', LABELS[nm] || nm.toLowerCase()];      // the bundled list can be stale for the rarer animals, so only the sure names are shown
       if (nm.includes('Tree') || nm === 'Bush A' || nm === 'Bush B') return ['wood', 'trees'];   // 'Bush B' ringed round each Town Center = straggler trees
       if (nm === 'Gold Mine') return ['gold', 'gold'];
       if (nm === 'Stone Mine') return ['stone', 'stone'];
