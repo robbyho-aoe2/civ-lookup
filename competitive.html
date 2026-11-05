@@ -628,7 +628,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 
   <div class="card standings-card">
     <h2>Standings</h2>
-    <p class="standings-note">Teams are ranked by points: 1v1 = 1, 2v2 = 2, 3v3 = 3, 4v4 = 4. Points left is what a team can still win: every series is worth 10, so it is 10 per game not yet played. Wins and losses count every finished game once.</p>
+    <p class="standings-note">Teams are ranked by points: 1v1 = 1, 2v2 = 2, 3v3 = 3, 4v4 = 4. Points given is what a team has handed to other teams by losing games. Points left is what a team can still win: every series is worth 10, so it is 10 per game not yet played. Wins and losses count every finished game once.</p>
     <div class="overflow-x">
       <table id="standings-table"></table>
     </div>
@@ -1260,23 +1260,24 @@ document.getElementById('fixtures-grid').innerHTML = fixtureGroups
 function standingsRows() {
   const rec = {};
   const SERIES_POINTS = Object.values(SET_POINTS).reduce((a, b) => a + b, 0);   // 1+2+3+4 = 10 for each series
-  TEAMS.forEach(t => rec[t.id] = { won: 0, lost: 0, pts: 0, left: (TEAMS.length - 1) * SERIES_POINTS });
+  TEAMS.forEach(t => rec[t.id] = { won: 0, lost: 0, pts: 0, given: 0, left: (TEAMS.length - 1) * SERIES_POINTS });
   SET_RESULTS.forEach(r => {
     r.teams.forEach(id => { if (rec[id]) rec[id].left -= SET_POINTS[r.fmt]; });   // a played game takes its points off the table for both teams
     const loser = r.teams.find(id => id !== r.winner);
     if (rec[r.winner]) { rec[r.winner].pts += SET_POINTS[r.fmt]; rec[r.winner].won++; }
-    if (rec[loser]) rec[loser].lost++;
+    if (rec[loser]) { rec[loser].lost++; rec[loser].given += SET_POINTS[r.fmt]; }   // points handed to the other team by losing
   });
   return TEAMS.map(t => ({ team: t, ...rec[t.id] }))
     .sort((x, y) => y.pts - x.pts || y.won - x.won || x.lost - y.lost);
 }
 document.getElementById('standings-table').innerHTML = `
-  <thead><tr><th>Nation</th><th class="num">Points</th><th class="num">Points left</th><th class="num">Wins</th><th class="num">Losses</th></tr></thead>
+  <thead><tr><th>Nation</th><th class="num">Points</th><th class="num" title="Points handed to other teams by losing games">Points given</th><th class="num">Points left</th><th class="num">Wins</th><th class="num">Losses</th></tr></thead>
   <tbody>
     ${standingsRows().map(r => `
       <tr>
         <td>${r.team.name}</td>
         <td class="num">${r.pts}</td>
+        <td class="num">${r.given}</td>
         <td class="num">${r.left}</td>
         <td class="num">${r.won}</td>
         <td class="num">${r.lost}</td>
