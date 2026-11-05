@@ -309,7 +309,7 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
 <meta name="apple-mobile-web-app-title" content="Auto Scout">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <script src="pwa.js?v=312" defer></script>
-<script src="imposters.js?v=10"></script>
+<script src="imposters.js?v=11"></script>
 <script src="player-builds.js?v=1"></script>
 <meta name="description" content="Player Spotlight: ratings, civs, maps, recent games and head-to-heads for any Age of Empires II player.">
 <meta property="og:site_name" content="AoE2 Auto Scout">
@@ -696,6 +696,9 @@ function renderSearchResults(local, live) {
 // Known alt/smurf groups — kept in sync with insights.html's own
 // KNOWN_ALT_GROUPS (each page is self-contained, no shared JS file, so
 // this is a deliberate duplicate rather than a fetch/import).
+// Accounts in an alt group that are likely but not confirmed. The Known Alts card and the Alts / Smurfs list mark them.
+// Keep in sync with insights.html, player.html and imposters.js. The case for each is on the Investigations page.
+const LIKELY_ALTS = { 15245181: 'Unconfirmed but likely' };
 const KNOWN_ALT_GROUPS = [
   [12554124, 15480913], // Donald2O16Trump / Joe2024Biden
   [20168942, 12798178, 22701056, 25013161], // Combi I Chow / DS Chowde / DS_Chowde (PSN) / UxDora
@@ -728,7 +731,7 @@ const KNOWN_ALT_GROUPS = [
   [21657258, 12597326], // deathstar / Rowdy Squirrels
   [12630274, 23423875], // EaterOfAnts5997 / Mrs_Ants
   [18858883, 17412755], // TrojanHorse9682 / Slappy46
-  [15925254, 5633456], // Kenpachi817 / XXFUAHALAXX (not Kenpachi_3295, the PSN account with a similar name)
+  [15925254, 5633456, 15245181], // Kenpachi817 / XXFUAHALAXX / Drengr1279 (Drengr1279 is unconfirmed but likely, see LIKELY_ALTS; not Kenpachi_3295, the PSN account with a similar name)
   [20125356, 12695567], // I hcaet I / I Teach l (anagram of the name; hands off between the two every day)
 ];
 function findAltGroup(id) {
@@ -1197,7 +1200,7 @@ function render(content, entry, player) {
   const altsCardHtml = altGroup ? `
     <div class="card" id="alts-card">
       <h2>Known Alts</h2>
-      <p class="desc">${escapeHtml(entry.name)} is confirmed to also play under ${altGroup.length > 2 ? 'these accounts' : 'this account'}.</p>
+      <p class="desc">${LIKELY_ALTS[entry.profileId] ? `${escapeHtml(entry.name)} is likely, but not confirmed, to also play under ${altGroup.length > 2 ? 'these accounts' : 'this account'}. <a href="investigations.html#case-xxfuahalaxx" style="color:var(--amberL)">See the case</a>.` : `${escapeHtml(entry.name)} is confirmed to also play under ${altGroup.length > 2 ? 'these accounts' : 'this account'}.` + (altGroup.some(id => id !== entry.profileId && LIKELY_ALTS[id]) ? ' Accounts marked “Unconfirmed but likely” are probable, not confirmed. <a href="investigations.html#case-xxfuahalaxx" style="color:var(--amberL)">See the case</a>.' : '')}</p>
       <div class="similar-players" id="alts-players"></div>
     </div>` : '';
 
@@ -1414,7 +1417,7 @@ function render(content, entry, player) {
         const sub = p && p.ratings && Object.keys(p.ratings).length
           ? Object.entries(p.ratings).map(([l, r]) => `${l}: ${r}`).join(' · ')
           : (p ? p.group : 'not tracked');
-        return `<a href="player.html?id=${id}"><b>${escapeHtml(name)}</b><span>${escapeHtml(sub)}</span></a>`;
+        return `<a href="player.html?id=${id}"><b>${escapeHtml(name)}</b><span>${escapeHtml(sub)}</span>${LIKELY_ALTS[id] ? `<span style="color:#fbbf24">${escapeHtml(LIKELY_ALTS[id])}</span>` : ''}</a>`;
       }).join('');
   }
 

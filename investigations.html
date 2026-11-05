@@ -66,6 +66,17 @@ header{position:relative;border-radius:14px;margin-bottom:6px;background:var(--s
   .page-tabs a{flex:none;padding:8px 10px;font-size:12px;white-space:nowrap;}
   .deck-wrap{max-width:100%;}
 }
+.case{margin-top:36px;max-width:900px;background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 24px 20px;}
+.case h2{font-size:18px;font-weight:700;margin:0 0 6px;}
+.case .case-status{display:inline-block;margin:0 0 14px;padding:3px 12px;border-radius:20px;border:1px solid #fbbf24;color:#fbbf24;font-size:12px;font-weight:700;}
+.case p{font-size:13.5px;line-height:1.7;color:var(--text2);margin:0 0 12px;}
+.case p b,.case li b{color:var(--text);}
+.case h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin:18px 0 8px;font-weight:700;}
+.case ol,.case ul{margin:0 0 12px;padding-left:20px;font-size:13.5px;line-height:1.7;color:var(--text2);}
+.case li{margin:0 0 8px;}
+.case a{color:var(--amberL);text-decoration:none;border-bottom:1px solid var(--border2);}
+.case a:hover{border-color:var(--amberL);}
+.case .case-note{font-size:12px;color:var(--text3);}
 .footer{font-size:11px;color:var(--text3);text-align:center;margin-top:30px;padding-top:16px;border-top:1px solid var(--border);}
 .footer a{color:var(--text2);text-decoration:none;}
 .footer a:hover{color:var(--amberL);}
@@ -82,7 +93,7 @@ header{position:relative;border-radius:14px;margin-bottom:6px;background:var(--s
 <meta name="apple-mobile-web-app-title" content="Auto Scout">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <script src="pwa.js?v=312" defer></script>
-<script src="imposters.js?v=10"></script>
+<script src="imposters.js?v=11"></script>
 <meta name="description" content="A statistical deep-dive into a console Age of Empires II account&#x27;s climb, and who is behind the controller.">
 <link rel="canonical" href="https://aoe2autoscout.com/investigations.html">
 <meta property="og:site_name" content="AoE2 Auto Scout">
@@ -122,6 +133,7 @@ header{position:relative;border-radius:14px;margin-bottom:6px;background:var(--s
       <div class="deck-links">
         <a href="player.html?id=26059654">🔎 Garyy-__-1 player lookup →</a>
         <a href="https://youtu.be/Mj9lwyJCFNk" target="_blank" rel="noopener">▶ Watch the video ↗</a>
+        <a href="#case-xxfuahalaxx">🕵️ Case file: Drengr1279 and XXFUAHALAXX ↓</a>
       </div>
     </div>
     <div class="slide-viewport" id="slide-viewport">
@@ -2536,6 +2548,30 @@ header{position:relative;border-radius:14px;margin-bottom:6px;background:var(--s
       <div class="video-frame">
         <iframe src="https://www.youtube-nocookie.com/embed/Mj9lwyJCFNk" title="Who Is Gary? - Fast Castle and Chill" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
       </div>
+    </div>
+
+    <div class="case" id="case-xxfuahalaxx">
+      <h2>Case file: is Drengr1279 an alt of XXFUAHALAXX?</h2>
+      <span class="case-status">Unconfirmed but likely</span>
+      <p>Three Xbox accounts in the US look like one player: <a href="player.html?id=5633456">XXFUAHALAXX</a> (the main, 3,400+ games), <a href="player.html?id=15925254">Kenpachi817</a> (a known alt, 2023–24) and <a href="player.html?id=15245181">Drengr1279</a> (2023–26). Kenpachi817 is listed as an alt. Drengr1279 is added as unconfirmed but likely. Kenpachi_3295, a PSN account with a similar name, is a different account and is not part of the group.</p>
+
+      <h3>Why we think so</h3>
+      <ol>
+        <li><b>They are never in use at the same time.</b> None of Drengr1279's 1,058 games started within 10 minutes of an XXFUAHALAXX game, and the two have never been in the same match. In the 467 games from months when both were active, about 12 overlaps would be expected. Across 254 other console players of a similar rating, a typical overlap was about 4% of games. Within an hour the two accounts are under 1% apart, against about 19% for Darth Llahma, a different person who plays the same circle.</li>
+        <li><b>They take turns, month after month.</b> XXFUAHALAXX fell from 55 games a month to 2 in May to July 2024, exactly when Drengr1279 started on May 19, 2024 at a fresh 900 rating. Drengr1279 went quiet in Aug to Oct 2025 and XXFUAHALAXX came back with 90 games in Oct 2025. On the PC 1v1 ladder in July 2026, XXFUAHALAXX played until Jul 6, Drengr1279 played Jul 8 to 11, and XXFUAHALAXX was back on Jul 14. Drengr1279's first 1v1 session (Jul 29, 2023) fell inside a 10-day gap in XXFUAHALAXX's games.</li>
+        <li><b>It plays like a skilled player on a fresh account.</b> Drengr1279's first 1v1 session went 8 wins and 1 loss, from the 800 starting rating to about 1,235.</li>
+        <li><b>Same platform, country and circle.</b> All are Xbox and US, with the same regular teammates (DanishXX, Darth masala, ALPO4769, DS Chowde and others). That circle is shared with other people too, so it supports the link but does not prove it.</li>
+        <li><b>No one else fits.</b> We checked about 410 console players near Drengr1279's rating. Only XXFUAHALAXX plays at the same hours and never overlaps. Two others (joff92 and Mike Rowe6677) also never overlap, but they play in European daytime, so that is a time zone effect. Darth Llahma shares 19 games with Drengr1279 and is ruled out.</li>
+      </ol>
+
+      <h3>Why it is not confirmed</h3>
+      <ul>
+        <li>The data cannot tell one person with two accounts from two people sharing a console or a household.</li>
+        <li>Chance is unlikely but possible: we put the odds of this little overlap at roughly 1 in 150 to 1 in 1,000 if the accounts were unrelated. With hundreds of players tested, an occasional zero is expected.</li>
+        <li>The accounts do not hand off mid-evening, which fits one person using one account per day, and also fits two people taking turns.</li>
+        <li>Their civ picks differ (Drengr1279: Japanese, Hindustanis, Persians. XXFUAHALAXX: Mongols, Portuguese, Berbers), and Drengr1279 has no clan.</li>
+      </ul>
+      <p class="case-note">What would settle it: the player saying so, or a Discord, stream or clan confirmation. Data from aoe2companion match history, checked November 2026.</p>
     </div>
   </div>
   <div class="footer">
