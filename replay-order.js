@@ -30,10 +30,10 @@
   const AGE_TECH = { 101: 'Feudal Age', 102: 'Castle Age', 103: 'Imperial Age' };
   const LIVESTOCK = { Sheep: 'sheep', Goat: 'goat', Pig: 'pig', Llama: 'llama', 'Cow A': 'cow', 'Cow B': 'cow', 'Cow C': 'cow', 'Cow D': 'cow' };      // the herd animals villagers are sent to at the start
   const FOOD_NAMES = new Set(['Wild Boar', 'Deer', 'Goose', 'Fruit Bush', 'Forage Bush', 'Javelina', 'Zebra', 'Ostrich', 'Gazelle', 'Elephant', 'Turkey', 'Ibex', 'Wild Horse', 'Wild Camel', 'Wild Bactrian Camel', 'Rhinoceros', 'Elk', ...Object.keys(LIVESTOCK)]);
-  // One label per kind of animal, so boars (lured to the Town Center) are told apart from deer and from the big game (elephants, rhinos, ibex, zebra and so on).
+  // One label per kind of animal. Everything that has to be lured to the Town Center is 'lure <animal>' (boar, javelina, elephant, rhino, elk, zebra, ibex...); deer are hunted where they stand, and geese just stand there.
   // An animal the bundled list does not know yet still shows as plain 'hunt'.
-  const LABELS = Object.assign({ 'Wild Boar': 'boar', Deer: 'deer', Goose: 'goose', 'Fruit Bush': 'berries', 'Forage Bush': 'berries', Javelina: 'javelina', Zebra: 'zebra', Ostrich: 'ostrich', Gazelle: 'gazelle',
-    Elephant: 'elephant', Rhinoceros: 'rhinoceros', Turkey: 'turkey', Ibex: 'ibex', Elk: 'elk', 'Wild Horse': 'wild horse', 'Wild Camel': 'wild camel', 'Wild Bactrian Camel': 'wild camel' }, LIVESTOCK);
+  const LABELS = Object.assign({ 'Wild Boar': 'lure boar', Deer: 'deer', Goose: 'goose', 'Fruit Bush': 'berries', 'Forage Bush': 'berries', Javelina: 'lure javelina', Zebra: 'lure zebra', Ostrich: 'lure ostrich', Gazelle: 'lure gazelle',
+    Elephant: 'lure elephant', Rhinoceros: 'lure rhinoceros', Turkey: 'lure turkey', Ibex: 'lure ibex', Elk: 'lure elk', 'Wild Horse': 'lure wild horse', 'Wild Camel': 'lure wild camel', 'Wild Bactrian Camel': 'lure wild camel' }, LIVESTOCK);
   const VILLAGER_TYPES = new Set([83, 293]);
   // Extra villagers some civs get at the start. With a nomad start they only appear once the first Town Center is finished.
   const START_EXTRA = { Chinese: 3, Maya: 1 };
