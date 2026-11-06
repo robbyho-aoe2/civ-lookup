@@ -264,12 +264,12 @@ const CCL_GAME = {
   story: 'One player on each team is picked as a traitor by someone who is not playing. The traitor plays the game normally, but can betray and swap sides at any moment. The other three players cannot swap sides.',
   split: false,
   size: 8,
-  // Teams balanced on console team rating (Nov 4): 6297 vs 6293. rating = console team rating. sub fills in if someone drops.
+  // Teams balanced on console team rating (Nov 4): 6297 vs 6293. rating = console team rating. subs fill in if someone drops.
   teams: [
     { name: 'Team A', accent: '#60a5fa', players: [{ name: 'Ice2207', id: 17828880, rating: 1672 }, { name: 'ManBearPig1511', id: 8764015, rating: 1612 }, { name: 'Seth41737spare', id: 16829189, rating: 1598 }, { name: 'Balinthusa', id: 16314476, rating: 1415 }] },
     { name: 'Team B', accent: '#3F9B72', players: [{ name: 'GOAT Gobz', id: 8154765, rating: 1766 }, { name: 'MoraMora48', id: 13216763, rating: 1617 }, { name: 'D0cTOrSniper', id: 13323926, rating: 1525 }, { name: 'NotATheist', id: 14602117, rating: 1385 }] },
   ],
-  sub: { name: 'Ryanp1001', id: 13885770, rating: 1592 },
+  subs: [{ name: 'Ryanp1001', id: 13885770, rating: 1592 }, { name: 'BombEater3', id: 24050143, rating: 1103 }],   // in the order they step in; rating = console team rating
   sides: [
     { name: 'The traitor', accent: '#C0392B', who: 'One player per team. Points depend on when you betray.',
       head: ['Betray', 'Points'], rows: [['Under 10 min', 6], ['10–29 min', 4], ['30–89 min', 2], ['90–119 min', 4], ['120+ min', 6], ['Never betray', -6]],
@@ -302,11 +302,12 @@ if (gameOn) {
     : [`**${g.title}** · ${g.when}`, `**Japan** (defend): ${teams[0].map(p => p.name).join(', ')}`, `**Mongols** (invade): ${teams[1].map(p => p.name).join(', ')}`].join(nl);
   const copyLabel = res ? 'Copy result for Discord' : 'Copy teams for Discord';
   const tm = g.teams || null;
-  const tmText = () => [`**${g.title}** · ${g.when}`].concat(tm.map(t => `**${t.name}**: ${t.players.map(p => p.name).join(', ')}`)).concat(g.sub ? [`Sub: ${g.sub.name}`] : []).join(nl);
+  const subs = g.subs || (g.sub ? [g.sub] : []);
+  const tmText = () => [`**${g.title}** · ${g.when}`].concat(tm.map(t => `**${t.name}**: ${t.players.map(p => p.name).join(', ')}`)).concat(subs.length ? [`${subs.length === 1 ? 'Sub' : 'Subs'}: ${subs.map(x => x.name).join(', ')}`] : []).join(nl);
   const tmTotals = tm ? tm.map(t => t.players.reduce((a, p) => a + p.rating, 0)) : [];
-  const tmBlock = tm ? `<div class="game-teams-bar"><h3>Teams · balanced on console team rating (${tmTotals.join(' vs ')})</h3><button type="button" class="game-copy" id="game-copy">${copyLabel}</button></div>` +
+  const tmBlock = tm ? `<div class="game-teams-bar"><h3>Teams · balanced on console team rating (${tmTotals.join(' vs ')})</h3><button type="button" class="game-copy" id="game-copy">${copyLabel}</button><button type="button" class="game-copy" id="game-img" title="Copies the lineup as a picture. Paste it straight into Discord.">Copy as picture</button><button type="button" class="game-copy" id="game-save">Save picture</button></div>` +
     `<div class="game-sides" style="margin-bottom:14px">${tm.map(t => `<div class="game-side" style="--accent:${t.accent}"><h3>${esc(t.name)}</h3><ol class="game-roster">${t.players.map(p => `<li><a href="player.html?id=${p.id}">${esc(p.name)}</a><span>${p.rating}</span></li>`).join('')}</ol></div>`).join('')}</div>` +
-    (g.sub ? `<p class="note" style="font-size:12px;color:var(--text2);margin:0 0 16px">Sub: <a href="player.html?id=${g.sub.id}" style="color:var(--text);font-weight:600;text-decoration:none">${esc(g.sub.name)}</a> (${g.sub.rating}) steps in if someone drops.</p>` : '') : '';
+    (subs.length ? `<p class="note" style="font-size:12px;color:var(--text2);margin:0 0 16px">${subs.length === 1 ? 'Sub' : 'Subs'}: ${subs.map(x => `<a href="player.html?id=${x.id}" style="color:var(--text);font-weight:600;text-decoration:none">${esc(x.name)}</a> (${x.rating})`).join(', ')}. ${subs.length === 1 ? 'Steps in' : 'They step in, in this order,'} if someone drops.</p>` : '') : '';
   document.getElementById('game-body').innerHTML =
     `<div class="game-head">${g.map ? `<img src="img/maps/${g.map}.jpg" alt="" width="56" height="56">` : ''}<div><h2>${esc(g.title)}</h2><div class="game-when">${esc(g.when)}</div><div class="game-when">${esc(g.setup)}</div></div></div>` +
     `<p class="game-story">${esc(g.story)}</p>` +
@@ -323,6 +324,61 @@ if (gameOn) {
     const fallback = () => { const ta = document.createElement('textarea'); ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, fallback); else fallback();
   });
+  // The lineup as a picture for Discord: drawn on a canvas, then copied to the clipboard (paste it into Discord), or saved / shared as a PNG when the browser will not copy images.
+  if (tm) {
+    const drawLineup = () => {
+      const W = 1200, rows = Math.max(...tm.map(t => t.players.length)), H = 250 + 62 + rows * 62 + 56 + 54 + (subs.length ? 90 : 20) + 40, c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      const x = c.getContext('2d'), F = (w, s) => `${w} ${s}px system-ui,-apple-system,"Segoe UI",sans-serif`;
+      const rr = (px, py, w, h, r) => { x.beginPath(); if (x.roundRect) x.roundRect(px, py, w, h, r); else x.rect(px, py, w, h); };
+      const gr = x.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#17130F'); gr.addColorStop(1, '#0B0A08');
+      x.fillStyle = gr; x.fillRect(0, 0, W, H);
+      x.fillStyle = '#3F9B72'; x.fillRect(0, 0, 14, H);
+      x.textBaseline = 'alphabetic'; x.textAlign = 'left';
+      x.fillStyle = '#5FB88C'; x.font = F(800, 22); x.fillText('CONSOLE CIVILIZATIONS LEAGUE', 56, 58);
+      x.textAlign = 'right'; x.fillStyle = '#5C544A'; x.font = F(500, 22); x.fillText('aoe2autoscout.com', W - 56, 58); x.textAlign = 'left';
+      x.fillStyle = '#EDE8DD'; x.font = F(800, 66); x.fillText(g.title, 56, 134);
+      x.fillStyle = '#8F8578'; x.font = F(500, 26); x.fillText(g.when, 56, 176); x.fillText(g.setup, 56, 210);
+      const cw = (W - 112 - 40) / 2, top = 250, ch = 62 + rows * 62 + 56;
+      tm.forEach((t, i) => {
+        const cx = 56 + i * (cw + 40);
+        rr(cx, top, cw, ch, 16); x.fillStyle = '#1F1A15'; x.fill(); x.strokeStyle = '#362E24'; x.lineWidth = 2; x.stroke();
+        x.fillStyle = t.accent; x.fillRect(cx, top + 20, 6, 36);
+        x.font = F(800, 32); x.fillText(t.name, cx + 28, top + 50);
+        x.textAlign = 'right'; x.fillStyle = '#8F8578'; x.font = F(500, 20); x.fillText('console team rating', cx + cw - 24, top + 48); x.textAlign = 'left';
+        t.players.forEach((p, j) => {
+          const y = top + 112 + j * 62;
+          x.strokeStyle = '#362E24'; x.lineWidth = 1; x.beginPath(); x.moveTo(cx + 24, y - 38); x.lineTo(cx + cw - 24, y - 38); x.stroke();
+          x.fillStyle = '#EDE8DD'; x.font = F(700, 32); x.fillText(p.name, cx + 28, y);
+          x.textAlign = 'right'; x.fillStyle = '#8F8578'; x.font = F(600, 30); x.fillText(String(p.rating), cx + cw - 24, y); x.textAlign = 'left';
+        });
+        x.textAlign = 'right'; x.fillStyle = t.accent; x.font = F(800, 30); x.fillText('Total ' + tmTotals[i].toLocaleString(), cx + cw - 24, top + 112 + rows * 62 + 10); x.textAlign = 'left';
+      });
+      let by = top + ch + 54;
+      if (subs.length) {
+        x.fillStyle = '#8F8578'; x.font = F(700, 22); x.fillText(subs.length === 1 ? 'SUB' : 'SUBS (IN ORDER)', 56, by);
+        x.fillStyle = '#EDE8DD'; x.font = F(700, 30); x.fillText(subs.map(s => `${s.name} (${s.rating})`).join('   ·   '), 56, by + 40);
+      }
+      x.fillStyle = '#5C544A'; x.font = F(500, 22); x.fillText(g.tag, 56, H - 30);
+      return c;
+    };
+    const toBlob = () => new Promise(res => drawLineup().toBlob(res, 'image/png'));
+    const fileName = (g.title || 'ccl-lineup').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-lineup.png';
+    const flash = (btn, txt, back) => { btn.textContent = txt; setTimeout(() => { btn.textContent = back; }, 2200); };
+    const saveBlob = blob => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); };
+    const imgBtn = document.getElementById('game-img'), saveBtn = document.getElementById('game-save');
+    if (imgBtn) imgBtn.addEventListener('click', async () => {
+      const blob = await toBlob(); if (!blob) return;
+      const file = new File([blob], fileName, { type: 'image/png' });
+      const touch = (navigator.maxTouchPoints || 0) > 0 && window.matchMedia('(max-width: 800px)').matches;
+      try {
+        if (touch && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: g.title }); return; }   // phones: the share sheet, Discord is in it
+        if (navigator.clipboard && window.ClipboardItem) { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); flash(imgBtn, 'Copied! Paste it in Discord', 'Copy as picture'); return; }
+      } catch (e) { if (e && e.name === 'AbortError') return; }
+      saveBlob(blob); flash(imgBtn, 'Saved the picture instead', 'Copy as picture');
+    });
+    if (saveBtn) saveBtn.addEventListener('click', async () => { const blob = await toBlob(); if (blob) { saveBlob(blob); flash(saveBtn, 'Saved', 'Save picture'); } });
+  }
 }
 
 // Civ lock (Season 4): every civ used in a CCL game so far. Add a row here after each game; the card works out the rest.
