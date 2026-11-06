@@ -963,7 +963,7 @@ function attachShareButton(entry, player, getLadder) {
     return [...by.values()].sort((a, b) => b.g - a.g || b.w - a.w).slice(0, n);
   };
   function drawCard(ladder) {
-    const matches = (player.ladders[ladder] || {}).matches || [];
+    const matches = ((player.ladders[ladder] || {}).matches || []).filter(m => m.won != null);      // a game still being played has no result yet and is not a game played
     const wins = matches.filter(m => m.won).length;
     const durs = matches.map(m => m.dur).filter(d => d != null);
     const rating = (entry.ratings || {})[ladder] ?? ((entry.peaks || {})[ladder] || {}).current ?? null;
@@ -1441,7 +1441,7 @@ function render(content, entry, player) {
   loadRecentPages(2);
 
   function renderLadder(ladderName) {
-    const matches = player.ladders[ladderName].matches || [];
+    const matches = (player.ladders[ladderName].matches || []).filter(m => m.won != null);      // a game still being played has no result yet and is not a game played
     const wins = matches.filter(m => m.won).length;
     const durs = matches.map(m => m.dur).filter(d => d != null);
     const avgDur = durs.length ? durs.reduce((a, b) => a + b, 0) / durs.length : 0;
