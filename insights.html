@@ -479,8 +479,6 @@ function updatedLabel(iso) {
 // The Alts/Smurfs section lists every group in full for reference.
 // Accounts in an alt group that are likely but not confirmed. The Known Alts card and the Alts / Smurfs list mark them.
 // Keep in sync with insights.html, player.html and imposters.js. The case for each is on the Investigations page.
-const LIKELY_ALTS = { 15245181: 'Unconfirmed but likely', 26120403: 'Unconfirmed but likely', 26335295: 'Unconfirmed but likely' };
-const ALT_CASES = { 15245181: 'case-xxfuahalaxx' };   // members whose group has a case file on the Investigations page
 const KNOWN_ALT_GROUPS = [
   [12554124, 15480913], // Donald2O16Trump / Joe2024Biden
   [20168942, 12798178, 22701056, 25013161], // Combi I Chow / DS Chowde / DS_Chowde (PSN) / UxDora
@@ -1464,7 +1462,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       const name = p ? p.name : `Unknown (${id})`;
       const cls = id === winner ? 'alt-group-member kept' : 'alt-group-member';
       const sep = i > 0 ? '<span class="alt-group-sep">↔</span>' : '';
-      return `${sep}<a class="${cls}" href="player.html?id=${id}">${escapeHtml(name)}</a>` + (LIKELY_ALTS[id] ? `<span class="alt-group-hint" title="${ALT_CASES[id] ? 'The case is on the Investigations page' : 'Likely, not confirmed'}">${LIKELY_ALTS[id].toLowerCase()}</span>` : '');
+      return `${sep}<a class="${cls}" href="player.html?id=${id}">${escapeHtml(name)}</a>`;      // "unconfirmed but likely" is only shown on the player's own page
     }).join('') + `<span class="alt-group-hint">${group.length} profiles</span>`;
     altGroupsEl.appendChild(row);
   });
