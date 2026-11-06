@@ -309,7 +309,7 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
 <meta name="apple-mobile-web-app-title" content="Auto Scout">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <script src="pwa.js?v=312" defer></script>
-<script src="imposters.js?v=13"></script>
+<script src="imposters.js?v=14"></script>
 <script src="player-builds.js?v=1"></script>
 <meta name="description" content="Player Spotlight: ratings, civs, maps, recent games and head-to-heads for any Age of Empires II player.">
 <meta property="og:site_name" content="AoE2 Auto Scout">
@@ -698,7 +698,7 @@ function renderSearchResults(local, live) {
 // this is a deliberate duplicate rather than a fetch/import).
 // Accounts in an alt group that are likely but not confirmed. The Known Alts card and the Alts / Smurfs list mark them.
 // Keep in sync with insights.html, player.html and imposters.js. The case for each is on the Investigations page.
-const ALT_NOTE_TEXT = 'Their replays match: the first house goes exactly 5 tiles from the Town Center, villagers are queued one at a time, and both use the “Being rushed” quick chat (nobody else did across 91 games). Both also copy a real player’s name with look-alike letters.';
+const ALT_NOTE_TEXT = 'VeeIing and SteeIers2805 are likely this group’s fake-name accounts, not confirmed. Their replays match the group’s habits (first house exactly 5 tiles from the Town Center at about 3 seconds, villagers queued one at a time from about 2 seconds), they never play at the same time as the group, and they take over as it goes quiet (VeeIing in September, SteeIers2805 from Nov 5, F12JRCRunsAoE in between). Both copy a real player’s name with look-alike letters.';
 const LIKELY_ALTS = { 15245181: 'Unconfirmed but likely', 26120403: 'Unconfirmed but likely', 26335295: 'Unconfirmed but likely' };
 const ALT_CASES = { 15245181: 'case-xxfuahalaxx' };   // members whose group has a case file on the Investigations page
 const ALT_NOTES = { 26120403: ALT_NOTE_TEXT, 26335295: ALT_NOTE_TEXT };   // why a likely group is thought to be one person (shown on the Known Alts card)
@@ -709,7 +709,7 @@ const KNOWN_ALT_GROUPS = [
   [23790720, 12760988, 23284031, 18667559, 26159176], // Dolphinjack7648 / Shadow8373 / #23284031 / AlightOwl218 / DiaryOfDanes
   [23477132, 25840006, 25065929, 25406411, 25696131], // ItsGutsAoE / KingSlaayerAoE (was LordSnowAoE) / boss_slewz2 / GutsOfDominion / ilikeThePc, confirmed by ItsGuts himself (ql7mt and b1_uppofdominion removed 2026-10-08)
   [22759370, 24074346], // BillieDown / BillieDownn
-  [25767683, 25437131, 24924936, 21495993], // FI2 JRC / F12JRCRunsAoE / Cak Loek Pro / Treeman2490
+  [25767683, 25437131, 24924936, 21495993, 26120403, 26335295], // FI2 JRC / F12JRCRunsAoE / Cak Loek Pro / Treeman2490 + VeeIing / SteeIers2805 (fake Veeling and fake Steelers2805, unconfirmed but likely, see LIKELY_ALTS)
   [12484696, 16389471], // sologhost / Chiefboy AK
   [24133272, 15424523], // NegiGen6000 / kkrieger5718
   [14770440, 12637242], // beef clamps / old peenuts
@@ -736,7 +736,6 @@ const KNOWN_ALT_GROUPS = [
   [18858883, 17412755], // TrojanHorse9682 / Slappy46
   [15925254, 5633456, 15245181], // Kenpachi817 / XXFUAHALAXX / Drengr1279 (Drengr1279 is unconfirmed but likely, see LIKELY_ALTS; not Kenpachi_3295, the PSN account with a similar name)
   [20125356, 12695567], // I hcaet I / I Teach l (anagram of the name; hands off between the two every day)
-  [26120403, 26335295], // VeeIing / SteeIers2805 (fake Veeling and fake Steelers2805; unconfirmed but likely, see LIKELY_ALTS)
 ];
 function findAltGroup(id) {
   const numId = Number(id);

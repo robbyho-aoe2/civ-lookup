@@ -18,10 +18,10 @@
     { id: 26335295, real: 22521062, note: 'Near-identical name to Steelers2805' },
   ];
   const NAMES = { 12477800: 'Ghost of 6am', 24659170: 'Ghost 0f 6am', 3452279: 'OleCrookedWoody', 26084405: 'OleCrookedW00dy', 26247195: 'OleCrookedWo0dy', 15438688: 'Veeling', 26120403: 'VeeIing', 254225: 'Dimplymarshall', 26287702: 'DimplymarshalI', 22521062: 'Steelers2805', 26335295: 'SteeIers2805' };
-  const ALT_GROUPS = [[12554124,15480913],[20168942,12798178,22701056,25013161],[20945272,13379095],[23790720,12760988,23284031,18667559,26159176],[23477132,25840006,25065929,25406411,25696131],[22759370,24074346],[25767683,25437131,24924936,21495993],[12484696,16389471],[24133272,15424523],[14770440,12637242],[18487891,13624096],[23147426,25504514],[22703136,12471204],[26051252,25476302,24668882],[23063731,26050716],[25111209,12469445],[23364870,20575320],[12712958,22085091],[23317362,23053270],[15171886,12743207],[23671708,22702087],[18518087,14590893],[23542892,12477800],[19283861,11828362],[25666181,14653704],[23009008,23448013],[15717181,17719038],[14132480,16267636],[21657258,12597326],[12630274,23423875],[18858883,17412755],[15925254,5633456,15245181],[20125356,12695567],[26120403,26335295]];
+  const ALT_GROUPS = [[12554124,15480913],[20168942,12798178,22701056,25013161],[20945272,13379095],[23790720,12760988,23284031,18667559,26159176],[23477132,25840006,25065929,25406411,25696131],[22759370,24074346],[25767683,25437131,24924936,21495993,26120403,26335295],[12484696,16389471],[24133272,15424523],[14770440,12637242],[18487891,13624096],[23147426,25504514],[22703136,12471204],[26051252,25476302,24668882],[23063731,26050716],[25111209,12469445],[23364870,20575320],[12712958,22085091],[23317362,23053270],[15171886,12743207],[23671708,22702087],[18518087,14590893],[23542892,12477800],[19283861,11828362],[25666181,14653704],[23009008,23448013],[15717181,17719038],[14132480,16267636],[21657258,12597326],[12630274,23423875],[18858883,17412755],[15925254,5633456,15245181],[20125356,12695567]];
   const LIKELY_ALTS = { 15245181: 'Unconfirmed but likely', 26120403: 'Unconfirmed but likely', 26335295: 'Unconfirmed but likely' };   // in an alt group, but not confirmed (keep in sync with player.html and insights.html)
   window.ALT_GROUPS = ALT_GROUPS;   // the tier list maker merges a player's alts into one entry
-  const ALT_COUNT = {}; ALT_GROUPS.forEach(g => g.forEach(id => { ALT_COUNT[id] = g.length - 1; }));
+  const ALT_COUNT = {}, ALT_LIKELY = {}; ALT_GROUPS.forEach(g => g.forEach(id => { ALT_COUNT[id] = g.length - 1; ALT_LIKELY[id] = g.filter(x => x !== id && LIKELY_ALTS[x]).length; }));
   const BY_NAME = {}; Object.entries(NAMES).forEach(([id, n]) => { BY_NAME[n] = Number(id); });
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -36,7 +36,8 @@
   function altTag(id) {
     const n = ALT_COUNT[id];
     if (n && LIKELY_ALTS[id]) return `<span class="imp a" title="${LIKELY_ALTS[id]}: probably has ${n === 1 ? '1 alt account' : n + ' alt accounts'}, not confirmed. Open their page to see them and the case.">a</span>`;
-    return n ? `<span class="imp a" title="This player has ${n === 1 ? '1 alt account' : n + ' alt accounts'} (a known alt group). Open their page to see them.">a</span>` : '';
+    const lk = ALT_LIKELY[id] || 0;
+    return n ? `<span class="imp a" title="This player has ${n === 1 ? '1 alt account' : n + ' alt accounts'} (a known alt group${lk ? `, ${lk} of them unconfirmed but likely` : ''}). Open their page to see them.">a</span>` : '';
   }
   window.impTag = impTag;
 
