@@ -972,7 +972,10 @@ function attachShareButton(entry, player, getLadder) {
     const durs = matches.map(m => m.dur).filter(d => d != null);
     const rating = (entry.ratings || {})[ladder] ?? ((entry.peaks || {})[ladder] || {}).current ?? null;
     const peak = ((entry.peaks || {})[ladder] || {}).peak;
-    const W = 1200, H = 675, c = document.createElement('canvas');
+    // every ladder the player has a rating on, so the card shows all their elos (the record below is for the ladder being viewed)
+    const rated = ['1v1 Console', 'Team Console', '1v1 PC', 'Team PC'].filter(l => (entry.ratings || {})[l] != null || ((entry.peaks || {})[l] || {}).current != null);
+    const strip = rated.length ? 106 : 0;
+    const W = 1200, H = 675 + strip, c = document.createElement('canvas');
     c.width = W; c.height = H;
     const x = c.getContext('2d');
     const F = (w, s) => `${w} ${s}px system-ui,-apple-system,"Segoe UI",sans-serif`;
@@ -986,8 +989,20 @@ function attachShareButton(entry, player, getLadder) {
     x.textAlign = 'right'; x.fillStyle = '#5C544A'; x.font = F(500, 22); x.fillText('aoe2autoscout.com', W - 56, 58);
     x.textAlign = 'left';
     fit(entry.name, W - 112, 76, 800); x.fillStyle = '#EDE8DD'; x.fillText(entry.name, 56, 148);
-    const sub = [entry.countryName, ladder, rating != null ? rating + ' rating' + (peak != null && peak !== rating ? ' (peak ' + peak + ')' : '') : ''].filter(Boolean).join('  ·  ');
+    const sub = rated.length ? [entry.countryName, 'record on ' + ladder].filter(Boolean).join('  ·  ')
+      : [entry.countryName, ladder, rating != null ? rating + ' rating' + (peak != null && peak !== rating ? ' (peak ' + peak + ')' : '') : ''].filter(Boolean).join('  ·  ');
     x.fillStyle = '#8F8578'; x.font = F(500, 26); x.fillText(sub, 56, 190);
+    if (strip) {      // one chip per ladder: current rating, and the peak when it is higher
+      const n = rated.length, gap = 18, cw2 = (W - 112 - (n - 1) * gap) / n;
+      rated.forEach((l, i) => {
+        const rt = (entry.ratings || {})[l] ?? ((entry.peaks || {})[l] || {}).current, pk = ((entry.peaks || {})[l] || {}).peak, sx = 56 + i * (cw2 + gap), cur = l === ladder;
+        rr(sx, 214, cw2, 92, 14); x.fillStyle = cur ? '#1B2A22' : '#1F1A15'; x.fill(); x.strokeStyle = cur ? '#3F9B72' : '#362E24'; x.lineWidth = 2; x.stroke();
+        x.fillStyle = '#8F8578'; x.font = F(700, 17); x.fillText(l.toUpperCase() + ' RATING', sx + 20, 242);
+        x.fillStyle = '#EDE8DD'; x.font = F(800, 40); x.fillText(String(rt), sx + 20, 288);
+        if (pk != null && pk !== rt) { x.textAlign = 'right'; x.fillStyle = '#8F8578'; x.font = F(500, 20); x.fillText('peak ' + pk, sx + cw2 - 20, 288); x.textAlign = 'left'; }
+      });
+      x.translate(0, strip);      // everything below moves down to make room
+    }
     // record tiles
     const wr = matches.length ? wins / matches.length * 100 : 0;
     const tiles = [['GAMES', matches.length.toLocaleString(), '#EDE8DD'], ['WINS', wins.toLocaleString(), '#EDE8DD'], ['WIN RATE', wr.toFixed(1) + '%', wr >= 52 ? '#4ade80' : wr <= 48 ? '#f87171' : '#EDE8DD'], ['AVG GAME', durs.length ? fmtDur(durs.reduce((a, b) => a + b, 0) / durs.length) : '—', '#EDE8DD']];
@@ -1013,6 +1028,7 @@ function attachShareButton(entry, player, getLadder) {
     };
     col('MOST-PLAYED CIVS', top(matches, 'civ', 3), 56);
     col('MOST-PLAYED MAPS', top(matches, 'map', 3), 56 + (W - 112 - 40) / 2 + 40);
+    x.setTransform(1, 0, 0, 1, 0, 0);
     x.fillStyle = '#5C544A'; x.font = F(500, 20); x.fillText('Look up any player at aoe2autoscout.com', 56, H - 26);
     return c;
   }
@@ -1027,7 +1043,7 @@ function attachShareButton(entry, player, getLadder) {
       modal = document.createElement('div');
       modal.className = 'share-modal';
       modal.hidden = true;
-      modal.innerHTML = `<div class="share-box" role="dialog" aria-modal="true" aria-label="Share player card"><h3>Share ${escapeHtml(entry.name)}'s player card</h3><p>The card shows the ladder you are viewing. Anyone who opens the link lands on this page.</p><div class="share-canvas"></div><div class="share-actions"></div><div class="share-status" aria-live="polite"></div></div>`;
+      modal.innerHTML = `<div class="share-box" role="dialog" aria-modal="true" aria-label="Share player card"><h3>Share ${escapeHtml(entry.name)}'s player card</h3><p>The card shows every ladder's rating and the record for the ladder you are viewing. Anyone who opens the link lands on this page.</p><div class="share-canvas"></div><div class="share-actions"></div><div class="share-status" aria-live="polite"></div></div>`;
       modal.addEventListener('click', e => { if (e.target === modal) modal.hidden = true; });
       document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.hidden = true; });
       document.body.appendChild(modal);
