@@ -309,7 +309,7 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
 <meta name="apple-mobile-web-app-title" content="Auto Scout">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <script src="pwa.js?v=312" defer></script>
-<script src="imposters.js?v=12"></script>
+<script src="imposters.js?v=13"></script>
 <script src="player-builds.js?v=1"></script>
 <meta name="description" content="Player Spotlight: ratings, civs, maps, recent games and head-to-heads for any Age of Empires II player.">
 <meta property="og:site_name" content="AoE2 Auto Scout">
@@ -698,7 +698,10 @@ function renderSearchResults(local, live) {
 // this is a deliberate duplicate rather than a fetch/import).
 // Accounts in an alt group that are likely but not confirmed. The Known Alts card and the Alts / Smurfs list mark them.
 // Keep in sync with insights.html, player.html and imposters.js. The case for each is on the Investigations page.
-const LIKELY_ALTS = { 15245181: 'Unconfirmed but likely' };
+const ALT_NOTE_TEXT = 'Their replays match: the first house goes exactly 5 tiles from the Town Center, villagers are queued one at a time, and both use the “Being rushed” quick chat (nobody else did across 91 games). Both also copy a real player’s name with look-alike letters.';
+const LIKELY_ALTS = { 15245181: 'Unconfirmed but likely', 26120403: 'Unconfirmed but likely', 26335295: 'Unconfirmed but likely' };
+const ALT_CASES = { 15245181: 'case-xxfuahalaxx' };   // members whose group has a case file on the Investigations page
+const ALT_NOTES = { 26120403: ALT_NOTE_TEXT, 26335295: ALT_NOTE_TEXT };   // why a likely group is thought to be one person (shown on the Known Alts card)
 const KNOWN_ALT_GROUPS = [
   [12554124, 15480913], // Donald2O16Trump / Joe2024Biden
   [20168942, 12798178, 22701056, 25013161], // Combi I Chow / DS Chowde / DS_Chowde (PSN) / UxDora
@@ -733,6 +736,7 @@ const KNOWN_ALT_GROUPS = [
   [18858883, 17412755], // TrojanHorse9682 / Slappy46
   [15925254, 5633456, 15245181], // Kenpachi817 / XXFUAHALAXX / Drengr1279 (Drengr1279 is unconfirmed but likely, see LIKELY_ALTS; not Kenpachi_3295, the PSN account with a similar name)
   [20125356, 12695567], // I hcaet I / I Teach l (anagram of the name; hands off between the two every day)
+  [26120403, 26335295], // VeeIing / SteeIers2805 (fake Veeling and fake Steelers2805; unconfirmed but likely, see LIKELY_ALTS)
 ];
 function findAltGroup(id) {
   const numId = Number(id);
@@ -1198,10 +1202,13 @@ function render(content, entry, player) {
   }
 
   const altGroup = findAltGroup(entry.profileId);
+  const altCaseId = altGroup ? altGroup.map(id => ALT_CASES[id]).find(Boolean) : null;
+  const altNote = altGroup ? altGroup.map(id => ALT_NOTES[id]).find(Boolean) : null;
+  const altCaseLink = altCaseId ? ` <a href="investigations.html#${altCaseId}" style="color:var(--amberL)">See the case</a>.` : '';
   const altsCardHtml = altGroup ? `
     <div class="card" id="alts-card">
       <h2>Known Alts</h2>
-      <p class="desc">${LIKELY_ALTS[entry.profileId] ? `${escapeHtml(entry.name)} is likely, but not confirmed, to also play under ${altGroup.length > 2 ? 'these accounts' : 'this account'}. <a href="investigations.html#case-xxfuahalaxx" style="color:var(--amberL)">See the case</a>.` : `${escapeHtml(entry.name)} is confirmed to also play under ${altGroup.length > 2 ? 'these accounts' : 'this account'}.` + (altGroup.some(id => id !== entry.profileId && LIKELY_ALTS[id]) ? ' Accounts marked “Unconfirmed but likely” are probable, not confirmed. <a href="investigations.html#case-xxfuahalaxx" style="color:var(--amberL)">See the case</a>.' : '')}</p>
+      <p class="desc">${LIKELY_ALTS[entry.profileId] ? `${escapeHtml(entry.name)} is likely, but not confirmed, to also play under ${altGroup.length > 2 ? 'these accounts' : 'this account'}.${altCaseLink}` : `${escapeHtml(entry.name)} is confirmed to also play under ${altGroup.length > 2 ? 'these accounts' : 'this account'}.` + (altGroup.some(id => id !== entry.profileId && LIKELY_ALTS[id]) ? ` Accounts marked “Unconfirmed but likely” are probable, not confirmed.${altCaseLink}` : '')}${altNote ? ' ' + escapeHtml(altNote) : ''}</p>
       <div class="similar-players" id="alts-players"></div>
     </div>` : '';
 

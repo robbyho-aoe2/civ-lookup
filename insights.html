@@ -316,7 +316,7 @@ svg.pad{width:100%;height:auto;display:block;}
 <meta name="apple-mobile-web-app-title" content="Auto Scout">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <script src="pwa.js?v=312" defer></script>
-<script src="imposters.js?v=12"></script>
+<script src="imposters.js?v=13"></script>
 <script src="tierlist.js?v=16"></script>
 <meta name="description" content="Console Age of Empires II insights: rating distribution, civ win rates, weekly recaps, alts and more.">
 <link rel="canonical" href="https://aoe2autoscout.com/insights.html">
@@ -479,7 +479,8 @@ function updatedLabel(iso) {
 // The Alts/Smurfs section lists every group in full for reference.
 // Accounts in an alt group that are likely but not confirmed. The Known Alts card and the Alts / Smurfs list mark them.
 // Keep in sync with insights.html, player.html and imposters.js. The case for each is on the Investigations page.
-const LIKELY_ALTS = { 15245181: 'Unconfirmed but likely' };
+const LIKELY_ALTS = { 15245181: 'Unconfirmed but likely', 26120403: 'Unconfirmed but likely', 26335295: 'Unconfirmed but likely' };
+const ALT_CASES = { 15245181: 'case-xxfuahalaxx' };   // members whose group has a case file on the Investigations page
 const KNOWN_ALT_GROUPS = [
   [12554124, 15480913], // Donald2O16Trump / Joe2024Biden
   [20168942, 12798178, 22701056, 25013161], // Combi I Chow / DS Chowde / DS_Chowde (PSN) / UxDora
@@ -514,6 +515,7 @@ const KNOWN_ALT_GROUPS = [
   [18858883, 17412755], // TrojanHorse9682 / Slappy46
   [15925254, 5633456, 15245181], // Kenpachi817 / XXFUAHALAXX / Drengr1279 (Drengr1279 is unconfirmed but likely, see LIKELY_ALTS; not Kenpachi_3295, the PSN account with a similar name)
   [20125356, 12695567], // I hcaet I / I Teach l (anagram of the name; hands off between the two every day)
+  [26120403, 26335295], // VeeIing / SteeIers2805 (fake Veeling and fake Steelers2805; unconfirmed but likely, see LIKELY_ALTS)
 ];
 
 // Accounts flagged as a likely impersonator of a real, already-tracked
@@ -1463,7 +1465,7 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       const name = p ? p.name : `Unknown (${id})`;
       const cls = id === winner ? 'alt-group-member kept' : 'alt-group-member';
       const sep = i > 0 ? '<span class="alt-group-sep">↔</span>' : '';
-      return `${sep}<a class="${cls}" href="player.html?id=${id}">${escapeHtml(name)}</a>` + (LIKELY_ALTS[id] ? `<span class="alt-group-hint" title="The case is on the Investigations page">${LIKELY_ALTS[id].toLowerCase()}</span>` : '');
+      return `${sep}<a class="${cls}" href="player.html?id=${id}">${escapeHtml(name)}</a>` + (LIKELY_ALTS[id] ? `<span class="alt-group-hint" title="${ALT_CASES[id] ? 'The case is on the Investigations page' : 'Likely, not confirmed'}">${LIKELY_ALTS[id].toLowerCase()}</span>` : '');
     }).join('') + `<span class="alt-group-hint">${group.length} profiles</span>`;
     altGroupsEl.appendChild(row);
   });
