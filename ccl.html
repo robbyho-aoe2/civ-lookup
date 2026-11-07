@@ -270,6 +270,7 @@ const CCL_GAME = {
     { name: 'Team A', accent: '#60a5fa', players: [{ name: 'Ice2207', id: 17828880, rating: 1719, pts: 4 }, { name: 'Seth41737spare', id: 16829189, rating: 1561, pts: -2 }, { name: 'Balinthusa', id: 16314476, rating: 1423, pts: 4 }, { name: 'NotATheist', id: 14602117, rating: 1361, pts: 4 }] },
     { name: 'Team B', accent: '#3F9B72', players: [{ name: 'GOAT Gobz', id: 8154765, rating: 1766, pts: 1 }, { name: 'ManBearPig1511', id: 8764015, rating: 1609, pts: 7 }, { name: 'MoraMora48', id: 13216763, rating: 1591, pts: 1 }, { name: 'BombEater3', id: 24050143, rating: 1124, pts: 1 }] },
   ],
+  match: 'https://www.aoe2insights.com/match/519443326/',
   result: { headline: 'Team A wins, with ManBearPig1511 on their side',
     detail: 'ManBearPig1511 was Team B’s traitor. He betrayed 40 minutes in (+2), swapped to Team A and killed a King (+1), so he gets 7 with the win. Seth41737spare was Team A’s traitor and never betrayed (−6). Winners take 4 points, losers 1.' },
   subs: [{ name: 'Ryanp1001', id: 13885770, rating: 1575 }],   // in the order they step in; rating = console team rating
@@ -316,7 +317,7 @@ if (gameOn) {
   document.getElementById('game-body').innerHTML =
     `<div class="game-head">${g.map ? `<img src="img/maps/${g.map}.jpg" alt="" width="56" height="56">` : ''}<div><h2>${esc(g.title)}</h2><div class="game-when">${esc(g.when)}</div><div class="game-when">${esc(g.setup)}</div></div></div>` +
     `<p class="game-story">${esc(g.story)}</p>` +
-    (res || tres ? `<div class="game-result"><b>${esc((res || tres).headline)}</b><span>${esc((res || tres).detail)}</span></div>` : '') +
+    (res || tres ? `<div class="game-result"><b>${esc((res || tres).headline)}</b><span>${esc((res || tres).detail)}</span>${g.match ? `<a href="${g.match}" target="_blank" rel="noopener" style="color:var(--text);font-weight:600">View the game on aoe2insights</a>` : ''}</div>` : '') +
     (tm ? tmBlock : teams ? `<div class="game-teams-bar"><h3>${res ? 'Points earned' : 'Teams · split by console 1v1 rating'}</h3><button type="button" class="game-copy" id="game-copy">${copyLabel}</button></div>`
     : g.players && g.players.length ? `<div class="game-players"><h3>In the lobby (${g.players.length} of ${g.size || 8})</h3><div class="game-chips">${g.players.map(p => `<a class="game-chip" href="player.html?id=${p.id}">${esc(p.name)}</a>`).join('')}</div>${g.lobbyNote ? `<p class="note" style="font-size:11.5px;color:var(--text3);margin:10px 0 0">${esc(g.lobbyNote)}</p>` : ''}</div>` : '') +
     `<div class="game-sides">` +
@@ -391,6 +392,13 @@ const CCL_CIVS_USED = [
   { civ: 'mongols', game: 'Oct 31 · Regicide on Team Islands' },
   { civ: 'japanese', game: 'Oct 31 · Regicide on Team Islands' },
   { civ: 'khmer', game: 'Oct 31 · 3v3 on Metropolis' },
+  { civ: 'vietnamese', game: 'Nov 7 · Regicide Traitors on Stonefront' },
+  { civ: 'armenians', game: 'Nov 7 · Regicide Traitors on Stonefront' },
+  { civ: 'portuguese', game: 'Nov 7 · Regicide Traitors on Stonefront' },
+  { civ: 'danes', game: 'Nov 7 · Regicide Traitors on Stonefront' },
+  { civ: 'saxons', game: 'Nov 7 · Regicide Traitors on Stonefront' },
+  { civ: 'hindustanis', game: 'Nov 7 · Regicide Traitors on Stonefront' },
+  { civ: 'romans', game: 'Nov 7 · Regicide Traitors on Stonefront' },
 ];
 const CCL_ALL_CIVS = ['armenians','aztecs','bengalis','berbers','bohemians','britons','bulgarians','burgundians','burmese','byzantines','celts','chinese','cumans','danes','dravidians','ethiopians','franks','georgians','goths','gurjaras','hindustanis','huns','incas','italians','japanese','jurchens','khitans','khmer','koreans','lithuanians','magyars','malay','malians','mapuche','maya','mongols','muisca','persians','poles','portuguese','romans','saracens','saxons','shu','sicilians','slavs','spanish','tatars','teutons','tupi','turks','varangians','vietnamese','vikings','wei','wu'];
 const civName = c => c.charAt(0).toUpperCase() + c.slice(1);
