@@ -265,12 +265,12 @@ const CCL_GAME = {
   story: 'One player on each team is picked as a traitor by someone who is not playing. The traitor plays the game normally, but can betray and swap sides at any moment. The other three players cannot swap sides.',
   split: false,
   size: 8,
-  // Teams balanced on console team rating (Nov 4): 6297 vs 6293. rating = console team rating. subs fill in if someone drops.
+  // Teams balanced on console team rating (Nov 7, BombEater3 in for D0cTOrSniper): 6064 vs 6090. rating = console team rating. subs fill in if someone drops.
   teams: [
-    { name: 'Team A', accent: '#60a5fa', players: [{ name: 'Ice2207', id: 17828880, rating: 1672 }, { name: 'ManBearPig1511', id: 8764015, rating: 1612 }, { name: 'Seth41737spare', id: 16829189, rating: 1598 }, { name: 'Balinthusa', id: 16314476, rating: 1415 }] },
-    { name: 'Team B', accent: '#3F9B72', players: [{ name: 'GOAT Gobz', id: 8154765, rating: 1766 }, { name: 'MoraMora48', id: 13216763, rating: 1617 }, { name: 'D0cTOrSniper', id: 13323926, rating: 1525 }, { name: 'NotATheist', id: 14602117, rating: 1385 }] },
+    { name: 'Team A', accent: '#60a5fa', players: [{ name: 'Ice2207', id: 17828880, rating: 1719 }, { name: 'Seth41737spare', id: 16829189, rating: 1561 }, { name: 'Balinthusa', id: 16314476, rating: 1423 }, { name: 'NotATheist', id: 14602117, rating: 1361 }] },
+    { name: 'Team B', accent: '#3F9B72', players: [{ name: 'GOAT Gobz', id: 8154765, rating: 1766 }, { name: 'ManBearPig1511', id: 8764015, rating: 1609 }, { name: 'MoraMora48', id: 13216763, rating: 1591 }, { name: 'BombEater3', id: 24050143, rating: 1124 }] },
   ],
-  subs: [{ name: 'Ryanp1001', id: 13885770, rating: 1592 }, { name: 'BombEater3', id: 24050143, rating: 1103 }],   // in the order they step in; rating = console team rating
+  subs: [{ name: 'Ryanp1001', id: 13885770, rating: 1575 }],   // in the order they step in; rating = console team rating
   sides: [
     { name: 'The traitor', accent: '#C0392B', who: 'One player per team. Points depend on when you betray.',
       head: ['Betray', 'Points'], rows: [['Under 10 min', 6], ['10–29 min', 4], ['30–89 min', 2], ['90–119 min', 4], ['120+ min', 6], ['Never betray', -6]],
@@ -279,11 +279,11 @@ const CCL_GAME = {
       head: ['Result', 'Points'], rows: [['Winning team', 4], ['Losing team', 1], ['Kill the betrayer’s King and win the game', 5]],
       note: '' },
   ],
-  // elo = console 1v1 rating (Nov 4); some are old because those players have not played 1v1 console lately.
+  // elo = console 1v1 rating (Nov 7); some are old because those players have not played 1v1 console lately.
   players: [
-    { name: 'Balinthusa', id: 16314476, elo: 1525 }, { name: 'ManBearPig1511', id: 8764015, elo: 1739 }, { name: 'Ice2207', id: 17828880, elo: 1692 },
-    { name: 'MoraMora48', id: 13216763, elo: 1916 }, { name: 'Seth41737spare', id: 16829189, elo: 1663 }, { name: 'NotATheist', id: 14602117, elo: 1500 },
-    { name: 'GOAT Gobz', id: 8154765, elo: 1843 }, { name: 'D0cTOrSniper', id: 13323926, elo: 1534 },
+    { name: 'Balinthusa', id: 16314476, elo: 1545 }, { name: 'ManBearPig1511', id: 8764015, elo: 1750 }, { name: 'Ice2207', id: 17828880, elo: 1692 },
+    { name: 'MoraMora48', id: 13216763, elo: 1916 }, { name: 'Seth41737spare', id: 16829189, elo: 1663 }, { name: 'NotATheist', id: 14602117, elo: 1470 },
+    { name: 'GOAT Gobz', id: 8154765, elo: 1843 }, { name: 'BombEater3', id: 24050143, elo: 1063 },
   ],
   tag: 'Trust your team. Watch your back.',
 };
