@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Console Leaderboard — AoE2 Auto Scout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#100E0C;--surf:#17130F;--surf2:#1F1A15;--border:#241F1A;--border2:#362E24;
+  --amber:#3F9B72;--amberL:#5FB88C;--amberBg:rgba(63,155,114,.12);
+  --text:#EDE8DD;--text2:#8F8578;--text3:#5C544A;
+  --font-display:'Cinzel',Georgia,'Times New Roman',serif;
+  --font-body:'Source Sans 3',-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono','Courier New',monospace;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px;}
+header{display:flex;align-items:center;gap:14px;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+header h1{font-family:var(--font-display);font-weight:600;letter-spacing:.02em;font-size:22px;margin:0;}
+.footer{font-size:11px;color:var(--text3);text-align:center;margin-top:30px;padding-top:16px;border-top:1px solid var(--border);}
+.footer a{color:var(--text2);text-decoration:none;}
+.footer a:hover{color:var(--amberL);}
+.page-tabs{display:flex;gap:6px;margin:0 0 22px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.page-tabs a{padding:10px 16px;font-size:13px;font-weight:600;color:var(--text2);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.page-tabs a:hover{color:var(--text);}
+.page-tabs a.on{color:var(--amberL);border-bottom-color:var(--amber);}
+.card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
+.card h2{font-family:var(--font-display);font-weight:600;letter-spacing:.01em;font-size:16px;margin:0 0 4px;color:var(--amberL);}
+.card .desc{font-size:12px;color:var(--text2);margin:0 0 14px;line-height:1.5;}
+.loading,.error{font-size:13px;color:var(--text2);padding:20px;text-align:center;}
+.error{color:#f87171;}
+.tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.tools input,.tools select{background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font:inherit;font-size:13px;min-width:0;}
+.tools input{flex:1 1 180px;max-width:280px;}
+.tools input:focus,.tools select:focus{outline:none;border-color:var(--amber);}
+.tools .count{font-size:12px;color:var(--text3);margin-left:auto;}
+.lb-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th,td{padding:6px 9px;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;white-space:nowrap;}
+tbody tr:hover{background:var(--surf2);}
+thead th{background:var(--surf2);color:var(--text3);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.04em;text-align:center;}
+thead tr.grp th{border-bottom:1px solid var(--border2);color:var(--text2);}
+th.s{cursor:pointer;user-select:none;}
+th.s:hover{color:var(--amberL);}
+th.s.on{color:var(--amberL);}
+th.s.on::after{content:' ▾';}
+th.s.on.asc::after{content:' ▴';}
+td.num{text-align:right;font-family:var(--font-mono);font-size:12.5px;}
+td.l,th.l{border-left:1px solid var(--border2);}
+td.cur{color:var(--text);}
+td.pk{color:var(--text2);}
+td.na{color:var(--text3);text-align:center;}
+td.rk{color:var(--text3);text-align:right;font-family:var(--font-mono);font-size:12px;}
+td.nm a{color:var(--text);text-decoration:none;font-weight:600;}
+td.nm a:hover{color:var(--amberL);}
+.merged{display:inline-block;margin-left:6px;font-size:10px;color:var(--text2);border:1px solid var(--border2);border-radius:10px;padding:0 6px;cursor:help;}
+td.nm{position:sticky;left:0;background:var(--surf);z-index:1;max-width:240px;overflow:hidden;text-overflow:ellipsis;}
+thead th.nm{position:sticky;left:0;z-index:2;}
+tbody tr:hover td.nm{background:var(--surf2);}
+.more{margin-top:12px;text-align:center;}
+.more button{background:var(--surf2);color:var(--text2);border:1px solid var(--border2);border-radius:6px;padding:6px 16px;font:inherit;font-size:12px;cursor:pointer;}
+.more button:hover{color:var(--amberL);border-color:var(--amber);}
+@media (max-width:700px){
+  .wrap{padding:14px 10px 40px;}
+  .card{padding:14px 12px 12px;border-radius:10px;margin-bottom:14px;}
+  .page-tabs{flex-wrap:nowrap;overflow-x:auto;gap:0;margin-bottom:12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .page-tabs::-webkit-scrollbar{display:none;}
+  .page-tabs a{flex:none;padding:8px 10px;font-size:12px;white-space:nowrap;}
+  th,td{padding:5px 6px;}
+  td.nm{max-width:130px;}
+  .tools .count{margin-left:0;width:100%;}
+}
+</style>
+<script data-goatcounter="https://robbyho.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#100E0C">
+<link rel="icon" type="image/svg+xml" href="app-icons/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="app-icons/favicon-32.png">
+<link rel="apple-touch-icon" href="app-icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Auto Scout">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<script src="pwa.js?v=312" defer></script>
+<script src="imposters.js?v=15"></script>
+<meta name="description" content="Sortable console Age of Empires II leaderboard: current and peak rating on every ladder, one row per real player.">
+<link rel="canonical" href="https://aoe2autoscout.com/leaderboard.html">
+<meta property="og:site_name" content="AoE2 Auto Scout">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Console Leaderboard — AoE2 Auto Scout">
+<meta property="og:description" content="Sortable console Age of Empires II leaderboard: current and peak rating on every ladder, one row per real player.">
+<meta property="og:url" content="https://aoe2autoscout.com/leaderboard.html">
+<meta property="og:image" content="https://aoe2autoscout.com/app-icons/share-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+<div class="wrap">
+  <header><div><h1>🏆 Console Leaderboard</h1></div></header>
+
+  <nav class="page-tabs">
+    <a href="index.html">🏠 Auto Scout</a>
+    <a href="console-live.html">🎮 Console Live</a>
+    <a href="player.html">🔎 Player Spotlight</a>
+    <a href="competitive.html">Nations Cup</a>
+    <a href="insights.html">📊 Console Insights</a>
+    <a href="leaderboard.html" class="on">🏆 Leaderboard</a>
+    <a href="civ-insights.html">🧮 Civ Insights</a>
+    <a href="ccl.html">CCL</a>
+    <a href="podcast.html">🎙️ Podcast</a>
+    <a href="build-order.html">🛠️ Build Order</a>
+    <a href="investigations.html">🕵️ Investigations</a>
+  </nav>
+
+  <section class="card">
+    <h2>Every tracked console player</h2>
+    <p class="desc">Click any column to sort by it, again to flip the order. <b>Now</b> is the current rating and <b>Peak</b> is the highest the player has reached on that ladder. The PC columns are crossplay ratings for console players who also play the PC ladder. Each real person is one row: players with confirmed alt or smurf accounts are merged, showing the best figure across their accounts in every column, under the name of their highest-rated account. Hover the grey badge to see which accounts were merged.</p>
+    <div class="tools">
+      <input id="q" type="search" placeholder="Search players" autocomplete="off">
+      <select id="country"><option value="">All countries</option></select>
+      <select id="plat"><option value="">All platforms</option><option value="Xbox">Xbox</option><option value="PSN">PSN</option></select>
+      <span class="count" id="count"></span>
+    </div>
+    <div id="out"><div class="loading">Loading player data…</div></div>
+    <div class="more" id="more"></div>
+  </section>
+
+  <div class="footer">
+    <a href="https://www.twitch.tv/fastcastleandchill" target="_blank">📺 Twitch</a> &nbsp;·&nbsp;
+    <a href="https://www.youtube.com/@Fastcastleandchill" target="_blank">▶ YouTube</a> &nbsp;·&nbsp;
+    <a href="https://streamelements.com/notatheist/tip" target="_blank">💛 Support the channel</a> &nbsp;·&nbsp;
+    <a href="https://www.dubby.gg/discount/fastcastleandchill?ref=qibaqhsi" target="_blank" rel="sponsored noopener" title="Dubby focus drink, 10% off with my link. Affiliate link: I earn a commission."><img src="img/dubby/dubby-icon.png" alt="" width="14" height="14" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px">Dubby 10% off</a> <span style="opacity:.7">(affiliate link)</span> &nbsp;·&nbsp;
+    Data: <a href="https://aoe2techtree.net" target="_blank">aoe2techtree.net</a>,
+    <a href="https://data.aoe2companion.com" target="_blank">data.aoe2companion.com</a>
+  </div>
+</div>
+
+<script>
+const DATA_URL = 'https://raw.githubusercontent.com/robbyho-aoe2/player-data/main/data/aggregate-meta.json';
+const LADDERS = ['1v1 Console', 'Team Console', '1v1 PC', 'Team PC'];
+const PAGE = 100;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+let rows = [], sortKey = '1v1 Console|cur', sortDir = 'desc', shown = PAGE;
+
+const cur = (p, l) => (p.ratings && p.ratings[l] != null) ? p.ratings[l] : ((p.peaks && p.peaks[l] && p.peaks[l].current != null) ? p.peaks[l].current : null);
+const pk = (p, l) => {
+  const v = p.peaks && p.peaks[l] && p.peaks[l].peak;
+  const c = cur(p, l);
+  if (v == null) return c;
+  return c != null && c > v ? c : v;
+};
+const maxOf = arr => { const v = arr.filter(x => x != null); return v.length ? Math.max(...v) : null; };
+const bestConsole = p => maxOf([cur(p, '1v1 Console'), cur(p, 'Team Console')]) ?? maxOf([pk(p, '1v1 Console'), pk(p, 'Team Console')]) ?? -1;
+const hasConsole = p => ['1v1 Console', 'Team Console'].some(l => cur(p, l) != null || pk(p, l) != null);
+
+function build(players) {
+  const byId = new Map(players.map(p => [p.profileId, p]));
+  players = [...byId.values()];     // the source file lists a few accounts twice
+  const merged = new Set();
+  const out = [];
+  const make = reps => {
+    reps = reps.slice().sort((a, b) => bestConsole(b) - bestConsole(a));
+    const top = reps[0];
+    const r = { id: top.profileId, name: top.name, country: top.country, countryIcon: top.countryIcon, countryName: top.countryName,
+      games: reps.reduce((s, p) => s + (p.totalGames || 0), 0), others: reps.slice(1), platforms: [...new Set(reps.map(p => p.platform).filter(Boolean))] };
+    LADDERS.forEach(l => { r[l + '|cur'] = maxOf(reps.map(p => cur(p, l))); r[l + '|peak'] = maxOf(reps.map(p => pk(p, l))); });
+    return r;
+  };
+  (window.ALT_GROUPS || []).forEach(g => {
+    const reps = g.map(id => byId.get(id)).filter(Boolean);
+    g.forEach(id => merged.add(id));
+    if (!reps.length || !reps.some(hasConsole)) return;
+    out.push(make(reps));
+  });
+  players.forEach(p => {
+    if (merged.has(p.profileId) || p.group !== 'console' || !hasConsole(p)) return;
+    out.push(make([p]));
+  });
+  return out;
+}
+
+function visible() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const c = document.getElementById('country').value, pf = document.getElementById('plat').value;
+  const v = rows.filter(r => {
+    if (c && r.country !== c) return false;
+    if (pf && !r.platforms.includes(pf)) return false;
+    if (q && !(r.name.toLowerCase().includes(q) || r.others.some(o => o.name.toLowerCase().includes(q)))) return false;
+    return true;
+  });
+  const dir = sortDir === 'asc' ? 1 : -1;
+  v.sort((a, b) => {
+    if (sortKey === 'name') return dir * a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    if (sortKey === 'country') return dir * (a.countryName || '').localeCompare(b.countryName || '') || (b['1v1 Console|cur'] ?? -1) - (a['1v1 Console|cur'] ?? -1);
+    const x = sortKey === 'games' ? a.games : a[sortKey], y = sortKey === 'games' ? b.games : b[sortKey];
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;     // players without that rating always sink to the bottom
+    if (y == null) return -1;
+    return dir * (x - y);
+  });
+  return v;
+}
+
+function head() {
+  const on = k => sortKey === k ? ' on' + (sortDir === 'asc' ? ' asc' : '') : '';
+  const th = (key, label, cls) => `<th class="s ${cls || ''}${on(key)}" data-k="${key}">${label}</th>`;
+  const g1 = LADDERS.map(l => `<th colspan="2" class="l">${l}</th>`).join('');
+  const g2 = LADDERS.map(l => th(l + '|cur', 'Now', 'l') + th(l + '|peak', 'Peak')).join('');
+  return `<thead><tr class="grp"><th rowspan="2">#</th><th rowspan="2" class="nm s${on('name')}" data-k="name" style="text-align:left">Player</th><th rowspan="2" class="s${on('country')}" data-k="country">Country</th>${g1}<th rowspan="2" class="s l${on('games')}" data-k="games">Games</th></tr><tr>${g2}</tr></thead>`;
+}
+
+const cell = (v, cls) => v == null ? `<td class="na ${cls}">–</td>` : `<td class="num ${cls}">${v.toLocaleString()}</td>`;
+
+function render() {
+  const v = visible();
+  const body = v.slice(0, shown).map((r, i) => {
+    const badge = r.others.length ? `<span class="merged" title="${esc((r.others.length + 1) + ' accounts merged into this row: ' + [r.name].concat(r.others.map(o => o.name)).join(', '))}">${r.others.length + 1} accts</span>` : '';
+    return `<tr><td class="rk">${i + 1}</td><td class="nm"><a href="player.html?id=${r.id}">${esc(r.name)}</a>${badge}</td><td>${r.countryIcon || ''} ${esc(r.countryName || '')}</td>` +
+      LADDERS.map(l => cell(r[l + '|cur'], 'cur l') + cell(r[l + '|peak'], 'pk')).join('') +
+      `<td class="num pk l">${r.games ? r.games.toLocaleString() : '–'}</td></tr>`;
+  }).join('');
+  document.getElementById('out').innerHTML = `<div class="lb-wrap"><table>${head()}<tbody>${body || '<tr><td colspan="12" class="na" style="padding:18px">No players match.</td></tr>'}</tbody></table></div>`;
+  document.getElementById('count').textContent = `${v.length.toLocaleString()} ${v.length === 1 ? 'player' : 'players'}`;
+  document.getElementById('more').innerHTML = v.length > shown ? `<button id="more-btn">Show ${Math.min(PAGE, v.length - shown)} more (${shown.toLocaleString()} of ${v.length.toLocaleString()})</button>` : '';
+  const mb = document.getElementById('more-btn'); if (mb) mb.onclick = () => { shown += PAGE; render(); };
+  document.querySelectorAll('th.s').forEach(h => h.onclick = () => {
+    const k = h.dataset.k;
+    if (sortKey === k) sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+    else { sortKey = k; sortDir = (k === 'name' || k === 'country') ? 'asc' : 'desc'; }
+    shown = PAGE; render();
+  });
+  if (window.tagImposters) window.tagImposters(document.getElementById('out'));
+}
+
+(async function () {
+  try {
+    const res = await fetch(DATA_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const meta = await res.json();
+    rows = build(meta.players || []);
+    const cs = new Map();
+    rows.forEach(r => { if (r.country) cs.set(r.country, r.countryName || r.country); });
+    document.getElementById('country').insertAdjacentHTML('beforeend', [...cs.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([c, n]) => `<option value="${esc(c)}">${esc(n)}</option>`).join(''));
+    ['q', 'country', 'plat'].forEach(id => document.getElementById(id).addEventListener(id === 'q' ? 'input' : 'change', () => { shown = PAGE; render(); }));
+    render();
+  } catch (e) {
+    document.getElementById('out').innerHTML = `<div class="error">Could not load player data: ${esc(e.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>
