@@ -125,7 +125,7 @@ thead th.fl{padding-left:4px;padding-right:4px;}
 
   <section class="card">
     <h2>Every tracked console player</h2>
-    <p class="desc">Click any column to sort by it, again to flip the order. Search for a player to see their overall rank on every ladder next to each rating. <b>Now</b> is the current rating and <b>Peak</b> is the highest the player has reached on that ladder. The PC columns are crossplay ratings for console players who also play the PC ladder. Each real person is one row: a player with confirmed alt or smurf accounts is listed once, as their highest-rated account, with that account's own numbers. Hover the grey badge to see their other accounts.</p>
+    <p class="desc">Click any column to sort by it, again to flip the order. The small green number beside each rating is the player's overall rank on that ladder (and, for Peak, among everyone's peaks). <b>Now</b> is the current rating and <b>Peak</b> is the highest the player has reached on that ladder. The PC columns are crossplay ratings for console players who also play the PC ladder. Each real person is one row: a player with confirmed alt or smurf accounts is listed once, as their highest-rated account, with that account's own numbers. Hover the grey badge to see their other accounts.</p>
     <div class="tools">
       <input id="q" type="search" placeholder="Search players" autocomplete="off">
       <select id="country"><option value="">All countries</option></select>
@@ -238,10 +238,10 @@ const cell = (v, cls, rk) => v == null ? `<td class="na ${cls}">–</td>` : `<td
 
 function render() {
   const v = visible();
-  const showRank = document.getElementById('q').value.trim() !== '';     // while searching, show each rating's overall rank beside it
+  const showRank = true;     // every rating shows its overall rank beside it, small
   const body = v.slice(0, shown).map((r, i) => {
     const badge = r.others.length ? `<span class="merged" title="${esc((r.others.length + 1) + ' accounts in total. This row is the highest-rated: ' + [r.name].concat(r.others.map(o => o.name)).join(', '))}">+${r.others.length} alt${r.others.length > 1 ? 's' : ''}</span>` : '';
-    return `<tr><td class="rk">${showRank ? (RANKS[sortKey] ? '#' + (RANKS[sortKey].get(r.id) ?? '–') : '–') : i + 1}</td><td class="nm"><a href="player.html?id=${r.id}">${esc(r.name)}</a>${badge}</td><td class="fl" title="${esc(r.countryName || '')}">${r.countryIcon || esc((r.country || '').toUpperCase())}</td>` +
+    return `<tr><td class="rk">${i + 1}</td><td class="nm"><a href="player.html?id=${r.id}">${esc(r.name)}</a>${badge}</td><td class="fl" title="${esc(r.countryName || '')}">${r.countryIcon || esc((r.country || '').toUpperCase())}</td>` +
       LADDERS.map(l => cell(r[l + '|cur'], 'cur l', showRank && RANKS[l + '|cur'].get(r.id)) + cell(r[l + '|peak'], 'pk', showRank && RANKS[l + '|peak'].get(r.id))).join('') +
       `<td class="num pk l">${r.games ? r.games.toLocaleString() : '–'}</td></tr>`;
   }).join('');
