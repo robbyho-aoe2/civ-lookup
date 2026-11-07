@@ -316,7 +316,7 @@ svg.pad{width:100%;height:auto;display:block;}
 <meta name="apple-mobile-web-app-title" content="Auto Scout">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <script src="pwa.js?v=312" defer></script>
-<script src="imposters.js?v=15"></script>
+<script src="imposters.js?v=16"></script>
 <script src="tierlist.js?v=16"></script>
 <meta name="description" content="Console Age of Empires II insights: rating distribution, civ win rates, weekly recaps, alts and more.">
 <link rel="canonical" href="https://aoe2autoscout.com/insights.html">
@@ -603,7 +603,7 @@ async function loadAndRender() {
     // section below) lists every confirmed same-person group, 2 or more
     // profileIds each. For each group, keep whichever member has the
     // highest PC crossplay peak and drop the rest from this leaderboard.
-    const crossplayDropIds = new Set(CROSSPLAY_EXCLUDE_IDS);
+    const crossplayDropIds = new Set([...CROSSPLAY_EXCLUDE_IDS, ...(window.IMPOSTER_IDS || [])]);     // imposter accounts never appear on a leaderboard
     KNOWN_ALT_GROUPS.forEach(group => {
       let winner = group[0], winnerPeak = -1;
       group.forEach(id => {
@@ -629,6 +629,7 @@ async function loadAndRender() {
     // about their console rating/country, both real.
     regionDropIds.delete(12868111);
     regionDropIds.delete(23585701);
+    (window.IMPOSTER_IDS || new Set()).forEach(id => regionDropIds.add(id));
     KNOWN_ALT_GROUPS.forEach(group => {
       let winner = group[0], winnerRating = -1;
       group.forEach(id => {
