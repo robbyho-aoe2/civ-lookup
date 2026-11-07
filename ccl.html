@@ -108,6 +108,8 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .civ-cell{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:var(--radius);background:var(--surf2);border:1px solid var(--border2);font-size:12.5px;color:var(--text);min-width:0;}
 .civ-cell img{width:22px;height:22px;flex:none;}
 .civ-cell span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.civ-sub{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin:0 0 8px;}
+.civ-sub:not(:first-of-type){margin-top:18px;}
 .civ-cell.used{opacity:.4;border-style:dashed;}
 .civ-cell.used img{filter:grayscale(1);}
 .civ-cell.used span{text-decoration:line-through;}
@@ -403,9 +405,13 @@ const CCL_CIVS_USED = [
 const CCL_ALL_CIVS = ['armenians','aztecs','bengalis','berbers','bohemians','britons','bulgarians','burgundians','burmese','byzantines','celts','chinese','cumans','danes','dravidians','ethiopians','franks','georgians','goths','gurjaras','hindustanis','huns','incas','italians','japanese','jurchens','khitans','khmer','koreans','lithuanians','magyars','malay','malians','mapuche','maya','mongols','muisca','persians','poles','portuguese','romans','saracens','saxons','shu','sicilians','slavs','spanish','tatars','teutons','tupi','turks','varangians','vietnamese','vikings','wei','wu'];
 const civName = c => c.charAt(0).toUpperCase() + c.slice(1);
 const usedBy = new Map(CCL_CIVS_USED.map(u => [u.civ, u.game]));
+const civCell = c => `<div class="civ-cell${usedBy.has(c) ? ' used' : ''}"${usedBy.has(c) ? ` title="${esc(usedBy.get(c))}"` : ''}><img src="img/civs/${c}.png" alt=""><span>${civName(c)}</span></div>`;
+const civsLeft = CCL_ALL_CIVS.filter(c => !usedBy.has(c)), civsDone = CCL_ALL_CIVS.filter(c => usedBy.has(c));
 document.getElementById('civ-body').innerHTML =
-  `<p class="civ-lock-sum"><b>${usedBy.size} of ${CCL_ALL_CIVS.length}</b> civs used so far: ${CCL_CIVS_USED.map(u => civName(u.civ) + ' (' + esc(u.game) + ')').join(', ')}.</p>` +
-  `<div class="civ-grid">${CCL_ALL_CIVS.map(c => `<div class="civ-cell${usedBy.has(c) ? ' used' : ''}"${usedBy.has(c) ? ` title="${esc(usedBy.get(c))}"` : ''}><img src="img/civs/${c}.png" alt=""><span>${civName(c)}</span></div>`).join('')}</div>`;
+  `<p class="civ-lock-sum"><b>${civsLeft.length} of ${CCL_ALL_CIVS.length}</b> civs still available, ${civsDone.length} used so far.</p>` +
+  `<h3 class="civ-sub">Available (${civsLeft.length})</h3><div class="civ-grid">${civsLeft.map(civCell).join('')}</div>` +
+  `<h3 class="civ-sub">Used (${civsDone.length})</h3><div class="civ-grid">${civsDone.map(civCell).join('')}</div>` +
+  `<p class="civ-lock-sum" style="margin:14px 0 0;font-size:12px;color:var(--text3)">${CCL_CIVS_USED.map(u => civName(u.civ) + ' (' + esc(u.game) + ')').join(', ')}.</p>`;
 
 // Extra games for the week. Each has two teams; `rating` is the console team rating (Oct 31) the split was balanced on.
 const CCL_EXTRA = [
