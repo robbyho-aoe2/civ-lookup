@@ -119,7 +119,7 @@ tbody tr:hover td.nm{background:var(--surf2);}
 
   <section class="card">
     <h2>Every tracked console player</h2>
-    <p class="desc">Click any column to sort by it, again to flip the order. <b>Now</b> is the current rating and <b>Peak</b> is the highest the player has reached on that ladder. The PC columns are crossplay ratings for console players who also play the PC ladder. Each real person is one row: players with confirmed alt or smurf accounts are merged, showing the best figure across their accounts in every column, under the name of their highest-rated account. Hover the grey badge to see which accounts were merged.</p>
+    <p class="desc">Click any column to sort by it, again to flip the order. <b>Now</b> is the current rating and <b>Peak</b> is the highest the player has reached on that ladder. The PC columns are crossplay ratings for console players who also play the PC ladder. Each real person is one row: a player with confirmed alt or smurf accounts is listed once, as their highest-rated account, with that account's own numbers. Hover the grey badge to see their other accounts.</p>
     <div class="tools">
       <input id="q" type="search" placeholder="Search players" autocomplete="off">
       <select id="country"><option value="">All countries</option></select>
@@ -168,8 +168,8 @@ function build(players) {
     reps = reps.slice().sort((a, b) => bestConsole(b) - bestConsole(a));
     const top = reps[0];
     const r = { id: top.profileId, name: top.name, country: top.country, countryIcon: top.countryIcon, countryName: top.countryName,
-      games: reps.reduce((s, p) => s + (p.totalGames || 0), 0), others: reps.slice(1), platforms: [...new Set(reps.map(p => p.platform).filter(Boolean))] };
-    LADDERS.forEach(l => { r[l + '|cur'] = maxOf(reps.map(p => cur(p, l))); r[l + '|peak'] = maxOf(reps.map(p => pk(p, l))); });
+      games: top.totalGames || 0, others: reps.slice(1), platforms: [top.platform].filter(Boolean) };
+    LADDERS.forEach(l => { r[l + '|cur'] = cur(top, l); r[l + '|peak'] = pk(top, l); });
     return r;
   };
   (window.ALT_GROUPS || []).forEach(g => {
@@ -220,7 +220,7 @@ const cell = (v, cls) => v == null ? `<td class="na ${cls}">–</td>` : `<td cla
 function render() {
   const v = visible();
   const body = v.slice(0, shown).map((r, i) => {
-    const badge = r.others.length ? `<span class="merged" title="${esc((r.others.length + 1) + ' accounts merged into this row: ' + [r.name].concat(r.others.map(o => o.name)).join(', '))}">${r.others.length + 1} accts</span>` : '';
+    const badge = r.others.length ? `<span class="merged" title="${esc((r.others.length + 1) + ' accounts in total. This row is the highest-rated: ' + [r.name].concat(r.others.map(o => o.name)).join(', '))}">+${r.others.length} alt${r.others.length > 1 ? 's' : ''}</span>` : '';
     return `<tr><td class="rk">${i + 1}</td><td class="nm"><a href="player.html?id=${r.id}">${esc(r.name)}</a>${badge}</td><td>${r.countryIcon || ''} ${esc(r.countryName || '')}</td>` +
       LADDERS.map(l => cell(r[l + '|cur'], 'cur l') + cell(r[l + '|peak'], 'pk')).join('') +
       `<td class="num pk l">${r.games ? r.games.toLocaleString() : '–'}</td></tr>`;
