@@ -60,6 +60,7 @@ td.nm a:hover{color:var(--amberL);}
 td.nm{position:sticky;left:0;background:var(--surf);z-index:1;max-width:240px;overflow:hidden;text-overflow:ellipsis;}
 thead th.nm{position:sticky;left:0;z-index:2;}
 tbody tr:hover td.nm{background:var(--surf2);}
+td.ov{border-left:1px solid var(--border2);}
 td.fl{text-align:center;font-size:13px;padding-left:4px;padding-right:4px;width:1%;}
 thead th.fl{padding-left:4px;padding-right:4px;}
 .rk2{display:inline-block;margin-left:5px;font-size:10px;color:var(--amberL);font-family:var(--font-body);font-weight:600;}
@@ -125,7 +126,7 @@ thead th.fl{padding-left:4px;padding-right:4px;}
 
   <section class="card">
     <h2>Every tracked console player</h2>
-    <p class="desc">Click any column to sort by it, again to flip the order. The small green number beside each rating is the player's overall rank on that ladder (and, for Peak, among everyone's peaks). <b>Now</b> is the current rating and <b>Peak</b> is the highest the player has reached on that ladder. The PC columns are crossplay ratings for console players who also play the PC ladder. Each real person is one row: a player with confirmed alt or smurf accounts is listed once, as their highest-rated account, with that account's own numbers. Hover the grey badge to see their other accounts.</p>
+    <p class="desc">Click any column to sort by it, again to flip the order. <b>Overall</b> averages the player's current rank on every ladder they are rated on (as a percentile of each ladder, so the smaller PC field counts the same as the big console ones). It needs at least 2 ladders. The small green number beside each rating is the player's overall rank on that ladder (and, for Peak, among everyone's peaks). <b>Now</b> is the current rating and <b>Peak</b> is the highest the player has reached on that ladder. The PC columns are crossplay ratings for console players who also play the PC ladder. Each real person is one row: a player with confirmed alt or smurf accounts is listed once, as their highest-rated account, with that account's own numbers. Hover the grey badge to see their other accounts.</p>
     <div class="tools">
       <input id="q" type="search" placeholder="Search players" autocomplete="off">
       <select id="country"><option value="">All countries</option></select>
@@ -204,6 +205,21 @@ function computeRanks() {
   }));
 }
 
+// Overall ranking: each player's current rank on every ladder they are rated on, turned into a percentile of that ladder's field
+// (so a 1v1 Console rank and a smaller PC-crossplay rank weigh the same), then averaged. Needs 2+ ladders so one lucky ladder cannot carry it.
+function computeOverall() {
+  const size = {};
+  LADDERS.forEach(l => { size[l] = RANKS[l + '|cur'].size; });
+  rows.forEach(r => {
+    const pcts = LADDERS.map(l => { const k = RANKS[l + '|cur'].get(r.id); return k == null ? null : k / size[l] * 100; }).filter(x => x != null);
+    r.ladders = pcts.length;
+    r.score = pcts.length >= 2 ? pcts.reduce((a, b) => a + b, 0) / pcts.length : null;
+  });
+  const scored = rows.filter(r => r.score != null).map(r => r.score).sort((a, b) => a - b);
+  const first = new Map(); scored.forEach((v, i) => { if (!first.has(v)) first.set(v, i + 1); });
+  rows.forEach(r => { r.overall = r.score == null ? null : first.get(r.score); });
+}
+
 function visible() {
   const q = document.getElementById('q').value.trim().toLowerCase();
   const c = document.getElementById('country').value, pf = document.getElementById('plat').value;
@@ -231,7 +247,7 @@ function head() {
   const th = (key, label, cls) => `<th class="s ${cls || ''}${on(key)}" data-k="${key}">${label}</th>`;
   const g1 = LADDERS.map(l => `<th colspan="2" class="l">${l}</th>`).join('');
   const g2 = LADDERS.map(l => th(l + '|cur', 'Now', 'l') + th(l + '|peak', 'Peak')).join('');
-  return `<thead><tr class="grp"><th rowspan="2">#</th><th rowspan="2" class="nm s${on('name')}" data-k="name" style="text-align:left">Player</th><th rowspan="2" class="fl s${on('country')}" data-k="country" title="Country">🌐</th>${g1}<th rowspan="2" class="s l${on('games')}" data-k="games">Games</th></tr><tr>${g2}</tr></thead>`;
+  return `<thead><tr class="grp"><th rowspan="2">#</th><th rowspan="2" class="nm s${on('name')}" data-k="name" style="text-align:left">Player</th><th rowspan="2" class="fl s${on('country')}" data-k="country" title="Country">🌐</th><th rowspan="2" class="s${on('overall')}" data-k="overall" title="Overall ranking: the average of the player's current rank on every ladder they are rated on, as a percentile of each ladder (needs 2 or more ladders)">Overall</th>${g1}<th rowspan="2" class="s l${on('games')}" data-k="games">Games</th></tr><tr>${g2}</tr></thead>`;
 }
 
 const cell = (v, cls, rk) => v == null ? `<td class="na ${cls}">–</td>` : `<td class="num ${cls}">${v.toLocaleString()}${rk ? `<span class="rk2" title="Overall rank among all listed console players">#${rk.toLocaleString()}</span>` : ''}</td>`;
@@ -242,17 +258,18 @@ function render() {
   const body = v.slice(0, shown).map((r, i) => {
     const badge = r.others.length ? `<span class="merged" title="${esc((r.others.length + 1) + ' accounts in total. This row is the highest-rated: ' + [r.name].concat(r.others.map(o => o.name)).join(', '))}">+${r.others.length} alt${r.others.length > 1 ? 's' : ''}</span>` : '';
     return `<tr><td class="rk">${i + 1}</td><td class="nm"><a href="player.html?id=${r.id}">${esc(r.name)}</a>${badge}</td><td class="fl" title="${esc(r.countryName || '')}">${r.countryIcon || esc((r.country || '').toUpperCase())}</td>` +
+      (r.overall == null ? `<td class="na">–</td>` : `<td class="num ov" title="Average of the current ranks on ${r.ladders} ladders: top ${r.score.toFixed(1)}% of each ladder's field">#${r.overall.toLocaleString()}<span class="rk2">top ${r.score < 10 ? r.score.toFixed(1) : Math.round(r.score)}%</span></td>`) +
       LADDERS.map(l => cell(r[l + '|cur'], 'cur l', showRank && RANKS[l + '|cur'].get(r.id)) + cell(r[l + '|peak'], 'pk', showRank && RANKS[l + '|peak'].get(r.id))).join('') +
       `<td class="num pk l">${r.games ? r.games.toLocaleString() : '–'}</td></tr>`;
   }).join('');
-  document.getElementById('out').innerHTML = `<div class="lb-wrap"><table>${head()}<tbody>${body || '<tr><td colspan="12" class="na" style="padding:18px">No players match.</td></tr>'}</tbody></table></div>`;
+  document.getElementById('out').innerHTML = `<div class="lb-wrap"><table>${head()}<tbody>${body || '<tr><td colspan="13" class="na" style="padding:18px">No players match.</td></tr>'}</tbody></table></div>`;
   document.getElementById('count').textContent = `${v.length.toLocaleString()} ${v.length === 1 ? 'player' : 'players'}`;
   document.getElementById('more').innerHTML = v.length > shown ? `<button id="more-btn">Show ${Math.min(PAGE, v.length - shown)} more (${shown.toLocaleString()} of ${v.length.toLocaleString()})</button>` : '';
   const mb = document.getElementById('more-btn'); if (mb) mb.onclick = () => { shown += PAGE; render(); };
   document.querySelectorAll('th.s').forEach(h => h.onclick = () => {
     const k = h.dataset.k;
     if (sortKey === k) sortDir = sortDir === 'desc' ? 'asc' : 'desc';
-    else { sortKey = k; sortDir = (k === 'name' || k === 'country') ? 'asc' : 'desc'; }
+    else { sortKey = k; sortDir = (k === 'name' || k === 'country' || k === 'overall') ? 'asc' : 'desc'; }
     shown = PAGE; render();
   });
   if (window.tagImposters) window.tagImposters(document.getElementById('out'));
@@ -265,6 +282,7 @@ function render() {
     const meta = await res.json();
     rows = build(meta.players || []);
     computeRanks();
+    computeOverall();
     const cs = new Map();
     rows.forEach(r => { if (r.country) cs.set(r.country, r.countryName || r.country); });
     document.getElementById('country').insertAdjacentHTML('beforeend', [...cs.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([c, n]) => `<option value="${esc(c)}">${esc(n)}</option>`).join(''));
