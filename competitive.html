@@ -955,9 +955,11 @@ const CASTERS = [
 const casterHtml = c => `<div class="caster">${c.name}${c.links.map(([label, url]) => `<a href="${url}" target="_blank" rel="noopener">${label}</a>`).join('')}</div>`;
 document.getElementById('caster-list').innerHTML = CASTERS.filter(c => !c.player).map(casterHtml).join('');
 document.getElementById('player-caster-list').innerHTML = CASTERS.filter(c => c.player).map(casterHtml).join('');
-const SCHEDULED_GAMES = [
-  { date: 'Thu, Nov 5', short: 'Nov 5', time: '4:00 pm ET', teams: ['uk', 'mexico'], games: ['1v1'], maps: { '1v1': 'Arena' }, caster: null },   // 9 pm GMT
-  { date: 'Fri, Nov 6', short: 'Nov 6', time: '4:00 pm ET', teams: ['uk', 'mexico'], games: ['2v2', '3v3', '4v4'], caster: null },   // 9 pm GMT
+// `at` is the start as a UTC time (4:00 pm EST = 21:00Z; EDT would be 20:00Z). A game drops off the Scheduled Games card by itself 4 hours after its start.
+const SCHEDULED_ALL = [
+  { date: 'Sun, Nov 8', short: 'Nov 8', time: '4:00 pm ET', at: '2026-11-08T21:00:00Z', teams: ['usa', 'canada'], games: ['2v2'], caster: null },
+  { date: 'Thu, Nov 5', short: 'Nov 5', time: '4:00 pm ET', at: '2026-11-05T21:00:00Z', teams: ['uk', 'mexico'], games: ['1v1'], maps: { '1v1': 'Arena' }, caster: null },   // 9 pm GMT
+  { date: 'Fri, Nov 6', short: 'Nov 6', time: '4:00 pm ET', at: '2026-11-06T21:00:00Z', teams: ['uk', 'mexico'], games: ['2v2', '3v3', '4v4'], caster: null },   // 9 pm GMT
   // (past) { date: 'Fri, Oct 30', short: 'Oct 30', time: '5:00 pm ET', teams: ['mexico', 'ps5'], games: ['4v4'], maps: { '4v4': 'Steppe' }, caster: 'Old Peenuts' },
   // (past) { date: 'Fri, Oct 30', short: 'Oct 30', time: '5:00 pm ET', teams: ['uk', 'usa'], games: ['3v3', '4v4'], maps: { '3v3': 'Arena', '4v4': 'African Clearing' }, caster: 'Old Peenuts' },   // 9 pm GMT
   // { date: 'Sat, Oct 10', short: 'Oct 10', time: '3:00 pm ET', teams: ['usa', 'mexico'], games: ['1v1', '2v2'], caster: 'Old Peenuts' },
@@ -968,6 +970,7 @@ const SCHEDULED_GAMES = [
   // (past) { date: 'Sun, Oct 18', short: 'Oct 18', time: '7:00 pm ET', teams: ['canada', 'mexico'], games: ['2v2', '3v3', '4v4'], caster: 'Old Peenuts' },
   // (past) { date: 'Thu, Oct 22', short: 'Oct 22', time: '5:00 pm ET', teams: ['mexico', 'ps5'], games: ['3v3'], caster: 'Old Peenuts' },
 ];
+const SCHEDULED_GAMES = SCHEDULED_ALL.filter(g => !g.at || Date.now() < Date.parse(g.at) + 4 * 3600 * 1000).sort((a, b) => (a.at ? Date.parse(a.at) : 0) - (b.at ? Date.parse(b.at) : 0));
 // Finished games. points = the set's worth (1v1 = 1 ... 4v4 = 4); winner/loser are the players who played.
 const SET_POINTS = { '1v1': 1, '2v2': 2, '3v3': 3, '4v4': 4 };
 const SET_RESULTS = [
