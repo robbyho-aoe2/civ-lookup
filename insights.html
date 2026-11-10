@@ -394,6 +394,12 @@ const CONSOLE_CIVS_URL = `${PLAYER_DATA_BASE}/insights-console-civs.json`;
 const CONSOLE_SQUADS_URL = `${PLAYER_DATA_BASE}/insights-console-squads.json`;
 const WEEKLY_INDEX_URL = `${PLAYER_DATA_BASE}/weekly-reports/index.json`;
 const weeklyReportUrl = date => `${PLAYER_DATA_BASE}/weekly-reports/console-${date}.json`;
+// The weekly video for each report, keyed by the report date (its windowEnd). Add a line each Monday after the video is up.
+// 2026-10-19 and 2026-08-31 have no video. Two uploads exist for Oct 15; this is the older one.
+const WEEKLY_VIDEOS = {
+  '2026-11-09': 'lc0nmYocCgU', '2026-11-02': '4kaIhrW9atY', '2026-10-26': 'w2jLP2sJDN4', '2026-10-12': '8--BZGbYlQw', '2026-10-05': 't9s--Wccojc',
+  '2026-09-28': 'Id2wmcnDKoA', '2026-09-21': 'vFt0CxgS-k4', '2026-09-14': 'vmYuo7RNXWE', '2026-09-07': 'EwSHNlaOiwY',
+};
 const SNL_INDEX_URL = `${PLAYER_DATA_BASE}/snl-reports/index.json`;
 const snlReportUrl = date => `${PLAYER_DATA_BASE}/snl-reports/snl-${date}.json`;
 const svgNS = 'http://www.w3.org/2000/svg';
@@ -2033,7 +2039,9 @@ async function loadAndRenderWeekly() {
           } catch (_) { /* no badges this time */ }
         }
 
-        descEl.textContent = `What happened in the console scene, ${report.windowStart} → ${report.windowEnd}.`;
+        const weeklyVid = WEEKLY_VIDEOS[date];
+        descEl.innerHTML = `What happened in the console scene, ${report.windowStart} → ${report.windowEnd}.` +
+          (weeklyVid ? ` <a href="https://www.youtube.com/watch?v=${weeklyVid}" target="_blank" rel="noopener" style="color:var(--amberL);font-weight:600;white-space:nowrap">▶ Watch the weekly video</a>` : '');
         contentEl.innerHTML = renderWeeklyReport(report, prevReport);
         const searchInput = document.getElementById('player-search-input');
         if (searchInput) {
