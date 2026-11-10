@@ -31,6 +31,14 @@ header .back:hover{color:var(--amberL);}
 .card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:22px 22px 18px;margin-bottom:22px;}
 .card h2{font-size:15px;margin:0 0 4px;color:var(--amberL);}
 .card .desc{font-size:12px;color:var(--text2);margin:0 0 18px;}
+.collapse-card>summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.collapse-card>summary::-webkit-details-marker{display:none;}
+.collapse-card>summary h2{margin:0;}
+.collapse-card>summary h2 small{font-size:12px;font-weight:600;color:var(--text3);margin-left:4px;}
+.collapse-card>summary::after{content:'Show ▾';font-size:12px;font-weight:700;color:var(--text2);border:1px dashed var(--border2);border-radius:14px;padding:5px 12px;white-space:nowrap;}
+.collapse-card[open]>summary::after{content:'Hide ▴';}
+.collapse-card>summary:hover::after{color:var(--amberL);}
+.collapse-card .desc{margin-top:6px;}
 .card-tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin:0 0 8px;}
 
 .player-hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;}
@@ -1211,10 +1219,17 @@ function renderLandingPage(content) {
       <p class="desc">${desc}</p>
       <div class="similar-players">${html}</div>
     </div>`;
+  // Same card, collapsed until opened (the summary shows how many players are inside).
+  const collapsedSection = (title, desc, html, n) => `
+    <details class="card collapse-card">
+      <summary><h2>${title} <small>(${n})</small></h2></summary>
+      <p class="desc">${desc}</p>
+      <div class="similar-players">${html}</div>
+    </details>`;
 
   content.innerHTML =
     playersWithVideosSection() +
-    section('Pro Players', 'Tournament-caliber players tracked on the site.', cards(pros, primaryRatingLabel)) +
+    collapsedSection('Pro Players', 'Tournament-caliber players tracked on the site.', cards(pros, primaryRatingLabel), pros.length) +
     section('Streamers', 'Content creators tracked on the site.', cards(streamers, primaryRatingLabel)) +
     section('Top Console Players', 'Highest 1v1 Console ratings.', cards(topConsole, p => `${p.ratings['1v1 Console']} rating`)) +
     section('Top PC Players', 'Highest 1v1 PC ratings.', cards(topPc, p => `${p.ratings['1v1 PC']} rating`));
