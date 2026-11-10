@@ -259,38 +259,25 @@ function standingsTable(rows) {
 // This week's game. Set CCL_GAME to null (or let `until` pass) to hide the card.
 // split: false means no automatic teams (the organizer sets them); lobbyNote is a line under the player chips.
 const CCL_GAME = {
-  until: '2026-11-08T16:00:00Z',
-  title: 'Regicide Traitors',
+  until: '2026-11-12T16:00:00Z',
+  title: 'Regicide',
   map: null,
-  when: 'Saturday, November 7, 2026 · 12:30 PM ET',
-  setup: '4v4 · Regicide · Map TBD',
-  story: 'One player on each team is picked as a traitor by someone who is not playing. The traitor plays the game normally, but can betray and swap sides at any moment. The other three players cannot swap sides.',
+  when: 'Wednesday, November 11, 2026 · 6:00 PM ET',
+  setup: '4v4 · Regicide · No wonders · Stone bound',
+  story: 'Kill the other team’s King to win. Wonders are switched off.',
   split: false,
   size: 8,
-  // Teams balanced on console team rating (Nov 7, BombEater3 in for D0cTOrSniper): 6064 vs 6090. rating = console team rating. subs fill in if someone drops.
-  teams: [
-    { name: 'Team A', accent: '#60a5fa', players: [{ name: 'Ice2207', id: 17828880, rating: 1719, pts: 4 }, { name: 'Seth41737spare', id: 16829189, rating: 1561, pts: -2 }, { name: 'Balinthusa', id: 16314476, rating: 1423, pts: 4 }, { name: 'NotATheist', id: 14602117, rating: 1361, pts: 4 }] },
-    { name: 'Team B', accent: '#3F9B72', players: [{ name: 'GOAT Gobz', id: 8154765, rating: 1766, pts: 1 }, { name: 'ManBearPig1511', id: 8764015, rating: 1609, pts: 7 }, { name: 'MoraMora48', id: 13216763, rating: 1591, pts: 1 }, { name: 'BombEater3', id: 24050143, rating: 1124, pts: 1 }] },
-  ],
-  match: 'https://www.aoe2insights.com/match/519443326/',
-  result: { headline: 'Team A wins, with ManBearPig1511 on their side',
-    detail: 'ManBearPig1511 was Team B’s traitor. He betrayed 40 minutes in (+2), swapped to Team A and killed a King (+1), so he gets 7 with the win. Seth41737spare was Team A’s traitor and never betrayed (−6). Winners take 4 points, losers 1.' },
-  subs: [{ name: 'Ryanp1001', id: 13885770, rating: 1575 }],   // in the order they step in; rating = console team rating
+  lobbyNote: 'Ryanp1001 is a maybe. Teams are set by the organizer.',
   sides: [
-    { name: 'The traitor', accent: '#C0392B', who: 'One player per team. Points depend on when you betray.',
-      head: ['Betray', 'Points'], rows: [['Under 10 min', 6], ['10–29 min', 4], ['30–89 min', 2], ['90–119 min', 4], ['120+ min', 6], ['Never betray', -6]],
-      note: 'Points are not cumulative.' },
     { name: 'The teams', accent: '#D4A24C', who: 'How the two teams score.',
-      head: ['Result', 'Points'], rows: [['Winning team', 4], ['Losing team', 1], ['Kill the betrayer’s King and win the game', 5]],
+      head: ['Result', 'Points'], rows: [['Winning team', 4], ['Losing team', 1]],
       note: '' },
   ],
-  // elo = console 1v1 rating (Nov 7); some are old because those players have not played 1v1 console lately.
   players: [
-    { name: 'Balinthusa', id: 16314476, elo: 1545 }, { name: 'ManBearPig1511', id: 8764015, elo: 1750 }, { name: 'Ice2207', id: 17828880, elo: 1692 },
-    { name: 'MoraMora48', id: 13216763, elo: 1916 }, { name: 'Seth41737spare', id: 16829189, elo: 1663 }, { name: 'NotATheist', id: 14602117, elo: 1470 },
-    { name: 'GOAT Gobz', id: 8154765, elo: 1843 }, { name: 'BombEater3', id: 24050143, elo: 1063 },
+    { name: 'NotATheist', id: 14602117 }, { name: 'Balinthusa', id: 16314476 }, { name: 'SammyDiamonds', id: 22753596 },
+    { name: 'Gogs987', id: 8764016 }, { name: 'ManBearPig1511', id: 8764015 },
   ],
-  tag: 'Trust your team. Watch your back.',
+  tag: 'Protect your King.',
 };
 const gameOn = CCL_GAME && (!CCL_GAME.until || Date.now() < Date.parse(CCL_GAME.until));
 document.getElementById('game-card').hidden = !gameOn;
