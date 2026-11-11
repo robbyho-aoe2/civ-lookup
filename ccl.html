@@ -199,6 +199,12 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
     <div id="current-body"></div>
   </div>
 
+  <div class="card" id="rank-card">
+    <h2>Season 4 rankings</h2>
+    <p class="desc" id="rank-desc"></p>
+    <div id="rank-body"></div>
+  </div>
+
   <div class="card" id="past-card">
     <h2>Past seasons</h2>
     <p class="desc">Champions and final finishes. Points reset every season.</p>
@@ -267,10 +273,11 @@ const CCL_GAME = {
   story: 'Kill the other team’s King to win. Wonders are switched off.',
   split: false,
   size: 8,
-  // Teams balanced on console team rating (Nov 10): 5312 vs 5336. rating = console team rating.
+  // Teams balanced on the CCL ranking score (Nov 10, lower is better): 26.75 vs 26.25. rating = ranking score. SublimedLime254 and Gogs987 have no CCL games yet, so they use a middle points-per-game rank plus their 1v1 rank.
+  teamsMetric: 'CCL ranking score, lower is better',
   teams: [
-    { name: 'Team A', accent: '#60a5fa', players: [{ name: 'ManBearPig1511', id: 8764015, rating: 1606 }, { name: 'SammyDiamonds', id: 22753596, rating: 1414 }, { name: 'Gogs987', id: 8764016, rating: 1168 }, { name: 'BombEater3', id: 24050143, rating: 1124 }] },
-    { name: 'Team B', accent: '#3F9B72', players: [{ name: 'SharkeyTank', id: 12525616, rating: 1526 }, { name: 'Balinthusa', id: 16314476, rating: 1386 }, { name: 'NotATheist', id: 14602117, rating: 1334 }, { name: 'SublimedLime254', id: 12851650, rating: 1090 }] },
+    { name: 'Team A', accent: '#60a5fa', players: [{ name: 'SammyDiamonds', id: 22753596, rating: 2.25 }, { name: 'ManBearPig1511', id: 8764015, rating: 5.5 }, { name: 'SublimedLime254', id: 12851650, rating: 9.25 }, { name: 'Gogs987', id: 8764016, rating: 9.75 }] },
+    { name: 'Team B', accent: '#3F9B72', players: [{ name: 'SharkeyTank', id: 12525616, rating: 3.25 }, { name: 'NotATheist', id: 14602117, rating: 6.25 }, { name: 'Balinthusa', id: 16314476, rating: 6.75 }, { name: 'BombEater3', id: 24050143, rating: 10 }] },
   ],
   lobbyNote: 'Ryanp1001 is a maybe. Teams are set by the organizer.',
   sides: [
@@ -306,7 +313,7 @@ if (gameOn) {
   const subs = g.subs || (g.sub ? [g.sub] : []);
   const tmText = () => tres ? [`**${g.title}: ${tres.headline}**`].concat(tm.map(t => `**${t.name}**: ${t.players.map(p => `${p.name} (${ptsTxt(p.pts)})`).join(', ')}`)).concat([tres.detail]).join(nl) : [`**${g.title}** · ${g.when}`].concat(tm.map(t => `**${t.name}**: ${t.players.map(p => p.name).join(', ')}`)).concat(subs.length ? [`${subs.length === 1 ? 'Sub' : 'Subs'}: ${subs.map(x => x.name).join(', ')}`] : []).join(nl);
   const tmTotals = tm ? tm.map(t => t.players.reduce((a, p) => a + p.rating, 0)) : [];
-  const tmBlock = tm ? `<div class="game-teams-bar"><h3>${tres ? 'Points earned' : `Teams · balanced on console team rating (${tmTotals.join(' vs ')})`}</h3><button type="button" class="game-copy" id="game-copy">${copyLabel}</button><button type="button" class="game-copy" id="game-img" title="Copies the lineup as a picture. Paste it straight into Discord.">Copy as picture</button><button type="button" class="game-copy" id="game-save">Save picture</button></div>` +
+  const tmBlock = tm ? `<div class="game-teams-bar"><h3>${tres ? 'Points earned' : `Teams · balanced on ${g.teamsMetric || 'console team rating'} (${tmTotals.join(' vs ')})`}</h3><button type="button" class="game-copy" id="game-copy">${copyLabel}</button><button type="button" class="game-copy" id="game-img" title="Copies the lineup as a picture. Paste it straight into Discord.">Copy as picture</button><button type="button" class="game-copy" id="game-save">Save picture</button></div>` +
     `<div class="game-sides" style="margin-bottom:14px">${tm.map(t => `<div class="game-side" style="--accent:${t.accent}"><h3>${esc(t.name)}</h3><ol class="game-roster">${t.players.map(p => `<li><a href="player.html?id=${p.id}">${esc(p.name)}</a><span>${tres ? ptsTxt(p.pts) : p.rating}</span></li>`).join('')}</ol></div>`).join('')}</div>` +
     (subs.length && !tres ? `<p class="note" style="font-size:12px;color:var(--text2);margin:0 0 16px">${subs.length === 1 ? 'Sub' : 'Subs'}: ${subs.map(x => `<a href="player.html?id=${x.id}" style="color:var(--text);font-weight:600;text-decoration:none">${esc(x.name)}</a> (${x.rating})`).join(', ')}. ${subs.length === 1 ? 'Steps in' : 'They step in, in this order,'} if someone drops.</p>` : '') : '';
   document.getElementById('game-body').innerHTML =
@@ -346,7 +353,7 @@ if (gameOn) {
         rr(cx, top, cw, ch, 16); x.fillStyle = '#1F1A15'; x.fill(); x.strokeStyle = '#362E24'; x.lineWidth = 2; x.stroke();
         x.fillStyle = t.accent; x.fillRect(cx, top + 20, 6, 36);
         x.font = F(800, 32); x.fillText(t.name, cx + 28, top + 50);
-        x.textAlign = 'right'; x.fillStyle = '#8F8578'; x.font = F(500, 20); x.fillText('console team rating', cx + cw - 24, top + 48); x.textAlign = 'left';
+        x.textAlign = 'right'; x.fillStyle = '#8F8578'; x.font = F(500, 20); x.fillText(g.teamsMetric || 'console team rating', cx + cw - 24, top + 48); x.textAlign = 'left';
         t.players.forEach((p, j) => {
           const y = top + 112 + j * 62;
           x.strokeStyle = '#362E24'; x.lineWidth = 1; x.beginPath(); x.moveTo(cx + 24, y - 38); x.lineTo(cx + cw - 24, y - 38); x.stroke();
@@ -451,6 +458,35 @@ const cur = CCL_SEASONS.find(s => s.current);
 document.getElementById('current-title').textContent = cur ? cur.name : 'Current season';
 document.getElementById('current-desc').innerHTML = cur ? `${cur.weeks || 12}-week season. Points reset each season.` + (cur.prize ? ` <span class="ccl-prize">💰 ${esc(cur.prize)} prize pool</span>` : '') : '';
 document.getElementById('current-body').innerHTML = cur ? seasonBody(cur, true) : '<div class="ccl-empty">Season standings will be posted here.</div>';
+
+// Season 4 rankings: points per game and peak 1v1 console rating, weighted 50/50. Each is turned into a rank (ties share the average rank),
+// then the two ranks are averaged; a lower score is better. Updated by hand after each game. games = CCL games played, pts = season points, peak = peak 1v1 console rating.
+const CCL_RANKINGS = {
+  through: 'Nov 7',
+  rows: [
+    { name: 'SammyDiamonds', id: 22753596, games: 1, pts: 13, peak: 1842, score: 2.25 },
+    { name: 'SharkeyTank', id: 12525616, games: 1, pts: 13, peak: 1710, score: 3.25 },
+    { name: 'ManBearPig1511', id: 8764015, games: 3, pts: 11, peak: 1750, score: 5.5 },
+    { name: 'MoraMora48', id: 13216763, games: 2, pts: 2, peak: 1931, score: 5.75 },
+    { name: 'Seth41737spare', id: 16829189, games: 3, pts: 14, peak: 1673, score: 6.0 },
+    { name: 'Ice2207', id: 17828880, games: 1, pts: 4, peak: 1692, score: 6.0 },
+    { name: 'Not A Theist', id: 14602117, games: 3, pts: 18, peak: 1618, score: 6.25 },
+    { name: 'GOAT Gobz', id: 8154765, games: 1, pts: 1, peak: 1843, score: 6.25 },
+    { name: 'Balinthusa', id: 16314476, games: 3, pts: 18, peak: 1578, score: 6.75 },
+    { name: 'Itz_ED_aoe', id: 22710476, games: 1, pts: 1, peak: 1664, score: 9.25 },
+    { name: 'BombEater3', id: 24050143, games: 2, pts: 4, peak: 1095, score: 10.0 },
+    { name: 'D0cTOrSniper', id: 13323926, games: 1, pts: 1, peak: 1576, score: 10.75 },
+  ],
+};
+(function () {
+  const R = CCL_RANKINGS;
+  document.getElementById('rank-card').hidden = !R.rows.length;
+  document.getElementById('rank-desc').innerHTML = `Points per game and peak 1v1 console rating, weighted 50/50. Each is ranked, then the two ranks are averaged: a lower score is better. Through ${esc(R.through)}.`;
+  const f = n => Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0$/, '');
+  document.getElementById('rank-body').innerHTML = '<div class="overflow-x"><table><thead><tr><th class="num">#</th><th>Player</th><th class="num">Games</th><th class="num">Pts</th><th class="num">Pts / game</th><th class="num">Peak 1v1</th><th class="num">Score</th></tr></thead><tbody>' +
+    R.rows.map((p, i) => `<tr class="${i < 3 ? 'ccl-top' : ''}"><td class="num${i === 0 ? ' pos-1' : ''}">${i + 1}</td><td>${who(p)}</td><td class="num">${p.games}</td><td class="num">${p.pts}</td><td class="num">${f(Math.round(p.pts / p.games * 100) / 100)}</td><td class="num">${p.peak}</td><td class="num">${f(p.score)}</td></tr>`).join('') +
+    '</tbody></table></div><p class="note" style="font-size:11.5px;color:var(--text3);margin:10px 0 0">Players with only one game can move a lot. A player with no games yet counts as a middle rank for points per game.</p>';
+})();
 
 const past = CCL_SEASONS.filter(s => !s.current);
 document.getElementById('past-body').innerHTML = past.length
