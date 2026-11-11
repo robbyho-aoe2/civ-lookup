@@ -273,11 +273,11 @@ const CCL_GAME = {
   story: 'Kill the other team’s King to win. Wonders are switched off.',
   split: false,
   size: 8,
-  // Teams balanced on the CCL ranking score (Nov 10, lower is better): 26.75 vs 26.25. rating = ranking score. SublimedLime254 and Gogs987 have no CCL games yet, so they use a middle points-per-game rank plus their 1v1 rank.
+  // Teams balanced on the CCL ranking score (Nov 10, lower is better): 29.75 vs 29.25. rating = ranking score. SublimedLime254 and Gogs987 have no CCL games yet, so their 1v1 rank (peak) counts for both halves: SublimedLime254 12th, Gogs987 13th (no 1v1 rating).
   teamsMetric: 'CCL ranking score, lower is better',
   teams: [
-    { name: 'Team A', accent: '#60a5fa', players: [{ name: 'SammyDiamonds', id: 22753596, rating: 2.25 }, { name: 'ManBearPig1511', id: 8764015, rating: 5.5 }, { name: 'SublimedLime254', id: 12851650, rating: 9.25 }, { name: 'Gogs987', id: 8764016, rating: 9.75 }] },
-    { name: 'Team B', accent: '#3F9B72', players: [{ name: 'SharkeyTank', id: 12525616, rating: 3.25 }, { name: 'NotATheist', id: 14602117, rating: 6.25 }, { name: 'Balinthusa', id: 16314476, rating: 6.75 }, { name: 'BombEater3', id: 24050143, rating: 10 }] },
+    { name: 'Team A', accent: '#60a5fa', players: [{ name: 'SammyDiamonds', id: 22753596, rating: 2.25 }, { name: 'ManBearPig1511', id: 8764015, rating: 5.5 }, { name: 'SublimedLime254', id: 12851650, rating: 12 }, { name: 'BombEater3', id: 24050143, rating: 10 }] },
+    { name: 'Team B', accent: '#3F9B72', players: [{ name: 'SharkeyTank', id: 12525616, rating: 3.25 }, { name: 'NotATheist', id: 14602117, rating: 6.25 }, { name: 'Balinthusa', id: 16314476, rating: 6.75 }, { name: 'Gogs987', id: 8764016, rating: 13 }] },
   ],
   lobbyNote: 'Ryanp1001 is a maybe. Teams are set by the organizer.',
   sides: [
@@ -485,7 +485,7 @@ const CCL_RANKINGS = {
   const f = n => Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0$/, '');
   document.getElementById('rank-body').innerHTML = '<div class="overflow-x"><table><thead><tr><th class="num">#</th><th>Player</th><th class="num">Games</th><th class="num">Pts</th><th class="num">Pts / game</th><th class="num">Peak 1v1</th><th class="num">Score</th></tr></thead><tbody>' +
     R.rows.map((p, i) => `<tr class="${i < 3 ? 'ccl-top' : ''}"><td class="num${i === 0 ? ' pos-1' : ''}">${i + 1}</td><td>${who(p)}</td><td class="num">${p.games}</td><td class="num">${p.pts}</td><td class="num">${f(Math.round(p.pts / p.games * 100) / 100)}</td><td class="num">${p.peak}</td><td class="num">${f(p.score)}</td></tr>`).join('') +
-    '</tbody></table></div><p class="note" style="font-size:11.5px;color:var(--text3);margin:10px 0 0">Players with only one game can move a lot. A player with no games yet counts as a middle rank for points per game.</p>';
+    '</tbody></table></div><p class="note" style="font-size:11.5px;color:var(--text3);margin:10px 0 0">Players with only one game can move a lot. A player with no CCL games yet gets their 1v1 rank for both halves (a 5th-best 1v1 player ranks 5th).</p>';
 })();
 
 const past = CCL_SEASONS.filter(s => !s.current);
