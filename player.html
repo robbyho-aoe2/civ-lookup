@@ -708,9 +708,10 @@ function renderSearchResults(local, live) {
 // Accounts in an alt group that are likely but not confirmed. The Known Alts card and the Alts / Smurfs list mark them.
 // Keep in sync with insights.html, player.html and imposters.js. The case for each is on the Investigations page.
 const ALT_NOTE_TEXT = 'VeeIing and SteeIers2805 are likely this group’s fake-name accounts, not confirmed. Their replays match the group’s habits (first house exactly 5 tiles from the Town Center at about 3 seconds, villagers queued one at a time from about 2 seconds), they never play at the same time as the group, and they take over as it goes quiet (VeeIing in September, SteeIers2805 from Nov 5, F12JRCRunsAoE in between). Both copy a real player’s name with look-alike letters.';
-const LIKELY_ALTS = { 15245181: 'Unconfirmed but likely', 26120403: 'Unconfirmed but likely', 26335295: 'Unconfirmed but likely' };
+const LIKELY_ALTS = { 15245181: 'Unconfirmed but likely', 26120403: 'Unconfirmed but likely', 26335295: 'Unconfirmed but likely', 15634894: 'Unconfirmed but likely', 20879746: 'Unconfirmed but likely' };
 const ALT_CASES = { 15245181: 'case-xxfuahalaxx' };   // members whose group has a case file on the Investigations page
-const ALT_NOTES = { 26120403: ALT_NOTE_TEXT, 26335295: ALT_NOTE_TEXT };   // why a likely group is thought to be one person (shown on the Known Alts card)
+const ALT_NOTE_ADOBO = 'ADOBO x PRODIGY and SCOUT2KNIGHT are likely one person, not confirmed. They have never been in the same match (1,443 and 1,031 games), play with the same teammates and on the same maps and civs, are rated alike, and their activity takes turns: SCOUT2KNIGHT starts in Sep 2024 and ADOBO plays most when SCOUT2KNIGHT is quiet. No replay check yet.';
+const ALT_NOTES = { 26120403: ALT_NOTE_TEXT, 26335295: ALT_NOTE_TEXT, 15634894: ALT_NOTE_ADOBO, 20879746: ALT_NOTE_ADOBO };   // why a likely group is thought to be one person (shown on the Known Alts card)
 const KNOWN_ALT_GROUPS = [
   [12554124, 15480913], // Donald2O16Trump / Joe2024Biden
   [20168942, 12798178, 22701056, 25013161], // Combi I Chow / DS Chowde / DS_Chowde (PSN) / UxDora
@@ -722,6 +723,7 @@ const KNOWN_ALT_GROUPS = [
   [25151666, 12507343], // Yuanyuan8262 / supercharlie12
   [12484696, 16389471], // sologhost / Chiefboy AK
   [24133272, 15424523, 17809375], // NegiGen6000 / kkrieger5718 / ThePromise87
+  [15634894, 20879746], // ADOBO x PRODIGY / SCOUT2KNIGHT (unconfirmed but likely, see LIKELY_ALTS)
   [14770440, 12637242], // beef clamps / old peenuts
   [18487891, 13624096], // Reckless T8548 / CarefulTulip69
   [23147426, 25504514], // CrustyPotato313 / ReallyScaryPotat
