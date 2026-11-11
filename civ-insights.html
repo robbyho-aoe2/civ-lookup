@@ -2707,6 +2707,26 @@ const UNIQUE_INFANTRY_CIVS = {
   Italians_Condottiero: { civ: 'Italians', unit: 'Condottiero', kind: 'regional', cost: 85, minAge: 'Imperial',
     base: { hp: 80, attack: 10, melee: 1, pierce: 0, speed: 1.2, reload: 1.9 },
     meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true },
+  // Flemish Militia — Burgundians' Barracks unit from Feudal Age (35f/25g = 60,
+  // 16s Feudal / 14s Castle train time). NOT a Castle UU and has no Elite
+  // tier: its own stats step up by Age instead (HP 40/55/60, attack 5/8/11,
+  // site owner's wiki paste 2026-11-11). Armor 1/1, speed 0.94, reload 2
+  // from the SiegeEngineers dataset (id 1699, FLEMISHPIKEMAN2) — the paste
+  // didn't list them, and the dataset only has the Feudal values, so armor/
+  // speed are assumed flat across ages. ageStats overrides base per Age
+  // (see uniqueInfantryMaxStats). Bonus attack (real, from the paste):
+  // vs Cavalry +6/+7/+8, vs Camels/Ships/Fishing Ships +4/+5/+6 (per Age),
+  // +6 vs Elephants, +2 vs Shock Infantry. bonusVsCavalryByAge feeds the
+  // Seconds-to-Kill vs Scout/Knight matchups and the "DPS v. Cavalry"
+  // column; the others are recorded for display only (no matching reference
+  // unit or column yet). Burgundians' Blacksmith flags copied from the
+  // Burgundians infantry entry (all attack/armor techs, Squires, no Gambesons).
+  Burgundians_FlemishMilitia: { civ: 'Burgundians', unit: 'Flemish Militia', kind: 'regional', cost: 60, minAge: 'Feudal',
+    base: { hp: 40, attack: 5, melee: 1, pierce: 1, speed: 0.94, reload: 2 },
+    ageStats: { 1: { hp: 40, attack: 5 }, 2: { hp: 55, attack: 8 }, 3: { hp: 60, attack: 11 } },
+    bonusVsCavalryByAge: [6, 7, 8], bonusVsCamelShipByAge: [4, 5, 6], bonusVsElephant: 6,
+    meleeAtk: [true,true,true], infArmor: [true,true,true], gambesons: false, squires: true,
+    shockBonusBase: 2 },
   // ── Standard Castle-trained Unique Units (2026-09-20 audit) — real
   // stats from the cached aoe2techtree data.json, each civ's own real
   // Blacksmith Infantry tech flags copied directly from its INFANTRY_CIVS
@@ -2932,13 +2952,20 @@ function uniqueInfantryTierStats(civ, cfg, tierStats, isElite, rank) {
   // confirmed zero).
   const shockBonus = (isElite ? cfg.shockBonusElite : cfg.shockBonusBase) || 0;
   const dpsVsShockInfantry = d2((attack + shockBonus) / reload);
-  return { tierName: `${isElite ? 'Elite ' : ''}${cfg.unit}`, hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsShockInfantry };
+  // Per-Age bonus attack (Flemish Militia): vs Cavalry feeds the Seconds-to-
+  // Kill Scout/Knight matchups (bonusVsCavalry) and the DPS v. Cavalry column.
+  const bonusVsCavalry = cfg.bonusVsCavalryByAge ? cfg.bonusVsCavalryByAge[rank - 1] : 0;
+  const dpsVsCavalry = d2((attack + bonusVsCavalry) / reload);
+  return { tierName: `${isElite ? 'Elite ' : ''}${cfg.unit}`, hp, attack, meleeArmor, pierceArmor, armorTotal: meleeArmor + pierceArmor, speed, reload, dps, dpsVsShockInfantry, dpsVsCavalry, bonusVsCavalry };
 }
 function uniqueInfantryMaxStats(civ, cfg, age) {
   const rank = AGE_RANK[age];
   const minRank = AGE_RANK[cfg.minAge || 'Castle'];
   const rows = [];
-  if (rank >= minRank) rows.push(uniqueInfantryTierStats(civ, cfg, cfg.base, false, rank));
+  // cfg.ageStats: units whose own HP/attack step up by Age instead of having
+  // an Elite upgrade (Flemish Militia) — overrides base for the current Age.
+  const baseStats = cfg.ageStats ? { ...cfg.base, ...cfg.ageStats[rank] } : cfg.base;
+  if (rank >= minRank) rows.push(uniqueInfantryTierStats(civ, cfg, baseStats, false, rank));
   if (cfg.elite && rank >= AGE_RANK.Imperial) rows.push(uniqueInfantryTierStats(civ, cfg, cfg.elite, true, rank));
   return rows;
 }
@@ -3690,7 +3717,8 @@ function computeInfantryMatchupFields(row, refs) {
   // the same non-applicable value, it contributes a neutral (non-distorting)
   // score rather than crashing or silently favoring one row over another.
   const survive = (ref, armorKey) => ref ? d2(row.hp * ref.reload / Math.max(1, ref.attack - row[armorKey])) : undefined;
-  const kill = (ref) => ref ? d2(ref.hp * row.reload / Math.max(1, row.attack - ref.meleeArmor)) : undefined;
+  const kill = (ref, bonus = 0) => ref ? d2(ref.hp * row.reload / Math.max(1, row.attack + bonus - ref.meleeArmor)) : undefined;
+  const cavBonus = row.bonusVsCavalry || 0; // Flemish Militia's +6/+7/+8 vs Cavalry
   return {
     survMilitia: survive(refs.militia, 'meleeArmor'),
     survArcher: survive(refs.archer, 'pierceArmor'),
@@ -3700,8 +3728,8 @@ function computeInfantryMatchupFields(row, refs) {
     survSpear: survive(refs.spearman, 'meleeArmor'),
     survMangonel: survive(refs.mangonel, 'meleeArmor'),
     killMilitia: kill(refs.militia),
-    killScout: kill(refs.scout),
-    killKnight: kill(refs.knight),
+    killScout: kill(refs.scout, cavBonus),
+    killKnight: kill(refs.knight, cavBonus),
     killSpear: kill(refs.spearman),
     killMangonel: kill(refs.mangonel),
   };
@@ -4010,7 +4038,7 @@ function makeMeleeTableRenderer(tableId, toggleBtnSelector, sources, pillClass, 
         // base AND Elite as separate permanent rows once each is reached).
         const statsList = result == null ? [] : Array.isArray(result) ? result : [result];
         const rowCost = cfg.cost || cost;
-        return statsList.map(s => ({ line: s.tierName, civ: cfg.civ || civ, ...s, cost: rowCost, dpsPer100: d2(s.dps / rowCost * 100), kind: cfg.kind || kind, targetClass: cfg.targetClass || targetClass, shockInfantryMember: !!cfg.shockInfantryMember }));
+        return statsList.map(s => ({ line: s.tierName, civ: cfg.civ || civ, ...s, dpsVsCavalry: s.dpsVsCavalry ?? s.dps, cost: rowCost, dpsPer100: d2(s.dps / rowCost * 100), kind: cfg.kind || kind, targetClass: cfg.targetClass || targetClass, shockInfantryMember: !!cfg.shockInfantryMember }));
       }));
     // Infantry/Cavalry's matchup-based ranking inputs (Seconds to Survive/
     // Kill vs. 5 real reference archetypes each) — computed BEFORE
@@ -4157,7 +4185,7 @@ makeMeleeTableRenderer('all-maxed-infantry-table', '.infantry-age-toggle-btn', [
   [EAGLE_CIVS, eagleMaxStats, EAGLE_COST, 'eagle'],
   [UNIQUE_INFANTRY_CIVS, uniqueInfantryMaxStats, null, 'regional'],
 ], 'wood', '—', '.infantry-type-toggle', {
-  extraCols: [['dpsVsShockInfantry', 'DPS v.<br>Shock Inf.', true]],
+  extraCols: [['dpsVsShockInfantry', 'DPS v.<br>Shock Inf.', true], ['dpsVsCavalry', 'DPS v.<br>Cavalry', true]],
   weightedCategories: INFANTRY_WEIGHTED_CATEGORIES,
   weightedCategoriesPop: INFANTRY_WEIGHTED_CATEGORIES_POP,
   survKeys: INFANTRY_SURV_KEYS,
