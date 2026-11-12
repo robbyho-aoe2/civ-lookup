@@ -266,6 +266,12 @@ function oddsTeam(mine, theirs) {   // mine / theirs: arrays of players with rat
   }
   return { p: 1 / (1 + Math.exp(-x)), steps };
 }
+// Win chance from ratings alone, for ladders the model above was not fitted on (PC ladders, EW, unranked and custom games that carry
+// ratings). Plain Elo on each side's average rating, so it needs no civ data and no player history.
+function oddsElo(a, b) {
+  const avg = t => t.reduce((s, p) => s + p.rating, 0) / t.length, ra = avg(a), rb = avg(b), p = expect(ra, rb, 400);
+  return { p, raw: p, gap: ra - rb, steps: [{ label: 'Rating', p }] };
+}
 function eloChange(mode, mine, theirs) {
   const M = SCOUT[mode], e = expect(mine, theirs, M.D);
   return { win: Math.round(M.K * (1 - e)), loss: Math.round(M.K * e) };
