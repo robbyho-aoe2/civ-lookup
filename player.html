@@ -1340,6 +1340,16 @@ function render(content, entry, player) {
       <div class="stat-row" id="stat-row"></div>
     </div>
 
+    <div class="card" id="vs-card">
+      <h2>Games vs a Player</h2>
+      <p class="desc" id="vs-desc">Search anyone ${escapeHtml(entry.name)} has played, on any ladder, for the head-to-head record and every game between them.</p>
+      <div id="opp-find">
+        <input id="opp-q" type="search" placeholder="Search an opponent by name or ID…" autocomplete="off" spellcheck="false" aria-label="Search opponents">
+        <div id="opp-sugg"></div>
+      </div>
+      <div id="opp-detail"></div>
+    </div>
+
     <div class="card" id="live-card" hidden>
       <h2><span class="live-dot"></span>Playing now</h2>
       <p class="desc" id="live-desc"></p>
@@ -1395,11 +1405,6 @@ function render(content, entry, player) {
     <div class="card">
       <h2>Opponents</h2>
       <p class="desc" id="opponents-desc">Head-to-head record vs. the most-played opponents.</p>
-      <div id="opp-find">
-        <input id="opp-q" type="search" placeholder="Search an opponent by name or ID…" autocomplete="off" spellcheck="false" aria-label="Search opponents">
-        <div id="opp-sugg"></div>
-      </div>
-      <div id="opp-detail"></div>
       <table id="opponents-table"></table>
     </div>
 
@@ -1931,16 +1936,16 @@ function render(content, entry, player) {
   // `oppIndex` is rebuilt for the ladder shown; the input and its handlers are wired once.
   var oppIndex = null;
   const oppSort = m => m.startedAt || m.date || '';
-  function buildOppIndex(matches) {
+  function buildOppIndex(byLadder) {
     const map = new Map();
-    matches.forEach(m => (m.opponents || []).forEach(o => {
+    Object.entries(byLadder || {}).forEach(([ladder, ld]) => (ld.matches || []).forEach(m => (m.opponents || []).forEach(o => {
       const key = o.profileId != null ? String(o.profileId) : (o.name ? 'n:' + o.name : null);
       if (key == null) return;
       let r = map.get(key);
       if (!r) { r = { key, profileId: o.profileId, name: o.name || `#${o.profileId}`, names: new Set(), ms: [] }; map.set(key, r); }
       if (o.name) r.names.add(o.name.toLowerCase());
-      r.ms.push({ m, name: o.name });
-    }));
+      r.ms.push({ m, name: o.name, ladder });
+    })));
     map.forEach(r => {
       r.ms.sort((a, b) => oppSort(b.m) < oppSort(a.m) ? -1 : oppSort(b.m) > oppSort(a.m) ? 1 : 0);   // newest first
       const named = r.ms.find(x => x.name); if (named) r.name = named.name;
@@ -1961,7 +1966,7 @@ function render(content, entry, player) {
     const rows = oppMatches(q);
     el.innerHTML = rows.length
       ? rows.map(r => `<button type="button" class="opp-pick" data-k="${escapeHtml(r.key)}"><b>${escapeHtml(r.name)}${window.impTag && r.profileId != null ? window.impTag(r.profileId) : ''}</b><span>${r.wins}–${r.losses} · ${r.ms.length} game${r.ms.length !== 1 ? 's' : ''}</span></button>`).join('')
-      : '<div class="search-hint">No opponent with that name on this ladder.</div>';
+      : '<div class="search-hint">No opponent with that name.</div>';
   }
   function showOpponent(key, all) {
     const r = oppIndex && oppIndex.get(key), el = document.getElementById('opp-detail');
@@ -1971,12 +1976,16 @@ function render(content, entry, player) {
     for (const x of r.ms) { if (x.m.won == null) continue; if (streakWin == null) streakWin = x.m.won; if (x.m.won === streakWin) streak++; else break; }
     const dates = r.ms.map(x => x.m.date).filter(Boolean).sort();
     const shown = all ? r.ms : r.ms.slice(0, 10);
-    const rows = shown.map(({ m }) => `<tr><td>${escapeHtml(m.date ? formatPulledDate(m.date) : '—')}</td><td>${m.won == null ? '—' : m.won ? '<b class="wr-good">Win</b>' : '<b class="wr-bad">Loss</b>'}</td><td>${escapeHtml(m.civ || '—')}</td><td>${escapeHtml(m.map || '—')}</td><td class="num">${m.dur ? fmtLong(m.dur) : '—'}</td><td class="num">${m.matchId ? `<a href="https://www.aoe2insights.com/match/${m.matchId}/" target="_blank" rel="noopener">↗ Insights</a>` : ''}</td></tr>`).join('');
+    const lad = {};
+    r.ms.forEach(x => { const v = lad[x.ladder] || (lad[x.ladder] = { w: 0, l: 0 }); if (x.m.won === true) v.w++; else if (x.m.won === false) v.l++; });
+    const byLadder = Object.entries(lad);
+    const rows = shown.map(({ m, ladder }) => `<tr><td>${escapeHtml(m.date ? formatPulledDate(m.date) : '—')}</td><td>${escapeHtml(ladder)}</td><td>${m.won == null ? '—' : m.won ? '<b class="wr-good">Win</b>' : '<b class="wr-bad">Loss</b>'}</td><td>${escapeHtml(m.civ || '—')}</td><td>${escapeHtml(m.map || '—')}</td><td class="num">${m.dur ? fmtLong(m.dur) : '—'}</td><td class="num">${m.matchId ? `<a href="https://www.aoe2insights.com/match/${m.matchId}/" target="_blank" rel="noopener">↗ Insights</a>` : ''}</td></tr>`).join('');
     el.innerHTML = `
       <div class="opp-head"><span class="opp-name">vs. ${playerLinkOrName(r.name, r.profileId)}</span><button type="button" class="opp-close" id="opp-close">Close</button></div>
       <div class="opp-rec"><span class="wr-good">${r.wins}</span>–<span class="wr-bad">${r.losses}</span> <span style="font-size:13px;font-weight:600;color:var(--text2)">${pct} over ${r.ms.length} game${r.ms.length !== 1 ? 's' : ''}</span></div>
       <div class="opp-sub">${dates.length ? `First met ${escapeHtml(formatPulledDate(dates[0]))} · last ${escapeHtml(formatPulledDate(dates[dates.length - 1]))}` : ''}${streak > 1 ? ` · ${streakWin ? 'won' : 'lost'} the last ${streak}` : ''}</div>
-      <div class="table-scroll"><table class="opp-games"><thead><tr><th>Date</th><th>Result</th><th>${escapeHtml(entry.name)}'s civ</th><th>Map</th><th class="num">Length</th><th class="num"></th></tr></thead><tbody>${rows}</tbody></table></div>
+      ${byLadder.length > 1 ? `<div class="opp-sub">${byLadder.map(([l, v]) => `${escapeHtml(l)} <b>${v.w}–${v.l}</b>`).join(' · ')}</div>` : ''}
+      <div class="table-scroll"><table class="opp-games"><thead><tr><th>Date</th><th>Ladder</th><th>Result</th><th>${escapeHtml(entry.name)}'s civ</th><th>Map</th><th class="num">Length</th><th class="num"></th></tr></thead><tbody>${rows}</tbody></table></div>
       ${r.ms.length > 10 ? `<button type="button" class="rows-more" id="opp-more">${all ? 'Show only the last 10' : `Show all ${r.ms.length} games`}</button>` : ''}`;
     document.getElementById('opp-close').onclick = () => { el.innerHTML = ''; };
     const more = document.getElementById('opp-more');
@@ -2013,17 +2022,16 @@ function render(content, entry, player) {
     });
     const rows = Object.values(opponents).sort((a, b) => b.games - a.games).slice(0, 10);
 
-    // search every opponent met on this ladder (a ladder switch resets it)
-    oppIndex = buildOppIndex(matches);
-    wireOppSearch();
-    document.getElementById('opp-detail').innerHTML = '';
-    document.getElementById('opp-sugg').innerHTML = '';
-    document.getElementById('opp-q').value = '';
-    document.getElementById('opp-find').style.display = oppIndex.size ? '' : 'none';
+    // the "Games vs a Player" search covers every ladder, so it is built once and a ladder switch leaves it alone
+    if (!oppIndex) {
+      oppIndex = buildOppIndex(player.ladders);
+      wireOppSearch();
+      document.getElementById('vs-card').style.display = oppIndex.size ? '' : 'none';
+    }
 
     const descEl = document.getElementById('opponents-desc');
     descEl.textContent = matchesWithData
-      ? `Search any of the ${oppIndex.size.toLocaleString()} opponents met on this ladder for the head-to-head record and the games played against them. The table shows the 10 most-played, from ${matchesWithData.toLocaleString()} of ${matches.length.toLocaleString()} matches with opponent data captured.`
+      ? `The 10 most-played opponents on this ladder, from ${matchesWithData.toLocaleString()} of ${matches.length.toLocaleString()} matches with opponent data captured.`
       : `No opponent data captured yet for this ladder — tracking was added recently, so only new matches from here on will have it.`;
 
     const tableEl = document.getElementById('opponents-table');
