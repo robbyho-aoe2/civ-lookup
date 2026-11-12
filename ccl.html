@@ -504,20 +504,22 @@ document.getElementById('current-body').innerHTML = cur ? seasonBody(cur, true) 
 // Season 4 rankings: points per game and peak 1v1 console rating, weighted 50/50. Each is turned into a rank (ties share the average rank),
 // then the two ranks are averaged; a lower score is better. Updated by hand after each game. games = CCL games played, pts = season points, peak = peak 1v1 console rating.
 const CCL_RANKINGS = {
-  through: 'Nov 7',
+  through: 'Nov 11',
   rows: [
-    { name: 'SammyDiamonds', id: 22753596, games: 1, pts: 13, peak: 1842, score: 2.25 },
-    { name: 'SharkeyTank', id: 12525616, games: 1, pts: 13, peak: 1710, score: 3.25 },
-    { name: 'ManBearPig1511', id: 8764015, games: 3, pts: 11, peak: 1750, score: 5.5 },
-    { name: 'MoraMora48', id: 13216763, games: 2, pts: 2, peak: 1931, score: 5.75 },
-    { name: 'Seth41737spare', id: 16829189, games: 3, pts: 14, peak: 1673, score: 6.0 },
-    { name: 'Ice2207', id: 17828880, games: 1, pts: 4, peak: 1692, score: 6.0 },
-    { name: 'Not A Theist', id: 14602117, games: 3, pts: 18, peak: 1618, score: 6.25 },
-    { name: 'GOAT Gobz', id: 8154765, games: 1, pts: 1, peak: 1843, score: 6.25 },
-    { name: 'Balinthusa', id: 16314476, games: 3, pts: 18, peak: 1578, score: 6.75 },
-    { name: 'Itz_ED_aoe', id: 22710476, games: 1, pts: 1, peak: 1664, score: 9.25 },
-    { name: 'BombEater3', id: 24050143, games: 2, pts: 4, peak: 1095, score: 10.0 },
-    { name: 'D0cTOrSniper', id: 13323926, games: 1, pts: 1, peak: 1576, score: 10.75 },
+    { name: 'SammyDiamonds', id: 22753596, games: 1, pts: 13, peak: 1842, score: 2 },
+    { name: 'SharkeyTank', id: 12525616, games: 3, pts: 29, peak: 1710, score: 3.5 },
+    { name: 'ManBearPig1511', id: 8764015, games: 5, pts: 22, peak: 1750, score: 5.5 },
+    { name: 'Not A Theist', id: 14602117, games: 5, pts: 29, peak: 1618, score: 6 },
+    { name: 'Seth41737spare', id: 16829189, games: 3, pts: 14, peak: 1673, score: 6 },
+    { name: 'Balinthusa', id: 16314476, games: 5, pts: 27, peak: 1578, score: 7 },
+    { name: 'Ice2207', id: 17828880, games: 1, pts: 4, peak: 1692, score: 7 },
+    { name: 'MoraMora48', id: 13216763, games: 2, pts: 2, peak: 1931, score: 7 },
+    { name: 'GOAT Gobz', id: 8154765, games: 1, pts: 1, peak: 1843, score: 7.5 },
+    { name: 'Gogs987', id: 8764016, games: 2, pts: 9, peak: 1184, score: 9.5 },
+    { name: 'D0cTOrSniper', id: 13323926, games: 3, pts: 10, peak: 1576, score: 10.5 },
+    { name: 'Itz_ED_aoe', id: 22710476, games: 1, pts: 1, peak: 1664, score: 10.5 },
+    { name: 'BombEater3', id: 24050143, games: 4, pts: 15, peak: 1095, score: 11.5 },
+    { name: 'SublimedLime254', id: 12851650, games: 2, pts: 4, peak: 1520, score: 11.5 },
   ],
 };
 (function () {
@@ -527,7 +529,7 @@ const CCL_RANKINGS = {
   const f = n => Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0$/, '');
   document.getElementById('rank-body').innerHTML = '<div class="overflow-x"><table><thead><tr><th class="num">#</th><th>Player</th><th class="num">Games</th><th class="num">Pts</th><th class="num">Pts / game</th><th class="num">Peak 1v1</th><th class="num">Score</th></tr></thead><tbody>' +
     R.rows.map((p, i) => `<tr class="${i < 3 ? 'ccl-top' : ''}"><td class="num${i === 0 ? ' pos-1' : ''}">${i + 1}</td><td>${who(p)}</td><td class="num">${p.games}</td><td class="num">${p.pts}</td><td class="num">${f(Math.round(p.pts / p.games * 100) / 100)}</td><td class="num">${p.peak}</td><td class="num">${f(p.score)}</td></tr>`).join('') +
-    '</tbody></table></div><p class="note" style="font-size:11.5px;color:var(--text3);margin:10px 0 0">Players with only one game can move a lot. A player with no CCL games yet gets their 1v1 rank for both halves (a 5th-best 1v1 player ranks 5th).</p>';
+    '</tbody></table></div><p class="note" style="font-size:11.5px;color:var(--text3);margin:10px 0 0">Players with only one game can move a lot. A player with no CCL games yet gets their 1v1 rank for both halves (a 5th-best 1v1 player ranks 5th). Gogs987 uses his Team Console peak (1184) for the rating half.</p>';
 })();
 
 const past = CCL_SEASONS.filter(s => !s.current);
