@@ -46,6 +46,27 @@ header .back:hover{color:var(--amberL);}
 .card .desc{font-size:12px;color:var(--text2);margin:0 0 18px;}
 .card .sub-heading{font-size:13px;font-weight:700;margin:20px 0 4px;padding-top:16px;border-top:1px solid var(--border);color:var(--text);}
 
+/* continent heat map */
+.wm-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+#wm-week{background:var(--surf);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-size:12px;font-weight:600;font-family:inherit;}
+.wm-toggle{display:flex;gap:0;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.wm-toggle button{font:inherit;font-size:12px;font-weight:600;padding:7px 12px;background:var(--surf);color:var(--text2);border:0;cursor:pointer;}
+.wm-toggle button.on{background:var(--amberBg);color:var(--amberL);}
+.wm-svg{width:100%;height:auto;display:block;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);}
+.wm-land path{fill:var(--amber);stroke:var(--bg);stroke-width:.8;stroke-linejoin:round;}
+.wm-lab{pointer-events:none;text-anchor:middle;font-family:var(--font-body);}
+.wm-name{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;fill:var(--text);paint-order:stroke;stroke:var(--bg);stroke-width:3px;}
+.wm-num{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;fill:var(--text);paint-order:stroke;stroke:var(--bg);stroke-width:4px;}
+.wm-sub{font-size:10.5px;font-weight:600;fill:var(--text2);paint-order:stroke;stroke:var(--bg);stroke-width:3px;}
+.wm-legend{display:flex;align-items:center;gap:8px;justify-content:flex-end;font-size:11px;color:var(--text3);margin:8px 0 14px;}
+.wm-legend i{width:120px;height:8px;border-radius:4px;background:linear-gradient(to right,rgba(63,155,114,.12),rgba(63,155,114,.92));}
+.wm-table{width:100%;border-collapse:collapse;font-size:13px;}
+.wm-table th{text-align:left;font-size:11px;color:var(--text3);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--border);}
+.wm-table td{padding:7px 8px;border-bottom:1px solid var(--border);}
+.wm-table .num{text-align:right;font-variant-numeric:tabular-nums;}
+.wm-up{color:var(--green);} .wm-dn{color:var(--red);}
+.wm-note{font-size:11px;color:var(--text3);margin:10px 0 0;}
+@media (max-width:560px){.wm-num{font-size:30px;}.wm-name{font-size:12px;}.wm-sub{font-size:12px;}}
 .card-peek{max-height:220px;overflow:hidden;position:relative;}
 .card-peek::after{content:'';position:absolute;left:0;right:0;bottom:0;height:56px;background:linear-gradient(to bottom, transparent, var(--surf));pointer-events:none;}
 .card-peek.expanded{max-height:none;}
@@ -318,6 +339,7 @@ svg.pad{width:100%;height:auto;display:block;}
 <script src="pwa.js?v=312" defer></script>
 <script src="imposters.js?v=16"></script>
 <script src="tierlist.js?v=16"></script>
+<script src="continent-map.js?v=1"></script>
 <meta name="description" content="Console Age of Empires II insights: rating distribution, civ win rates, weekly recaps, alts and more.">
 <link rel="canonical" href="https://aoe2autoscout.com/insights.html">
 <meta property="og:site_name" content="AoE2 Auto Scout">
@@ -761,6 +783,12 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
       <select id="weekly-archive-select" style="display:none"></select>
       <div class="card-peek" id="weekly-peek"><div id="weekly-content"><div class="loading">Loading weekly recap…</div></div></div>
       <button class="peek-toggle" data-target="weekly-peek" type="button">Show more ▾</button>
+    </section>
+
+    <section id="worldmap" class="card">
+      <h2>🌍 Where Console Is Played</h2>
+      <p class="desc">Weekly console activity by continent: the games and players behind each region, week by week.</p>
+      <div id="worldmap-body"><div class="loading">Loading map…</div></div>
     </section>
 
     <section id="snl" class="card">
@@ -1750,7 +1778,25 @@ function render(content, binEntries, stats, bracketAgg, civsData, crossplayRows,
   });
 
   loadAndRenderWeekly();
+  loadAndRenderWorldMap(consolePlayers);
   loadAndRenderSnl();
+}
+
+// ---- continent heat map (continent-map.js) ----
+async function loadAndRenderWorldMap(players) {
+  const el = document.getElementById('worldmap-body');
+  try {
+    const idxRes = await fetch(`${WEEKLY_INDEX_URL}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!idxRes.ok) throw new Error('no index');
+    const dates = await idxRes.json();
+    if (!dates.length) throw new Error('no weeks');
+    mountContinentMap(el, {
+      players, dates,
+      fetchReport: async d => { const r = await fetch(`${weeklyReportUrl(d)}?t=${Date.now()}`, { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); },
+    });
+  } catch (e) {
+    el.innerHTML = '<p class="weekly-empty">The weekly map will appear once a weekly report is available.</p>';
+  }
 }
 
 // ---- weekly recap ----
