@@ -178,8 +178,13 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
   <div class="ccl-join"><a class="ccl-discord" href="https://discord.gg/Xs56BRxZaq" target="_blank" rel="noopener">Join the CCL Discord</a></div>
 
   <div class="card" id="game-card" hidden>
-    <h2>This week's game</h2>
+    <h2>This week: Game 1</h2>
     <div id="game-body"></div>
+  </div>
+
+  <div class="card" id="game-card2" hidden>
+    <h2>This week: Game 2</h2>
+    <div id="game-body2"></div>
   </div>
 
   <div class="card" id="extra-card" hidden>
@@ -295,10 +300,23 @@ const CCL_GAME = {
   ],
   tag: 'Protect your King.',
 };
-const gameOn = CCL_GAME && (!CCL_GAME.until || Date.now() < Date.parse(CCL_GAME.until));
-document.getElementById('game-card').hidden = !gameOn;
+// Game 2: the same eight players and setup as Game 1, with SublimedLime254 and SharkeyTank swapped by the organizer.
+const CCL_GAME2 = Object.assign({}, CCL_GAME, {
+  title: 'Regicide, Game 2',
+  when: 'Wednesday, November 11, 2026 · right after Game 1',
+  match: undefined, result: undefined,
+  teamsMetric: 'CCL ranking score',
+  teamsHeading: 'Teams · Game 1 with SublimedLime254 and SharkeyTank swapped',
+  teams: [
+    { name: 'Team A', accent: '#60a5fa', players: [{ name: 'ManBearPig1511', id: 8764015, rating: 5.5 }, { name: 'NotATheist', id: 14602117, rating: 6.25 }, { name: 'BombEater3', id: 24050143, rating: 10 }, { name: 'SharkeyTank', id: 12525616, rating: 3.25 }] },
+    { name: 'Team B', accent: '#3F9B72', players: [{ name: 'SublimedLime254', id: 12851650, rating: 12 }, { name: 'Balinthusa', id: 16314476, rating: 6.75 }, { name: 'D0cTOrSniper', id: 13323926, rating: 10.75 }, { name: 'Gogs987', id: 8764016, rating: 13 }] },
+  ],
+});
+function renderGame(G, sfx) {
+const gameOn = G && (!G.until || Date.now() < Date.parse(G.until));
+document.getElementById('game-card' + sfx).hidden = !gameOn;
 if (gameOn) {
-  const g = CCL_GAME;
+  const g = G;
   const lobby = g.players || [];
   const ranked = lobby.slice().sort((a, b) => b.elo - a.elo);
   const teams = g.split === false ? null : lobby.length === 8 && lobby.every(p => p.side) ? [lobby.filter(p => p.side === 'japan'), lobby.filter(p => p.side === 'mongols')]
@@ -316,20 +334,20 @@ if (gameOn) {
   const subs = g.subs || (g.sub ? [g.sub] : []);
   const tmText = () => tres ? [`**${g.title}: ${tres.headline}**`].concat(tm.map(t => `**${t.name}**: ${t.players.map(p => `${p.name} (${ptsTxt(p.pts)})`).join(', ')}`)).concat([tres.detail]).join(nl) : [`**${g.title}** · ${g.when}`].concat(tm.map(t => `**${t.name}**: ${t.players.map(p => p.name).join(', ')}`)).concat(subs.length ? [`${subs.length === 1 ? 'Sub' : 'Subs'}: ${subs.map(x => x.name).join(', ')}`] : []).join(nl);
   const tmTotals = tm ? tm.map(t => t.players.reduce((a, p) => a + p.rating, 0)) : [];
-  const tmBlock = tm ? `<div class="game-teams-bar"><h3>${tres ? 'Points earned' : `Teams · balanced on ${g.teamsMetric || 'console team rating'} (${tmTotals.join(' vs ')})`}</h3><button type="button" class="game-copy" id="game-copy">${copyLabel}</button><button type="button" class="game-copy" id="game-img" title="Copies the lineup as a picture. Paste it straight into Discord.">Copy as picture</button><button type="button" class="game-copy" id="game-save">Save picture</button></div>` +
+  const tmBlock = tm ? `<div class="game-teams-bar"><h3>${tres ? 'Points earned' : `${g.teamsHeading || 'Teams · balanced on ' + (g.teamsMetric || 'console team rating')} (${tmTotals.join(' vs ')})`}</h3><button type="button" class="game-copy" id="game-copy${sfx}">${copyLabel}</button><button type="button" class="game-copy" id="game-img${sfx}" title="Copies the lineup as a picture. Paste it straight into Discord.">Copy as picture</button><button type="button" class="game-copy" id="game-save${sfx}">Save picture</button></div>` +
     `<div class="game-sides" style="margin-bottom:14px">${tm.map(t => `<div class="game-side" style="--accent:${t.accent}"><h3>${esc(t.name)}</h3><ol class="game-roster">${t.players.map(p => `<li><a href="player.html?id=${p.id}">${esc(p.name)}</a><span>${tres ? ptsTxt(p.pts) : p.rating}</span></li>`).join('')}</ol></div>`).join('')}</div>` +
     (subs.length && !tres ? `<p class="note" style="font-size:12px;color:var(--text2);margin:0 0 16px">${subs.length === 1 ? 'Sub' : 'Subs'}: ${subs.map(x => `<a href="player.html?id=${x.id}" style="color:var(--text);font-weight:600;text-decoration:none">${esc(x.name)}</a> (${x.rating})`).join(', ')}. ${subs.length === 1 ? 'Steps in' : 'They step in, in this order,'} if someone drops.</p>` : '') : '';
-  document.getElementById('game-body').innerHTML =
+  document.getElementById('game-body' + sfx).innerHTML =
     `<div class="game-head">${g.map ? `<img src="img/maps/${g.map}.jpg" alt="" width="56" height="56">` : ''}<div><h2>${esc(g.title)}</h2><div class="game-when">${esc(g.when)}</div><div class="game-when">${esc(g.setup)}</div></div></div>` +
     `<p class="game-story">${esc(g.story)}</p>` +
     (res || tres ? `<div class="game-result"><b>${esc((res || tres).headline)}</b><span>${esc((res || tres).detail)}</span>${g.match ? `<a href="${g.match}" target="_blank" rel="noopener" style="color:var(--text);font-weight:600">View the game on aoe2insights</a>` : ''}</div>` : '') +
-    (tm ? tmBlock : teams ? `<div class="game-teams-bar"><h3>${res ? 'Points earned' : 'Teams · split by console 1v1 rating'}</h3><button type="button" class="game-copy" id="game-copy">${copyLabel}</button></div>`
+    (tm ? tmBlock : teams ? `<div class="game-teams-bar"><h3>${res ? 'Points earned' : 'Teams · split by console 1v1 rating'}</h3><button type="button" class="game-copy" id="game-copy${sfx}">${copyLabel}</button></div>`
     : g.players && g.players.length ? `<div class="game-players"><h3>In the lobby (${g.players.length} of ${g.size || 8})</h3><div class="game-chips">${g.players.map(p => `<a class="game-chip" href="player.html?id=${p.id}">${esc(p.name)}</a>`).join('')}</div>${g.lobbyNote ? `<p class="note" style="font-size:11.5px;color:var(--text3);margin:10px 0 0">${esc(g.lobbyNote)}</p>` : ''}</div>` : '') +
     `<div class="game-sides">` +
     g.sides.map((sd, i) => `<div class="game-side" style="--accent:${sd.accent}"><h3>${sd.civ ? `<img src="img/civs/${sd.civ}.png" alt="">` : ''}${esc(sd.name)}</h3><p class="who">${esc(sd.who)}</p>${roster(i)}` +
       `<table><thead><tr><th>${esc(sd.head[0])}</th><th class="num">${esc(sd.head[1])}</th></tr></thead><tbody>${sd.rows.map(r => `<tr><td>${esc(r[0])}</td><td class="num">${r[1]}</td></tr>`).join('')}</tbody></table>` +
       (sd.note ? `<p class="note">${esc(sd.note)}</p>` : '') + `</div>`).join('') + `</div><p class="game-tag">${esc(g.tag)}</p><a class="ccl-discord" href="https://discord.gg/Xs56BRxZaq" target="_blank" rel="noopener" style="margin-top:14px">Sign in on Discord</a>`;
-  const cb = document.getElementById('game-copy');
+  const cb = document.getElementById('game-copy' + sfx);
   if (cb) cb.addEventListener('click', () => {
     const txt = tm ? tmText() : discordText(), done = () => { cb.textContent = 'Copied!'; setTimeout(() => { cb.textContent = copyLabel; }, 1800); };
     const fallback = () => { const ta = document.createElement('textarea'); ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); };
@@ -377,7 +395,7 @@ if (gameOn) {
     const fileName = (g.title || 'ccl-lineup').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-lineup.png';
     const flash = (btn, txt, back) => { btn.textContent = txt; setTimeout(() => { btn.textContent = back; }, 2200); };
     const saveBlob = blob => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); };
-    const imgBtn = document.getElementById('game-img'), saveBtn = document.getElementById('game-save');
+    const imgBtn = document.getElementById('game-img' + sfx), saveBtn = document.getElementById('game-save' + sfx);
     if (imgBtn) imgBtn.addEventListener('click', async () => {
       const blob = await toBlob(); if (!blob) return;
       const file = new File([blob], fileName, { type: 'image/png' });
@@ -391,6 +409,9 @@ if (gameOn) {
     if (saveBtn) saveBtn.addEventListener('click', async () => { const blob = await toBlob(); if (blob) { saveBlob(blob); flash(saveBtn, 'Saved', 'Save picture'); } });
   }
 }
+}
+renderGame(CCL_GAME, '');
+renderGame(CCL_GAME2, '2');
 
 // Civ lock (Season 4): every civ used in a CCL game so far. Add a row here after each game; the card works out the rest.
 const CCL_CIVS_USED = [
