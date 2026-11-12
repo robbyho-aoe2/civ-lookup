@@ -299,7 +299,7 @@ input[type=number]:focus,select:focus{border-color:var(--amber);}
   </div>
 </div>
 
-<script src="scout.js?v=16"></script>
+<script src="scout.js?v=17"></script>
 <script>
 // Self-contained per this site's convention. A tracked list of console players (data/console-roster.json) decides
 // who to watch from the rating filter; aoe2companion's live socket is then asked only for those players' games and
@@ -460,15 +460,20 @@ function cardOdds(m, pl) {
   const teams = groupTeams(pl);
   if (teams.length !== 2 || !teams.every(t => t.length && t.every(p => p.rating > 0))) return '';
   const is1v1 = m.leaderboardId === 'rm_1v1_console' && teams[0].length === 1 && teams[1].length === 1;
-  if (!is1v1 && m.leaderboardId !== 'rm_team_console') return '';
-  loadCivStats();
+  const modelled = is1v1 || m.leaderboardId === 'rm_team_console';
+  if (modelled) loadCivStats();   // other ladders use ratings only, no civ data needed
   let o, left, right, cl = SIDE_A, cr = SIDE_B;
-  if (is1v1) {
+  if (!modelled) {
+    // any other ladder (PC, EW, unranked, custom) that has ratings: plain Elo on the team averages
+    o = oddsElo(teams[0], teams[1]);
+    if (teams[0].length === 1 && teams[1].length === 1) { left = esc(teams[0][0].name || ''); right = esc(teams[1][0].name || ''); [cl, cr] = sideColors(teams[0][0].colorHex, teams[1][0].colorHex); }
+    else { left = 'Left team'; right = 'Right team'; [cl, cr] = teamColors(teams[0], teams[1]); }
+  } else if (is1v1) {
     const a = teams[0][0], b = teams[1][0], ha = histPeek(a.profileId, 'rm_1v1_console'), hb = histPeek(b.profileId, 'rm_1v1_console');
     o = oddsFor('1v1', a, b, ha && hb ? ha : null, ha && hb ? hb : null, m.mapName || ''); left = esc(a.name || ''); right = esc(b.name || ''); [cl, cr] = sideColors(a.colorHex, b.colorHex);
   } else { o = oddsTeam(teams[0], teams[1]); left = 'Left team'; right = 'Right team'; [cl, cr] = teamColors(teams[0], teams[1]); }
   const pc = pctShow(o.p);
-  return `<div class="g-odds" title="${esc(o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → '))}. Fitted on recent console games; press Scout for the full report."><span class="go-l" style="color:${cl}">${left} ${pc}%</span>${oddsBar(pc, cl, cr)}<span class="go-r" style="color:${cr}">${100 - pc}% ${right}</span></div>`;
+  return `<div class="g-odds" title="${esc(o.steps.map(s => `${s.label} ${Math.round(s.p * 100)}%`).join(' → '))}. ${modelled ? 'Fitted on recent console games; press Scout for the full report.' : 'From the ratings alone (plain Elo on the team averages).'}"><span class="go-l" style="color:${cl}">${left} ${pc}%</span>${oddsBar(pc, cl, cr)}<span class="go-r" style="color:${cr}">${100 - pc}% ${right}</span></div>`;
 }
 const scoutOpen = new Set();   // matchIds whose full report is open
 function cardScout(m, pl) {
