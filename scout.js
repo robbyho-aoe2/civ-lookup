@@ -159,6 +159,8 @@ const MAP_CLASS = { 'Arabia': 'open', 'Arabian Desert': 'open', 'Nomad': 'hybrid
   'Glade': 'closed', 'Michi': 'closed', 'African Clearing': 'open', 'Coastal Forest': 'hybrid', 'Scandinavia': 'hybrid', 'Yucatan': 'hybrid', 'Baltic': 'water', 'Northern Isles': 'water' };
 const SCOUT_CIV_NORM = { Mayans: 'Maya', Inca: 'Incas', Indians: 'Hindustanis' };
 const normCiv = c => SCOUT_CIV_NORM[c] || c;
+// A civ name that opens that civ's card on the Auto Scout page (index.html?civ=...), in a new tab so the live view stays put.
+const civLink = c => c ? `<a href="index.html?civ=${encodeURIComponent(normCiv(c))}" target="_blank" rel="noopener" class="sc-civlink" title="Open the ${esc(c)} card" style="color:inherit;text-decoration:underline dotted;text-underline-offset:3px">${esc(c)}</a>` : '';
 const scoutProfiles = new Map();   // key lb:id -> profile leaderboard entry | 'loading' | 'err'
 let civStats = null, civStatsBusy = false;
 function loadCivStats() {
@@ -314,7 +316,7 @@ function scoutTags(opp, games, map, cls) {
 function scoutPlayer(p, h, mode, map, cls, pe, isYou) {
   const col = readableColor(p.colorHex) || '#8b95a1', n = esc(p.name || '');
   const head = `<div class="sc-ph"><span class="sc-pn">${platIcon(p.profileId)}<a href="player.html?id=${p.profileId}">${n}</a>${impTag(p.profileId)}${isYou ? ' <i class="sc-you">you</i>' : ''}</span><span class="sc-pr">${p.rating > 0 ? p.rating : ''}</span></div>` +
-    `<div class="sc-pcv">${p.civName ? esc(p.civName) : ''}</div>`;
+    `<div class="sc-pcv">${civLink(p.civName)}</div>`;
   const wrap = body => `<div class="sc-pl" style="--pc:${col}">${head}${body}</div>`;
   if (h === 'loading' || h === undefined) return wrap('<div class="sc-dim">checking recent games…</div>');
   if (h === 'err') return wrap('<div class="sc-dim">could not load their games</div>');
@@ -322,7 +324,7 @@ function scoutPlayer(p, h, mode, map, cls, pe, isYou) {
   const onMap = map ? g.filter(x => x.map === map) : [], inCls = cls ? g.filter(x => MAP_CLASS[x.map] === cls) : [];
   const last20 = g.slice(0, 20), w20 = last20.filter(x => x.won).length;
   const civs = new Map(); g.forEach(x => { if (!x.civ) return; const c = civs.get(x.civ) || { n: 0, w: 0 }; c.n++; if (x.won) c.w++; civs.set(x.civ, c); });
-  const topCivs = [...civs.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 2).map(([c, v]) => `${esc(c)} ${Math.round(v.n / g.length * 100)}% (${Math.round(v.w / v.n * 100)}% won)`).join('<br>');
+  const topCivs = [...civs.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 2).map(([c, v]) => `${civLink(c)} ${Math.round(v.n / g.length * 100)}% (${Math.round(v.w / v.n * 100)}% won)`).join('<br>');
   const thisCiv = p.civName ? civs.get(p.civName) : null;
   const lastTs = g.length && g[0].ts ? g[0].ts : null, week = g.filter(x => x.ts && scoutNow - Date.parse(x.ts) < 7 * 864e5).length;
   const md = median(g.filter(x => x.dur).map(x => x.dur));
@@ -333,7 +335,7 @@ function scoutPlayer(p, h, mode, map, cls, pe, isYou) {
     g.length ? `<div class="sc-dots"><span class="sc-dl">latest ▸</span>${formDots(g, 10)}</div>` : '',
     map ? row(`On ${esc(map)}`, pctText(onMap.filter(x => x.won).length, onMap.length)) : '',
     cls && inCls.length ? row(`${cls} maps`, pctText(inCls.filter(x => x.won).length, inCls.length)) : '',
-    p.civName ? row(esc(p.civName), thisCiv ? pctText(thisCiv.w, thisCiv.n) : 'new for them') : '',
+    p.civName ? row(civLink(p.civName), thisCiv ? pctText(thisCiv.w, thisCiv.n) : 'new for them') : '',
     row('Plays', topCivs),
     row('Games', `${md != null ? Math.round(md) + ' min · ' : ''}${week} this week${lastTs ? ' · last ' + agoText(lastTs, scoutNow) : ''}`),
     pe && pe !== 'loading' && pe !== 'err' ? row('Peak', `${pe.maxRating || '–'}${pe.rank ? ' · #' + pe.rank : ''}${pe.streak ? ' · ' + (pe.streak > 0 ? pe.streak + 'W' : -pe.streak + 'L') : ''}`) : '',
