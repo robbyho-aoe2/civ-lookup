@@ -40,7 +40,11 @@ function mountContinentMap(root, opts) {
   const load = d => cache.has(d) ? cache.get(d) : cache.set(d, fetchReport(d).catch(() => null)).get(d);
   root.innerHTML = `
     <div class="wm-controls">
-      <select id="wm-week" aria-label="Week">${dates.map((d, i) => `<option value="${d}">${dates[i + 1] ? dates[i + 1] + ' – ' + d : 'Through ' + d}</option>`).join('')}</select>
+      <div class="snl-archive-nav" style="margin:0">
+        <button class="snl-nav-btn" id="wm-older" type="button" aria-label="Previous week">◀</button>
+        <select id="wm-week" aria-label="Week">${dates.map((d, i) => `<option value="${d}">${dates[i + 1] ? dates[i + 1] + ' – ' + d : 'Through ' + d}</option>`).join('')}</select>
+        <button class="snl-nav-btn" id="wm-newer" type="button" aria-label="Next week">▶</button>
+      </div>
       <div class="wm-toggle" role="group" aria-label="Heat by">
         <button type="button" data-m="games" class="on">Games played</button><button type="button" data-m="players">Active players</button>
       </div>
@@ -48,7 +52,14 @@ function mountContinentMap(root, opts) {
     <div id="wm-body"><div class="loading">Loading…</div></div>`;
   const body = root.querySelector('#wm-body');
 
+  function syncNav() {
+    const i = dates.indexOf(date);
+    root.querySelector('#wm-week').value = date;
+    root.querySelector('#wm-older').disabled = i >= dates.length - 1;   // dates are newest first
+    root.querySelector('#wm-newer').disabled = i <= 0;
+  }
   async function draw() {
+    syncNav();
     body.innerHTML = '<div class="loading">Loading…</div>';
     const prevDate = dates[dates.indexOf(date) + 1];
     const [rep, prev] = await Promise.all([load(date), prevDate ? load(prevDate) : null]);
@@ -84,6 +95,9 @@ function mountContinentMap(root, opts) {
   }
 
   root.querySelector('#wm-week').addEventListener('change', e => { date = e.target.value; draw(); });
+  const step = by => { const d = dates[dates.indexOf(date) + by]; if (d) { date = d; draw(); } };
+  root.querySelector('#wm-older').addEventListener('click', () => step(1));
+  root.querySelector('#wm-newer').addEventListener('click', () => step(-1));
   root.querySelector('.wm-toggle').addEventListener('click', e => {
     const b = e.target.closest('button[data-m]'); if (!b) return;
     metric = b.dataset.m;
