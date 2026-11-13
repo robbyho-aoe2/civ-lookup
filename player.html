@@ -354,7 +354,7 @@ svg{display:block;width:100%;height:auto;overflow:visible;}
 
   <div class="card" id="lookup-card">
     <h2>Look Up a Player</h2>
-    <p class="desc">Search anyone tracked on the site, or any AoE2 player by name/profileId — untracked players get fetched live.</p>
+    <p class="desc">Search anyone tracked on the site, or any AoE2 player by name/profileId — untracked players get fetched live. Or <a href="player.html?browse=1" style="color:var(--amberL)">browse the lists</a> (pros, streamers, top players).</p>
     <input type="text" id="player-search" placeholder="Search by name or profileId…" autocomplete="off">
     <div id="player-search-results"></div>
   </div>
@@ -380,7 +380,11 @@ const esc = s => escapeHtml(s == null ? '' : s);
 let scoutRedraw = () => {};
 function queueRender() { scoutRedraw(); }
 const params = new URLSearchParams(location.search);
-const profileId = params.get('id'); // null -> landing page instead of a specific player
+// With no ?id, open the player set with "Make my player" on this device (pwa.js keeps it in localStorage). ?browse=1 skips that
+// and shows the landing page (all the lists), so another player is one search or one click away.
+let myDefaultId = null;
+try { if (!params.get('id') && params.get('browse') === null) { const me = (JSON.parse(localStorage.getItem('autoscout-start-2') || 'null') || {}).me; if (me && me.id) myDefaultId = String(me.id); } } catch (e) { /* no storage: landing page */ }
+const profileId = params.get('id') || myDefaultId; // null -> landing page instead of a specific player
 let ALL_TRACKED = []; // meta.players, kept around for search + similar-players + the landing page
 let PLATFORMS_MAP = {}; // profileId (string) -> 'Xbox' | 'PSN' | 'Steam', bridge for console players whose own file predates platform tracking
 // Player display names come straight from the game's own API (any player
