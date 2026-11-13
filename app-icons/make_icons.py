@@ -1,10 +1,11 @@
 """Renders the PWA icon PNGs for AoE Auto Scout (needs Pillow). Run from anywhere:
     python app-icons/make_icons.py
-The logo (shield, rank chevron, rising bars) is drawn in a 100x100 design space (draw_logo). To change the logo, edit draw_logo()
+The logo (silver shield, gold rank chevron, bars rising from silver to gold) is drawn in a 100x100 design space (draw_logo). To change the logo, edit draw_logo()
 (and favicon.svg to match), then re-run - nothing else needs to change.
 """
 import math
 from pathlib import Path
+import numpy as np
 from PIL import Image, ImageDraw
 
 OUT = Path(__file__).parent
@@ -34,28 +35,52 @@ def _mix(fg, bg, a):
 
 
 FACE = (23, 19, 15)
+# Silver rim (the AUTO half of the wordmark), gold chevron (SCOUT), bars that warm from silver to gold as they rise.
+SILVER_HI, SILVER_LO = (238, 240, 245), (150, 156, 168)
+GOLD_HI, GOLD_LO = (255, 214, 92), (214, 150, 20)
+
+
+def _paint(mask, top, bot, y0, y1):
+    """A vertical gradient top->bot between rows y0 and y1, shown only where mask is set."""
+    S = mask.size[0]
+    ys = np.clip((np.arange(S) - y0) / max(1.0, y1 - y0), 0, 1)[:, None, None]
+    t, b = np.array(top)[None, None, :], np.array(bot)[None, None, :]
+    layer = Image.fromarray((t + (b - t) * ys).repeat(S, axis=1).astype("uint8"), "RGB").convert("RGBA")
+    layer.putalpha(mask)
+    return layer
 
 
 def draw_logo(img, ox, oy, k):
-    """Shield with a gold rank chevron over three rising bars (option C).
+    """Shield with a gold rank chevron over three rising bars, silver and gold.
     (ox, oy) = top-left of the 100x100 design box, k = pixels per unit."""
+    S = img.size[0]
     P = lambda x, y: (ox + x * k, oy + y * k)
     d = ImageDraw.Draw(img)
     outer = [P(x, y) for x, y in _shield()]
     d.polygon(outer, fill=FACE + (255,))
-    d.line(outer + [outer[0]], fill=JADE + (255,), width=max(1, round(4.5 * k)), joint="curve")
+    m = Image.new("L", (S, S), 0)
+    md = ImageDraw.Draw(m)
+    md.line(outer + [outer[0]], fill=255, width=max(1, round(5 * k)), joint="curve")
     px, py = P(50, 11)
-    r = 2.25 * k
-    d.ellipse([px - r, py - r, px + r, py + r], fill=JADE + (255,))  # closes the join at the peak
+    r = 2.5 * k
+    md.ellipse([px - r, py - r, px + r, py + r], fill=255)  # closes the join at the peak
+    img.alpha_composite(_paint(m, SILVER_HI, SILVER_LO, oy + 8 * k, oy + 92 * k))
+    d = ImageDraw.Draw(img)
     inner = [P(50 + (x - 50) * 0.78, 52 + (y - 52) * 0.78) for x, y in _shield()]
-    d.line(inner + [inner[0]], fill=_mix(JADE, FACE, 0.4), width=max(1, round(1.5 * k)), joint="curve")
-    w = max(1, round(5 * k))
-    chev = [P(36, 36), P(50, 26), P(64, 36)]
-    d.line(chev, fill=GOLD + (255,), width=w, joint="curve")
+    d.line(inner + [inner[0]], fill=_mix(SILVER_LO, FACE, 0.45), width=max(1, round(1.5 * k)), joint="curve")
+    w = max(1, round(5.5 * k))
+    chev = [P(36, 36), P(50, 25), P(64, 36)]
+    cm = Image.new("L", (S, S), 0)
+    cd = ImageDraw.Draw(cm)
+    cd.line(chev, fill=255, width=w, joint="curve")
     for x, y in chev:
-        d.ellipse([x - w / 2, y - w / 2, x + w / 2, y + w / 2], fill=GOLD + (255,))
-    for x0, top, a in ((34, 56, 0.55), (46, 50, 0.8), (58, 44, 1.0)):
-        d.rounded_rectangle([P(x0, top)[0], P(x0, top)[1], P(x0 + 9, 68)[0], P(x0 + 9, 68)[1]], radius=2 * k, fill=_mix(JADE, FACE, a))
+        cd.ellipse([x - w / 2, y - w / 2, x + w / 2, y + w / 2], fill=255)
+    img.alpha_composite(_paint(cm, GOLD_HI, GOLD_LO, oy + 22 * k, oy + 40 * k))
+    for x0, top, t in ((34, 56, 0.0), (46, 50, 0.5), (58, 44, 1.0)):
+        one = Image.new("L", (S, S), 0)
+        ImageDraw.Draw(one).rounded_rectangle([*P(x0, top), *P(x0 + 9, 68)], radius=2 * k, fill=255)
+        mix = lambda a, b: tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
+        img.alpha_composite(_paint(one, mix(SILVER_HI, GOLD_HI), mix(SILVER_LO, GOLD_LO), oy + 44 * k, oy + 68 * k))
 
 
 def tile(size, rounded=True, content=1.0):
