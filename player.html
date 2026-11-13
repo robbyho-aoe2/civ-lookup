@@ -1232,7 +1232,23 @@ function renderLandingPage(content) {
       <div class="similar-players">${html}</div>
     </details>`;
 
+  // "My player" is set per device by the ☆ Make my player button on a player page (pwa.js keeps it in localStorage).
+  const myPlayerSection = () => {
+    const me = window.autoScoutStart && window.autoScoutStart.get().me;
+    if (!me || !me.id) {
+      return `<div class="card"><h2>My Player</h2><p class="desc">Not set on this device yet. Search yourself above, open your page and tap <b>☆ Make my player</b>. You will see yourself here next time.</p></div>`;
+    }
+    const tracked = ALL_TRACKED.find(p => String(p.profileId) === String(me.id));
+    const name = tracked ? tracked.name : (me.name || me.id);
+    const sub = tracked && tracked.ratings && Object.keys(tracked.ratings).length
+      ? Object.entries(tracked.ratings).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([l, r]) => `${l}: ${r}`).join(' · ')
+      : 'Open your page';
+    return `<div class="card"><h2>My Player</h2><p class="desc">The player you set on this device.</p>` +
+      `<div class="similar-players"><a href="player.html?id=${encodeURIComponent(me.id)}"><b>★ ${escapeHtml(name)}</b><span>${escapeHtml(sub)}</span></a></div></div>`;
+  };
+
   content.innerHTML =
+    myPlayerSection() +
     playersWithVideosSection() +
     collapsedSection('Pro Players', 'Tournament-caliber players tracked on the site.', cards(pros, primaryRatingLabel), pros.length) +
     section('Streamers', 'Content creators tracked on the site.', cards(streamers, primaryRatingLabel)) +
