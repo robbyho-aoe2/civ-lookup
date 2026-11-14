@@ -281,8 +281,15 @@ const CCL_GAME = {
   lobbyNote: 'Map to be announced. One spot left. Balinthusa is out.',
   sides: [
     { name: 'The game', accent: '#D4A24C', who: 'What is known so far.',
-      head: ['Detail', 'Info'], rows: [['Mode', 'Diplomacy · Regicide'], ['Map', 'To be announced'], ['Missions', 'Secret, one each'], ['Start', '12:30 PM ET']],
+      head: ['Detail', 'Info'], rows: [['Mode', 'Diplomacy · Regicide'], ['Map', 'To be announced'], ['Missions', 'Pick one, in secret'], ['Start', '12:30 PM ET']],
       note: '' },
+    { name: 'Pick your secret mission', accent: '#3F9B72', who: 'Choose ONE before the game and send NotATheist a DM on Discord with your pick. Picks are secret and final, and two players can pick the same mission.',
+      head: ['Mission', 'Points'], rows: [
+        ['Never research Loom', '+2'], ['Build 5+ Castles', '+2'],
+        ['Never garrison your King', '+3'], ['Complete a wonder', '+3'], ['Finish top 4 with Purple or Yellow', '+3'], ['Finish top 4 with Teal or Orange', '+3'],
+        ['Use only non-gold units and Trebs', '+4'], ['Build 20+ Towers', '+4'],
+        ['Finish top 3 with Blue or Gray', '+5'], ['Finish top 3 with Red or Green', '+5']],
+      note: 'If you are one of the two colours on a “with” card, you need the other one. Mission points are added to your placement points.' },
   ],
   players: [
     { name: 'NotATheist', id: 14602117 }, { name: 'Seth41737spare', id: 16829189 }, { name: 'VolcanLoup', id: 12893749 },
