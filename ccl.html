@@ -178,7 +178,7 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
   <div class="ccl-join"><a class="ccl-discord" href="https://discord.gg/Xs56BRxZaq" target="_blank" rel="noopener">Join the CCL Discord</a></div>
 
   <div class="card" id="game-card" hidden>
-    <h2>This week: Game 1</h2>
+    <h2>This week's game</h2>
     <div id="game-body"></div>
   </div>
 
@@ -269,51 +269,30 @@ function standingsTable(rows) {
 
 // This week's game. Set CCL_GAME to null (or let `until` pass) to hide the card.
 // split: false means no automatic teams (the organizer sets them); lobbyNote is a line under the player chips.
+// Sat Nov 14: a Diplomacy game, map still to be announced, with secret missions. The sign-up list is from Discord (IN posts; balinthusa said Off).
 const CCL_GAME = {
-  until: '2026-11-12T16:00:00Z',
-  title: 'Regicide',
-  map: 'border-stones',
-  when: 'Wednesday, November 11, 2026 · 6:00 PM ET',
-  setup: '4v4 · Regicide · Border Stones · No wonders',
-  story: 'Kill the other team’s King to win. Wonders are switched off.',
+  until: '2026-11-15T17:00:00Z',
+  title: 'Diplomacy',
+  when: 'Saturday, November 14, 2026 · 12:30 PM ET',
+  setup: 'Diplomacy · Map to be announced · Secret missions',
+  story: 'Everyone has a secret mission. Make deals, keep them or break them, and keep your goal to yourself.',
   split: false,
   size: 8,
-  // Teams balanced on the CCL ranking score (Nov 11, lower is better): 33.75 vs 33.75. D0cTOrSniper replaced SammyDiamonds. rating = ranking score. SublimedLime254 and Gogs987 have no CCL games yet, so their 1v1 rank (peak) counts for both halves: SublimedLime254 12th, Gogs987 13th (no 1v1 rating).
-  teamsMetric: 'CCL ranking score, lower is better',
-  teams: [
-    { name: 'Team A', accent: '#60a5fa', players: [{ name: 'ManBearPig1511', id: 8764015, rating: 5.5, pts: 3 }, { name: 'NotATheist', id: 14602117, rating: 6.25, pts: 3 }, { name: 'BombEater3', id: 24050143, rating: 10, pts: 3 }, { name: 'SublimedLime254', id: 12851650, rating: 12, pts: 3 }] },
-    { name: 'Team B', accent: '#3F9B72', players: [{ name: 'SharkeyTank', id: 12525616, rating: 3.25, pts: 5 }, { name: 'Balinthusa', id: 16314476, rating: 6.75, pts: 5 }, { name: 'D0cTOrSniper', id: 13323926, rating: 10.75, pts: 5 }, { name: 'Gogs987', id: 8764016, rating: 13, pts: 5 }] },
-  ],
-  match: 'https://www.aoe2insights.com/match/520485137/',
-  result: { headline: 'Team B wins',
-    detail: 'SharkeyTank, Balinthusa, D0cTOrSniper and Gogs987 beat ManBearPig1511, NotATheist, BombEater3 and SublimedLime254 after 36 minutes on Border Stones. Winners take 5 points, losers 1, plus 1 for each King the losing team killed, shared by the whole team: Team A killed 2 (+2 each).' },
-  lobbyNote: 'Ryanp1001 is a maybe. Teams are set by the organizer.',
+  lobbyNote: 'Map to be announced. One spot left. Balinthusa is out.',
   sides: [
-    { name: 'The teams', accent: '#D4A24C', who: 'How the two teams score.',
-      head: ['Result', 'Points'], rows: [['Winning team', 5], ['Losing team', 1], ['Each King the losers kill', 1]],
+    { name: 'The game', accent: '#D4A24C', who: 'What is known so far.',
+      head: ['Detail', 'Info'], rows: [['Mode', 'Diplomacy'], ['Map', 'To be announced'], ['Missions', 'Secret, one each'], ['Start', '12:30 PM ET']],
       note: '' },
   ],
   players: [
-    { name: 'NotATheist', id: 14602117 }, { name: 'Balinthusa', id: 16314476 }, { name: 'D0cTOrSniper', id: 13323926 },
-    { name: 'Gogs987', id: 8764016 }, { name: 'ManBearPig1511', id: 8764015 },
-    { name: 'SublimedLime254', id: 12851650 }, { name: 'SharkeyTank', id: 12525616 }, { name: 'BombEater3', id: 24050143 },
+    { name: 'NotATheist', id: 14602117 }, { name: 'Seth41737spare', id: 16829189 }, { name: 'VolcanLoup', id: 12893749 },
+    { name: 'ManBearPig1511', id: 8764015 }, { name: 'D0cTOrSniper', id: 13323926 }, { name: 'GOAT Gobz', id: 8154765 },
+    { name: 'SharkeyTank', id: 12525616 },
   ],
-  tag: 'Protect your King.',
+  tag: 'Trust no one.',
 };
-// Game 2: the same eight players and setup as Game 1, with SublimedLime254 and SharkeyTank swapped by the organizer.
-const CCL_GAME2 = Object.assign({}, CCL_GAME, {
-  title: 'Regicide, Game 2',
-  when: 'Wednesday, November 11, 2026 · right after Game 1',
-  match: 'https://www.aoe2insights.com/match/520493454/',
-  result: { headline: 'Team A wins',
-    detail: 'ManBearPig1511, NotATheist, BombEater3 and SharkeyTank beat SublimedLime254, Balinthusa, D0cTOrSniper and Gogs987 after 29 minutes on Border Stones. Winners take 5 points, losers 1, plus 1 for each King the losing team killed, shared by the whole team: Team B killed none.' },
-  teamsMetric: 'CCL ranking score',
-  teamsHeading: 'Teams · Game 1 with SublimedLime254 and SharkeyTank swapped',
-  teams: [
-    { name: 'Team A', accent: '#60a5fa', players: [{ name: 'ManBearPig1511', id: 8764015, rating: 5.5, pts: 5 }, { name: 'NotATheist', id: 14602117, rating: 6.25, pts: 5 }, { name: 'BombEater3', id: 24050143, rating: 10, pts: 5 }, { name: 'SharkeyTank', id: 12525616, rating: 3.25, pts: 5 }] },
-    { name: 'Team B', accent: '#3F9B72', players: [{ name: 'SublimedLime254', id: 12851650, rating: 12, pts: 1 }, { name: 'Balinthusa', id: 16314476, rating: 6.75, pts: 1 }, { name: 'D0cTOrSniper', id: 13323926, rating: 10.75, pts: 1 }, { name: 'Gogs987', id: 8764016, rating: 13, pts: 1 }] },
-  ],
-});
+// Only one game this week.
+const CCL_GAME2 = null;
 function renderGame(G, sfx) {
 const gameOn = G && (!G.until || Date.now() < Date.parse(G.until));
 document.getElementById('game-card' + sfx).hidden = !gameOn;
