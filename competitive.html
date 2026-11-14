@@ -111,6 +111,14 @@ details.section summary .summary-hint{color:var(--text3);font-weight:400;font-si
 .yt-link:hover{text-decoration:underline;}
 .pill.liqui{color:var(--amberL);border-color:var(--amber);text-decoration:none;}
 .pill.liqui:hover{background:var(--amberBg);}
+.fx-null{margin:0 0 10px;padding:8px 10px;border:1px dashed var(--red,#f87171);border-radius:8px;background:rgba(248,113,113,.07);color:var(--text2);font-size:11.5px;line-height:1.45;}
+.fx-null b{color:var(--red,#f87171);}
+.fx-score.nulled{color:var(--text3);}
+.set-status.nulled{color:var(--text3);border-color:var(--border2);background:transparent;text-decoration:line-through;}
+.fixture-card.is-null .set-detail,.fixture-card.is-null .sd-odds{opacity:.6;}
+.wd-tag{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;border:1px solid var(--red,#f87171);color:var(--red,#f87171);margin-left:6px;text-transform:uppercase;letter-spacing:.04em;vertical-align:middle;}
+.team-card.withdrawn{opacity:.6;}
+tr.wd-row td{color:var(--text3);}
 .fx-video{display:inline-block;margin:0 10px 6px 0;font-size:11px;font-weight:700;color:var(--amberL);text-decoration:none;}
 .fx-video:hover{text-decoration:underline;}
 .fx-pick{display:block;margin:2px 0 8px;color:#fbbf24;}
@@ -629,7 +637,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 
   <div class="card standings-card">
     <h2>Standings</h2>
-    <p class="standings-note">Teams are ranked by points: 1v1 = 1, 2v2 = 2, 3v3 = 3, 4v4 = 4. Points given is what a team has handed to other teams by losing games. Points left is what a team can still win: every series is worth 10, so it is 10 per game not yet played. Wins and losses count every finished game once.</p>
+    <p class="standings-note">Teams are ranked by points: 1v1 = 1, 2v2 = 2, 3v3 = 3, 4v4 = 4. Points given is what a team has handed to other teams by losing games. Points left is what a team can still win: every series is worth 10, so it is 10 per game not yet played. Wins and losses count every finished game once. <b>France withdrew</b>: every set it played or was due to play is nullified, so those games count for nothing here and every other team has a bye in its series with France. Points left is now out of 4 series for each team.</p>
     <div class="overflow-x">
       <table id="standings-table"></table>
     </div>
@@ -638,7 +646,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
   <details class="section" id="winrates-section">
     <summary>📈 Player win rates <span class="summary-hint" id="winrates-hint"></span></summary>
     <div class="card">
-      <p class="standings-note">Every finished game counts once, whatever its size. Click a column to sort. Small samples swing a lot, so a perfect record after one or two games says little yet.</p>
+      <p class="standings-note">Every finished game counts once, whatever its size. Click a column to sort. Small samples swing a lot, so a perfect record after one or two games says little yet. Games in the nullified France series are not counted.</p>
       <div class="overflow-x">
         <table id="winrates-table"></table>
       </div>
@@ -670,7 +678,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
 
   <div class="card">
     <h2>Round Robin Fixtures</h2>
-    <p class="desc">Every nation plays every other nation once — <span id="fixture-count"></span> series total, each made up of the 4 set formats below. Results get filled in here as matches are played.</p>
+    <p class="desc">Every nation plays every other nation once — <span id="fixture-count"></span> series total, each made up of the 4 set formats below. Results get filled in here as matches are played. <b>France withdrew</b>, so its 5 series are nullified: they stay below with their real results and videos, marked as nullified, and each opponent has a bye in them.</p>
     <div class="fixtures-grid" id="fixtures-grid"></div>
   </div>
 
@@ -679,6 +687,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
   <div id="tab-scouting" hidden>
     <div class="card">
       <div class="tourney-head"><h2>Nations Cup Scouting Report</h2></div>
+      <p class="fx-null"><b>France withdrew.</b> This report, its title odds, expected points and projected results were built with France in the tournament and have not been rerun, so they still include France and its sets. The real results of the nullified France series stay on the Fixtures list, marked as nullified.</p>
       <p class="desc">
         Six teams. A series is four sets worth 1, 2, 3 and 4 points (10 in all), and teams are ranked by total points.
         Built from ranked Console games over the last 12 months (refreshed live on Oct 6, 2026). <b>WOE</b> is wins above what the
@@ -768,7 +777,7 @@ th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;}
       <p class="scout-verdict"><b>Verdict:</b> the steadiest contender, without a standout star.</p>
     </div>
     <div class="card scout-team" style="--accent:var(--nc-red)">
-      <div class="scout-head"><span class="scout-rank">5</span><h2>France</h2><span class="scout-tag">Best chemistry, weakest 1v1</span></div>
+      <div class="scout-head"><span class="scout-rank">5</span><h2>France</h2><span class="scout-tag">Withdrew from the Nations Cup (was: best chemistry, weakest 1v1)</span></div>
       <div class="pill-row"><span class="pill">Title odds <1%</span><span class="pill">568 games together (12 mo)</span><span class="pill">Open maps 78% · WOE +3.5</span><span class="pill">Closed maps 78% · WOE +0.5</span></div>
       <div class="overflow-x"><table class="scout-elo"><thead><tr><th>Average current rating</th><th class="num">Top 4</th><th class="num">Bench</th></tr></thead><tbody><tr><td>1v1 Console</td><td class="num">1,852</td><td class="num">1,550 <span class="scout-n">(1)</span></td></tr><tr><td>1v1 PC</td><td class="num">1,277</td><td class="num">—</td></tr><tr><td>Team Console</td><td class="num">1,757</td><td class="num">1,455 <span class="scout-n">(1)</span></td></tr><tr><td>Team PC</td><td class="num">1,364</td><td class="num">1,262 <span class="scout-n">(1)</span></td></tr></tbody></table></div>
       <p class="scout-lede">568 games together, almost all from the same four players.</p>
@@ -898,6 +907,11 @@ function teamTopFourAvgElo(team) {
   return Math.round(elos.reduce((a, b) => a + b, 0) / elos.length);
 }
 
+// France withdrew. Every set it played or was due to play is nullified: the real results and video links stay on the page, but they do
+// not count in the standings, the points left or the player records, and each opponent has a bye in that series.
+const WITHDRAWN = { france: true };
+const isNullSeries = (aId, bId) => !!(WITHDRAWN[aId] || WITHDRAWN[bId]);
+const nullified = r => isNullSeries(r.teams[0], r.teams[1]);
 function teamCardHtml(team) {
   // Highest ELO first within each team; unknown-ELO players sink to the bottom.
   const sortedPlayers = [...team.players].sort((a, b) => (typeof b.elo === 'number' ? b.elo : -1) - (typeof a.elo === 'number' ? a.elo : -1));
@@ -906,9 +920,9 @@ function teamCardHtml(team) {
     : `<p class="roster"><span class="tbd">Roster to be announced</span></p>`;
   const avgElo = teamTopFourAvgElo(team);
   return `
-    <div class="team-card" style="--accent:${team.accent}">
+    <div class="team-card${WITHDRAWN[team.id] ? ' withdrawn' : ''}" style="--accent:${team.accent}">
       <div class="team-head">
-        <span class="team-name">${team.name}</span>
+        <span class="team-name">${team.name}${WITHDRAWN[team.id] ? '<span class="wd-tag">Withdrew</span>' : ''}</span>
         ${avgElo !== null ? `<span class="team-elo">Avg ${avgElo}</span>` : ''}
         <span class="roster-count">${team.players.length ? team.players.length + ' players' : '4-6 TBD'}</span>
       </div>
@@ -938,7 +952,7 @@ function roundRobinPairs(teams) {
   return pairs;
 }
 const FIXTURES = roundRobinPairs(TEAMS);
-document.getElementById('fixture-count').textContent = FIXTURES.length;
+document.getElementById('fixture-count').textContent = FIXTURES.filter(f => !isNullSeries(f[0].id, f[1].id)).length;
 
 // Games that have a date and time. `games` lists which formats are played in that slot.
 const CASTERS = [
@@ -1178,6 +1192,11 @@ const GAME_VIDEOS = [
 const videosFor = (a, b) => GAME_VIDEOS.filter(v => (v.teams[0] === a.id && v.teams[1] === b.id) || (v.teams[0] === b.id && v.teams[1] === a.id));
 const scoreHtml = (a, b) => {
   const played = SET_FORMATS.map(f => resultFor(a, b, f)).filter(Boolean);
+  if (isNullSeries(a.id, b.id)) {
+    const pa0 = played.filter(r => r.winner === a.id).reduce((n, r) => n + SET_POINTS[r.fmt], 0);
+    const pb0 = played.filter(r => r.winner === b.id).reduce((n, r) => n + SET_POINTS[r.fmt], 0);
+    return `<div class="fx-score nulled">Nullified${played.length ? ` &middot; as played: ${pa0 === pb0 ? 'tied' : (pa0 > pb0 ? a.name : b.name) + ' ' + Math.max(pa0, pb0) + '-' + Math.min(pa0, pb0)}` : ' &middot; bye'}</div>`;
+  }
   if (!played.length) return '';
   const pa = played.filter(r => r.winner === a.id).reduce((n, r) => n + SET_POINTS[r.fmt], 0);
   const pb = played.filter(r => r.winner === b.id).reduce((n, r) => n + SET_POINTS[r.fmt], 0);
@@ -1235,21 +1254,22 @@ function plannedP(a, b, fmt) {
 const favText = (a, b, p) => { const fav = p >= 0.5 ? a : b; return fav.name + ' ' + Math.round(100 * Math.max(p, 1 - p)) + '% favorite'; };
 function fixtureCardHtml([a, b]) {
   return `
-    <div class="fixture-card">
+    <div class="fixture-card${isNullSeries(a.id, b.id) ? ' is-null' : ''}">
       <div class="fixture-vs">
         <span class="fv-team">${a.name}</span>
         <span class="fv-sep">vs</span>
         <span class="fv-team">${b.name}</span>
       </div>
+      ${isNullSeries(a.id, b.id) ? (w => `<div class="fx-null"><b>Nullified.</b> ${w.name} withdrew from the Nations Cup. The results and videos below are real, but they do not count. ${(w === a ? b : a).name} has a bye in this series.</div>`)(WITHDRAWN[a.id] ? a : b) : ''}
       ${scoreHtml(a, b)}
       ${(sg => sg && casterLink(sg.caster) ? `<a class="fx-watch" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">Watch on Twitch with ${sg.caster}</a>` : '')(SET_FORMATS.map(f => scheduledFor(a, b, f)).find(Boolean))}
-      ${videosFor(a, b).map(v => `<a class="fx-video${v.featured ? ' fx-pick' : ''}" href="https://www.youtube.com/watch?v=${v.id}&list=PLBNXOMprMKPI" target="_blank" rel="noopener">${v.featured ? '&#11088; ' + (v.label || 'Video pick') + ': ' : 'Watch on YouTube: '}${v.title}</a>`).join('')}
+      ${videosFor(a, b).map(v => `<a class="fx-video${v.featured ? ' fx-pick' : ''}" href="https://www.youtube.com/watch?v=${v.id}&list=PLBNXOMprMKPI" target="_blank" rel="noopener">${v.featured ? '&#11088; ' + (v.label || 'Video pick') + ': ' : 'Watch on YouTube: '}${v.title}${isNullSeries(a.id, b.id) ? ' (nullified)' : ''}</a>`).join('')}
       ${draftHtml(a, b)}
       ${SET_FORMATS.map(fmt => `
         <div class="set-row">
           <span class="set-label">${fmt}</span>
           ${(rs => rs && rs.video ? `<a class="sd-watch" href="https://www.youtube.com/watch?v=${rs.video}${rs.t ? '&t=' + rs.t + 's' : ''}" target="_blank" rel="noopener"${rs.t ? ` title="Starts at ${Math.floor(rs.t / 60)}:${String(rs.t % 60).padStart(2, '0')}"` : ''}>Watch this game</a>` : '')(resultFor(a, b, fmt))}
-          ${(rs => rs ? `<span class="set-status won">${teamName(rs.winner)} +${SET_POINTS[fmt]}</span>` : '')(resultFor(a, b, fmt)) || (sg => sg ? (casterLink(sg.caster) ? `<a class="set-status sched" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">${sg.short} · ${sg.time.replace(':00', '')}</a>` : `<span class="set-status sched">${sg.short} · ${sg.time.replace(':00', '')}</span>`) : (pp => pp == null ? '<span class="set-status">Not Played</span>' : `<span class="set-status odds" title="Pregame odds from the scouting simulation">${favText(a, b, pp)}</span>`)(pregameP(a, b, fmt)))(scheduledFor(a, b, fmt))}
+          ${(rs => rs ? (isNullSeries(a.id, b.id) ? `<span class="set-status nulled" title="France withdrew, so this game does not count">${teamName(rs.winner)} won &middot; nullified</span>` : `<span class="set-status won">${teamName(rs.winner)} +${SET_POINTS[fmt]}</span>`) : (isNullSeries(a.id, b.id) ? '<span class="set-status nulled">Nullified</span>' : ''))(resultFor(a, b, fmt)) || (sg => sg ? (casterLink(sg.caster) ? `<a class="set-status sched" href="${casterLink(sg.caster)}" target="_blank" rel="noopener">${sg.short} · ${sg.time.replace(':00', '')}</a>` : `<span class="set-status sched">${sg.short} · ${sg.time.replace(':00', '')}</span>`) : (pp => pp == null ? '<span class="set-status">Not Played</span>' : `<span class="set-status odds" title="Pregame odds from the scouting simulation">${favText(a, b, pp)}</span>`)(pregameP(a, b, fmt)))(scheduledFor(a, b, fmt))}
         </div>
         ${(sg => { if (!sg || resultFor(a, b, fmt)) return ''; const pl = plannedP(a, b, fmt); if (pl) { const who = pl.confirmed && pl.players ? [a, b].map(t => (pl.players[t.id] || []).join(' + ')).join(' v ') : ''; return `<div class="sd-odds">Pregame odds on ${pl.map} ${pl.confirmed ? `(${who})` : 'with the likely lineup'}: <b>${favText(a, b, pl.p)}</b></div>`; } const pp = pregameP(a, b, fmt); return pp == null ? '' : `<div class="sd-odds">Pregame odds: <b>${favText(a, b, pp)}</b></div>`; })(scheduledFor(a, b, fmt))}
         ${(rs => rs ? `<div class="set-detail"><div class="sd-col sd-win">${rs.winners.map(plink).join('')}</div><span class="sd-vs">beat</span><div class="sd-col sd-lose">${rs.losers.map(plink).join('')}</div><span class="sd-map">${mapIcon(rs.map)}${rs.map}</span></div>${(pp => { if (pp == null) return ''; const favA = pp >= 0.5; const upset = (rs.winner === a.id) !== favA; return `<div class="sd-odds">Pregame odds with these players on ${rs.map}: <b>${favText(a, b, pp)}</b>${upset ? ' &middot; upset' : ''}${(PREGAME.estimated || []).some(k => k === a.id + '|' + b.id + '|' + fmt || k === b.id + '|' + a.id + '|' + fmt) ? ' &middot; estimate' : ''}</div>`; })(playedP(a, b, fmt))}` : '')(resultFor(a, b, fmt))}
@@ -1287,20 +1307,22 @@ document.getElementById('fixtures-grid').innerHTML = fixtureGroups
 function standingsRows() {
   const rec = {};
   const SERIES_POINTS = Object.values(SET_POINTS).reduce((a, b) => a + b, 0);   // 1+2+3+4 = 10 for each series
-  TEAMS.forEach(t => rec[t.id] = { won: 0, lost: 0, pts: 0, given: 0, left: (TEAMS.length - 1) * SERIES_POINTS });
-  SET_RESULTS.forEach(r => {
+  const activeN = TEAMS.filter(t => !WITHDRAWN[t.id]).length;
+  TEAMS.forEach(t => rec[t.id] = { won: 0, lost: 0, pts: 0, given: 0, left: WITHDRAWN[t.id] ? 0 : (activeN - 1) * SERIES_POINTS });
+  SET_RESULTS.filter(r => !nullified(r)).forEach(r => {
     r.teams.forEach(id => { if (rec[id]) rec[id].left -= SET_POINTS[r.fmt]; });   // a played game takes its points off the table for both teams
     const loser = r.teams.find(id => id !== r.winner);
     if (rec[r.winner]) { rec[r.winner].pts += SET_POINTS[r.fmt]; rec[r.winner].won++; }
     if (rec[loser]) { rec[loser].lost++; rec[loser].given += SET_POINTS[r.fmt]; }   // points handed to the other team by losing
   });
   return TEAMS.map(t => ({ team: t, ...rec[t.id] }))
-    .sort((x, y) => y.pts - x.pts || y.won - x.won || x.lost - y.lost);
+    .sort((x, y) => (WITHDRAWN[x.team.id] ? 1 : 0) - (WITHDRAWN[y.team.id] ? 1 : 0) || y.pts - x.pts || y.won - x.won || x.lost - y.lost);
 }
 document.getElementById('standings-table').innerHTML = `
   <thead><tr><th>Nation</th><th class="num">Points</th><th class="num" title="Points handed to other teams by losing games">Points given</th><th class="num">Points left</th><th class="num">Wins</th><th class="num">Losses</th></tr></thead>
   <tbody>
-    ${standingsRows().map(r => `
+    ${standingsRows().map(r => WITHDRAWN[r.team.id] ? `
+      <tr class="wd-row"><td>${r.team.name}<span class="wd-tag">Withdrew</span></td><td class="num" colspan="5">All sets nullified</td></tr>` : `
       <tr>
         <td>${r.team.name}</td>
         <td class="num">${r.pts}</td>
@@ -1316,7 +1338,7 @@ document.getElementById('standings-table').innerHTML = `
 // ---- Player win rates (every finished game counts once; built from SET_RESULTS) ----
 (function () {
   const rec = new Map();
-  SET_RESULTS.forEach(r => {
+  SET_RESULTS.filter(r => !nullified(r)).forEach(r => {
     const loserTeam = r.teams.find(id => id !== r.winner);
     [[r.winners, true, r.winner], [r.losers, false, loserTeam]].forEach(([list, won, team]) => {
       list.forEach(p => {
@@ -1348,7 +1370,7 @@ document.getElementById('standings-table').innerHTML = `
       draw();
     }));
   }
-  document.getElementById('winrates-hint').textContent = rows.length + ' players · ' + SET_RESULTS.length + ' games';
+  document.getElementById('winrates-hint').textContent = rows.length + ' players · ' + SET_RESULTS.filter(r => !nullified(r)).length + ' games';
   draw();
 })();
 
