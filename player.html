@@ -1006,7 +1006,8 @@ function attachShareButton(entry, player, getLadder) {
     // every ladder the player has a rating on, so the card shows all their elos (the record below is for the ladder being viewed)
     const rated = ['1v1 Console', 'Team Console', '1v1 PC', 'Team PC'].filter(l => (entry.ratings || {})[l] != null || ((entry.peaks || {})[l] || {}).current != null);
     const strip = rated.length ? 106 : 0;
-    const W = 1200, H = 675 + strip, c = document.createElement('canvas');
+    const FORM_H = 92;      // room for the recent-form row
+    const W = 1200, H = 675 + strip + FORM_H, c = document.createElement('canvas');
     c.width = W; c.height = H;
     const x = c.getContext('2d');
     const F = (w, s) => `${w} ${s}px system-ui,-apple-system,"Segoe UI",sans-serif`;
@@ -1044,6 +1045,25 @@ function attachShareButton(entry, player, getLadder) {
       x.fillStyle = '#8F8578'; x.font = F(700, 17); x.fillText(l, tx + 22, 262);
       x.fillStyle = col; x.font = F(800, 52); x.fillText(v, tx + 22, 322);
     });
+    // recent form: a dot per game for the last 10 (green win, red loss, newest on the right), and the current streak
+    {
+      const stamp = m => m.startedAt || m.date || '';
+      const newest = matches.slice().sort((a, b) => (stamp(b) > stamp(a) ? 1 : stamp(b) < stamp(a) ? -1 : 0));      // newest first (a stable sort: same-day games keep their stored order)
+      const last = newest.slice(0, 10).reverse();
+      x.fillStyle = '#5FB88C'; x.font = F(800, 20); x.fillText('RECENT FORM · LAST ' + Math.min(10, newest.length) + ' GAMES', 56, 392);
+      if (!last.length) { x.fillStyle = '#5C544A'; x.font = F(500, 22); x.fillText('No games yet', 56, 440); }
+      last.forEach((m, i) => {
+        const cx = 56 + 20 + i * 52, cy = 432;
+        x.beginPath(); x.arc(cx, cy, 20, 0, Math.PI * 2); x.fillStyle = m.won ? '#3F9B72' : '#c8553d'; x.fill();
+        x.fillStyle = '#0B0A08'; x.font = F(800, 20); x.textAlign = 'center'; x.fillText(m.won ? 'W' : 'L', cx, cy + 7); x.textAlign = 'left';
+      });
+      let run = 0; for (const m of newest) { if (m.won === newest[0].won) run++; else break; }
+      if (run) {
+        const won = newest[0].won, txt = run >= 2 ? `${run}-game ${won ? 'win streak' : 'losing streak'}` : (won ? 'Won the last game' : 'Lost the last game');
+        x.fillStyle = won ? '#4ade80' : '#f87171'; x.font = F(800, 30); x.fillText(txt, 56 + 20 + 9 * 52 + 20 + 36, 442);
+      }
+      x.translate(0, FORM_H);      // civs and maps move down to make room
+    }
     // top civs and maps with a win-rate bar
     const col = (title, rows, cx) => {
       const cw = (W - 112 - 40) / 2;
@@ -1074,7 +1094,7 @@ function attachShareButton(entry, player, getLadder) {
       modal = document.createElement('div');
       modal.className = 'share-modal';
       modal.hidden = true;
-      modal.innerHTML = `<div class="share-box" role="dialog" aria-modal="true" aria-label="Share player card"><h3>Share ${escapeHtml(entry.name)}'s player card</h3><p>The card shows every ladder's rating and the record for the ladder you are viewing. Anyone who opens the link lands on this page.</p><div class="share-canvas"></div><div class="share-actions"></div><div class="share-status" aria-live="polite"></div></div>`;
+      modal.innerHTML = `<div class="share-box" role="dialog" aria-modal="true" aria-label="Share player card"><h3>Share ${escapeHtml(entry.name)}'s player card</h3><p>The card shows every ladder's rating, plus the record and last 10 results for the ladder you are viewing. Anyone who opens the link lands on this page.</p><div class="share-canvas"></div><div class="share-actions"></div><div class="share-status" aria-live="polite"></div></div>`;
       modal.addEventListener('click', e => { if (e.target === modal) modal.hidden = true; });
       document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.hidden = true; });
       document.body.appendChild(modal);
