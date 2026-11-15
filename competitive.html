@@ -1132,6 +1132,8 @@ const DRAFTS = [
     events: [['host', 'ban', 'arabia'], ['guest', 'ban', 'black-forest'], ['none', 'pick', 'steppe'], ['host', 'pick', 'african-clearing'], ['guest', 'pick', 'glade'], ['host', 'pick', 'arena'], ['guest', 'pick', 'oasis']] },
   { teams: ['uk', 'mexico'], host: 'mexico', guest: 'uk', url: 'https://aoe2cm.net/draft/aMvVS',
     events: [['host', 'ban', 'african-clearing'], ['guest', 'ban', 'arabia'], ['none', 'pick', 'arena'], ['host', 'pick', 'black-forest'], ['guest', 'pick', 'steppe'], ['host', 'pick', 'oasis'], ['guest', 'pick', 'glade']] },
+  { teams: ['usa', 'ps5'], host: 'usa', guest: 'ps5', url: 'https://aoe2cm.net/draft/DdBRp',
+    events: [['host', 'ban', 'arabia'], ['guest', 'ban', 'glade'], ['none', 'pick', 'african-clearing'], ['host', 'pick', 'arena'], ['guest', 'pick', 'steppe'], ['host', 'pick', 'black-forest'], ['guest', 'pick', 'oasis']] },
 ];
 const draftFor = (a, b) => DRAFTS.find(d => (d.teams[0] === a.id && d.teams[1] === b.id) || (d.teams[0] === b.id && d.teams[1] === a.id));
 function draftHtml(a, b) {
