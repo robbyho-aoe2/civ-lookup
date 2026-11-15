@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-02",
+ "updated": "2026-11-15",
  "builds": [
   {
    "id": "13623295-romans-scorpions",
@@ -42,6 +42,20 @@
    "map": "Arena",
    "mode": "his own recordings, 2v2 and 3v3",
    "file": "12893749-vietnamese-arena-fast-castle.json"
+  },
+  {
+   "id": "199325-any-civ-3-scout-feudal",
+   "profileId": 199325,
+   "player": "Hera",
+   "civ": "Any civ",
+   "plan": "3-scout-feudal",
+   "title": "3-scout Feudal opening",
+   "blurb": "Loom, click up at 18 villagers, then a Stable and 3 scouts as soon as Feudal lands. He keeps making scouts one at a time with no gold until the Mining Camp, and no Bloodlines or Blacksmith upgrades before the Castle click. The times are the median of his games; the step is \"about\" that time and villager counts are estimates.",
+   "games": 27,
+   "wins": 25,
+   "map": "Arabia, Arabian Desert and Arena",
+   "mode": "his ranked 1v1 games on PC",
+   "file": "199325-any-civ-3-scout-feudal.json"
   }
  ]
 }
